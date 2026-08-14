@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+python-multipart
+numpy
+scipy
+librosa
+pyloudnorm
+pedalboard
+soundfile
+demucs
+essentia
+# madmom has no prebuilt wheel and its sdist doesn't declare its own Cython
+# build dependency, so `pip install -r requirements.txt` alone will fail on
+# it. Install in two steps instead:
+#   pip install cython && pip install --no-build-isolation madmom
+cython
+madmom

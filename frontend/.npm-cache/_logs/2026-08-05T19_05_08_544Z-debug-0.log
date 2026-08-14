@@ -1,0 +1,574 @@
+0 verbose cli /opt/homebrew/Cellar/node@20/20.19.4/bin/node /opt/homebrew/opt/node@20/bin/npm
+1 info using npm@10.8.2
+2 info using node@v20.19.4
+3 silly config load:file:/opt/homebrew/Cellar/node@20/20.19.4/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/fonzi/Downloads/ai-mastering/frontend/.npmrc
+5 silly config load:file:/Users/fonzi/.npmrc
+6 silly config load:file:/opt/homebrew/etc/npmrc
+7 verbose title npm install
+8 verbose argv "install" "--cache" "./.npm-cache"
+9 verbose logfile logs-max:10 dir:/Users/fonzi/Downloads/ai-mastering/frontend/.npm-cache/_logs/2026-08-05T19_05_08_544Z-
+10 verbose logfile /Users/fonzi/Downloads/ai-mastering/frontend/.npm-cache/_logs/2026-08-05T19_05_08_544Z-debug-0.log
+11 silly packumentCache heap:2197815296 maxSize:549453824 maxEntrySize:274726912
+12 silly logfile done cleaning log files
+13 silly idealTree buildDeps
+14 silly fetch manifest gsap@3.12.7
+15 silly packumentCache full:https://registry.npmjs.org/gsap cache-miss
+16 http fetch GET 200 https://registry.npmjs.org/gsap 540ms (cache miss)
+17 silly packumentCache full:https://registry.npmjs.org/gsap set size:undefined disposed:false
+18 silly fetch manifest motion@12.23.12
+19 silly packumentCache full:https://registry.npmjs.org/motion cache-miss
+20 http fetch GET 200 https://registry.npmjs.org/motion 290ms (cache miss)
+21 silly packumentCache full:https://registry.npmjs.org/motion set size:undefined disposed:false
+22 silly fetch manifest @emotion/is-prop-valid@*
+23 silly packumentCache full:https://registry.npmjs.org/@emotion%2fis-prop-valid cache-miss
+24 http fetch GET 200 https://registry.npmjs.org/@emotion%2fis-prop-valid 158ms (cache miss)
+25 silly packumentCache full:https://registry.npmjs.org/@emotion%2fis-prop-valid set size:undefined disposed:false
+26 silly fetch manifest react@18.3.1
+27 silly packumentCache full:https://registry.npmjs.org/react cache-miss
+28 http fetch GET 200 https://registry.npmjs.org/react 141ms (cache revalidated)
+29 silly packumentCache full:https://registry.npmjs.org/react set size:6868792 disposed:false
+30 silly fetch manifest react-dom@18.3.1
+31 silly packumentCache full:https://registry.npmjs.org/react-dom cache-miss
+32 http fetch GET 200 https://registry.npmjs.org/react-dom 107ms (cache revalidated)
+33 silly packumentCache full:https://registry.npmjs.org/react-dom set size:9221722 disposed:false
+34 silly placeDep ROOT gsap@3.12.7 OK for: ai-mastering-frontend@1.0.0 want: 3.12.7
+35 silly placeDep ROOT motion@12.23.12 OK for: ai-mastering-frontend@1.0.0 want: 12.23.12
+36 silly fetch manifest framer-motion@^12.23.12
+37 silly packumentCache full:https://registry.npmjs.org/framer-motion cache-miss
+38 http fetch GET 200 https://registry.npmjs.org/framer-motion 841ms (cache miss)
+39 silly packumentCache full:https://registry.npmjs.org/framer-motion set size:undefined disposed:false
+40 silly fetch manifest react@^18.0.0 || ^19.0.0
+41 silly packumentCache full:https://registry.npmjs.org/react cache-miss
+42 http fetch GET 200 https://registry.npmjs.org/react 15ms (cache hit)
+43 silly packumentCache full:https://registry.npmjs.org/react set size:6868792 disposed:false
+44 silly fetch manifest react-dom@^18.0.0 || ^19.0.0
+45 silly packumentCache full:https://registry.npmjs.org/react-dom cache-miss
+46 http fetch GET 200 https://registry.npmjs.org/react-dom 18ms (cache hit)
+47 silly packumentCache full:https://registry.npmjs.org/react-dom set size:9221722 disposed:false
+48 silly placeDep ROOT framer-motion@12.43.0 OK for: motion@12.23.12 want: ^12.23.12
+49 silly fetch manifest motion-dom@^12.43.0
+50 silly packumentCache full:https://registry.npmjs.org/motion-dom cache-miss
+51 silly fetch manifest motion-utils@^12.39.0
+52 silly packumentCache full:https://registry.npmjs.org/motion-utils cache-miss
+53 http fetch GET 200 https://registry.npmjs.org/motion-dom 151ms (cache miss)
+54 silly packumentCache full:https://registry.npmjs.org/motion-dom set size:undefined disposed:false
+55 http fetch GET 200 https://registry.npmjs.org/motion-utils 660ms (cache miss)
+56 silly packumentCache full:https://registry.npmjs.org/motion-utils set size:undefined disposed:false
+57 silly placeDep ROOT motion-dom@12.43.0 OK for: framer-motion@12.43.0 want: ^12.43.0
+58 silly placeDep ROOT motion-utils@12.39.0 OK for: framer-motion@12.43.0 want: ^12.39.0
+59 silly reify moves {}
+60 silly audit bulk request {
+60 silly audit   '@alloc/quick-lru': [ '5.2.0' ],
+60 silly audit   '@jridgewell/gen-mapping': [ '0.3.13' ],
+60 silly audit   '@jridgewell/resolve-uri': [ '3.1.2' ],
+60 silly audit   '@jridgewell/sourcemap-codec': [ '1.5.5' ],
+60 silly audit   '@jridgewell/trace-mapping': [ '0.3.31' ],
+60 silly audit   '@next/env': [ '14.2.20' ],
+60 silly audit   '@next/swc-darwin-arm64': [ '14.2.20' ],
+60 silly audit   '@next/swc-darwin-x64': [ '14.2.20' ],
+60 silly audit   '@next/swc-linux-arm64-gnu': [ '14.2.20' ],
+60 silly audit   '@next/swc-linux-arm64-musl': [ '14.2.20' ],
+60 silly audit   '@next/swc-linux-x64-gnu': [ '14.2.20' ],
+60 silly audit   '@next/swc-linux-x64-musl': [ '14.2.20' ],
+60 silly audit   '@next/swc-win32-arm64-msvc': [ '14.2.20' ],
+60 silly audit   '@next/swc-win32-ia32-msvc': [ '14.2.20' ],
+60 silly audit   '@next/swc-win32-x64-msvc': [ '14.2.20' ],
+60 silly audit   '@nodelib/fs.scandir': [ '2.1.5' ],
+60 silly audit   '@nodelib/fs.stat': [ '2.0.5' ],
+60 silly audit   '@nodelib/fs.walk': [ '1.2.8' ],
+60 silly audit   '@swc/counter': [ '0.1.3' ],
+60 silly audit   '@swc/helpers': [ '0.5.5' ],
+60 silly audit   'any-promise': [ '1.3.0' ],
+60 silly audit   anymatch: [ '3.1.3' ],
+60 silly audit   arg: [ '5.0.2' ],
+60 silly audit   autoprefixer: [ '10.4.20' ],
+60 silly audit   'baseline-browser-mapping': [ '2.11.12' ],
+60 silly audit   'binary-extensions': [ '2.3.0' ],
+60 silly audit   braces: [ '3.0.3' ],
+60 silly audit   browserslist: [ '4.28.7' ],
+60 silly audit   busboy: [ '1.6.0' ],
+60 silly audit   'camelcase-css': [ '2.0.1' ],
+60 silly audit   'caniuse-lite': [ '1.0.30001806' ],
+60 silly audit   chokidar: [ '3.6.0' ],
+60 silly audit   'glob-parent': [ '5.1.2', '6.0.2' ],
+60 silly audit   'client-only': [ '0.0.1' ],
+60 silly audit   commander: [ '4.1.1' ],
+60 silly audit   cssesc: [ '3.0.0' ],
+60 silly audit   didyoumean: [ '1.2.2' ],
+60 silly audit   dlv: [ '1.1.3' ],
+60 silly audit   'electron-to-chromium': [ '1.5.401' ],
+60 silly audit   'es-errors': [ '1.3.0' ],
+60 silly audit   escalade: [ '3.2.0' ],
+60 silly audit   'fast-glob': [ '3.3.3' ],
+60 silly audit   fastq: [ '1.20.1' ],
+60 silly audit   'fill-range': [ '7.1.1' ],
+60 silly audit   'fraction.js': [ '4.3.7' ],
+60 silly audit   fsevents: [ '2.3.3' ],
+60 silly audit   'function-bind': [ '1.1.2' ],
+60 silly audit   'graceful-fs': [ '4.2.11' ],
+60 silly audit   hasown: [ '2.0.4' ],
+60 silly audit   'is-binary-path': [ '2.1.0' ],
+60 silly audit   'is-core-module': [ '2.16.2' ],
+60 silly audit   'is-extglob': [ '2.1.1' ],
+60 silly audit   'is-glob': [ '4.0.3' ],
+60 silly audit   'is-number': [ '7.0.0' ],
+60 silly audit   jiti: [ '1.21.7' ],
+60 silly audit   'js-tokens': [ '4.0.0' ],
+60 silly audit   lilconfig: [ '3.1.3' ],
+60 silly audit   'lines-and-columns': [ '1.2.4' ],
+60 silly audit   'loose-envify': [ '1.4.0' ],
+60 silly audit   merge2: [ '1.4.1' ],
+60 silly audit   micromatch: [ '4.0.8' ],
+60 silly audit   mz: [ '2.7.0' ],
+60 silly audit   nanoid: [ '3.3.17' ],
+60 silly audit   next: [ '14.2.20' ],
+60 silly audit   postcss: [ '8.4.31', '8.4.49' ],
+60 silly audit   'node-releases': [ '2.0.52' ],
+60 silly audit   'normalize-path': [ '3.0.0' ],
+60 silly audit   'normalize-range': [ '0.1.2' ],
+60 silly audit   'object-assign': [ '4.1.1' ],
+60 silly audit   'object-hash': [ '3.0.0' ],
+60 silly audit   ogl: [ '1.0.11' ],
+60 silly audit   'path-parse': [ '1.0.7' ],
+60 silly audit   picocolors: [ '1.1.1' ],
+60 silly audit   picomatch: [ '2.3.2', '4.0.5' ],
+60 silly audit   pify: [ '2.3.0' ],
+60 silly audit   pirates: [ '4.0.7' ],
+60 silly audit   'postcss-import': [ '15.1.0' ],
+60 silly audit   'postcss-js': [ '4.1.0' ],
+60 silly audit   'postcss-nested': [ '6.2.0' ],
+60 silly audit   'postcss-selector-parser': [ '6.1.4' ],
+60 silly audit   'postcss-value-parser': [ '4.2.0' ],
+60 silly audit   'queue-microtask': [ '1.2.3' ],
+60 silly audit   react: [ '18.3.1' ],
+60 silly audit   'react-dom': [ '18.3.1' ],
+60 silly audit   'read-cache': [ '1.0.0' ],
+60 silly audit   readdirp: [ '3.6.0' ],
+60 silly audit   resolve: [ '1.22.12' ],
+60 silly audit   reusify: [ '1.1.0' ],
+60 silly audit   'run-parallel': [ '1.2.0' ],
+60 silly audit   scheduler: [ '0.23.2' ],
+60 silly audit   'source-map-js': [ '1.2.1' ],
+60 silly audit   streamsearch: [ '1.1.0' ],
+60 silly audit   'styled-jsx': [ '5.1.1' ],
+60 silly audit   sucrase: [ '3.35.1' ],
+60 silly audit   'supports-preserve-symlinks-flag': [ '1.0.0' ],
+60 silly audit   tailwindcss: [ '3.4.16' ],
+60 silly audit   'postcss-load-config': [ '4.0.2' ],
+60 silly audit   thenify: [ '3.3.1' ],
+60 silly audit   'thenify-all': [ '1.6.0' ],
+60 silly audit   tinyglobby: [ '0.2.17' ],
+60 silly audit   fdir: [ '6.5.0' ],
+60 silly audit   'to-regex-range': [ '5.0.1' ],
+60 silly audit   'ts-interface-checker': [ '0.1.13' ],
+60 silly audit   tslib: [ '2.8.1' ],
+60 silly audit   'update-browserslist-db': [ '1.2.3' ],
+60 silly audit   'util-deprecate': [ '1.0.2' ],
+60 silly audit   yaml: [ '2.9.0' ],
+60 silly audit   zustand: [ '5.0.7' ],
+60 silly audit   gsap: [ '3.12.7' ],
+60 silly audit   motion: [ '12.23.12' ],
+60 silly audit   'framer-motion': [ '12.43.0' ],
+60 silly audit   'motion-dom': [ '12.43.0' ],
+60 silly audit   'motion-utils': [ '12.39.0' ]
+60 silly audit }
+61 verbose reify failed optional dependency /Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-win32-x64-msvc
+62 silly reify mark deleted [
+62 silly reify   '/Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-win32-x64-msvc'
+62 silly reify ]
+63 verbose reify failed optional dependency /Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-win32-ia32-msvc
+64 silly reify mark deleted [
+64 silly reify   '/Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-win32-ia32-msvc'
+64 silly reify ]
+65 verbose reify failed optional dependency /Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-win32-arm64-msvc
+66 silly reify mark deleted [
+66 silly reify   '/Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-win32-arm64-msvc'
+66 silly reify ]
+67 verbose reify failed optional dependency /Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-linux-x64-musl
+68 silly reify mark deleted [
+68 silly reify   '/Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-linux-x64-musl'
+68 silly reify ]
+69 verbose reify failed optional dependency /Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-linux-x64-gnu
+70 silly reify mark deleted [
+70 silly reify   '/Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-linux-x64-gnu'
+70 silly reify ]
+71 verbose reify failed optional dependency /Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-linux-arm64-musl
+72 silly reify mark deleted [
+72 silly reify   '/Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-linux-arm64-musl'
+72 silly reify ]
+73 verbose reify failed optional dependency /Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-linux-arm64-gnu
+74 silly reify mark deleted [
+74 silly reify   '/Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-linux-arm64-gnu'
+74 silly reify ]
+75 verbose reify failed optional dependency /Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-darwin-x64
+76 silly reify mark deleted [
+76 silly reify   '/Users/fonzi/Downloads/ai-mastering/frontend/node_modules/@next/swc-darwin-x64'
+76 silly reify ]
+77 silly tarball no local data for gsap@https://registry.npmjs.org/gsap/-/gsap-3.12.7.tgz. Extracting by manifest.
+78 silly tarball no local data for motion-dom@https://registry.npmjs.org/motion-dom/-/motion-dom-12.43.0.tgz. Extracting by manifest.
+79 silly tarball no local data for framer-motion@https://registry.npmjs.org/framer-motion/-/framer-motion-12.43.0.tgz. Extracting by manifest.
+80 silly tarball no local data for motion-utils@https://registry.npmjs.org/motion-utils/-/motion-utils-12.39.0.tgz. Extracting by manifest.
+81 silly tarball no local data for motion@https://registry.npmjs.org/motion/-/motion-12.23.12.tgz. Extracting by manifest.
+82 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 297ms
+83 silly audit report {
+83 silly audit report   next: [
+83 silly audit report     {
+83 silly audit report       id: 1117931,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-8h8q-6873-q5fj',
+83 silly audit report       title: 'Next.js Vulnerable to Denial of Service with Server Components',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '>=13.0.0 <15.5.16',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1101438,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-7m27-7ghc-44w9',
+83 silly audit report       title: 'Next.js Allows a Denial of Service (DoS) with Server Actions',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=14.0.0 <14.2.21',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1105461,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-3h52-269p-cp9r',
+83 silly audit report       title: 'Information exposure in Next.js dev server due to lack of origin verification',
+83 silly audit report       severity: 'low',
+83 silly audit report       vulnerable_versions: '>=13.0 <14.2.30',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1111391,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-mwv6-3258-q52c',
+83 silly audit report       title: 'Next Vulnerable to Denial of Service with Server Components',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '>=13.3.0 <14.2.34',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1107226,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-g5qg-72qw-gw5v',
+83 silly audit report       title: 'Next.js Affected by Cache Key Confusion for Image Optimization API Routes',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=0.9.9 <14.2.31',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1107512,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-4342-x723-ch2f',
+83 silly audit report       title: 'Next.js Improper Middleware Redirect Handling Leads to SSRF',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=0.9.9 <14.2.32',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1107513,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-xv57-4mr9-wg8v',
+83 silly audit report       title: 'Next.js Content Injection Vulnerability for Image Optimization',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=0.9.9 <14.2.31',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1112182,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-5j59-xgg2-r9c4',
+83 silly audit report       title: 'Next has a Denial of Service with Server Components - Incomplete Fix Follow-Up',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '>=13.3.1-canary.0 <14.2.35',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1108291,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-qpjv-v59x-3qc4',
+83 silly audit report       title: 'Next.js Race Condition to Cache Poisoning',
+83 silly audit report       severity: 'low',
+83 silly audit report       vulnerable_versions: '>=0.9.9 <14.2.24',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1118942,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-3g8h-86w9-wvmq',
+83 silly audit report       title: "Next.js's Middleware / Proxy redirects can be cache-poisoned",
+83 silly audit report       severity: 'low',
+83 silly audit report       vulnerable_versions: '>=12.2.0 <15.5.16',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1118944,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-ffhc-5mcf-pf4q',
+83 silly audit report       title: 'Next.js vulnerable to cross-site scripting in App Router applications using CSP nonces',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=13.4.0 <15.5.16',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1118946,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-vfv6-92ff-j949',
+83 silly audit report       title: 'Next.js vulnerable to cache poisoning via collisions in React Server Component cache-busting',
+83 silly audit report       severity: 'low',
+83 silly audit report       vulnerable_versions: '>=13.4.6 <15.5.16',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1118948,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-gx5p-jg67-6x7h',
+83 silly audit report       title: 'Next.js has cross-site scripting in beforeInteractive scripts with untrusted input',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=13.0.0 <15.5.16',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1118952,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-h64f-5h5j-jqjh',
+83 silly audit report       title: 'Next.js has a Denial of Service in the Image Optimization API',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=10.0.0 <15.5.16',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1118954,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-c4j6-fc7j-m34r',
+83 silly audit report       title: 'Next.js vulnerable to server-side request forgery in applications using WebSocket upgrades',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '>=13.4.13 <15.5.16',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1118958,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-wfc6-r584-vfw7',
+83 silly audit report       title: 'Next.js vulnerable to cache poisoning in React Server Component responses',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=14.2.0 <15.5.16',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1118962,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-36qx-fr4f-26g5',
+83 silly audit report       title: 'Next.js has a Middleware / Proxy bypass in Pages Router applications using i18n',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '>=12.2.0 <15.5.16',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1112593,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-9g9p-9gw9-jx7f',
+83 silly audit report       title: 'Next.js self-hosted applications vulnerable to DoS via Image Optimizer remotePatterns configuration',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=10.0.0 <15.5.10',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1112653,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-h25m-26qc-wcjf',
+83 silly audit report       title: 'Next.js HTTP request deserialization can lead to DoS when using insecure React Server Components',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '>=13.0.0 <15.0.8',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1113689,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-f82v-jwr5-mffw',
+83 silly audit report       title: 'Authorization Bypass in Next.js Middleware',
+83 silly audit report       severity: 'critical',
+83 silly audit report       vulnerable_versions: '>=14.0.0 <14.2.25',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1114897,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-ggv3-7p47-pfv8',
+83 silly audit report       title: 'Next.js: HTTP request smuggling in rewrites',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=9.5.0 <15.5.13',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1114940,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-3x4c-7xq6-9pq8',
+83 silly audit report       title: 'Next.js: Unbounded next/image disk cache growth can exhaust storage',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=10.0.0 <15.5.14',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1116376,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-q4gf-8mx6-v5v3',
+83 silly audit report       title: 'Next.js has a Denial of Service with Server Components',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '>=13.0.0 <15.5.15',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1124185,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-89xv-2m56-2m9x',
+83 silly audit report       title: 'Next.js: Server-Side Request Forgery in Server Actions on custom servers',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '>=14.1.1 <15.5.21',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1124172,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-m99w-x7hq-7vfj',
+83 silly audit report       title: 'Next.js: Denial of Service in App Router using Server Actions',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '>=13.0.0 <15.5.21',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1124187,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-68g3-v927-f742',
+83 silly audit report       title: 'Next.js: Cache confusion of response bodies for requests with bodies',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=13.0.0 <15.5.21',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1124189,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-4633-3j49-mh5q',
+83 silly audit report       title: 'Next.js: Cache confusion of response bodies for requests with bodies containing invalid UTF-8 byte sequences',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=13.0.0 <15.5.21',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1124191,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-4c39-4ccg-62r3',
+83 silly audit report       title: 'Next.js: Unbounded Server Action payload in Edge runtime',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=13.0.0 <15.5.21',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1124193,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-p9j2-gv94-2wf4',
+83 silly audit report       title: 'Next.js: Server-Side Request Forgery in rewrites via attacker-controlled destination hostname',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '>=12.0.0 <15.5.21',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1124197,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-955p-x3mx-jcvp',
+83 silly audit report       title: 'Next.js: Unauthenticated disclosure of internal Server Function endpoints',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '>=13.0.0 <15.5.21',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     }
+83 silly audit report   ],
+83 silly audit report   postcss: [
+83 silly audit report     {
+83 silly audit report       id: 1130709,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-fxqj-rqcc-2cmp',
+83 silly audit report       title: 'PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '<=8.5.22',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1117015,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-qx2v-qp2m-jg93',
+83 silly audit report       title: 'PostCSS has XSS via Unescaped </style> in its CSS Stringify Output',
+83 silly audit report       severity: 'moderate',
+83 silly audit report       vulnerable_versions: '<8.5.10',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1124252,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-6g55-p6wh-862q',
+83 silly audit report       title: 'PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '<=8.5.11',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     },
+83 silly audit report     {
+83 silly audit report       id: 1124288,
+83 silly audit report       url: 'https://github.com/advisories/GHSA-r28c-9q8g-f849',
+83 silly audit report       title: 'PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure',
+83 silly audit report       severity: 'high',
+83 silly audit report       vulnerable_versions: '<=8.5.17',
+83 silly audit report       cwe: [Array],
+83 silly audit report       cvss: [Object]
+83 silly audit report     }
+83 silly audit report   ]
+83 silly audit report }
+84 silly packumentCache corgi:https://registry.npmjs.org/next cache-miss
+85 silly packumentCache corgi:https://registry.npmjs.org/postcss cache-miss
+86 http fetch GET 200 https://registry.npmjs.org/motion-utils/-/motion-utils-12.39.0.tgz 440ms (cache miss)
+87 http fetch GET 200 https://registry.npmjs.org/next 246ms (cache revalidated)
+88 silly packumentCache corgi:https://registry.npmjs.org/next set size:25427204 disposed:false
+89 http fetch GET 200 https://registry.npmjs.org/motion/-/motion-12.23.12.tgz 2727ms (cache miss)
+90 http fetch GET 200 https://registry.npmjs.org/gsap/-/gsap-3.12.7.tgz 2822ms (cache miss)
+91 http fetch GET 200 https://registry.npmjs.org/postcss 2679ms (cache revalidated)
+92 silly packumentCache corgi:https://registry.npmjs.org/postcss set size:354683 disposed:false
+93 silly packumentCache corgi:https://registry.npmjs.org/autoprefixer cache-miss
+94 silly packumentCache corgi:https://registry.npmjs.org/postcss-import cache-miss
+95 silly packumentCache corgi:https://registry.npmjs.org/postcss-js cache-miss
+96 silly packumentCache corgi:https://registry.npmjs.org/postcss-nested cache-miss
+97 silly packumentCache corgi:https://registry.npmjs.org/tailwindcss cache-miss
+98 silly packumentCache corgi:https://registry.npmjs.org/postcss-load-config cache-miss
+99 http fetch GET 200 https://registry.npmjs.org/motion-dom/-/motion-dom-12.43.0.tgz 3291ms (cache miss)
+100 http fetch GET 200 https://registry.npmjs.org/autoprefixer 315ms (cache revalidated)
+101 silly packumentCache corgi:https://registry.npmjs.org/autoprefixer set size:303229 disposed:false
+102 http fetch GET 200 https://registry.npmjs.org/postcss-js 328ms (cache revalidated)
+103 silly packumentCache corgi:https://registry.npmjs.org/postcss-js set size:25314 disposed:false
+104 http fetch GET 200 https://registry.npmjs.org/postcss-import 330ms (cache revalidated)
+105 silly packumentCache corgi:https://registry.npmjs.org/postcss-import set size:52251 disposed:false
+106 http fetch GET 200 https://registry.npmjs.org/postcss-load-config 332ms (cache revalidated)
+107 silly packumentCache corgi:https://registry.npmjs.org/postcss-load-config set size:37999 disposed:false
+108 http fetch GET 200 https://registry.npmjs.org/tailwindcss 344ms (cache revalidated)
+109 silly packumentCache corgi:https://registry.npmjs.org/tailwindcss set size:4783869 disposed:false
+110 http fetch GET 200 https://registry.npmjs.org/postcss-nested 450ms (cache revalidated)
+111 silly packumentCache corgi:https://registry.npmjs.org/postcss-nested set size:43577 disposed:false
+112 http fetch GET 200 https://registry.npmjs.org/framer-motion/-/framer-motion-12.43.0.tgz 3879ms (cache miss)
+113 silly ADD node_modules/motion-utils
+114 silly ADD node_modules/motion-dom
+115 silly ADD node_modules/framer-motion
+116 silly ADD node_modules/motion
+117 silly ADD node_modules/gsap
+118 silly ADD node_modules/fsevents
+119 silly ADD
+120 silly ADD
+121 silly ADD
+122 silly ADD
+123 silly ADD
+124 silly ADD
+125 silly ADD
+126 silly ADD
+127 verbose cwd /Users/fonzi/Downloads/ai-mastering/frontend
+128 verbose os Darwin 24.6.0
+129 verbose node v20.19.4
+130 verbose npm  v10.8.2
+131 verbose exit 0
+132 info ok
