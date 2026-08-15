@@ -97,6 +97,8 @@ for the one place that isn't true).
 | `MAX_UPLOAD_MB` | `200` | |
 | `MASTERING_ENGINE` | `adaptive_python` | anything else falls back to the crude in-Node ffmpeg filter chain — see ARCHITECTURE.md §3, don't run production on this |
 | `CUSTOM_PRESETS_FILE` | `./custom_presets.json` | user-imported presets, separate from the curated `mixing_presets.json` — resolved entirely in Node, the Python service has no knowledge of these |
+| `FIREBASE_SERVICE_ACCOUNT_PATH` | *(none — required)* | path to the service account JSON from Firebase console; see [FIREBASE_SETUP.md](FIREBASE_SETUP.md). Every route except `/health` 500s with a clear "auth service misconfigured" error until this (or the next var) is set. |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | *(none)* | the same file's content, inline — for hosts that only support env vars, not file uploads. Use exactly one of these two. |
 
 If deploying `backend-node` and `backend/` on different machines/
 containers, that's fully supported now — they only need `PYTHON_API_BASE_URL`
@@ -120,6 +122,12 @@ npm start                     # or `npm run dev` locally
 runtime alone won't take effect. Note this only ever points at Node
 (port 8000) — the frontend has no reason to know the Python service exists.
 
+The six `NEXT_PUBLIC_FIREBASE_*` vars in `.env.example` are the Firebase
+web config — see [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for where to get
+them. Safe to expose client-side by design (Firebase's security model
+doesn't depend on these being secret); same build-time-baked-in rule
+applies.
+
 ## 5. Things that will bite you in production
 
 - **Upload/output storage grows forever.** Nothing deletes old job files —
@@ -138,11 +146,13 @@ runtime alone won't take effect. Note this only ever points at Node
   handle concurrent load. The Python service being warm now (see
   ARCHITECTURE.md §1) removes the *startup* cost per request, not the
   actual DSP processing time — a render is still a render.
-- **No auth.** Every endpoint is open — `CORS_ORIGINS=*` by default. Put
-  this behind whatever auth/rate-limiting layer matters before exposing it
-  publicly; nothing in this codebase does it. This now applies to *two*
-  processes if the Python service is ever exposed directly instead of only
-  through Node's proxy — don't expose port 8001 publicly, only 8000.
+- **Auth exists now (Firebase), but no rate-limiting/authorization tiers.**
+  Every signed-in user can hit every endpoint identically — there's no
+  concept of roles, quotas, or per-user limits (e.g. nothing stops one
+  account from submitting unlimited renders). `CORS_ORIGINS=*` by default
+  too — restrict it once you have a real frontend origin. Don't expose the
+  Python service's port 8001 publicly regardless — it has no auth of its
+  own, it trusts Node to have already checked (see ARCHITECTURE.md §7).
 - **`MASTERING_ENGINE` fallback is a trap.** If the Python service in §2
   isn't running and `MASTERING_ENGINE` isn't explicitly `adaptive_python`,
   requests silently succeed via the crude ffmpeg-filter fallback instead of

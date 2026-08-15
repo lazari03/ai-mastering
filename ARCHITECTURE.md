@@ -209,3 +209,56 @@ what `buildFilterChain()` in `masteringService.js` now does natively in
 Node. Confirmed via grep across the whole project (matches outside
 `chain.py` itself were all in `venv312/`'s third-party packages, not this
 codebase) and deleted during the refactor pass.
+
+## 7. Auth (Firebase)
+
+Every route requires a signed-in user except `GET /health` (open for load
+balancers/uptime monitors). Firebase was chosen as the identity provider —
+this repo doesn't run its own user database or session store.
+
+```
+Browser                         Node (Express, :8000)          Firebase
+   │                                   │                            │
+   │  sign in (email/password or       │                            │
+   │  Google popup) ───────────────────┼───────────────────────────▶│
+   │◀──────────────────────────────────┼──── ID token ──────────────┤
+   │                                   │                            │
+   │  any API call, e.g. POST /master  │                            │
+   │  Authorization: Bearer <idToken>  │                            │
+   ├──────────────────────────────────▶│                            │
+   │                                   │ requireAuth middleware:     │
+   │                                   │ verifyIdToken() ───────────▶│
+   │                                   │◀──── decoded claims ────────┤
+   │                                   │ req.user = {uid, email}     │
+   │                                   │ → route handler runs        │
+   │◀──────────────────────────────────┤                            │
+```
+
+- **Frontend** (`frontend/src/lib/firebase.js`, `store/authStore.js`) —
+  Firebase's client SDK handles sign-up/sign-in/session persistence
+  entirely client-side; Node never sees a password. `network/http/client.js`
+  attaches the current user's ID token to every request automatically —
+  none of the individual API functions (`postMaster`, `getGenres`, etc.)
+  know auth exists.
+- **Backend** (`backend-node/src/middleware/auth.js`,
+  `config/firebase.js`) — Firebase Admin SDK verifies the token
+  server-side (signature, expiry, project match) using a service account
+  credential that never reaches the browser. Mounted globally in
+  `server.js` ahead of `masteringRoutes.js`.
+- **The Python service knows nothing about auth.** It's not
+  internet-facing (see §1) — Node is the only thing that talks to it, and
+  Node has already authenticated the request by the time it forwards
+  anything. Adding auth there too would be redundant, not defense in depth.
+- **Firebase Auth is browser-only** — it needs `window`/`localStorage` for
+  session persistence, but Next.js still server-renders `"use client"`
+  modules during the build/SSR pass. `lib/firebase.js` guards every
+  Firebase call behind a `typeof window !== "undefined"` check and
+  lazy-initializes on first real (browser) use — importing the module
+  anywhere, server-side or not, never triggers actual initialization. This
+  isn't optional: the eager version crashes the entire `next build`,
+  including pages that don't use auth, the moment the module is imported
+  from the root layout.
+
+Setup steps (creating the Firebase project, enabling sign-in providers,
+getting credentials) are in [FIREBASE_SETUP.md](FIREBASE_SETUP.md) — that
+part has to happen in the Firebase console, not from code.

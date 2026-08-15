@@ -1,6 +1,19 @@
+import { getFirebaseAuth } from "@/lib/firebase";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 const REQUEST_TIMEOUT_MS = 12000;
 const MASTERING_TIMEOUT_MS = 20 * 60 * 1000;
+
+// Every route on the backend except /health requires a Firebase ID token —
+// attach it here, once, so none of the individual endpoint functions below
+// need to know auth exists. getIdToken() returns the cached token and only
+// hits the network to refresh it if it's actually expired/near-expiry.
+async function authHeader() {
+  const user = getFirebaseAuth()?.currentUser;
+  if (!user) return {};
+  const token = await user.getIdToken();
+  return { Authorization: `Bearer ${token}` };
+}
 
 async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -8,8 +21,10 @@ async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
 
   let response;
   try {
+    const headers = { ...(options.headers || {}), ...(await authHeader()) };
     response = await fetch(`${API_BASE}${path}`, {
       ...options,
+      headers,
       cache: "no-store",
       signal: controller.signal,
     });
