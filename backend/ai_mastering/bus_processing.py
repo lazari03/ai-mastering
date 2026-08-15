@@ -97,7 +97,8 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
     clipped = _soft_clip(pre_limiter, ceiling_db=-0.3)
     clipper_gain_reduction_db = float(max(0.0, pre_clip_peak_db - _true_peak_db(clipped)))
 
-    limited = _true_peak_limiter(clipped, sr, ceiling_db=-1.0)
+    limiter_release_ms = float(params.get("limiter_release_ms", 60.0))
+    limited = _true_peak_limiter(clipped, sr, ceiling_db=-1.0, release_ms=limiter_release_ms)
 
     pre_peak_db = pre_clip_peak_db
     post_peak_db = _true_peak_db(limited)
@@ -127,6 +128,7 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
         "pre_limiter_peak_db": round(pre_peak_db, 3),
         "post_limiter_peak_db": round(post_peak_db, 3),
         "clipper_gain_reduction_db": round(clipper_gain_reduction_db, 3),
+        "release_ms": round(limiter_release_ms, 1),
         "true_peak_aware": True,
     }
 
@@ -161,7 +163,8 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
     clipped = _soft_clip(pre_limiter.T, ceiling_db=-0.3).T
     clipper_gain_reduction_db = float(max(0.0, _db(pre_clip_peak) - _db(float(np.max(np.abs(clipped)) + EPS))))
 
-    limiter = Pedalboard([Limiter(threshold_db=-1.0, release_ms=120.0)])
+    limiter_release_ms = float(params.get("limiter_release_ms", 120.0))
+    limiter = Pedalboard([Limiter(threshold_db=-1.0, release_ms=limiter_release_ms)])
     stereo_pb = limiter(np.ascontiguousarray(clipped, dtype=np.float32), sr)
 
     pre_peak = pre_clip_peak
@@ -209,6 +212,7 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
         "pre_limiter_peak_db": round(_db(pre_peak), 3),
         "post_limiter_peak_db": round(_db(post_peak), 3),
         "clipper_gain_reduction_db": round(clipper_gain_reduction_db, 3),
+        "release_ms": round(limiter_release_ms, 1),
     }
 
     return np.asarray(stereo_pb.T, dtype=np.float32), gain_db, loudness_guard, limiter_report

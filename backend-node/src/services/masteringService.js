@@ -14,6 +14,20 @@ function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
+// Mirrors ai_mastering/audio_utils.py:_ab_gain_match — attenuate the louder
+// side down to the quieter side's LUFS so an A/B comparison isn't biased by
+// the mastered file simply being louder. Used here only as a fallback for
+// the legacy node_ffmpeg engine path, which doesn't go through Python.
+function computeAbGainMatch(beforeLufs, afterLufs) {
+  if (!Number.isFinite(beforeLufs) || !Number.isFinite(afterLufs)) return null;
+  const target = Math.min(beforeLufs, afterLufs);
+  return {
+    reference_lufs: Number(target.toFixed(3)),
+    before_gain_db: Number((target - beforeLufs).toFixed(3)),
+    after_gain_db: Number((target - afterLufs).toFixed(3)),
+  };
+}
+
 function normalizeTweaks(raw = {}) {
   const keys = ["low_end", "punch", "presence", "brightness", "warmth", "width", "loudness"];
   const out = {};
@@ -117,7 +131,7 @@ export function parseJsonFromStdout(stdout) {
   throw new Error("Adaptive DSP returned invalid JSON output");
 }
 
-async function runAdaptiveDsp({ inputPath, wavOut, config }) {
+async function runAdaptiveDsp({ inputPath, wavOut, config, referencePath }) {
   const args = [
     settings.adaptiveCliScript,
     "--input",
@@ -138,6 +152,9 @@ async function runAdaptiveDsp({ inputPath, wavOut, config }) {
 
   if (config.use_stem_separation) {
     args.push("--use-stem-separation");
+  }
+  if (referencePath) {
+    args.push("--reference", referencePath);
   }
 
   const { stdout } = await execFileAsync(settings.adaptivePythonBin, args, {
@@ -242,7 +259,7 @@ export async function decodeIfNeeded(inputPath) {
   return decoded;
 }
 
-export async function processMastering({ file, fields }) {
+export async function processMastering({ file, referenceFile = null, fields }) {
   const config = resolveConfig(fields);
   const jobId = randomUUID().slice(0, 8);
   const inputExt = path.extname(file.originalname || "") || ".wav";
@@ -250,6 +267,18 @@ export async function processMastering({ file, fields }) {
   fs.copyFileSync(file.path, inputPath);
 
   const processingInput = await decodeIfNeeded(inputPath);
+
+  // Spectral matching only applies to the adaptive engine — a full preset
+  // spec is a literal instruction set, there's no "target spectral balance"
+  // slot in it to override.
+  let referenceInput = null;
+  if (referenceFile && !config.fullPreset) {
+    const referenceExt = path.extname(referenceFile.originalname || "") || ".wav";
+    const referencePath = path.join(settings.uploadDir, `${jobId}_reference${referenceExt}`);
+    fs.copyFileSync(referenceFile.path, referencePath);
+    referenceInput = await decodeIfNeeded(referencePath);
+  }
+
   const wavOut = path.join(settings.outputDir, `${jobId}_mastered.wav`);
   const outExt = config.output_format === "mp3" ? "mp3" : "wav";
   const finalOut = path.join(settings.outputDir, `${jobId}_mastered.${outExt}`);
@@ -279,6 +308,7 @@ export async function processMastering({ file, fields }) {
       after_lufs: Number((Number.isFinite(afterLufsRaw) ? afterLufsRaw : -11).toFixed(1)),
       analysis_before: presetResult?.analysis_before || { integrated_lufs: -14 },
       analysis_after: presetResult?.analysis_after || { integrated_lufs: -11 },
+      ab_gain_match: presetResult?.ab_gain_match || null,
       quality_control: presetResult?.quality_control || null,
       processing_applied: presetResult?.processing_applied || { engine: "preset_dsp_engine" },
       target_profile_used: presetResult?.target_profile_used || { genre: config.genre, style: config.style },
@@ -288,7 +318,7 @@ export async function processMastering({ file, fields }) {
   if (settings.masteringEngine === "adaptive_python") {
     let adaptiveResult;
     try {
-      adaptiveResult = await runAdaptiveDsp({ inputPath: processingInput, wavOut, config });
+      adaptiveResult = await runAdaptiveDsp({ inputPath: processingInput, wavOut, config, referencePath: referenceInput });
     } catch (error) {
       const detail = error?.stderr || error?.message || "unknown error";
       throw new Error(`Adaptive DSP engine failed: ${detail}`);
@@ -310,6 +340,7 @@ export async function processMastering({ file, fields }) {
       after_lufs: Number((Number.isFinite(afterLufsRaw) ? afterLufsRaw : -11).toFixed(1)),
       analysis_before: adaptiveResult?.analysis_before || { integrated_lufs: -14 },
       analysis_after: adaptiveResult?.analysis_after || { integrated_lufs: -11 },
+      ab_gain_match: adaptiveResult?.ab_gain_match || null,
       processing_applied: {
         ...(adaptiveResult?.processing_applied || {}),
         engine: "adaptive_python_dsp",
@@ -341,6 +372,7 @@ export async function processMastering({ file, fields }) {
     after_lufs: Number((afterLufsRaw ?? chain.targetLufs).toFixed(1)),
     analysis_before: { integrated_lufs: beforeLufsRaw ?? -14 },
     analysis_after: { integrated_lufs: afterLufsRaw ?? chain.targetLufs },
+    ab_gain_match: computeAbGainMatch(beforeLufsRaw ?? -14, afterLufsRaw ?? chain.targetLufs),
     processing_applied: {
       config,
       ffmpeg_filter: chain.filter,

@@ -4,6 +4,7 @@ python-multipart
 numpy
 scipy
 librosa
+numba
 pyloudnorm
 pedalboard
 soundfile

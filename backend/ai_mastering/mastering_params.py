@@ -6,7 +6,7 @@ import numpy as np
 
 from params import ADJUSTMENT_TAG_BIASES, GENRE_TARGET_PROFILES, MASTERING_STYLE_PROFILES, SPECTRAL_BAND_KEYS
 
-from .audio_utils import EPS
+from .audio_utils import EPS, _tilt_from_band_shares
 
 
 def _apply_tag_biases(profile: dict, tags: list[str]) -> dict:
@@ -47,12 +47,26 @@ def _apply_tag_biases(profile: dict, tags: list[str]) -> dict:
     return biased
 
 
-def compute_processing_params(analysis: dict, genre: str, tags: list[str], style: str = "modern") -> dict:
+def compute_processing_params(
+    analysis: dict,
+    genre: str,
+    tags: list[str],
+    style: str = "modern",
+    reference_spectral_balance: dict | None = None,
+) -> dict:
     """
     Compute adaptive mastering parameters from measured track state vs genre target.
 
     This function intentionally computes deltas from analysis rather than applying
     static settings, so each track receives only the correction it needs.
+
+    reference_spectral_balance: when given (the 7-band spectral_balance of a
+    user-uploaded reference track, from _analysis_from_audio), it replaces
+    the genre profile's static target_spectral_balance as the EQ target —
+    every band's correction below is then computed against what the
+    reference track actually looks like, not a generic genre curve. Nothing
+    else about the profile (target LUFS, dynamic range, width) changes —
+    matching the spectral shape isn't the same as cloning the whole master.
     """
     if genre not in GENRE_TARGET_PROFILES:
         raise ValueError(f"Unknown genre: {genre}")
@@ -72,7 +86,18 @@ def compute_processing_params(analysis: dict, genre: str, tags: list[str], style
     profile["base_saturation"] = float(np.clip(profile["base_saturation"], 0.0, 0.25))
 
     current_balance = analysis["spectral_balance"]
-    target_balance = profile["target_spectral_balance"]
+    target_balance = reference_spectral_balance if reference_spectral_balance else profile["target_spectral_balance"]
+
+    # Spectral tilt: a single dB/octave slope summarizing "dark/bass-heavy"
+    # vs "bright/thin" overall, on top of the 7-band per-band correction
+    # above. Reported for visibility/QA rather than driving its own separate
+    # EQ move — the per-band correction already reshapes the spectrum
+    # toward target_balance, and a tilt value derived from that same
+    # target_balance would just be restating the same correction as one
+    # number, not adding a second independent control that could fight it.
+    target_tilt_db_per_octave = _tilt_from_band_shares(target_balance)
+    measured_tilt_db_per_octave = float(analysis.get("spectral_tilt_db_per_octave", 0.0))
+    spectral_tilt_delta_db_per_octave = target_tilt_db_per_octave - measured_tilt_db_per_octave
     low_energy = float(current_balance.get("sub_bass_20_60hz", 0.0) + current_balance.get("bass_60_250hz", 0.0))
     low_mid_energy = float(current_balance.get("low_mid_250_500hz", 0.0))
     upper_mid_energy = float(
@@ -285,10 +310,32 @@ def compute_processing_params(analysis: dict, genre: str, tags: list[str], style
     if clipping_input:
         saturation_amount *= 0.7
 
+    # Adaptive limiter release: previously a fixed constant (120ms standard
+    # tier, 60ms pro tier) regardless of the track. Real mastering limiters
+    # tie release to program tempo — fast material needs the gain to
+    # recover before the next transient or hits get audibly squashed
+    # together; slow material can hold longer without smearing anything,
+    # and holding longer there reduces audible pumping. Base release is a
+    # fraction of the beat period (0.22x, clipped to 50-220ms — chosen so
+    # the whole normal musical tempo range, ~60-200bpm, actually produces
+    # different release times instead of every track past ~140bpm
+    # saturating at the same ceiling), then nudged by how dynamic/peaky the
+    # source already is.
+    measured_tempo_bpm = float(analysis.get("tempo_bpm", 0.0)) or 120.0
+    beat_period_ms = 60000.0 / float(np.clip(measured_tempo_bpm, 40.0, 220.0))
+    base_release_ms = float(np.clip(beat_period_ms * 0.22, 50.0, 220.0))
+    crest_db = float(analysis.get("dynamic_range_db", 8.0))
+    release_adjust_ms = float(np.clip((crest_db - 8.0) * 3.0, -25.0, 30.0))
+    limiter_release_ms = float(np.clip(base_release_ms + release_adjust_ms, 40.0, 250.0))
+
     return {
         "genre": genre,
         "style": style,
         "tags": tags,
+        "spectral_match_source": "reference_track" if reference_spectral_balance else "genre_profile",
+        "target_spectral_tilt_db_per_octave": round(target_tilt_db_per_octave, 3),
+        "measured_spectral_tilt_db_per_octave": round(measured_tilt_db_per_octave, 3),
+        "spectral_tilt_delta_db_per_octave": round(spectral_tilt_delta_db_per_octave, 3),
         "target_lufs": float(effective_target_lufs),
         "target_dynamic_range_db": float(profile["target_dynamic_range_db"]),
         "target_width": float(desired_width),
@@ -307,6 +354,7 @@ def compute_processing_params(analysis: dict, genre: str, tags: list[str], style
         "band_release_ms": band_release_ms,
         "band_max_gain_reduction_db": band_max_gain_reduction_db,
         "band_dynamic_eq_max_reduction_db": band_dynamic_eq_max_reduction_db,
+        "limiter_release_ms": round(limiter_release_ms, 1),
         "vocal_presence_gain_db": vocal_presence_gain_db,
         "deesser_strength": float(profile["deesser_strength"]),
         "input_clipping_detected": clipping_input,

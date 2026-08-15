@@ -5,6 +5,7 @@ import {
   getTags,
   postMaster,
   postImportPreset,
+  postCodecPreview,
   getOriginalUrl,
   toAbsoluteUrl,
 } from "@/network/http/client";
@@ -67,6 +68,14 @@ export async function importPreset(file) {
   return postImportPreset(formData);
 }
 
+export async function previewCodec(jobId, codec) {
+  const response = await postCodecPreview(jobId, codec);
+  return {
+    ...response,
+    previewUrl: toAbsoluteUrl(response.preview_download_url),
+  };
+}
+
 export async function runMasteringJob(input) {
   const formData = new FormData();
   formData.append("file", input.file);
@@ -84,6 +93,10 @@ export async function runMasteringJob(input) {
 
   if (input.mixPreset) {
     formData.append("mix_preset", input.mixPreset);
+  }
+
+  if (input.referenceFile) {
+    formData.append("reference_file", input.referenceFile);
   }
 
   const response = await postMaster(formData);

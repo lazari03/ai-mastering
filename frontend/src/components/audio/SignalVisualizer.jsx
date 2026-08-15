@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-export default function SignalVisualizer({ src, className = "", barColor = "#e85d2a" }) {
+export default function SignalVisualizer({ src, className = "", barColor = "#e85d2a", gainDb = 0 }) {
   const canvasRef = useRef(null);
   const audioRef = useRef(null);
 
@@ -18,6 +18,7 @@ export default function SignalVisualizer({ src, className = "", barColor = "#e85
     let resizeObserver;
     let sourceNode;
     let analyser;
+    let gainNode;
     let audioContext;
     let resumeOnPlay;
 
@@ -28,9 +29,18 @@ export default function SignalVisualizer({ src, className = "", barColor = "#e85
         analyser.fftSize = 2048;
         analyser.smoothingTimeConstant = 0.85;
 
+        // Loudness-matches this player against its A/B counterpart (see
+        // ab_gain_match from the backend) so neither side of a before/after
+        // comparison sounds "better" just because it's louder. Only ever
+        // attenuates (gainDb <= 0) — never boosts, so this can't introduce
+        // clipping on playback.
+        gainNode = audioContext.createGain();
+        gainNode.gain.value = Math.pow(10, gainDb / 20);
+
         sourceNode = audioContext.createMediaElementSource(audio);
         sourceNode.connect(analyser);
-        analyser.connect(audioContext.destination);
+        analyser.connect(gainNode);
+        gainNode.connect(audioContext.destination);
 
         // AudioContext starts suspended until resumed from a user gesture.
         // Routing the element through createMediaElementSource means nothing
@@ -133,11 +143,12 @@ export default function SignalVisualizer({ src, className = "", barColor = "#e85
       if (resumeOnPlay) audio.removeEventListener("play", resumeOnPlay);
       if (sourceNode) sourceNode.disconnect();
       if (analyser) analyser.disconnect();
+      if (gainNode) gainNode.disconnect();
       if (audioContext && audioContext.state !== "closed") {
         audioContext.close();
       }
     };
-  }, [src, barColor]);
+  }, [src, barColor, gainDb]);
 
   return (
     <div className={`space-y-2 ${className}`}>

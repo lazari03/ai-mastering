@@ -7,7 +7,15 @@ import numpy as np
 import soundfile as sf
 from pedalboard import HighShelfFilter, Pedalboard, Reverb
 
-from .audio_utils import MASTER_SR, _analysis_from_audio, _load_audio
+from .audio_utils import (
+    MASTER_SR,
+    _ab_gain_match,
+    _analysis_from_audio,
+    _load_audio,
+    _loudness_range_only,
+    _mono_compatibility_risk_only,
+    _spectral_balance_only,
+)
 from .bus_processing import _bus_process, _bus_process_pro
 from .dsp_filters import _build_stereo_from_ms, _lr4_highpass, _lr4_lowpass, _oversampled_distortion, _process_band, _split_bands, _split_bands_pro
 from .mastering_params import _apply_user_tweaks, compute_processing_params
@@ -24,6 +32,7 @@ def master_track(
     style: str = "modern",
     enable_stem_separation: bool = False,
     tier: str = "standard",
+    reference_track_path: str | Path | None = None,
 ) -> dict:
     is_pro = tier == "professional"
     split_fn = _split_bands_pro if is_pro else _split_bands
@@ -33,7 +42,23 @@ def master_track(
     audio_stereo, sr = _load_audio(input_path, sr=MASTER_SR)
 
     analysis_before = _analysis_from_audio(audio_stereo, sr)
-    processing_params = compute_processing_params(analysis_before, genre=genre, tags=tags, style=style)
+
+    reference_spectral_balance = None
+    reference_info = {"used": False}
+    if reference_track_path:
+        # Only the reference's spectral shape is used (see
+        # compute_processing_params) — its own loudness/dynamics don't leak
+        # into this render, so a loud/hot reference can't accidentally
+        # override the target LUFS logic above. Spectral-balance-only
+        # analysis, not a full one — the reference's LUFS/tempo/true-peak
+        # would just be measured and thrown away otherwise.
+        reference_audio, reference_sr = _load_audio(reference_track_path, sr=MASTER_SR)
+        reference_spectral_balance = _spectral_balance_only(reference_audio, reference_sr)
+        reference_info = {"used": True, "spectral_balance": reference_spectral_balance}
+
+    processing_params = compute_processing_params(
+        analysis_before, genre=genre, tags=tags, style=style, reference_spectral_balance=reference_spectral_balance
+    )
     processing_params = _apply_user_tweaks(processing_params, analysis_before, tweaks)
 
     section_info = _detect_song_sections(audio_stereo, sr)
@@ -145,9 +170,14 @@ def master_track(
     air_boosted = np.asarray(air_boost_fx(np.ascontiguousarray(stereo_prebus.T, dtype=np.float32), sr).T, dtype=np.float32)
     stereo_prebus = (stereo_prebus * (1.0 - air_blend[:, np.newaxis])) + (air_boosted * air_blend[:, np.newaxis])
 
-    prebus_analysis = _analysis_from_audio(stereo_prebus, sr)
+    # Only mono_compatibility_risk and loudness_range_lu are needed here —
+    # both computed directly rather than paying for a full _analysis_from_
+    # audio (STFT, tempo detection, momentary/short-term LUFS series,
+    # true-peak measurement) just to read two fields off it.
+    prebus_mono_risk = _mono_compatibility_risk_only(stereo_prebus)
+    pre_lra = _loudness_range_only(stereo_prebus, sr)
     mono_action = "none"
-    if prebus_analysis["mono_compatibility_risk"] and not analysis_before["mono_compatibility_risk"]:
+    if prebus_mono_risk and not analysis_before["mono_compatibility_risk"]:
         side_gain = 1.0 + (side_gain - 1.0) * 0.4
         side_width_adjusted = (low_side * low_side_keep) + (high_side * side_gain * width_auto_lin)
         stereo_prebus = _build_stereo_from_ms(mid_processed, side_width_adjusted)
@@ -156,8 +186,7 @@ def master_track(
     stereo_processed, lufs_gain_db, loudness_guard, limiter_report = bus_fn(stereo_prebus, sr, processing_params)
 
     # Dynamic retention: blend in a touch of cleaner pre-master content when LRA gets over-flattened.
-    pre_lra = float(prebus_analysis.get("loudness_range_lu", 0.0))
-    post_lra = float(_analysis_from_audio(stereo_processed, sr).get("loudness_range_lu", 0.0))
+    post_lra = _loudness_range_only(stereo_processed, sr)
     lra_target_min = float(processing_params.get("lra_target_min_lu", 2.5))
     desired_min_lra = max(2.0, min(lra_target_min, float(analysis_before.get("loudness_range_lu", 2.0)) * 0.85))
     dynamics_recovery_mix = 0.0
@@ -183,6 +212,12 @@ def master_track(
     analysis_after = _analysis_from_audio(stereo_processed, sr)
 
     processing_applied = {
+        "spectral_match_source": processing_params.get("spectral_match_source", "genre_profile"),
+        "spectral_tilt": {
+            "target_db_per_octave": processing_params.get("target_spectral_tilt_db_per_octave"),
+            "measured_before_db_per_octave": processing_params.get("measured_spectral_tilt_db_per_octave"),
+            "measured_after_db_per_octave": analysis_after.get("spectral_tilt_db_per_octave"),
+        },
         "per_band_gain_changes_db": {k: round(float(v), 3) for k, v in processing_params["per_band_gain_changes_db"].items()},
         "compression_per_band": {
             name: {
@@ -214,12 +249,14 @@ def master_track(
         "user_tweaks": processing_params.get("user_tweaks", {}),
         "tweak_summary": processing_params.get("tweak_summary", {}),
         "stem_separation": stem_metadata,
+        "reference_track": reference_info,
     }
 
     return {
         "analysis_before": analysis_before,
         "analysis_after": analysis_after,
         "processing_applied": processing_applied,
+        "ab_gain_match": _ab_gain_match(analysis_before["integrated_lufs"], analysis_after["integrated_lufs"]),
         "target_profile_used": {
             "genre": genre,
             "style": style,

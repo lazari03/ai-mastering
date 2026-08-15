@@ -24,6 +24,7 @@ export const settings = {
   chordDetectCliScript: toAbs(process.env.CHORD_DETECT_CLI_SCRIPT, "../backend/chord_detect_cli.py"),
   cleanAudioCliScript: toAbs(process.env.CLEAN_AUDIO_CLI_SCRIPT, "../backend/clean_audio_cli.py"),
   presetDspCliScript: toAbs(process.env.PRESET_DSP_CLI_SCRIPT, "../backend/render_preset_master_cli.py"),
+  codecPreviewCliScript: toAbs(process.env.CODEC_PREVIEW_CLI_SCRIPT, "../backend/codec_preview_cli.py"),
   presetsFile: path.resolve(rootDir, "../backend/mixing_presets.json"),
   // Separate file so imported presets never touch the curated built-in list.
   customPresetsFile: toAbs(process.env.CUSTOM_PRESETS_FILE, "custom_presets.json"),

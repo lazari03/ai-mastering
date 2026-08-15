@@ -17,9 +17,11 @@ const BAND_LABELS = {
 
 const TRACK_METRICS = [
   { key: "integrated_lufs", label: "Integrated Loudness", unit: "LUFS", digits: 2 },
+  { key: "momentary_lufs_max", label: "Momentary Loudness (Max)", unit: "LUFS", digits: 2 },
   { key: "true_peak_db", label: "True Peak", unit: "dBTP", digits: 2 },
   { key: "dynamic_range_db", label: "Dynamic Range (Crest Factor)", unit: "dB", digits: 2 },
   { key: "loudness_range_lu", label: "Loudness Range", unit: "LU", digits: 2 },
+  { key: "spectral_tilt_db_per_octave", label: "Spectral Tilt", unit: "dB/oct", digits: 2 },
   { key: "stereo_width_estimate", label: "Stereo Width", unit: "", digits: 3 },
   { key: "stereo_correlation", label: "Phase Correlation", unit: "", digits: 3 },
 ];
@@ -149,6 +151,9 @@ export default function ProcessingSummary({ result }) {
       {eqRows && eqRows.length ? (
         <div className="rounded-xl border border-white/10 bg-black/25 p-3">
           <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-zinc-400">EQ Gain Applied (by frequency band)</p>
+          <p className="mb-2 text-[10px] text-zinc-500">
+            Target: {applied.spectral_match_source === "reference_track" ? "matched to your uploaded reference track" : "genre default profile"}
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[280px] text-xs">
               <thead>

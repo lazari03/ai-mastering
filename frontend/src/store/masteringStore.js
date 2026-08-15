@@ -22,6 +22,7 @@ export const useMasteringStore = create((set, get) => ({
   importError: "",
 
   file: null,
+  referenceFile: null,
   genres: [],
   tags: [],
   styles: [],
@@ -60,6 +61,10 @@ export const useMasteringStore = create((set, get) => ({
 
   setFile(file) {
     set({ file, result: null, error: "" });
+  },
+
+  setReferenceFile(referenceFile) {
+    set({ referenceFile });
   },
 
   setGenre(selectedGenre) {
@@ -156,6 +161,7 @@ export const useMasteringStore = create((set, get) => ({
     try {
       const response = await runMasteringJob({
         file: state.file,
+        referenceFile: state.referenceFile,
         genre: state.selectedGenre,
         style: state.selectedStyle,
         tags: state.selectedTags,

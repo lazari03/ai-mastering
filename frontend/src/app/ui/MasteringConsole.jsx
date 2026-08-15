@@ -6,7 +6,16 @@ import LiveMasteringPanel from "@/components/audio/LiveMasteringPanel";
 import ProcessingSummary from "@/components/audio/ProcessingSummary";
 import SignalVisualizer from "@/components/audio/SignalVisualizer";
 import Threads from "@/components/reactbits/Threads";
+import { previewCodec } from "@/domain/mastering/masteringDomain";
 import { useMasteringStore } from "@/store/masteringStore";
+
+const CODEC_OPTIONS = [
+  { value: "mp3_128", label: "MP3 128kbps" },
+  { value: "mp3_320", label: "MP3 320kbps" },
+  { value: "aac_128", label: "AAC 128kbps" },
+  { value: "aac_256", label: "AAC 256kbps" },
+  { value: "opus_128", label: "Opus 128kbps" },
+];
 
 export default function MasteringConsole() {
   const [activeStep, setActiveStep] = useState(0);
@@ -14,6 +23,10 @@ export default function MasteringConsole() {
   const [masteringProgress, setMasteringProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
   const [progressLogs, setProgressLogs] = useState([]);
+  const [codecChoice, setCodecChoice] = useState("mp3_128");
+  const [codecPreview, setCodecPreview] = useState(null);
+  const [codecPreviewLoading, setCodecPreviewLoading] = useState(false);
+  const [codecPreviewError, setCodecPreviewError] = useState("");
 
   const {
     isBootstrapping,
@@ -24,6 +37,7 @@ export default function MasteringConsole() {
     status,
     result,
     file,
+    referenceFile,
     genres,
     tags,
     styles,
@@ -37,6 +51,7 @@ export default function MasteringConsole() {
     tier,
     bootstrap,
     setFile,
+    setReferenceFile,
     setGenre,
     setStyle,
     setPreset,
@@ -65,6 +80,25 @@ export default function MasteringConsole() {
       URL.revokeObjectURL(objectUrl);
     };
   }, [file]);
+
+  useEffect(() => {
+    setCodecPreview(null);
+    setCodecPreviewError("");
+  }, [result?.job_id]);
+
+  const handleCodecPreview = async () => {
+    if (!result?.job_id) return;
+    setCodecPreviewLoading(true);
+    setCodecPreviewError("");
+    try {
+      const preview = await previewCodec(result.job_id, codecChoice);
+      setCodecPreview(preview);
+    } catch (err) {
+      setCodecPreviewError(err?.message || "Codec preview failed");
+    } finally {
+      setCodecPreviewLoading(false);
+    }
+  };
 
   useEffect(() => {
     const phases = [
@@ -219,6 +253,19 @@ export default function MasteringConsole() {
                   onChange={(event) => setFile(event.target.files?.[0] || null)}
                 />
                 <span className="mt-2 block break-all text-xs text-zinc-400">{file ? file.name : "No file selected"}</span>
+              </label>
+
+              <label className="block space-y-2">
+                <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-300">Reference Track (optional)</span>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  className="block w-full rounded-xl border border-white/15 bg-black/20 p-3 text-sm"
+                  onChange={(event) => setReferenceFile(event.target.files?.[0] || null)}
+                />
+                <span className="mt-2 block break-all text-xs text-zinc-400">
+                  {referenceFile ? `Matching spectral balance to: ${referenceFile.name}` : "None — using the genre's default spectral target"}
+                </span>
               </label>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -486,14 +533,23 @@ export default function MasteringConsole() {
               </div>
             </div>
 
+            {result.ab_gain_match ? (
+              <p className="text-[11px] text-zinc-500">
+                Playback levels matched for a fair A/B ({result.ab_gain_match.before_gain_db !== 0
+                  ? `original ${result.ab_gain_match.before_gain_db} dB`
+                  : `mastered ${result.ab_gain_match.after_gain_db} dB`}
+                ) — loudness alone won&apos;t make one side sound better.
+              </p>
+            ) : null}
+
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
               <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">Original Signal</p>
-              <SignalVisualizer src={result.originalUrl} />
+              <SignalVisualizer src={result.originalUrl} gainDb={result.ab_gain_match?.before_gain_db || 0} />
             </div>
 
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
               <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">Mastered Signal</p>
-              <SignalVisualizer src={result.masteredUrl} barColor="#dfc95a" />
+              <SignalVisualizer src={result.masteredUrl} barColor="#dfc95a" gainDb={result.ab_gain_match?.after_gain_db || 0} />
               <a
                 href={result.masteredUrl}
                 download
@@ -501,6 +557,56 @@ export default function MasteringConsole() {
               >
                 Download Master
               </a>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">Codec Preview</p>
+              <p className="mb-3 text-[11px] text-zinc-500">
+                Hear what actually reaches a listener after streaming compression — real encode/decode round-trip, not an estimate.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={codecChoice}
+                  onChange={(e) => setCodecChoice(e.target.value)}
+                  className="rounded-lg border border-white/10 bg-black/40 px-2 py-2 text-xs text-zinc-100"
+                >
+                  {CODEC_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleCodecPreview}
+                  disabled={codecPreviewLoading}
+                  className="rounded-lg border border-brass/40 bg-brass/20 px-3 py-2 text-xs uppercase tracking-[0.14em] text-brass hover:bg-brass/30 disabled:opacity-50"
+                >
+                  {codecPreviewLoading ? "Encoding…" : "Preview"}
+                </button>
+              </div>
+
+              {codecPreviewError ? <p className="mt-2 text-xs text-red-300">{codecPreviewError}</p> : null}
+
+              {codecPreview ? (
+                <div className="mt-3 space-y-3">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg border border-white/10 bg-black/30 p-2">
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500">True Peak Δ</p>
+                      <p className="mt-1 text-sm font-semibold">{codecPreview.true_peak_delta_db > 0 ? "+" : ""}{codecPreview.true_peak_delta_db} dB</p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-black/30 p-2">
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500">LUFS Δ</p>
+                      <p className="mt-1 text-sm font-semibold">{codecPreview.lufs_delta_db > 0 ? "+" : ""}{codecPreview.lufs_delta_db} dB</p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-black/30 p-2">
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500">High-Freq Δ</p>
+                      <p className="mt-1 text-sm font-semibold">{codecPreview.high_frequency_change_db > 0 ? "+" : ""}{codecPreview.high_frequency_change_db} dB</p>
+                    </div>
+                  </div>
+                  <SignalVisualizer src={codecPreview.previewUrl} barColor="#8fb3ff" />
+                </div>
+              ) : null}
             </div>
 
             <div className="rounded-xl border border-white/10 bg-black/30 p-3">

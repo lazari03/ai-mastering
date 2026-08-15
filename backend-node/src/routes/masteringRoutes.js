@@ -7,7 +7,7 @@ import multer from "multer";
 import { GENRES, STYLES, TAGS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
 import { processMastering } from "../services/masteringService.js";
-import { analyzeChords, cleanAudio } from "../services/chordCleanService.js";
+import { analyzeChords, cleanAudio, previewCodec } from "../services/chordCleanService.js";
 import { listMixPresets } from "../services/presetsService.js";
 import { importCustomPreset, deleteCustomPreset } from "../services/customPresetsService.js";
 
@@ -63,17 +63,25 @@ router.delete("/custom-presets/:name", (req, res) => {
   return res.json({ ok: true });
 });
 
-router.post("/master", upload.single("file"), async (req, res) => {
-  if (!req.file) {
+const masterUpload = upload.fields([
+  { name: "file", maxCount: 1 },
+  { name: "reference_file", maxCount: 1 },
+]);
+
+router.post("/master", masterUpload, async (req, res) => {
+  const file = req.files?.file?.[0];
+  if (!file) {
     return res.status(400).json({ detail: "file is required" });
   }
+  const referenceFile = req.files?.reference_file?.[0] || null;
 
   try {
     const tags = JSON.parse(req.body.tags || "[]");
     const tweaks = JSON.parse(req.body.tweaks || "{}");
 
     const result = await processMastering({
-      file: req.file,
+      file,
+      referenceFile,
       fields: {
         genre: req.body.genre || null,
         style: req.body.style || "modern",
@@ -116,6 +124,28 @@ router.post("/clean", upload.single("file"), async (req, res) => {
     const detail = error?.stderr || error?.message || "Cleanup failed";
     return res.status(500).json({ detail });
   }
+});
+
+router.post("/codec-preview", async (req, res) => {
+  const { job_id: jobId, codec } = req.body || {};
+  if (!jobId) {
+    return res.status(400).json({ detail: "job_id is required" });
+  }
+  try {
+    const result = await previewCodec(jobId, codec || "mp3_128");
+    return res.json(result);
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Codec preview failed" });
+  }
+});
+
+router.get("/download-codec-preview/:jobId/:codec", (req, res) => {
+  const { jobId, codec } = req.params;
+  const outPath = path.join(settings.outputDir, `${jobId}_codec_${codec}.wav`);
+  if (!fs.existsSync(outPath)) {
+    return res.status(404).json({ detail: "Codec preview not found — run /codec-preview first" });
+  }
+  return res.sendFile(outPath);
 });
 
 router.get("/download/:jobId.:ext", (req, res) => {

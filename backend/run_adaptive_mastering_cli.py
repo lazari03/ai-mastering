@@ -18,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tweaks-json", default="{}")
     parser.add_argument("--use-stem-separation", action="store_true")
     parser.add_argument("--tier", default="standard", choices=["standard", "professional"])
+    parser.add_argument("--reference", default=None, help="Optional reference track path for spectral matching")
     return parser.parse_args()
 
 
@@ -41,6 +42,7 @@ def main() -> int:
             style=args.style,
             enable_stem_separation=bool(args.use_stem_separation),
             tier=args.tier,
+            reference_track_path=str(Path(args.reference)) if args.reference else None,
         )
 
         sys.stdout.write(json.dumps(result))

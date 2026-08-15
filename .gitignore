@@ -1,6 +1,9 @@
 # --- OS junk ---
 .DS_Store
 
+# --- Local Claude Code session/tooling state, not project source ---
+.claude/
+
 # --- Secrets / local env --- (.env.example files are templates, kept)
 .env
 .env.local

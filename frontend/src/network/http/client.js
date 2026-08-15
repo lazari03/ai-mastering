@@ -79,6 +79,18 @@ export async function postImportPreset(formData) {
   });
 }
 
+export async function postCodecPreview(jobId, codec) {
+  return request(
+    "/codec-preview",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ job_id: jobId, codec }),
+    },
+    MASTERING_TIMEOUT_MS
+  );
+}
+
 export function getOriginalUrl(jobId) {
   return `${API_BASE}/original/${jobId}`;
 }
