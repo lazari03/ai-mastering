@@ -365,11 +365,20 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
 
     sf.write(str(output_wav_path), stereo, sr, subtype=subtype)
 
+    source_warnings = []
+    if analysis_before.get("near_mono_source"):
+        source_warnings.append(
+            "Source file has little to no stereo content (left/right channels are nearly identical) — "
+            "mastering can't create real stereo separation that was never in the recording. "
+            "The width/wider controls have nothing to widen here."
+        )
+
     return {
         "analysis_before": analysis_before,
         "analysis_after": analysis_after,
         "quality_control": quality,
         "processing_applied": {"engine": "preset_dsp_engine", "stages": list(processing.keys())},
         "ab_gain_match": _ab_gain_match(analysis_before["integrated_lufs"], analysis_after["integrated_lufs"]),
+        "source_warnings": source_warnings,
         "target_profile_used": {"genre": preset.get("genre"), "style": preset.get("style")},
     }

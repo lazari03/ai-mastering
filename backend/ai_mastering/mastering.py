@@ -252,11 +252,20 @@ def master_track(
         "reference_track": reference_info,
     }
 
+    source_warnings = []
+    if analysis_before.get("near_mono_source"):
+        source_warnings.append(
+            "Source file has little to no stereo content (left/right channels are nearly identical) — "
+            "mastering can't create real stereo separation that was never in the recording. "
+            "The width/wider controls have nothing to widen here."
+        )
+
     return {
         "analysis_before": analysis_before,
         "analysis_after": analysis_after,
         "processing_applied": processing_applied,
         "ab_gain_match": _ab_gain_match(analysis_before["integrated_lufs"], analysis_after["integrated_lufs"]),
+        "source_warnings": source_warnings,
         "target_profile_used": {
             "genre": genre,
             "style": style,

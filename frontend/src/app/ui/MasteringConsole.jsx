@@ -522,6 +522,12 @@ export default function MasteringConsole() {
           </div>
         ) : (
           <div className="mt-4 space-y-4 text-sm">
+            {(result.source_warnings || []).map((warning) => (
+              <div key={warning} className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200">
+                ⚠ {warning}
+              </div>
+            ))}
+
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                 <p className="text-xs uppercase tracking-[0.14em] text-zinc-400">Before LUFS</p>

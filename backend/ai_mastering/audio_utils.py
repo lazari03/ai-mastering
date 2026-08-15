@@ -379,6 +379,14 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
         "stereo_width_estimate": float(round(stereo_width_estimate, 4)),
         "stereo_correlation": float(round(lr_correlation, 4)),
         "phase_correlation": float(round(lr_correlation, 4)),
+        # True mono source (or a "stereo" file that's really one mic printed
+        # to both channels — common from phone recordings) measures
+        # correlation ~1.0 and width ~0. No EQ/compression/M-S width scaling
+        # can create real stereo separation from a source that never had
+        # any — width_adjustment gets applied to an already-zero side
+        # channel and stays zero. Surfaced so that's visible as "nothing to
+        # widen here" instead of silently looking like mastering did nothing.
+        "near_mono_source": bool(lr_correlation > 0.98 or stereo_width_estimate < 0.02),
         "mono_compatibility_risk": mono_compatibility_risk,
         "tempo_bpm": float(round(tempo_bpm, 2)),
         "clipping_detected": clipping_detected,

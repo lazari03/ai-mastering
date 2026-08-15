@@ -309,6 +309,7 @@ export async function processMastering({ file, referenceFile = null, fields }) {
       analysis_before: presetResult?.analysis_before || { integrated_lufs: -14 },
       analysis_after: presetResult?.analysis_after || { integrated_lufs: -11 },
       ab_gain_match: presetResult?.ab_gain_match || null,
+      source_warnings: presetResult?.source_warnings || [],
       quality_control: presetResult?.quality_control || null,
       processing_applied: presetResult?.processing_applied || { engine: "preset_dsp_engine" },
       target_profile_used: presetResult?.target_profile_used || { genre: config.genre, style: config.style },
@@ -341,6 +342,7 @@ export async function processMastering({ file, referenceFile = null, fields }) {
       analysis_before: adaptiveResult?.analysis_before || { integrated_lufs: -14 },
       analysis_after: adaptiveResult?.analysis_after || { integrated_lufs: -11 },
       ab_gain_match: adaptiveResult?.ab_gain_match || null,
+      source_warnings: adaptiveResult?.source_warnings || [],
       processing_applied: {
         ...(adaptiveResult?.processing_applied || {}),
         engine: "adaptive_python_dsp",
