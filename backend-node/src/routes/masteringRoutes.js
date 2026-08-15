@@ -139,31 +139,51 @@ router.post("/codec-preview", async (req, res) => {
   }
 });
 
+// Streams a file response from the Python service through to the client.
+// Codec previews and (usually) mastered/original files live in the Python
+// service's own storage now, not Node's — see masteringService.js's
+// pythonApiBaseUrl comment for why.
+async function proxyFromPython(pythonPath, res, notFoundMessage) {
+  let upstream;
+  try {
+    upstream = await fetch(`${settings.pythonApiBaseUrl}${pythonPath}`);
+  } catch (error) {
+    return res.status(502).json({ detail: `Cannot reach Python service: ${error.message}` });
+  }
+  if (!upstream.ok) {
+    return res.status(upstream.status === 404 ? 404 : 502).json({ detail: notFoundMessage });
+  }
+  res.setHeader("Content-Type", upstream.headers.get("content-type") || "application/octet-stream");
+  const buffer = Buffer.from(await upstream.arrayBuffer());
+  return res.send(buffer);
+}
+
 router.get("/download-codec-preview/:jobId/:codec", (req, res) => {
   const { jobId, codec } = req.params;
-  const outPath = path.join(settings.outputDir, `${jobId}_codec_${codec}.wav`);
-  if (!fs.existsSync(outPath)) {
-    return res.status(404).json({ detail: "Codec preview not found — run /codec-preview first" });
-  }
-  return res.sendFile(outPath);
+  return proxyFromPython(`/download-codec-preview/${jobId}/${codec}`, res, "Codec preview not found — run /codec-preview first");
 });
 
 router.get("/download/:jobId.:ext", (req, res) => {
   const { jobId, ext } = req.params;
-  const outPath = path.join(settings.outputDir, `${jobId}_mastered.${ext}`);
-  if (!fs.existsSync(outPath)) {
-    return res.status(404).json({ detail: "File not found" });
+  // Local file first — covers the legacy node_ffmpeg engine path, which
+  // still writes directly to Node's own outputDir (see
+  // masteringService.js:processMasteringViaFfmpegFallback). Everything
+  // else (the default path) is mastered by the Python service and lives
+  // in its storage instead.
+  const localPath = path.join(settings.outputDir, `${jobId}_mastered.${ext}`);
+  if (fs.existsSync(localPath)) {
+    return res.download(localPath);
   }
-  return res.download(outPath);
+  return proxyFromPython(`/download/${jobId}.${ext}`, res, "File not found");
 });
 
 router.get("/original/:jobId", (req, res) => {
   const prefix = `${req.params.jobId}_input`;
-  const files = fs.readdirSync(settings.uploadDir).filter((name) => name.startsWith(prefix));
-  if (!files.length) {
-    return res.status(404).json({ detail: "Original not found" });
+  const localMatches = fs.readdirSync(settings.uploadDir).filter((name) => name.startsWith(prefix));
+  if (localMatches.length) {
+    return res.sendFile(path.join(settings.uploadDir, localMatches[0]));
   }
-  return res.sendFile(path.join(settings.uploadDir, files[0]));
+  return proxyFromPython(`/original/${req.params.jobId}`, res, "Original not found");
 });
 
 export default router;

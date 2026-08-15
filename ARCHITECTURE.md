@@ -9,133 +9,169 @@ that, it's about everything around it.
 ## 1. The three processes
 
 ```
-┌─────────────────┐      HTTP (JSON/multipart)      ┌──────────────────────┐
-│  frontend/       │ ───────────────────────────────▶│  backend-node/       │
-│  Next.js 14      │◀─────────────────────────────── │  Express, port 8000  │
-│  (browser)       │         responses/files          │                       │
-└─────────────────┘                                   └──────────┬────────────┘
-                                                                   │ spawns a
-                                                                   │ subprocess
-                                                                   │ per request
-                                                                   ▼
-                                                        ┌──────────────────────┐
-                                                        │  backend/             │
-                                                        │  Python, no server —  │
-                                                        │  CLI scripts run and  │
-                                                        │  exit, one per job    │
-                                                        └──────────────────────┘
+┌─────────────────┐   HTTP (JSON/multipart)   ┌──────────────────────┐   HTTP (JSON/multipart)   ┌──────────────────────┐
+│  frontend/       │ ─────────────────────────▶│  backend-node/       │ ─────────────────────────▶│  backend/             │
+│  Next.js 14      │◀───────────────────────── │  Express, port 8000  │◀───────────────────────── │  FastAPI, port 8001   │
+│  (browser)       │      responses/files       │                       │      JSON / file bytes     │  long-lived service    │
+└─────────────────┘                             └──────────────────────┘                             └──────────────────────┘
 ```
 
 - **`frontend/`** — Next.js 14 (App Router), client-rendered mastering
   console. Talks to `backend-node/` only, via `fetch` (see
-  `src/network/http/client.js`). Nothing here talks to Python directly.
-- **`backend-node/`** — Express server on port 8000. This is the only HTTP
+  `src/network/http/client.js`). Nothing here talks to Python directly, and
+  nothing here needed to change for the architecture below — Node's public
+  request/response shape stayed the same across the switch.
+- **`backend-node/`** — Express server on port 8000. The only public HTTP
   API surface. It does no DSP itself — its job is upload handling, request
-  validation, spawning the right Python CLI script per job, and ffmpeg
-  container/format conversion (decode-on-input, wav↔mp3 on output). See
-  `src/routes/masteringRoutes.js` for every endpoint.
-- **`backend/`** — Python. **Not a running server** in the live path — no
-  process listens on a port here. `backend/app/main.py` is a FastAPI app
-  that exists and works, but Node never calls it over HTTP; Node instead
-  shells out to standalone CLI scripts (`run_adaptive_mastering_cli.py`,
-  `render_preset_master_cli.py`, `chord_detect_cli.py`, `clean_audio_cli.py`,
-  `codec_preview_cli.py`), each of which does one job, prints a JSON result
-  to stdout, and exits. One Python process per request, not a long-lived
-  service.
+  validation, resolving which engine/preset a job needs, and forwarding to
+  the Python service — plus proxying that service's file responses back
+  through so the Python service never needs to be reachable from outside.
+  See `src/routes/masteringRoutes.js` for every endpoint.
+- **`backend/`** — Python, `app/main.py`, a long-lived FastAPI service
+  (`uvicorn app.main:app --port 8001`). Stays running — `librosa`,
+  `essentia`, `demucs`, `pedalboard`, and numba's JIT-compiled functions
+  are all imported/warmed once at process start, not on every request. Node
+  calls it over HTTP (`POST /master`, `/codec-preview`, `/analyze-chords`,
+  `/clean`) via `postMultipartToPython()` in `masteringService.js`, and
+  proxies its `GET /download`, `/original`, `/download-codec-preview`
+  responses straight through to the browser.
 
-This means: to add a new Python-side capability reachable from the API, you
-add a CLI script (thin argparse wrapper, JSON to stdout — see any existing
-one for the pattern) and a `settings.js` path pointing at it, not a new
-FastAPI route. The FastAPI app is a second, currently-unused way to reach
-the same underlying service modules — kept in sync because it imports the
-same `ai_mastering`/`app.services` code, not because it's deployed.
+  `backend/*_cli.py` (`run_adaptive_mastering_cli.py`,
+  `render_preset_master_cli.py`, `chord_detect_cli.py`,
+  `clean_audio_cli.py`, `codec_preview_cli.py`) still exist and still work
+  standalone — `validate_mastering.py` and direct dev testing use them
+  directly — but **Node no longer calls them**. They're thin wrappers
+  around the same `ai_mastering`/`app.services` modules the FastAPI routes
+  call, so there's one DSP implementation either way, just two ways to
+  reach it (a live HTTP service, or a one-shot CLI process) for two
+  different purposes (serving requests vs. scripted/manual testing).
+
+This used to be a subprocess-spawn-per-request model — `backend/app/main.py`
+existed but Node never called it, and every job paid full Python interpreter
+startup + import cost from scratch. That's gone: the two are now genuinely
+separate long-lived processes talking HTTP, and starting `backend-node/`
+alone will not work — the Python service has to be running too (see
+DEPLOYMENT.md §2-3).
 
 ## 2. Request lifecycle: a mastering job
 
 ```
-Browser                Node (Express)              Python (CLI, one-shot)
+Browser                Node (Express, :8000)         Python (FastAPI, :8001 — already running)
    │                        │                              │
    │  POST /master          │                              │
    │  (multipart: file,     │                              │
    │   optional reference_  │                              │
    │   file, genre, tags…)  │                              │
    ├───────────────────────▶│                              │
-   │                        │ 1. multer saves upload(s)    │
-   │                        │    to uploads/               │
-   │                        │ 2. ffmpeg decode-if-needed    │
-   │                        │    (m4a/mp3/etc → wav)        │
-   │                        │ 3. resolveConfig() picks the  │
-   │                        │    engine: adaptive / preset  │
-   │                        │    / (legacy ffmpeg fallback) │
-   │                        │ 4. spawn python CLI ──────────▶│
-   │                        │                              │ master_track()
-   │                        │                              │ or
+   │                        │ 1. multer receives upload(s)  │
+   │                        │    (temp storage only)        │
+   │                        │ 2. resolveConfig() resolves    │
+   │                        │    genre/style/tags/tier and   │
+   │                        │    picks the engine: adaptive  │
+   │                        │    / full preset / (legacy     │
+   │                        │    ffmpeg fallback)             │
+   │                        │ 3. postMultipartToPython(       │
+   │                        │    "/master", …) ──────────────▶│
+   │                        │                              │ FastAPI route parses
+   │                        │                              │ form fields, decodes
+   │                        │                              │ input itself (ffmpeg
+   │                        │                              │ subprocess), calls
+   │                        │                              │ master_track() or
    │                        │                              │ render_preset_master()
-   │                        │                              │ writes {job}_mastered.wav,
-   │                        │                              │ prints JSON to stdout
+   │                        │                              │ in-process, writes
+   │                        │                              │ {job}_mastered.{ext}
+   │                        │                              │ under its own job_id,
+   │                        │                              │ returns JSON
    │                        │◀─────────────────────────────┤
-   │                        │ 5. parseJsonFromStdout()      │
-   │                        │ 6. ffmpeg wav→mp3 if           │
-   │                        │    output_format=mp3          │
    │  JSON response          │                              │
    │  (analysis, ab_gain_    │                              │
-   │   match, download_url) │                              │
+   │   match, download_url  │                              │
+   │   — job_id is the one  │                              │
+   │   Python generated)    │                              │
+   │◀───────────────────────┤                              │
+   │                        │                              │
+   │  GET /download/         │                              │
+   │  {job_id}.wav            │                              │
+   ├───────────────────────▶│ 4. proxyFromPython() fetches   │
+   │                        │    the file from FastAPI and  │
+   │                        │    streams it straight back ──▶│
+   │  file bytes              │◀───────────────────────────┤
    │◀───────────────────────┤                              │
 ```
 
 Every other endpoint (`/codec-preview`, `/clean`, `/analyze-chords`) follows
-the same shape: Node stages files, spawns one CLI script, parses its stdout
-JSON, does any ffmpeg container conversion, returns JSON + a download URL.
+the same shape: Node forwards the multipart request to the matching FastAPI
+route via `postMultipartToPython()`, gets JSON back, returns it — no local
+file writes, no subprocess spawn, no per-request Python startup cost.
+File-serving routes (`/download`, `/original`, `/download-codec-preview`)
+proxy the bytes from FastAPI's storage through `proxyFromPython()`.
 
 ## 3. Two mastering engines, chosen per-request
 
-`resolveConfig()` in `masteringService.js` decides which engine a request
-hits, based on what was submitted — not a global server setting:
+`resolveConfig()` in `masteringService.js` still resolves genre/style/tags/
+tier/preset exactly as before — that logic didn't move to Python, so
+Node's custom-presets feature (`custom_presets.json`, Python has no
+knowledge of it) keeps working unchanged. What changed is only how the
+resolved job reaches Python:
 
-| Request shape | Engine | CLI script |
+| Request shape | Engine | How it's invoked |
 |---|---|---|
-| genre + tags + tweaks (the normal case) | Adaptive DSP engine | `run_adaptive_mastering_cli.py` |
-| `mix_preset` that has a `processing` block | Preset DSP engine (literal spec interpreter) | `render_preset_master_cli.py` |
-| (fallback, `MASTERING_ENGINE` env ≠ `adaptive_python`) | Legacy ffmpeg `-af` filter chain, built in Node itself | none — no Python involved |
+| genre + tags + tweaks (the normal case) | Adaptive DSP engine | `POST /master` on the FastAPI service, resolved fields as form data |
+| `mix_preset` that has a `processing` block | Preset DSP engine (literal spec interpreter) | Same route — Node sends the resolved preset dict as `full_preset_json` so Python doesn't need to know about Node's own curated/custom preset files |
+| (fallback, `MASTERING_ENGINE` env ≠ `adaptive_python`) | Legacy ffmpeg `-af` filter chain, built in Node itself | none — no Python involved, still fully local to Node (`processMasteringViaFfmpegFallback()`) |
 
-The third path exists for environments without the Python backend
-available at all; it's a much cruder approximation (see
-`buildFilterChain()` in `masteringService.js`) and isn't what any real
-deployment should run on. Default is always the adaptive Python engine.
+The third path exists for environments without the Python service running
+at all; it's a much cruder approximation (see `buildFilterChain()` in
+`masteringService.js`) and isn't what any real deployment should run on —
+and unlike before, it's now also the *only* path that still writes to
+Node's own local `uploads`/`outputs` directories, since the other two
+delegate storage to the Python service entirely. Default is always the
+adaptive Python engine, which now **requires** the FastAPI service to be
+reachable — there's no CLI-subprocess fallback if it isn't (see
+DEPLOYMENT.md §5's note on why that's a deliberate choice, not an
+oversight).
 
-## 4. Filesystem layout (why uploads/outputs are duplicated)
+## 4. Filesystem layout (storage is now split by process, not shared)
 
 ```
 ai-mastering/
-├── uploads/, outputs/              ← repo-root copies (older layout, still
-│                                      present on disk, gitignored)
+├── uploads/, outputs/              ← repo-root copies — test fixtures for
+│                                      validate_mastering.py / manual CLI
+│                                      testing, unrelated to the running app
 ├── backend-node/
-│   ├── uploads/                    ← settings.uploadDir default — where
-│   │                                  multer actually saves incoming files
-│   └── outputs/                    ← settings.outputDir default — where
-│                                      {job}_mastered.* and codec previews land
+│   ├── uploads/                    ← settings.uploadDir — only used by the
+│   │                                  legacy ffmpeg-fallback engine now;
+│   │                                  multer's own temp storage lives
+│   │                                  elsewhere (OS tmp dir) for everything
+│   │                                  that gets forwarded to Python
+│   └── outputs/                    ← only written to by the ffmpeg-fallback
+│                                      engine — everything else's output
+│                                      lives in the Python service's own
+│                                      storage, proxied through on request
 ├── backend/
 │   ├── ai_mastering/                ← adaptive engine package
 │   ├── app/
-│   │   ├── main.py                 ← unused FastAPI app (see §1)
+│   │   ├── main.py                 ← the live FastAPI service (see §1)
+│   │   ├── core/config.py          ← MASTERING_UPLOAD_DIR/MASTERING_OUTPUT_DIR
+│   │   │                              — defaults to repo-root uploads/outputs,
+│   │   │                              a *different* directory than Node's
+│   │   │                              own uploads/outputs above. This is
+│   │   │                              fine — Node and Python never share a
+│   │   │                              filesystem path, only an HTTP contract,
+│   │   │                              so there's nothing to keep in sync.
 │   │   └── services/                ← preset engine, codec preview, chord/
 │   │                                  clean services — imported by both the
-│   │                                  CLI scripts and the unused FastAPI app
-│   ├── *_cli.py                    ← the actual live entry points
+│   │                                  FastAPI routes and the standalone CLI
+│   │                                  scripts
+│   ├── *_cli.py                    ← standalone entry points (validate_
+│   │                                  mastering.py, dev testing — not
+│   │                                  called by Node anymore, see §1)
 │   ├── params.py                   ← genre/style/tag profile data
 │   ├── mixing_presets.json         ← built-in preset library
-│   └── venv312/                    ← the Python interpreter Node actually
-│                                      invokes (ADAPTIVE_PYTHON_BIN)
+│   └── venv312/                    ← the Python interpreter the FastAPI
+│                                      service runs under
 └── frontend/
 ```
-
-Two upload/output directories exist because of the repo's history — only
-`backend-node/uploads` and `backend-node/outputs` are live (everything in
-`settings.js` defaults there). The repo-root `uploads/`/`outputs/` are
-leftover/manually-populated test fixtures used for `validate_mastering.py`
-runs and ad-hoc backend testing; they're not written to by the running
-Node/Python pipeline. Don't be surprised finding audio in both places — only
-one of them is what the app itself writes to.
 
 ## 5. Frontend structure
 

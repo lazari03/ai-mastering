@@ -16,8 +16,8 @@ function clamp(n, min, max) {
 
 // Mirrors ai_mastering/audio_utils.py:_ab_gain_match — attenuate the louder
 // side down to the quieter side's LUFS so an A/B comparison isn't biased by
-// the mastered file simply being louder. Used here only as a fallback for
-// the legacy node_ffmpeg engine path, which doesn't go through Python.
+// the mastered file simply being louder. Used here only for the legacy
+// node_ffmpeg engine path, which doesn't go through Python at all.
 function computeAbGainMatch(beforeLufs, afterLufs) {
   if (!Number.isFinite(beforeLufs) || !Number.isFinite(afterLufs)) return null;
   const target = Math.min(beforeLufs, afterLufs);
@@ -109,92 +109,43 @@ export async function runFfmpeg(args) {
   await execFileAsync("ffmpeg", ["-y", ...args], { maxBuffer: 20 * 1024 * 1024 });
 }
 
-export function parseJsonFromStdout(stdout) {
-  const trimmed = (stdout || "").trim();
-  if (!trimmed) {
-    throw new Error("Adaptive DSP did not return JSON output");
-  }
+// ------------------------------------------------ Python service client ---
+// The Python side is a long-lived FastAPI service (see backend/app/main.py),
+// not a subprocess spawned per request — see settings.js:pythonApiBaseUrl.
+// One helper, reused by every feature that needs to call it (mastering,
+// codec preview, chords, clean) instead of each hand-rolling its own
+// fetch/FormData boilerplate.
 
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const lines = trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    for (let i = lines.length - 1; i >= 0; i -= 1) {
-      try {
-        return JSON.parse(lines[i]);
-      } catch {
-        // Continue scanning lines backward for JSON output.
-      }
+export async function postMultipartToPython(pathname, { fields = {}, files = {} } = {}) {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    if (value !== null && value !== undefined) {
+      form.append(key, String(value));
     }
   }
-
-  throw new Error("Adaptive DSP returned invalid JSON output");
-}
-
-async function runAdaptiveDsp({ inputPath, wavOut, config, referencePath }) {
-  const args = [
-    settings.adaptiveCliScript,
-    "--input",
-    inputPath,
-    "--output",
-    wavOut,
-    "--genre",
-    config.genre,
-    "--style",
-    config.style,
-    "--tags-json",
-    JSON.stringify(config.tags || []),
-    "--tweaks-json",
-    JSON.stringify(config.tweaks || {}),
-    "--tier",
-    config.tier === "professional" ? "professional" : "standard",
-  ];
-
-  if (config.use_stem_separation) {
-    args.push("--use-stem-separation");
-  }
-  if (referencePath) {
-    args.push("--reference", referencePath);
+  for (const [key, fileSpec] of Object.entries(files)) {
+    if (!fileSpec) continue;
+    const buffer = fs.readFileSync(fileSpec.path);
+    form.append(key, new Blob([buffer]), fileSpec.filename || path.basename(fileSpec.path));
   }
 
-  const { stdout } = await execFileAsync(settings.adaptivePythonBin, args, {
-    maxBuffer: 20 * 1024 * 1024,
-  });
-
-  return parseJsonFromStdout(stdout);
-}
-
-async function runPresetDsp({ inputPath, wavOut, fullPreset }) {
-  const presetFile = path.join(settings.uploadDir, `${randomUUID().slice(0, 8)}_preset.json`);
-  fs.writeFileSync(presetFile, JSON.stringify(fullPreset));
-
+  let response;
   try {
-    const { stdout } = await execFileAsync(
-      settings.adaptivePythonBin,
-      [settings.presetDspCliScript, "--input", inputPath, "--output", wavOut, "--preset-file", presetFile],
-      { maxBuffer: 20 * 1024 * 1024 }
+    response = await fetch(`${settings.pythonApiBaseUrl}${pathname}`, { method: "POST", body: form });
+  } catch (error) {
+    throw new Error(
+      `Cannot reach Python service at ${settings.pythonApiBaseUrl}. Is it running? ` +
+        `(cd backend && venv312/bin/python -m uvicorn app.main:app --port 8001). ${error.message}`
     );
-    return parseJsonFromStdout(stdout);
-  } finally {
-    fs.unlink(presetFile, () => {});
   }
-}
 
-async function readIntegratedLufs(filePath) {
-  try {
-    const { stderr } = await execFileAsync(
-      "ffmpeg",
-      ["-hide_banner", "-i", filePath, "-filter_complex", "ebur128=framelog=verbose", "-f", "null", "-"],
-      { maxBuffer: 20 * 1024 * 1024 }
-    );
+  const isJson = (response.headers.get("content-type") || "").includes("application/json");
+  const payload = isJson ? await response.json().catch(() => ({})) : null;
 
-    const match = stderr.match(/I:\s*(-?\d+(?:\.\d+)?)\s*LUFS/g);
-    if (!match || !match.length) return null;
-    const last = match[match.length - 1].match(/-?\d+(?:\.\d+)?/);
-    return last ? Number(last[0]) : null;
-  } catch {
-    return null;
+  if (!response.ok) {
+    throw new Error(payload?.detail ? JSON.stringify(payload.detail) : `Python service returned HTTP ${response.status}`);
   }
+  return payload;
 }
 
 function buildFilterChain({ genre, style, tags, tweaks }) {
@@ -251,6 +202,23 @@ function buildFilterChain({ genre, style, tags, tweaks }) {
   };
 }
 
+async function readIntegratedLufs(filePath) {
+  try {
+    const { stderr } = await execFileAsync(
+      "ffmpeg",
+      ["-hide_banner", "-i", filePath, "-filter_complex", "ebur128=framelog=verbose", "-f", "null", "-"],
+      { maxBuffer: 20 * 1024 * 1024 }
+    );
+
+    const match = stderr.match(/I:\s*(-?\d+(?:\.\d+)?)\s*LUFS/g);
+    if (!match || !match.length) return null;
+    const last = match[match.length - 1].match(/-?\d+(?:\.\d+)?/);
+    return last ? Number(last[0]) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function decodeIfNeeded(inputPath) {
   const ext = path.extname(inputPath).toLowerCase();
   if (!AUDIO_DECODE_EXTS.has(ext)) return inputPath;
@@ -259,100 +227,21 @@ export async function decodeIfNeeded(inputPath) {
   return decoded;
 }
 
-export async function processMastering({ file, referenceFile = null, fields }) {
-  const config = resolveConfig(fields);
+// Legacy engine, only reachable if MASTERING_ENGINE is explicitly set to
+// anything other than "adaptive_python" — a much cruder ffmpeg -af filter
+// chain, entirely local to Node, no Python involved. Kept self-contained
+// (its own local jobId/file storage) rather than folded into the Python-
+// backed path below, since it's a genuinely different, simpler mechanism.
+async function processMasteringViaFfmpegFallback({ file, config }) {
   const jobId = randomUUID().slice(0, 8);
   const inputExt = path.extname(file.originalname || "") || ".wav";
   const inputPath = path.join(settings.uploadDir, `${jobId}_input${inputExt}`);
   fs.copyFileSync(file.path, inputPath);
 
   const processingInput = await decodeIfNeeded(inputPath);
-
-  // Spectral matching only applies to the adaptive engine — a full preset
-  // spec is a literal instruction set, there's no "target spectral balance"
-  // slot in it to override.
-  let referenceInput = null;
-  if (referenceFile && !config.fullPreset) {
-    const referenceExt = path.extname(referenceFile.originalname || "") || ".wav";
-    const referencePath = path.join(settings.uploadDir, `${jobId}_reference${referenceExt}`);
-    fs.copyFileSync(referenceFile.path, referencePath);
-    referenceInput = await decodeIfNeeded(referencePath);
-  }
-
   const wavOut = path.join(settings.outputDir, `${jobId}_mastered.wav`);
   const outExt = config.output_format === "mp3" ? "mp3" : "wav";
   const finalOut = path.join(settings.outputDir, `${jobId}_mastered.${outExt}`);
-
-  if (config.fullPreset) {
-    let presetResult;
-    try {
-      presetResult = await runPresetDsp({ inputPath: processingInput, wavOut, fullPreset: config.fullPreset });
-    } catch (error) {
-      const detail = error?.stderr || error?.message || "unknown error";
-      throw new Error(`Preset DSP engine failed: ${detail}`);
-    }
-
-    if (outExt === "mp3") {
-      await runFfmpeg(["-i", wavOut, "-codec:a", "libmp3lame", "-b:a", "320k", finalOut]);
-    } else {
-      fs.copyFileSync(wavOut, finalOut);
-    }
-
-    const beforeLufsRaw = Number(presetResult?.analysis_before?.integrated_lufs);
-    const afterLufsRaw = Number(presetResult?.analysis_after?.integrated_lufs);
-
-    return {
-      job_id: jobId,
-      download_url: `/download/${jobId}.${outExt}`,
-      before_lufs: Number((Number.isFinite(beforeLufsRaw) ? beforeLufsRaw : -14).toFixed(1)),
-      after_lufs: Number((Number.isFinite(afterLufsRaw) ? afterLufsRaw : -11).toFixed(1)),
-      analysis_before: presetResult?.analysis_before || { integrated_lufs: -14 },
-      analysis_after: presetResult?.analysis_after || { integrated_lufs: -11 },
-      ab_gain_match: presetResult?.ab_gain_match || null,
-      source_warnings: presetResult?.source_warnings || [],
-      quality_control: presetResult?.quality_control || null,
-      processing_applied: presetResult?.processing_applied || { engine: "preset_dsp_engine" },
-      target_profile_used: presetResult?.target_profile_used || { genre: config.genre, style: config.style },
-    };
-  }
-
-  if (settings.masteringEngine === "adaptive_python") {
-    let adaptiveResult;
-    try {
-      adaptiveResult = await runAdaptiveDsp({ inputPath: processingInput, wavOut, config, referencePath: referenceInput });
-    } catch (error) {
-      const detail = error?.stderr || error?.message || "unknown error";
-      throw new Error(`Adaptive DSP engine failed: ${detail}`);
-    }
-
-    if (outExt === "mp3") {
-      await runFfmpeg(["-i", wavOut, "-codec:a", "libmp3lame", "-b:a", "320k", finalOut]);
-    } else {
-      fs.copyFileSync(wavOut, finalOut);
-    }
-
-    const beforeLufsRaw = Number(adaptiveResult?.analysis_before?.integrated_lufs);
-    const afterLufsRaw = Number(adaptiveResult?.analysis_after?.integrated_lufs);
-
-    return {
-      job_id: jobId,
-      download_url: `/download/${jobId}.${outExt}`,
-      before_lufs: Number((Number.isFinite(beforeLufsRaw) ? beforeLufsRaw : -14).toFixed(1)),
-      after_lufs: Number((Number.isFinite(afterLufsRaw) ? afterLufsRaw : -11).toFixed(1)),
-      analysis_before: adaptiveResult?.analysis_before || { integrated_lufs: -14 },
-      analysis_after: adaptiveResult?.analysis_after || { integrated_lufs: -11 },
-      ab_gain_match: adaptiveResult?.ab_gain_match || null,
-      source_warnings: adaptiveResult?.source_warnings || [],
-      processing_applied: {
-        ...(adaptiveResult?.processing_applied || {}),
-        engine: "adaptive_python_dsp",
-      },
-      target_profile_used: adaptiveResult?.target_profile_used || {
-        genre: config.genre,
-        style: config.style,
-      },
-    };
-  }
 
   const beforeLufsRaw = await readIntegratedLufs(processingInput);
   const chain = buildFilterChain(config);
@@ -385,5 +274,66 @@ export async function processMastering({ file, referenceFile = null, fields }) {
       style: config.style,
       target_lufs: chain.targetLufs,
     },
+  };
+}
+
+export async function processMastering({ file, referenceFile = null, fields }) {
+  const config = resolveConfig(fields);
+
+  if (settings.masteringEngine !== "adaptive_python") {
+    return processMasteringViaFfmpegFallback({ file, config });
+  }
+
+  // No local decode/save needed here — the Python service does its own
+  // input decoding and output-format conversion, and owns its own
+  // uploads/outputs storage under whatever job_id it generates. Node just
+  // forwards the raw upload(s) and relays the response.
+  const pythonFields = {
+    genre: config.genre,
+    style: config.style,
+    use_stem_separation: String(config.use_stem_separation),
+    tags: JSON.stringify(config.tags || []),
+    tweaks: JSON.stringify(config.tweaks || {}),
+    output_format: config.output_format,
+    tier: config.tier,
+  };
+  if (config.fullPreset) {
+    pythonFields.full_preset_json = JSON.stringify(config.fullPreset);
+  }
+
+  const files = { file: { path: file.path, filename: file.originalname || "input.wav" } };
+  // Spectral matching only applies to the adaptive engine — a full preset
+  // spec is a literal instruction set, there's no "target spectral balance"
+  // slot in it to override.
+  if (referenceFile && !config.fullPreset) {
+    files.reference_file = { path: referenceFile.path, filename: referenceFile.originalname || "reference.wav" };
+  }
+
+  let result;
+  try {
+    result = await postMultipartToPython("/master", { fields: pythonFields, files });
+  } catch (error) {
+    throw new Error(`Mastering failed: ${error.message}`);
+  }
+
+  return {
+    job_id: result.job_id,
+    download_url: result.download_url,
+    before_lufs: result.before_lufs,
+    after_lufs: result.after_lufs,
+    analysis_before: result.analysis_before,
+    analysis_after: result.analysis_after,
+    ab_gain_match: result.ab_gain_match || null,
+    source_warnings: result.source_warnings || [],
+    quality_control: result.quality_control || null,
+    processing_applied: {
+      ...result.processing_applied,
+      // Python's own dict doesn't set this — preset_dsp_engine's response
+      // already carries "engine": "preset_dsp_engine" from render_preset_
+      // master()'s own return value, so this only fills in the adaptive
+      // engine's case without overwriting that.
+      engine: result.processing_applied?.engine || "adaptive_python_dsp",
+    },
+    target_profile_used: result.target_profile_used,
   };
 }

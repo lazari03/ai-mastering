@@ -11,7 +11,10 @@ from adaptive_mastering import master_track as run_adaptive_mastering
 from params import list_genres, list_styles, list_tags
 
 from app.core.config import settings
+from app.services.preset_dsp_engine import render_preset_master
 from app.services.presets_service import get_mixing_preset
+
+ALLOWED_TIERS = {"standard", "professional"}
 
 
 AUDIO_DECODE_EXTS = {".mp3", ".m4a", ".aac", ".ogg", ".wma", ".mp4", ".webm"}
@@ -63,6 +66,7 @@ def resolve_mastering_config(
     use_stem_separation: bool,
     output_format: str,
     mix_preset: str | None,
+    tier: str = "standard",
 ) -> dict:
     resolved = {
         "genre": genre,
@@ -71,6 +75,12 @@ def resolve_mastering_config(
         "tweaks": _normalized_tweaks(tweaks),
         "use_stem_separation": use_stem_separation,
         "output_format": output_format,
+        "tier": tier if tier in ALLOWED_TIERS else "standard",
+        # Only set when mix_preset resolves to a full preset spec (has a
+        # "processing" block) — routes process_mastering_request() to the
+        # preset DSP engine instead of the genre-based adaptive one. Mirrors
+        # backend-node/src/services/masteringService.js:resolveConfig().
+        "full_preset": None,
     }
 
     if mix_preset:
@@ -85,6 +95,16 @@ def resolve_mastering_config(
         resolved["tweaks"] = _normalized_tweaks(preset.get("tweaks", resolved["tweaks"]))
         resolved["use_stem_separation"] = bool(preset.get("use_stem_separation", resolved["use_stem_separation"]))
         resolved["output_format"] = preset.get("output_format", resolved["output_format"])
+
+        if preset.get("processing"):
+            resolved["full_preset"] = {
+                "name": mix_preset,
+                "genre": resolved["genre"],
+                "style": resolved["style"],
+                "processing": preset["processing"],
+                "quality_control": preset.get("quality_control"),
+                "output": preset.get("output"),
+            }
 
     if resolved["genre"] is None:
         raise HTTPException(400, "genre is required when mix_preset is not provided")
@@ -105,11 +125,14 @@ def resolve_mastering_config(
     return resolved
 
 
-def _decode_input_if_required(job_id: str, input_path: Path, input_ext: str) -> Path:
+def _decode_input_if_required(job_id: str, input_path: Path, input_ext: str, label: str = "input") -> Path:
     processing_input_path = input_path
 
     if input_ext.lower() in AUDIO_DECODE_EXTS:
-        decoded_wav_path = settings.upload_dir / f"{job_id}_input_internal.wav"
+        # label distinguishes the main input's decoded file from a
+        # reference track's — both can need decoding in the same request,
+        # and without this they'd collide on the same output filename.
+        decoded_wav_path = settings.upload_dir / f"{job_id}_{label}_internal.wav"
         decode_cmd = [
             "ffmpeg",
             "-y",
@@ -151,7 +174,7 @@ def _convert_output(wav_mastered_path: Path, output_path: Path, output_ext: str)
         wav_mastered_path.replace(output_path)
 
 
-def process_mastering_request(file: UploadFile, config: dict) -> dict:
+def process_mastering_request(file: UploadFile, config: dict, reference_file: UploadFile | None = None) -> dict:
     if file.size and file.size > settings.max_upload_size_mb * 1024 * 1024:
         raise HTTPException(413, f"Uploaded file exceeds {settings.max_upload_size_mb}MB limit")
 
@@ -168,18 +191,43 @@ def process_mastering_request(file: UploadFile, config: dict) -> dict:
 
     processing_input_path = _decode_input_if_required(job_id, input_path, input_ext)
 
-    try:
-        mastering_result = run_adaptive_mastering(
-            input_path=str(processing_input_path),
-            output_path=str(wav_mastered_path),
-            genre=config["genre"],
-            tags=config["tags"],
-            tweaks=config["tweaks"],
-            style=config["style"],
-            enable_stem_separation=config["use_stem_separation"],
-        )
-    except Exception as exc:  # pragma: no cover
-        raise HTTPException(500, f"Adaptive mastering failed: {type(exc).__name__}: {exc}") from exc
+    full_preset = config.get("full_preset")
+
+    if full_preset is not None:
+        try:
+            mastering_result = render_preset_master(
+                input_path=str(processing_input_path),
+                output_wav_path=str(wav_mastered_path),
+                preset=full_preset,
+            )
+        except Exception as exc:  # pragma: no cover
+            raise HTTPException(500, f"Preset DSP engine failed: {type(exc).__name__}: {exc}") from exc
+    else:
+        # Spectral matching only applies to the adaptive engine — a full
+        # preset spec is a literal instruction set with no "target spectral
+        # balance" slot to override. Mirrors masteringService.js.
+        reference_input_path = None
+        if reference_file is not None:
+            reference_ext = Path(reference_file.filename or "").suffix or ".wav"
+            reference_path = settings.upload_dir / f"{job_id}_reference{reference_ext}"
+            with reference_path.open("wb") as handle:
+                handle.write(reference_file.file.read())
+            reference_input_path = str(_decode_input_if_required(job_id, reference_path, reference_ext, label="reference"))
+
+        try:
+            mastering_result = run_adaptive_mastering(
+                input_path=str(processing_input_path),
+                output_path=str(wav_mastered_path),
+                genre=config["genre"],
+                tags=config["tags"],
+                tweaks=config["tweaks"],
+                style=config["style"],
+                enable_stem_separation=config["use_stem_separation"],
+                tier=config.get("tier", "standard"),
+                reference_track_path=reference_input_path,
+            )
+        except Exception as exc:  # pragma: no cover
+            raise HTTPException(500, f"Adaptive mastering failed: {type(exc).__name__}: {exc}") from exc
 
     _convert_output(wav_mastered_path, output_path, output_ext)
 
@@ -193,6 +241,9 @@ def process_mastering_request(file: UploadFile, config: dict) -> dict:
         "after_lufs": round(after_lufs, 1),
         "analysis_before": mastering_result["analysis_before"],
         "analysis_after": mastering_result["analysis_after"],
+        "ab_gain_match": mastering_result.get("ab_gain_match"),
+        "source_warnings": mastering_result.get("source_warnings", []),
+        "quality_control": mastering_result.get("quality_control"),
         "processing_applied": mastering_result["processing_applied"],
         "target_profile_used": mastering_result["target_profile_used"],
         "resolved_config": config,

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from app.core.config import settings
-from app.schemas.mastering import MasterResponse, PresetSummary
+from app.schemas.mastering import CodecPreviewResponse, MasterResponse, PresetSummary
+from app.services.codec_preview_service import SUPPORTED_CODECS, simulate_codec
 from app.services.mastering_service import (
     parse_json_array,
     parse_json_object,
@@ -62,6 +64,17 @@ def master_track(
     tweaks: str = Form("{}"),
     output_format: str = Form("wav"),
     mix_preset: str | None = Form(None),
+    tier: str = Form("standard"),
+    # A caller that has already fully resolved a preset itself (Node does,
+    # for both its curated and user-imported-custom presets — see
+    # backend-node/src/services/presetsService.js) can send the resolved
+    # spec directly instead of a mix_preset name for this service to look
+    # up in its own mixing_presets.json. Takes priority over mix_preset
+    # when present. This is what keeps Node's custom-presets feature
+    # (backend-node-only, this service has no knowledge of it) working
+    # without duplicating preset-resolution logic on both sides.
+    full_preset_json: str | None = Form(None),
+    reference_file: UploadFile | None = File(None),
 ) -> dict:
     tag_list = parse_json_array(tags, "tags")
     tweak_values = parse_json_object(tweaks, "tweaks")
@@ -74,9 +87,16 @@ def master_track(
         use_stem_separation=use_stem_separation,
         output_format=output_format,
         mix_preset=mix_preset,
+        tier=tier,
     )
 
-    result = process_mastering_request(file=file, config=resolved_config)
+    if full_preset_json:
+        try:
+            resolved_config["full_preset"] = json.loads(full_preset_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(400, "full_preset_json must be valid JSON") from exc
+
+    result = process_mastering_request(file=file, config=resolved_config, reference_file=reference_file)
     return {
         "job_id": result["job_id"],
         "download_url": result["download_url"],
@@ -84,6 +104,9 @@ def master_track(
         "after_lufs": result["after_lufs"],
         "analysis_before": result["analysis_before"],
         "analysis_after": result["analysis_after"],
+        "ab_gain_match": result.get("ab_gain_match"),
+        "source_warnings": result.get("source_warnings", []),
+        "quality_control": result.get("quality_control"),
         "processing_applied": result["processing_applied"],
         "target_profile_used": result["target_profile_used"],
     }
@@ -103,3 +126,29 @@ def get_original(job_id: str):
     if not matches:
         raise HTTPException(404, "Original not found")
     return FileResponse(matches[0])
+
+
+@router.post("/codec-preview", response_model=CodecPreviewResponse)
+def codec_preview(job_id: str = Form(...), codec: str = Form("mp3_128")) -> dict:
+    if codec not in SUPPORTED_CODECS:
+        raise HTTPException(400, f"Unknown codec '{codec}'. Options: {sorted(SUPPORTED_CODECS)}")
+
+    mastered_wav = settings.output_dir / f"{job_id}_mastered.wav"
+    if not mastered_wav.exists():
+        raise HTTPException(404, f"No mastered wav found for job '{job_id}' — run /master first")
+
+    preview_wav = settings.output_dir / f"{job_id}_codec_{codec}.wav"
+    try:
+        result = simulate_codec(str(mastered_wav), str(preview_wav), codec)
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(500, f"Codec preview failed: {type(exc).__name__}: {exc}") from exc
+
+    return {**result, "preview_download_url": f"/download-codec-preview/{job_id}/{codec}"}
+
+
+@router.get("/download-codec-preview/{job_id}/{codec}")
+def download_codec_preview(job_id: str, codec: str):
+    path = settings.output_dir / f"{job_id}_codec_{codec}.wav"
+    if not path.exists():
+        raise HTTPException(404, "Codec preview not found — run /codec-preview first")
+    return FileResponse(path)

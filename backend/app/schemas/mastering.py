@@ -10,8 +10,25 @@ class MasterResponse(BaseModel):
     after_lufs: float
     analysis_before: dict
     analysis_after: dict
+    ab_gain_match: dict | None = None
+    source_warnings: list[str] = []
+    quality_control: dict | None = None
     processing_applied: dict
     target_profile_used: dict
+
+
+class CodecPreviewResponse(BaseModel):
+    codec: str
+    format: str
+    bitrate: str
+    analysis_original: dict
+    analysis_codec_preview: dict
+    true_peak_delta_db: float
+    lufs_delta_db: float
+    spectral_balance_change_db: dict
+    high_frequency_change_db: float
+    lossy_file_size_bytes: int
+    preview_download_url: str
 
 
 class CleanResponse(BaseModel):

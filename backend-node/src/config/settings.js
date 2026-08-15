@@ -19,12 +19,17 @@ export const settings = {
   uploadDir: toAbs(process.env.UPLOAD_DIR, "uploads"),
   outputDir: toAbs(process.env.OUTPUT_DIR, "outputs"),
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB || 200),
-  adaptivePythonBin: toAbs(process.env.ADAPTIVE_PYTHON_BIN, "../backend/venv312/bin/python"),
-  adaptiveCliScript: toAbs(process.env.ADAPTIVE_CLI_SCRIPT, "../backend/run_adaptive_mastering_cli.py"),
-  chordDetectCliScript: toAbs(process.env.CHORD_DETECT_CLI_SCRIPT, "../backend/chord_detect_cli.py"),
-  cleanAudioCliScript: toAbs(process.env.CLEAN_AUDIO_CLI_SCRIPT, "../backend/clean_audio_cli.py"),
-  presetDspCliScript: toAbs(process.env.PRESET_DSP_CLI_SCRIPT, "../backend/render_preset_master_cli.py"),
-  codecPreviewCliScript: toAbs(process.env.CODEC_PREVIEW_CLI_SCRIPT, "../backend/codec_preview_cli.py"),
+  // The Python side is now a long-lived FastAPI service (uvicorn), not a
+  // fresh subprocess per request — see backend/app/main.py. Node forwards
+  // requests to it over HTTP and proxies its file responses back. Start it
+  // with:
+  //   cd backend && venv312/bin/python -m uvicorn app.main:app --port 8001
+  // Required — there is no subprocess-CLI fallback (that would just be a
+  // second, duplicate way of reaching the same DSP code to maintain).
+  // The backend/*_cli.py scripts still exist and work standalone (used by
+  // validate_mastering.py and direct dev testing) — Node just doesn't call
+  // them anymore.
+  pythonApiBaseUrl: process.env.PYTHON_API_BASE_URL || "http://localhost:8001",
   presetsFile: path.resolve(rootDir, "../backend/mixing_presets.json"),
   // Separate file so imported presets never touch the curated built-in list.
   customPresetsFile: toAbs(process.env.CUSTOM_PRESETS_FILE, "custom_presets.json"),
