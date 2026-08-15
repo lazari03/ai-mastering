@@ -7,22 +7,21 @@ const MASTERING_TIMEOUT_MS = 20 * 60 * 1000;
 // Every route on the backend except /health requires a Firebase ID token —
 // attach it here, once, so none of the individual endpoint functions below
 // need to know auth exists. getIdToken() returns the cached token and only
-// hits the network to refresh it if it's actually expired/near-expiry.
-async function authHeader() {
+// hits the network to refresh it if it's actually expired/near-expiry —
+// forceRefresh bypasses that cache, for the retry-on-401 below.
+async function authHeader(forceRefresh = false) {
   const user = getFirebaseAuth()?.currentUser;
   if (!user) return {};
-  const token = await user.getIdToken();
+  const token = await user.getIdToken(forceRefresh);
   return { Authorization: `Bearer ${token}` };
 }
 
-async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+async function doFetch(path, options, timeoutMs, forceRefresh) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  let response;
   try {
-    const headers = { ...(options.headers || {}), ...(await authHeader()) };
-    response = await fetch(`${API_BASE}${path}`, {
+    const headers = { ...(options.headers || {}), ...(await authHeader(forceRefresh)) };
+    return await fetch(`${API_BASE}${path}`, {
       ...options,
       headers,
       cache: "no-store",
@@ -36,6 +35,20 @@ async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     throw new Error(`Cannot reach mastering backend at ${API_BASE}. ${reason}. Start backend-node and retry.`);
   } finally {
     clearTimeout(timeoutId);
+  }
+}
+
+async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  let response = await doFetch(path, options, timeoutMs, false);
+
+  // A signed-in user getting 401 almost always means the cached ID token
+  // was stale/not-yet-valid the instant it was fetched, not that they're
+  // actually logged out — this genuinely happens in the first moment
+  // after sign-up (confirmed: reproduced once in testing, gone on retry).
+  // One retry with a force-refreshed token, only when we actually have a
+  // user to refresh for, covers it without masking a real "not logged in".
+  if (response.status === 401 && getFirebaseAuth()?.currentUser) {
+    response = await doFetch(path, options, timeoutMs, true);
   }
 
   const contentType = response.headers.get("content-type") || "";
