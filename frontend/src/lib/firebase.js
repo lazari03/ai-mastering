@@ -24,12 +24,25 @@ function isBrowser() {
   return typeof window !== "undefined";
 }
 
+// A missing/placeholder API key isn't a "try and catch the failure" case —
+// getAuth() kicks off async internal work (checking for a pending redirect
+// sign-in, initializing its popup resolver) that rejects with an
+// unhandled promise rejection when the key is bad, which no try/catch
+// around the call site can catch, and which Next.js's error boundary
+// treats as fatal — it took down the *public landing page* over this
+// before this check existed. So: don't call any Firebase API at all until
+// there's a real-looking key. isConfigured() is the thing to check before
+// touching Firebase anywhere in this app.
+export function isFirebaseConfigured() {
+  return Boolean(firebaseConfig.apiKey);
+}
+
 let _app = null;
 let _auth = null;
 let _googleProvider = null;
 
 export function getFirebaseAuth() {
-  if (!isBrowser()) return null;
+  if (!isBrowser() || !isFirebaseConfigured()) return null;
   if (!_app) {
     _app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   }
@@ -40,7 +53,7 @@ export function getFirebaseAuth() {
 }
 
 export function getGoogleProvider() {
-  if (!isBrowser()) return null;
+  if (!isBrowser() || !isFirebaseConfigured()) return null;
   if (!_googleProvider) {
     _googleProvider = new GoogleAuthProvider();
   }
