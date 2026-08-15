@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-import numba
 import numpy as np
 import pyloudnorm as pyln
 import soundfile as sf
-from pedalboard import Compressor, Distortion, Gain, HighpassFilter, PeakFilter, Pedalboard
-from scipy.signal import butter, lfilter, resample_poly, sosfiltfilt
+from pedalboard import Compressor, HighpassFilter, PeakFilter, Pedalboard
+from scipy.signal import butter, sosfiltfilt
+
+import numba
 
 from ai_mastering.audio_utils import MASTER_SR, _ab_gain_match, _analysis_from_audio, _db, _load_audio, _true_peak_db
+from ai_mastering.bus_processing import _soft_clip, _true_peak_limiter
+from ai_mastering.dsp_filters import _dynamic_eq_narrowband, _lr4_highpass, _oversampled_distortion
 
 """Interprets the full professional-preset JSON schema used by
 mixing_presets.json (input/highpass/eq/bus_compressor/dynamic_eq/saturation/
@@ -16,10 +19,15 @@ instead of the schema being parsed but unused. A preset generated externally
 (e.g. by an LLM) that follows this shape drives the real signal chain below.
 
 Every stage is optional — a preset only needs the keys it wants to use.
-Several stages are deliberate approximations of what a full mastering suite
-would do (noted inline as `ponytail:`); this is a real, working professional
-signal chain, not a mock, but it is not a bit-for-bit reference implementation
-of every parameter (knee shape, exact oversampling factors, etc.).
+This is a literal spec interpreter, not a second DSP implementation: the
+narrow-band dynamic EQ, oversampled saturation, oversampled soft clipper,
+and true-peak lookahead limiter are the exact same functions the adaptive
+engine (ai_mastering/) uses — imported, not reimplemented — so there is one
+DSP implementation behind both engines, not two. What's genuinely specific
+to this engine (arbitrary user-specified EQ/dynamic-EQ bands instead of
+fixed ones, input gain staging, per-band stereo width, bit-depth dither) is
+what actually differs about interpreting a literal spec vs. computing one
+adaptively, not a duplicate of anything the adaptive engine does.
 """
 
 
@@ -124,27 +132,11 @@ def _apply_bus_compressor(stereo: np.ndarray, sr: int, cfg: dict) -> np.ndarray:
 # ---------------------------------------------------------------- dyn eq ---
 
 
-def _envelope_db(signal: np.ndarray, sr: int, release_ms: float) -> np.ndarray:
-    # One-pole follower on the release time constant (attack folded in —
-    # ponytail: a proper dual attack/release envelope needs a per-sample
-    # branch, which doesn't vectorize; this stays fast on long tracks and is
-    # close enough for a "which parts of this band are hot" decision).
-    alpha = float(np.exp(-1.0 / (sr * max(release_ms, 1.0) / 1000.0)))
-    env = lfilter([1 - alpha], [1, -alpha], np.abs(signal))
-    return 20 * np.log10(env + 1e-9)
-
-
-def _bandpass(signal: np.ndarray, sr: int, center_hz: float, q: float) -> np.ndarray:
-    bandwidth = max(center_hz / max(q, 0.1), 10.0)
-    low = max(20.0, center_hz - bandwidth / 2)
-    high = min(sr / 2 - 100.0, center_hz + bandwidth / 2)
-    if high <= low:
-        high = low + 10.0
-    sos = butter(2, [low, high], btype="band", fs=sr, output="sos")
-    return sosfiltfilt(sos, signal)
-
-
 def _apply_dynamic_eq(stereo: np.ndarray, sr: int, bands: list[dict]) -> np.ndarray:
+    # Same _dynamic_eq_narrowband the adaptive engine's per-band dynamic EQ
+    # uses (ai_mastering/dsp_filters.py) — this engine just picks arbitrary
+    # frequency/q/release straight from the preset spec instead of a fixed
+    # band-name lookup.
     if not bands:
         return stereo
     out = stereo.copy()
@@ -154,14 +146,9 @@ def _apply_dynamic_eq(stereo: np.ndarray, sr: int, bands: list[dict]) -> np.ndar
         max_reduction_db = abs(float(band_cfg.get("max_gain_reduction_db", -2.0)))
         release_ms = float(band_cfg.get("release_ms", 100.0))
         for ch in range(out.shape[1]):
-            band = _bandpass(out[:, ch], sr, freq, q)
-            env_db = _envelope_db(band, sr, release_ms)
             # Engage on the hottest ~30% of this band's activity, capped at
             # the preset's max reduction — a compressor scoped to one band.
-            threshold_db = float(np.percentile(env_db, 70))
-            reduction_db = np.clip(env_db - threshold_db, 0.0, max_reduction_db)
-            gain = 10 ** (-reduction_db / 20.0)
-            out[:, ch] = out[:, ch] - band + band * gain
+            out[:, ch] = _dynamic_eq_narrowband(out[:, ch], sr, freq, q, max_reduction_db, release_ms, threshold_percentile=70.0)
     return out
 
 
@@ -173,18 +160,15 @@ def _apply_saturation(stereo: np.ndarray, sr: int, cfg: dict) -> np.ndarray:
         return stereo
     amount = float(cfg.get("amount", 0.03))
     drive_db = float(np.clip(amount * 60.0, 0.0, 24.0))  # amount is a 0..~0.1-ish fraction in the source presets
-
-    # Oversample around the waveshaper: a distortion stage generates harmonics
-    # above the input's Nyquist frequency, and at native rate those fold back
-    # down into the audible range as aliasing instead of just disappearing.
-    # Same resample_poly-up / process / resample_poly-down shape as
-    # _apply_clipper below. mixing_presets.json already declares this knob
-    # per-preset (it was parsed but silently unused until now).
     oversample = max(1, int(cfg.get("oversampling", 4)))
-    up = resample_poly(stereo, oversample, 1, axis=0)
-    board = Pedalboard([Distortion(drive_db=drive_db)])
-    driven_up = np.asarray(board(up.T, sr * oversample).T, dtype=np.float32)
-    driven = resample_poly(driven_up, 1, oversample, axis=0)[: stereo.shape[0]]
+
+    # Same oversampled-Distortion function the adaptive engine's saturation
+    # stage uses (ai_mastering/dsp_filters.py) — it's written for one
+    # channel at a time, so this loops both. mixing_presets.json already
+    # declares the oversampling knob per-preset.
+    driven = np.empty_like(stereo)
+    for ch in range(stereo.shape[1]):
+        driven[:, ch] = _oversampled_distortion(stereo[:, ch], sr, drive_db, oversample=oversample)
 
     # Blend rather than commit fully — Distortion at any nonzero drive is
     # audible; `amount` should scale how much saturation character shows,
@@ -204,8 +188,11 @@ def _apply_stereo(stereo: np.ndarray, sr: int, cfg: dict) -> np.ndarray:
 
     mono_below = cfg.get("low_end_mono_below_hz")
     if mono_below:
-        sos = butter(2, _safe_freq(float(mono_below), sr), btype="high", fs=sr, output="sos")
-        side = sosfiltfilt(sos, side)  # collapses side energy below the cutoff to ~0
+        # Same LR4 (4th-order, ~24dB/oct) highpass the adaptive engine's own
+        # hard mono enforcement uses (ai_mastering/dsp_filters.py) — steeper
+        # than a plain 2nd-order Butterworth, so side energy below the
+        # cutoff actually collapses to ~0 instead of just being attenuated.
+        side = _lr4_highpass(side, _safe_freq(float(mono_below), sr), sr)
 
     for band in cfg.get("bands", []) or []:
         from_hz = _safe_freq(float(band.get("from_hz", 20.0)), sr)
@@ -231,13 +218,11 @@ def _apply_clipper(stereo: np.ndarray, cfg: dict) -> np.ndarray:
     ceiling_db = float(cfg.get("ceiling_dbtp", -1.0))
     drive_db = float(cfg.get("drive_db", 0.0))
     oversample = max(1, int(cfg.get("oversampling", 4)))
-    ceiling = _db_to_lin(ceiling_db)
-    drive = _db_to_lin(drive_db)
-
-    up = resample_poly(stereo, oversample, 1, axis=0)
-    up = np.tanh(up * drive / ceiling) * ceiling
-    down = resample_poly(up, 1, oversample, axis=0)
-    return down[: stereo.shape[0]]
+    # Same oversampled soft clipper the adaptive engine's bus stage uses
+    # ahead of its limiter (ai_mastering/bus_processing.py) — this is the
+    # function that pattern was ported from originally, now shared instead
+    # of duplicated.
+    return _soft_clip(stereo, ceiling_db=ceiling_db, oversample=oversample, drive_db=drive_db)
 
 
 @numba.njit(cache=True)
@@ -291,17 +276,16 @@ def _apply_limiter(stereo: np.ndarray, sr: int, cfg: dict) -> np.ndarray:
             stereo = pyln.normalize.loudness(stereo, loudness, float(target_lufs))
 
     ceiling_db = float(cfg.get("ceiling_dbtp", -1.0))
-    if stereo.size:
-        # True-peak (oversampled), not sample-peak — inter-sample peaks from
-        # the clipper/saturation stages upstream can exceed the ceiling even
-        # when no individual sample does. Gain-only, never boosts — see
-        # clean_service.py for why pedalboard.Limiter isn't used here (it
-        # applies makeup gain toward its ceiling, undoing the LUFS target
-        # just set above).
-        true_peak_db = _true_peak_db(stereo)
-        if true_peak_db > ceiling_db:
-            stereo = stereo * _db_to_lin(ceiling_db - true_peak_db)
-    return stereo
+    if not stereo.size:
+        return stereo
+    # Same gain-only oversampled lookahead limiter the adaptive engine's
+    # professional tier uses (ai_mastering/bus_processing.py) — a real
+    # limiter (anticipates peaks, smooths release) rather than a single
+    # scalar trim after the fact. Still never boosts, still not
+    # pedalboard.Limiter (see clean_service.py for why that one's wrong
+    # here — it applies makeup gain toward its ceiling, undoing the LUFS
+    # target just set above).
+    return np.asarray(_true_peak_limiter(stereo, sr, ceiling_db=ceiling_db), dtype=np.float32)
 
 
 # ---------------------------------------------------------- quality report -

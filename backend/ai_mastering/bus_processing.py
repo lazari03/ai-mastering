@@ -9,16 +9,20 @@ from scipy.signal import lfilter, resample_poly
 from .audio_utils import EPS, _db, _true_peak_db
 
 
-def _soft_clip(stereo: np.ndarray, ceiling_db: float = -0.3, oversample: int = 4) -> np.ndarray:
+def _soft_clip(stereo: np.ndarray, ceiling_db: float = -0.3, oversample: int = 4, drive_db: float = 0.0) -> np.ndarray:
     """Gentle oversampled tanh soft-clipper, run just before the limiter.
-    Same algorithm as preset_dsp_engine.py's _apply_clipper. Catching the
-    very tips of the loudest transients here means the limiter downstream
-    has less gain reduction left to do — less limiter gain reduction is
-    less audible pumping, which is the whole reason a clipper goes before
-    the limiter instead of the limiter doing all the work alone."""
+    Catching the very tips of the loudest transients here means the
+    limiter downstream has less gain reduction left to do — less limiter
+    gain reduction is less audible pumping, which is the whole reason a
+    clipper goes before the limiter instead of the limiter doing all the
+    work alone. drive_db (default 0 = no-op multiplier) drives the signal
+    harder into the tanh curve before the ceiling normalizes it back down —
+    preset_dsp_engine.py's clipper spec exposes this as a per-preset knob;
+    the adaptive engine's own callers don't use it."""
     ceiling = float(10.0 ** (ceiling_db / 20.0))
+    drive = float(10.0 ** (drive_db / 20.0))
     up = resample_poly(stereo, oversample, 1, axis=0)
-    up = np.tanh(up / ceiling) * ceiling
+    up = np.tanh(up * drive / ceiling) * ceiling
     down = resample_poly(up, 1, oversample, axis=0)[: stereo.shape[0]]
     return down.astype(np.float32)
 

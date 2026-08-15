@@ -124,23 +124,39 @@ def _envelope_db(signal: np.ndarray, sr: int, release_ms: float) -> np.ndarray:
     return 20 * np.log10(env + 1e-9)
 
 
-def _dynamic_eq_band(signal: np.ndarray, sr: int, band_name: str, max_reduction_db: float, release_ms: float) -> np.ndarray:
-    # Narrow-band, level-dependent gain reduction on top of the static
-    # shelf/peak EQ already applied — only engages on the hottest ~25% of
-    # activity at this band's problem frequency (resonances, harsh peaks),
-    # leaving quieter passages untouched. Complements static EQ, doesn't
-    # replace it: static EQ makes a fixed correction; this only reacts.
+def _dynamic_eq_narrowband(
+    signal: np.ndarray, sr: int, center_hz: float, q: float, max_reduction_db: float, release_ms: float, threshold_percentile: float = 75.0
+) -> np.ndarray:
+    """Narrow-band, level-dependent gain reduction at one center frequency —
+    only engages on the hottest activity above `threshold_percentile`,
+    capped at max_reduction_db, leaving quieter passages untouched.
+    Complements static EQ, doesn't replace it: static EQ makes a fixed
+    correction; this only reacts.
+
+    The shared implementation behind both _dynamic_eq_band below (the
+    adaptive engine's per-band dynamic EQ, fixed band centers from
+    _DYNAMIC_EQ_CENTER_HZ) and preset_dsp_engine.py's dynamic EQ (a
+    processing.dynamic_eq spec can name any frequency/q it wants) — one
+    algorithm, two callers with different ways of picking center_hz/q.
+    """
     if max_reduction_db <= 0:
         return signal
-    center_hz = _DYNAMIC_EQ_CENTER_HZ.get(band_name)
-    if center_hz is None:
-        return signal
-    narrow = _bandpass(signal, sr, center_hz, _DYNAMIC_EQ_Q)
+    narrow = _bandpass(signal, sr, center_hz, q)
     env_db = _envelope_db(narrow, sr, release_ms)
-    threshold_db = float(np.percentile(env_db, 75))
+    threshold_db = float(np.percentile(env_db, threshold_percentile))
     reduction_db = np.clip(env_db - threshold_db, 0.0, max_reduction_db)
     gain = 10.0 ** (-reduction_db / 20.0)
     return signal - narrow + narrow * gain
+
+
+def _dynamic_eq_band(signal: np.ndarray, sr: int, band_name: str, max_reduction_db: float, release_ms: float) -> np.ndarray:
+    # Narrow-band, level-dependent gain reduction on top of the static
+    # shelf/peak EQ already applied — only engages on the hottest ~25% of
+    # activity at this band's problem frequency (resonances, harsh peaks).
+    center_hz = _DYNAMIC_EQ_CENTER_HZ.get(band_name)
+    if center_hz is None:
+        return signal
+    return _dynamic_eq_narrowband(signal, sr, center_hz, _DYNAMIC_EQ_Q, max_reduction_db, release_ms, threshold_percentile=75.0)
 
 
 def _to_pedalboard_shape(signal: np.ndarray) -> np.ndarray:
