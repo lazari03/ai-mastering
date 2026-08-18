@@ -81,6 +81,19 @@ services:
       - node-api
     # No ports published — Caddy reaches this at http://frontend:3000.
 
+  # Browser log viewer — bound to localhost only, not published publicly
+  # (no auth of its own, and container logs can contain enough detail that
+  # it shouldn't be open to the internet). Reach it via an SSH tunnel:
+  #   ssh -L 8888:localhost:8888 root@your-server-ip
+  # then open http://localhost:8888 in your own browser.
+  dozzle:
+    image: amir20/dozzle:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "127.0.0.1:8888:8080"
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped

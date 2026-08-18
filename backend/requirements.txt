@@ -10,9 +10,13 @@ pedalboard
 soundfile
 demucs
 essentia
-# madmom has no prebuilt wheel and its sdist doesn't declare its own Cython
-# build dependency, so `pip install -r requirements.txt` alone will fail on
-# it. Install in two steps instead:
+
+# madmom (and cython, its build dependency) are deliberately NOT listed
+# here — its sdist doesn't declare its own Cython build dependency
+# correctly, and having it in this same file made `pip install -r
+# requirements.txt` try to build it before cython was guaranteed
+# importable yet, failing before a separate cython-then-madmom install
+# could even run. Install it as its own two-step command instead, after
+# this file:
 #   pip install cython && pip install --no-build-isolation madmom
-cython
-madmom
+# (see backend/Dockerfile and DEPLOYMENT.md §2, both already do this)
