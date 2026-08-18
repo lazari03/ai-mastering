@@ -197,8 +197,21 @@ const DICT = {
   },
   "pricing.subLabel": { en: "All-Access subscription", sq: "Abonimi All-Access" },
   "pricing.subBlurb": {
-    en: "Unlimited full-length Standard & Professional mastering, unlimited Chord Detection, stem separation included at no extra charge. One price, everything unlocked.",
-    sq: "Masterizim i pakufizuar Standard & Professional, zbulim akordesh i pakufizuar, ndarje instrumentesh e përfshirë pa pagesë shtesë. Një çmim, gjithçka e zhbllokuar.",
+    en: "One price. Everything unlocked. Built for anyone mastering more than a couple of tracks a month.",
+    sq: "Një çmim. Gjithçka e zhbllokuar. Ndërtuar për këdo që masterizon më shumë se pak këngë në muaj.",
+  },
+  "pricing.badge": { en: "Best Value", sq: "Vlera më e Mirë" },
+  "pricing.subCta": { en: "Get All-Access", sq: "Merr All-Access" },
+  "pricing.subReassurance": { en: "Cancel anytime, no questions asked.", sq: "Anulo kur të duash, pa pyetje." },
+  "pricing.feat1": { en: "Unlimited Standard mastering", sq: "Masterizim i pakufizuar Standard" },
+  "pricing.feat2": { en: "Unlimited Professional mastering", sq: "Masterizim i pakufizuar Professional" },
+  "pricing.feat3": { en: "Unlimited chord & key detection", sq: "Zbulim i pakufizuar akordesh & tonaliteti" },
+  "pricing.feat4": { en: "Stem separation included, no extra fee", sq: "Ndarje instrumentesh e përfshirë, pa tarifë shtesë" },
+  "pricing.feat5": { en: "Priority support", sq: "Asistencë prioritare" },
+  "pricing.alaCarteLabel": { en: "Or pay as you go — no subscription", sq: "Ose paguaj sipas përdorimit — pa abonim" },
+  "pricing.breakeven": {
+    en: "4 Professional masters (or 7 Standard) already cost more separately than a month of All-Access — it pays for itself fast once you're mastering regularly.",
+    sq: "4 masterë Professional (ose 7 Standard) kushtojnë tashmë më shumë veç e veç sesa një muaj All-Access — shlyhet shpejt kur masterizon rregullisht.",
   },
   "pricing.freeLabel": { en: "Always free", sq: "Gjithmonë falas" },
   "pricing.freeBlurb": {

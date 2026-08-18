@@ -58,6 +58,24 @@ export function IconSettings(props) {
   );
 }
 
+export function IconLayers(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 3.5 4 8l8 4.5 8-4.5-8-4.5Z" />
+      <path d="M4 12l8 4.5 8-4.5" />
+      <path d="M4 16l8 4.5 8-4.5" />
+    </svg>
+  );
+}
+
+export function IconCheck(props) {
+  return (
+    <svg {...base} width={14} height={14} {...props}>
+      <path d="M5 12.5 9.5 17 19 6.5" />
+    </svg>
+  );
+}
+
 export function IconChevronLeft(props) {
   return (
     <svg {...base} width={15} height={15} {...props}>

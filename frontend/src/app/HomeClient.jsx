@@ -9,10 +9,14 @@ import Threads from "@/components/reactbits/Threads";
 import { POSTS } from "@/content/posts";
 import { useLanguage } from "@/lib/i18n";
 import { PRICING } from "@/lib/pricing";
+import { IconMaster, IconChords, IconLayers, IconCheck } from "@/components/app/icons";
 
 const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
 const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 const FAQ_KEYS = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8"];
+
+const ALA_CARTE_ICONS = { masterStandard: IconMaster, masterProfessional: IconMaster, chords: IconChords, stemAddon: IconLayers };
+const SUBSCRIPTION_FEATURES = ["pricing.feat1", "pricing.feat2", "pricing.feat3", "pricing.feat4", "pricing.feat5"];
 
 // Gallery images double as entry points into the blog posts (POSTS[i]) —
 // keeps the SEO benefit (real indexable articles) attached to the same
@@ -209,36 +213,68 @@ export default function HomeClient() {
         <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("pricing.title")}</h2>
         <p className="mt-2 max-w-xl text-sm text-zinc-400">{t("pricing.subtitle")}</p>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+        <div className="mt-7 grid gap-5 lg:grid-cols-[1.1fr_1fr]">
+          {/* All-Access — the card meant to win, visually dominant with a badge and full feature checklist */}
           <div
-            className="rounded-[24px] border border-brass/30 p-7"
-            style={{ background: "linear-gradient(145deg, rgba(223,201,90,.1), rgba(15,17,19,.92))" }}
+            className="relative overflow-hidden rounded-[28px] border border-brass/40 p-8"
+            style={{ background: "linear-gradient(160deg, rgba(223,201,90,.14), rgba(15,17,19,.94))", boxShadow: "0 20px 60px rgba(223,201,90,.08)" }}
           >
+            <span className="absolute right-6 top-6 rounded-full border border-brass/50 bg-brass/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-brass">
+              {t("pricing.badge")}
+            </span>
+
             <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("pricing.subLabel")}</p>
-            <p className="mt-2 font-[var(--font-title)] text-4xl text-white">
-              {PRICING.subscription.price}
-            </p>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-300">{t("pricing.subBlurb")}</p>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="font-[var(--font-title)] text-5xl text-white">{PRICING.subscription.price.split("/")[0]}</span>
+              <span className="text-sm text-zinc-400">/{PRICING.subscription.price.split("/")[1]}</span>
+            </div>
+            <p className="mt-3 max-w-sm text-sm leading-relaxed text-zinc-300">{t("pricing.subBlurb")}</p>
+
+            <ul className="mt-5 flex flex-col gap-2.5">
+              {SUBSCRIPTION_FEATURES.map((key) => (
+                <li key={key} className="flex items-start gap-2.5 text-sm text-zinc-200">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brass/20 text-brass">
+                    <IconCheck />
+                  </span>
+                  {t(key)}
+                </li>
+              ))}
+            </ul>
+
             <Link
               href="/login"
-              className="mt-5 inline-block rounded-2xl bg-brass px-6 py-3 text-center text-sm font-bold uppercase tracking-[0.1em] text-[#100b08] transition hover:brightness-110"
+              className="mt-6 block rounded-2xl bg-brass px-6 py-3.5 text-center text-sm font-bold uppercase tracking-[0.1em] text-[#100b08] transition hover:brightness-110"
             >
-              {t("hero.ctaPrimary")}
+              {t("pricing.subCta")}
             </Link>
+            <p className="mt-2.5 text-center text-[11px] text-zinc-500">{t("pricing.subReassurance")}</p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {["masterStandard", "masterProfessional", "chords", "stemAddon"].map((key) => (
-              <div key={key} className="rounded-2xl border border-white/10 bg-black/20 p-5">
-                <p className="m-0 text-sm font-semibold text-white">{PRICING[key].label}</p>
-                <p className="mt-1 font-[var(--font-title)] text-2xl text-brass">{PRICING[key].price}</p>
-                <p className="mt-2 text-xs leading-relaxed text-zinc-400">{PRICING[key].blurb}</p>
-              </div>
-            ))}
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-5 sm:col-span-2">
-              <p className="m-0 text-sm font-semibold text-white">{t("pricing.freeLabel")}</p>
-              <p className="mt-2 text-xs leading-relaxed text-zinc-400">{t("pricing.freeBlurb")}</p>
+          {/* À la carte — framed as the alternative, clearly secondary in visual weight */}
+          <div>
+            <p className="m-0 mb-3 text-[11px] uppercase tracking-[0.14em] text-zinc-500">{t("pricing.alaCarteLabel")}</p>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {["masterStandard", "masterProfessional", "chords", "stemAddon"].map((key) => {
+                const Icon = ALA_CARTE_ICONS[key];
+                return (
+                  <div key={key} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <div className="flex items-center gap-2 text-brass">
+                      <Icon />
+                      <span className="font-[var(--font-title)] text-lg text-white">{PRICING[key].price}</span>
+                    </div>
+                    <p className="mt-1.5 text-xs font-semibold text-white">{PRICING[key].label}</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">{PRICING[key].blurb}</p>
+                  </div>
+                );
+              })}
             </div>
+
+            <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="m-0 text-xs font-semibold text-white">{t("pricing.freeLabel")}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">{t("pricing.freeBlurb")}</p>
+            </div>
+
+            <p className="mt-4 text-[11px] leading-relaxed text-zinc-500">{t("pricing.breakeven")}</p>
           </div>
         </div>
       </section>
