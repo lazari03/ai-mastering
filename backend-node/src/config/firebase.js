@@ -45,3 +45,7 @@ export function getFirebaseApp() {
 export function getAuth() {
   return admin.auth(getFirebaseApp());
 }
+
+export function getFirestore() {
+  return admin.firestore(getFirebaseApp());
+}

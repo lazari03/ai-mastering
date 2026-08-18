@@ -1,0 +1,103 @@
+services:
+  python-service:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      MASTERING_ENV: production
+      MASTERING_CORS_ORIGINS: http://node-api:8000
+      MASTERING_FILE_RETENTION_HOURS: ${MASTERING_FILE_RETENTION_HOURS:-48}
+    volumes:
+      - mastering_uploads:/app/uploads
+      - mastering_outputs:/app/outputs
+      - mastering_cache:/app/.cache # demucs/essentia/madmom model weights — avoids re-downloading on every recreate
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # No ports published — only Caddy and node-api (on the internal
+    # compose network) ever need to reach this. It has no auth of its own
+    # (see ARCHITECTURE.md §7), so it must never be reachable from outside.
+
+  node-api:
+    build: ./backend-node
+    restart: unless-stopped
+    depends_on:
+      python-service:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 8000
+      PYTHON_API_BASE_URL: http://python-service:8001
+      MASTERING_ENGINE: adaptive_python
+      # Your real frontend origin — https://auralithforge.app once DNS is
+      # live. Leaving this at "*" in production only warns, doesn't block,
+      # but don't ship it that way.
+      CORS_ORIGINS: ${FRONTEND_ORIGIN:-*}
+      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      # Inline JSON is simpler in Docker than mounting the service account
+      # file — no volume needed. Set this in a .env next to this compose
+      # file (see FIREBASE_SETUP.md for where to get the file's content).
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON}
+      # Billing — see PRICING.md + POLAR_SETUP.md. Unset product IDs mean
+      # that specific item stays ungated rather than breaking the feature.
+      POLAR_ACCESS_TOKEN: ${POLAR_ACCESS_TOKEN}
+      POLAR_WEBHOOK_SECRET: ${POLAR_WEBHOOK_SECRET}
+      POLAR_ENVIRONMENT: ${POLAR_ENVIRONMENT:-sandbox}
+      POLAR_SUBSCRIPTION_PRODUCT_ID: ${POLAR_SUBSCRIPTION_PRODUCT_ID}
+      POLAR_MASTER_STANDARD_PRODUCT_ID: ${POLAR_MASTER_STANDARD_PRODUCT_ID}
+      POLAR_MASTER_PROFESSIONAL_PRODUCT_ID: ${POLAR_MASTER_PROFESSIONAL_PRODUCT_ID}
+      POLAR_CHORDS_PRODUCT_ID: ${POLAR_CHORDS_PRODUCT_ID}
+      POLAR_STEM_ADDON_PRODUCT_ID: ${POLAR_STEM_ADDON_PRODUCT_ID}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    # No ports published to the host — Caddy reaches this over the
+    # internal compose network at http://node-api:8000 (see Caddyfile).
+    # Add "8000:8000" back temporarily if you need to curl it directly
+    # for debugging.
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # These become part of the built JS bundle at image-build time —
+        # set real values in .env next to this compose file, then
+        # `docker compose build frontend` again if any of them change.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://api.auralithforge.app}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://auralithforge.app}
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+    restart: unless-stopped
+    depends_on:
+      - node-api
+    # No ports published — Caddy reaches this at http://frontend:3000.
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - node-api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # Let's Encrypt certs — losing this volume means re-issuing on every recreate
+      - caddy_config:/config
+
+volumes:
+  mastering_uploads:
+  mastering_outputs:
+  mastering_cache:
+  caddy_data:
+  caddy_config:

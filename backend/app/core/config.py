@@ -15,6 +15,14 @@ class Settings:
     upload_dir: Path
     output_dir: Path
     max_upload_size_mb: int
+    # Audio files (uploads, masters, codec previews) are deleted this many
+    # hours after creation — this is a self-hosted VPS, not a storage
+    # product; retaining every render forever grows disk usage without
+    # bound and turns into a real bill. Users get a real download window
+    # (see the frontend's "expires in" messaging), not permanent storage —
+    # if that's ever needed, it's a paid tier backed by real object
+    # storage, not free retention on this box. 0 disables cleanup (dev).
+    file_retention_hours: int
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -42,6 +50,7 @@ def load_settings() -> Settings:
         upload_dir=upload_dir,
         output_dir=output_dir,
         max_upload_size_mb=int(os.getenv("MASTERING_MAX_UPLOAD_MB", "200")),
+        file_retention_hours=int(os.getenv("MASTERING_FILE_RETENTION_HOURS", "48")),
     )
 
 

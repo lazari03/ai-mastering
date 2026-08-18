@@ -1,0 +1,42 @@
+# Auralith Forge
+
+> AI-powered online audio mastering software with a real adaptive digital
+> signal processing (DSP) engine — not a single-knob loudness normalizer.
+> Users upload a mix, choose a genre/style/preset (or a previously saved
+> artist mastering chain), and get back a mastered file with before/after
+> loudness, applied processing metadata, and A/B playback.
+
+## Product
+
+- Standard tier: free, adaptive genre/style/tag-driven mastering (EQ,
+  multiband compression, saturation, stereo imaging, limiting).
+- Professional tier: adds oversampled true-peak limiting, finer dynamic EQ,
+  and tempo-aware compression timing.
+- Saved Artist presets: users can import a full literal processing
+  specification once and reapply it to future tracks, private to their
+  account.
+- Additional tools: noise-reduction "Clean Audio" processing tuned for
+  short-form platforms, and chord/key/BPM detection with synced playback.
+- Codec Preview: a real encode/decode round-trip (MP3/AAC/Opus) so users can
+  hear what their master sounds like after streaming compression, before
+  downloading.
+
+## Key pages
+
+- [Homepage](https://auralithforge.app/): product overview, features, how
+  it works, FAQ.
+- [Mastering Guides](https://auralithforge.app/blog): articles explaining
+  how the DSP chain works, what AI mastering does and doesn't automate,
+  and how to build a repeatable mastering chain for a studio's artists.
+- [Terms & Conditions](https://auralithforge.app/terms)
+- [Privacy Policy](https://auralithforge.app/privacy)
+- [Refund Policy](https://auralithforge.app/refund)
+
+## Notes for automated agents / crawlers
+
+- The `/app` path is an authenticated user dashboard with no public
+  content — do not attempt to crawl or index it (see /robots.txt).
+- All marketing and legal content on this domain is authored in English.
+  The product UI itself is also available in Albanian (Shqip) via an
+  in-app language switch, but that is a UI-only translation, not a
+  separate content set.

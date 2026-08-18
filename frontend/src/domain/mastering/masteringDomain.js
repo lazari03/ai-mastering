@@ -5,6 +5,7 @@ import {
   getTags,
   postMaster,
   postImportPreset,
+  deleteCustomPreset,
   postCodecPreview,
   getOriginalUrl,
   toAbsoluteUrl,
@@ -62,10 +63,17 @@ function normalizeTweaks(rawTweaks) {
   }, {});
 }
 
-export async function importPreset(file) {
+export async function importPreset(file, displayName) {
   const formData = new FormData();
   formData.append("file", file);
+  if (displayName) {
+    formData.append("display_name", displayName);
+  }
   return postImportPreset(formData);
+}
+
+export async function deletePreset(name) {
+  return deleteCustomPreset(name);
 }
 
 export async function previewCodec(jobId, codec) {
@@ -90,6 +98,9 @@ export async function runMasteringJob(input) {
   formData.append("tweaks", JSON.stringify(normalizeTweaks(input.tweaks || {})));
   formData.append("output_format", "wav");
   formData.append("tier", input.tier === "professional" ? "professional" : "standard");
+  // Free, unlimited, 30s-truncated Standard-only render — see PRICING.md.
+  // A full-length master (any tier) is the paid action.
+  formData.append("preview", String(Boolean(input.preview)));
 
   if (input.mixPreset) {
     formData.append("mix_preset", input.mixPreset);

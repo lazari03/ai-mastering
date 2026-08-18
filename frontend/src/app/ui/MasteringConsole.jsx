@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import LiveMasteringPanel from "@/components/audio/LiveMasteringPanel";
 import ProcessingSummary from "@/components/audio/ProcessingSummary";
 import SignalVisualizer from "@/components/audio/SignalVisualizer";
-import Threads from "@/components/reactbits/Threads";
+import FileDropzone from "@/components/ui/FileDropzone";
 import { previewCodec } from "@/domain/mastering/masteringDomain";
 import { useMasteringStore } from "@/store/masteringStore";
 
@@ -16,6 +16,14 @@ const CODEC_OPTIONS = [
   { value: "aac_256", label: "AAC 256kbps" },
   { value: "opus_128", label: "Opus 128kbps" },
 ];
+
+const CHIP_BASE = "border-white/15 bg-black/20 text-zinc-300";
+const CHIP_EMBER = "border-ember bg-ember/[0.15] text-ember";
+const CHIP_BRASS = "border-brass bg-brass/[0.18] text-brass";
+
+function SectionLabel({ children }) {
+  return <h2 className="m-0 mb-2.5 text-xs uppercase tracking-[0.14em] text-brass">{children}</h2>;
+}
 
 export default function MasteringConsole() {
   const [activeStep, setActiveStep] = useState(0);
@@ -61,7 +69,11 @@ export default function MasteringConsole() {
     setTier,
     submit,
     importPreset,
+    deletePreset,
   } = useMasteringStore();
+
+  const [importArtistName, setImportArtistName] = useState("");
+  const [importFilePending, setImportFilePending] = useState(null);
 
   useEffect(() => {
     bootstrap();
@@ -132,10 +144,7 @@ export default function MasteringConsole() {
         setProgressMessage(text);
 
         if (tick % 2 === 0) {
-          setProgressLogs((prev) => {
-            const next = [...prev, { ts: Date.now(), text: `${new Date().toLocaleTimeString()}  ${text}` }];
-            return next.slice(-8);
-          });
+          setProgressLogs((prev) => [...prev, { ts: Date.now(), text: `${new Date().toLocaleTimeString()}  ${text}` }].slice(-8));
         }
       }, 900);
 
@@ -145,13 +154,11 @@ export default function MasteringConsole() {
     if (result) {
       setMasteringProgress(100);
       setProgressMessage("Mastering complete");
-      setProgressLogs((prev) => [...prev.slice(-7), { ts: Date.now(), text: `${new Date().toLocaleTimeString()}  Mastering complete` }]);
       return;
     }
 
     if (error) {
       setProgressMessage("Mastering stopped");
-      setProgressLogs((prev) => [...prev.slice(-7), { ts: Date.now(), text: `${new Date().toLocaleTimeString()}  Mastering stopped` }]);
       return;
     }
 
@@ -160,226 +167,218 @@ export default function MasteringConsole() {
     setProgressLogs([]);
   }, [isSubmitting, result, error]);
 
-  const steps = useMemo(
-    () => [
-      { key: "choose", label: "Choose" },
-      { key: "tweak", label: "Tweak" },
-      { key: "Review", label: "Review" },
-    ],
-    []
-  );
+  const steps = useMemo(() => ["Choose", "Tweak", "Review"], []);
+  const wizardProgress = ((activeStep + 1) / steps.length) * 100;
 
-  const progress = ((activeStep + 1) / steps.length) * 100;
   const selectedPresetMeta = useMemo(() => presets.find((preset) => preset.name === selectedPreset) || null, [presets, selectedPreset]);
+  const builtInPresets = useMemo(() => presets.filter((preset) => !preset.custom), [presets]);
+  const savedArtistPresets = useMemo(() => presets.filter((preset) => preset.custom), [presets]);
+
+  const masterPriceLabel = tier === "professional" ? "€4.99" : "€2.99";
 
   const canGoNextFromChoose = Boolean(file && selectedGenre);
   const nextStep = () => {
     if (activeStep === 0 && !canGoNextFromChoose) return;
     setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
   };
+  const prevStep = () => setActiveStep((prev) => Math.max(prev - 1, 0));
 
-  const prevStep = () => {
-    setActiveStep((prev) => Math.max(prev - 1, 0));
-  };
+  const chipClass = (active, tone = "ember") =>
+    `rounded-xl border px-3.5 py-2 text-xs font-semibold capitalize transition ${active ? (tone === "brass" ? CHIP_BRASS : CHIP_EMBER) : `${CHIP_BASE} hover:border-white/30`}`;
 
   return (
-    <section className="mx-auto grid w-full max-w-7xl items-start gap-4 lg:gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-      <article className="glass-panel reveal min-w-0 overflow-hidden rounded-3xl p-3 sm:p-5 md:p-8">
-        <div className="mb-6 rounded-2xl border border-white/10 bg-black/25 p-4">
-          <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-gradient-to-r from-ember to-brass transition-all duration-300" style={{ width: `${progress}%` }} />
+    <div className="grid w-full max-w-[1280px] items-start gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <div>
+        <h1 className="m-0 font-[var(--font-title)] text-[26px]">Master Audio</h1>
+        <p className="mt-2 text-sm text-zinc-300">Production mastering for real releases.</p>
+
+        <div className="glass-panel mt-5 rounded-2xl p-4">
+          <div className="mb-3.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-ember to-brass transition-all duration-300"
+              style={{ width: `${wizardProgress}%` }}
+            />
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {steps.map((step, idx) => {
+          <div className="grid grid-cols-3 gap-2">
+            {steps.map((label, idx) => {
               const isActive = idx === activeStep;
               const isDone = idx < activeStep;
               return (
                 <button
-                  key={step.key}
+                  key={label}
                   type="button"
                   onClick={() => setActiveStep(idx)}
-                  className={`rounded-lg border px-3 py-2 text-left text-[11px] uppercase tracking-[0.12em] transition sm:text-center ${
-                    isActive
-                      ? "bg-ember/20 text-ember border-ember/50"
-                      : isDone
-                        ? "bg-brass/20 text-brass border-brass/40"
-                        : "bg-black/20 text-zinc-400 border-white/10"
+                  className={`rounded-[10px] border px-2.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] transition ${
+                    isActive ? CHIP_EMBER : isDone ? CHIP_BRASS : CHIP_BASE
                   }`}
                 >
-                  {idx + 1}. {step.label}
+                  {idx + 1}. {label}
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="relative mb-6 h-44 overflow-hidden rounded-2xl border border-white/10 bg-black/20 sm:h-56 md:h-64">
-          <Threads
-            color={[0.92, 0.55, 0.26]}
-            amplitude={1.1}
-            distance={0.12}
-            enableMouseInteraction
-          />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/70" />
-          <div className="absolute left-3 right-3 top-3 max-w-[min(90%,42rem)] sm:left-5 sm:right-auto sm:top-5">
-            <p className="text-[10px] uppercase tracking-[0.16em] text-brass/90 sm:text-xs sm:tracking-[0.2em]">AI Mastering Studio</p>
-            <h1 className="mt-2 font-[var(--font-title)] text-[clamp(1.3rem,6vw,2.35rem)] leading-tight">
-              Production Mastering
-              <span className="block text-ember">for Real Releases</span>
-            </h1>
-          </div>
-        </div>
-
-        <div className="reveal reveal-delay-1 space-y-6">
-          {activeStep === 0 ? (
-            <>
-              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-zinc-400">Current Selection</p>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-full border border-white/15 px-2.5 py-1 text-zinc-200">Preset: {selectedPresetMeta?.display_name || "Custom"}</span>
-                  <span className="rounded-full border border-white/15 px-2.5 py-1 text-zinc-200">Genre: {selectedGenre || "None"}</span>
-                  <span className="rounded-full border border-white/15 px-2.5 py-1 text-zinc-200">Style: {selectedStyle || "None"}</span>
-                  <span className="rounded-full border border-white/15 px-2.5 py-1 text-zinc-200">Tags: {selectedTags.length}</span>
-                  <span className="rounded-full border border-white/15 px-2.5 py-1 text-zinc-200">Stem: {useStemSeparation ? "On" : "Off"}</span>
-                </div>
-              </div>
-
-              <label className="block space-y-2">
-                <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-300">Audio File</span>
-                <input
-                  type="file"
-                  accept="audio/*"
-                  className="block w-full rounded-xl border border-white/15 bg-black/20 p-3 text-sm"
+        {activeStep === 0 ? (
+          <div className="mt-5 flex flex-col gap-5">
+            <section>
+              <SectionLabel>Files</SectionLabel>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FileDropzone
+                  id="masterFileInput"
+                  compact
+                  label="Audio File *"
+                  fileName={file?.name}
                   onChange={(event) => setFile(event.target.files?.[0] || null)}
                 />
-                <span className="mt-2 block break-all text-xs text-zinc-400">{file ? file.name : "No file selected"}</span>
-              </label>
-
-              <label className="block space-y-2">
-                <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-zinc-300">Reference Track (optional)</span>
-                <input
-                  type="file"
-                  accept="audio/*"
-                  className="block w-full rounded-xl border border-white/15 bg-black/20 p-3 text-sm"
+                <FileDropzone
+                  id="refFileInput"
+                  compact
+                  label="Reference Track"
+                  fileName={referenceFile?.name}
                   onChange={(event) => setReferenceFile(event.target.files?.[0] || null)}
                 />
-                <span className="mt-2 block break-all text-xs text-zinc-400">
-                  {referenceFile ? `Matching spectral balance to: ${referenceFile.name}` : "None — using the genre's default spectral target"}
-                </span>
-              </label>
+              </div>
+            </section>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="min-w-0 space-y-2">
-                  <span className="block text-xs uppercase tracking-[0.18em] text-zinc-300">Mix Preset</span>
+            <section>
+              <SectionLabel>Profile</SectionLabel>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">Preset</span>
                   <select
-                    value={selectedPreset}
+                    value={builtInPresets.some((p) => p.name === selectedPreset) ? selectedPreset : ""}
                     onChange={(event) => setPreset(event.target.value)}
-                    className="w-full rounded-xl border border-white/15 bg-black/20 p-3 text-sm"
+                    className="w-full rounded-[10px] border border-white/15 bg-black/25 p-2.5 text-[13px] text-white"
                   >
                     <option value="">Custom</option>
-                    {presets.map((preset) => (
+                    {builtInPresets.map((preset) => (
                       <option key={preset.name} value={preset.name}>
                         {preset.display_name || preset.name}
                       </option>
                     ))}
                   </select>
-                  <span className="mt-2 block text-xs text-zinc-400">{presets.length} preset profiles loaded</span>
-                  {selectedPresetMeta ? (
-                    <span className="mt-2 block break-words text-xs text-brass/90">{selectedPresetMeta.description}</span>
-                  ) : null}
-
-                  <div className="mt-2 rounded-lg border border-dashed border-white/15 bg-black/10 p-2">
-                    <span className="block text-[10px] uppercase tracking-[0.14em] text-zinc-400">Import a Professional Preset</span>
-                    <input
-                      type="file"
-                      accept="application/json,.json"
-                      disabled={isImportingPreset}
-                      onChange={(event) => {
-                        const importFile = event.target.files?.[0];
-                        if (importFile) importPreset(importFile);
-                        event.target.value = "";
-                      }}
-                      className="mt-1 block w-full text-xs text-zinc-300 file:mr-2 file:rounded-lg file:border file:border-brass/40 file:bg-brass/20 file:px-2 file:py-1 file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-brass"
-                    />
-                    <span className="mt-1 block text-[10px] text-zinc-500">
-                      {isImportingPreset
-                        ? "Importing..."
-                        : "A full preset JSON — e.g. one you asked ChatGPT to generate — with name, genre, and a processing spec (highpass, eq, compressor, dynamic EQ, saturation, stereo, clipper, limiter). It runs exactly as written, not just approximated from genre + tags."}
-                    </span>
-                    {importError ? <span className="mt-1 block text-[10px] text-red-300">{importError}</span> : null}
-                  </div>
                 </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">Engine</span>
+                  <select
+                    value={tier}
+                    onChange={(event) => setTier(event.target.value)}
+                    className="w-full rounded-[10px] border border-white/15 bg-black/25 p-2.5 text-[13px] text-white"
+                  >
+                    <option value="standard">Standard (free)</option>
+                    <option value="professional">Professional (true-peak limiting)</option>
+                  </select>
+                </label>
+              </div>
+              {selectedPresetMeta ? (
+                <p className="mt-2 break-words text-xs text-brass/90">{selectedPresetMeta.description}</p>
+              ) : null}
 
-                <div className="space-y-2">
-                  <span className="block text-xs uppercase tracking-[0.18em] text-zinc-300">Genre</span>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    {genres.map((genre) => (
-                      <button
-                        key={genre}
-                        type="button"
-                        aria-pressed={selectedGenre === genre}
-                        onClick={() => setGenre(genre)}
-                        className={`w-full rounded-xl border px-3 py-2 text-center text-xs uppercase tracking-[0.14em] transition ${
-                          selectedGenre === genre
-                            ? "border-ember bg-ember/15 text-ember"
-                            : "border-white/15 bg-black/20 text-zinc-200 hover:border-white/30"
-                        }`}
-                      >
-                        {genre}
-                      </button>
-                    ))}
-                  </div>
-                  <span className="mt-2 block text-xs text-zinc-400">{genres.length} genres available</span>
+              <div className="mt-3.5">
+                <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">Genre</span>
+                <div className="flex flex-wrap gap-2">
+                  {genres.map((genre) => (
+                    <button key={genre} type="button" onClick={() => setGenre(genre)} className={chipClass(selectedGenre === genre)}>
+                      {genre}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <fieldset className="space-y-2">
-                <legend className="text-xs uppercase tracking-[0.18em] text-zinc-300">Mastering Style</legend>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-3.5">
+                <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">Mastering Style</span>
+                <div className="flex flex-wrap gap-2">
                   {styles.map((style) => (
-                    <button
-                      key={style}
-                      type="button"
-                      aria-pressed={selectedStyle === style}
-                      onClick={() => setStyle(style)}
-                      className={`rounded-xl border px-3 py-2 text-left text-[11px] uppercase tracking-[0.12em] transition sm:text-xs sm:tracking-[0.14em] ${
-                        selectedStyle === style
-                          ? "border-ember bg-ember/15 text-ember"
-                          : "border-white/15 bg-black/20 text-zinc-300 hover:border-white/30"
-                      }`}
-                    >
+                    <button key={style} type="button" onClick={() => setStyle(style)} className={chipClass(selectedStyle === style)}>
                       {style.replaceAll("_", " ")}
                     </button>
                   ))}
                 </div>
-              </fieldset>
+              </div>
 
-              <fieldset className="space-y-2 pt-1">
-                <legend className="text-xs uppercase tracking-[0.18em] text-zinc-300">Adjustment Tags</legend>
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => {
-                    const active = selectedTags.includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => toggleTag(tag)}
-                        className={`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] transition sm:text-xs sm:tracking-[0.12em] ${
-                          active
-                            ? "border-brass bg-brass/20 text-brass"
-                            : "border-white/15 bg-black/20 text-zinc-300 hover:border-white/30"
-                        }`}
-                      >
-                        {tag.replaceAll("_", " ")}
-                      </button>
-                    );
-                  })}
+              <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3.5">
+                <span className="block text-[11px] uppercase tracking-[0.1em] text-zinc-300">Saved Artists</span>
+                <span className="mt-1 block text-[11px] text-zinc-500">
+                  Pick a previously-imported artist master and it&apos;s applied exactly as saved.
+                </span>
+
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <select
+                    value={savedArtistPresets.some((p) => p.name === selectedPreset) ? selectedPreset : ""}
+                    onChange={(event) => setPreset(event.target.value)}
+                    className="min-w-[10rem] flex-1 rounded-[10px] border border-white/15 bg-black/25 p-2.5 text-[13px] text-white"
+                  >
+                    <option value="">{savedArtistPresets.length ? "Choose an artist…" : "No saved artists yet"}</option>
+                    {savedArtistPresets.map((preset) => (
+                      <option key={preset.name} value={preset.name}>
+                        {preset.display_name || preset.name}
+                      </option>
+                    ))}
+                  </select>
+                  {savedArtistPresets.some((p) => p.name === selectedPreset) ? (
+                    <button
+                      type="button"
+                      onClick={() => deletePreset(selectedPreset)}
+                      className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-300 hover:border-red-400/50"
+                    >
+                      Remove
+                    </button>
+                  ) : null}
                 </div>
-              </fieldset>
 
-              <label className="mt-1 flex items-center justify-between rounded-xl border border-white/15 bg-black/20 p-3 text-sm">
-                <span>Stem Separation</span>
+                <div className="mt-3 rounded-lg border border-dashed border-white/15 bg-black/10 p-3">
+                  <span className="block text-[10px] uppercase tracking-[0.14em] text-zinc-400">Save a New Artist Master</span>
+                  <span className="mt-1 block text-[10px] text-zinc-500">
+                    Import a full preset JSON with genre and a processing spec. Runs exactly as written.
+                  </span>
+
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <input
+                      type="text"
+                      value={importArtistName}
+                      onChange={(event) => setImportArtistName(event.target.value)}
+                      placeholder="Artist name (e.g. The Weeknd)"
+                      disabled={isImportingPreset}
+                      className="flex-1 rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-500"
+                    />
+                    <input
+                      type="file"
+                      accept="application/json,.json"
+                      disabled={isImportingPreset}
+                      onChange={(event) => setImportFilePending(event.target.files?.[0] || null)}
+                      className="flex-1 text-xs text-zinc-300 file:mr-2 file:rounded-lg file:border file:border-brass/40 file:bg-brass/20 file:px-2 file:py-1 file:text-[11px] file:uppercase file:tracking-[0.1em] file:text-brass"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={isImportingPreset || !importFilePending}
+                    onClick={() => {
+                      importPreset(importFilePending, importArtistName.trim());
+                      setImportFilePending(null);
+                      setImportArtistName("");
+                    }}
+                    className="mt-2 w-full rounded-lg border border-brass/40 bg-brass/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-brass disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                  >
+                    {isImportingPreset ? "Saving…" : "Save Artist Master"}
+                  </button>
+                  {importError ? <span className="mt-1 block text-[10px] text-red-300">{importError}</span> : null}
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <SectionLabel>Adjustments</SectionLabel>
+              <div className="mb-3.5 flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <button key={tag} type="button" onClick={() => toggleTag(tag)} className={`${chipClass(selectedTags.includes(tag), "brass")} rounded-full lowercase`}>
+                    {tag.replaceAll("_", " ")}
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center justify-between rounded-xl border border-white/[0.12] bg-black/20 p-3.5 text-sm">
+                <span>Stem separation</span>
                 <input
                   type="checkbox"
                   checked={useStemSeparation}
@@ -387,155 +386,136 @@ export default function MasteringConsole() {
                   className="h-4 w-4"
                 />
               </label>
+            </section>
+          </div>
+        ) : null}
 
-              <fieldset className="space-y-2 pt-1">
-                <legend className="text-xs uppercase tracking-[0.18em] text-zinc-300">Mastering Engine</legend>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    aria-pressed={tier === "standard"}
-                    onClick={() => setTier("standard")}
-                    className={`rounded-xl border px-3 py-2 text-left text-xs transition ${
-                      tier === "standard"
-                        ? "border-ember bg-ember/15 text-ember"
-                        : "border-white/15 bg-black/20 text-zinc-300 hover:border-white/30"
-                    }`}
-                  >
-                    <span className="block uppercase tracking-[0.14em]">Standard</span>
-                    <span className="mt-1 block text-[11px] text-zinc-400">Free. The default engine.</span>
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={tier === "professional"}
-                    onClick={() => setTier("professional")}
-                    className={`rounded-xl border px-3 py-2 text-left text-xs transition ${
-                      tier === "professional"
-                        ? "border-brass bg-brass/15 text-brass"
-                        : "border-white/15 bg-black/20 text-zinc-300 hover:border-white/30"
-                    }`}
-                  >
-                    <span className="block uppercase tracking-[0.14em]">Professional</span>
-                    <span className="mt-1 block text-[11px] text-zinc-400">
-                      Split sub/punch bass bands + true-peak-aware limiting.
-                    </span>
-                  </button>
-                </div>
-              </fieldset>
-            </>
-          ) : null}
+        {activeStep === 1 ? (
+          <div className="mt-5">
+            <SectionLabel>Fine Tune — Live Preview</SectionLabel>
+            {file ? (
+              <LiveMasteringPanel file={file} previewUrl={inputPreviewUrl} tweaks={tweaks} onChangeTweak={setTweak} />
+            ) : (
+              <p className="text-xs text-zinc-400">Choose an audio file first to enable the live preview.</p>
+            )}
+          </div>
+        ) : null}
 
-          {activeStep === 1 ? (
-            <div>
-              <h2 className="mb-3 text-xs uppercase tracking-[0.18em] text-zinc-300">Fine Tune — Live Preview</h2>
-              {file ? (
-                <LiveMasteringPanel file={file} previewUrl={inputPreviewUrl} tweaks={tweaks} onChangeTweak={setTweak} />
-              ) : (
-                <p className="text-xs text-zinc-400">Choose an audio file first to enable the live preview.</p>
-              )}
+        {activeStep === 2 ? (
+          <div className="glass-panel mt-5 rounded-2xl p-5">
+            <SectionLabel>Review</SectionLabel>
+            <div className="mb-4 flex flex-wrap gap-2">
+              <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">File: {file?.name || "None"}</span>
+              <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">Genre: {selectedGenre || "Not set"}</span>
+              <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">Style: {selectedStyle || "Not set"}</span>
+              <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">Tags: {selectedTags.length}</span>
+              <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">Engine: {tier}</span>
             </div>
-          ) : null}
-
-          {activeStep === 2 ? (
-            <div className="space-y-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-              <p className="text-sm text-zinc-300">Ready to master with your selected profile and tweaks. Run mastering, then check the report panel.</p>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={submit}
+                onClick={() => submit(true)}
                 disabled={isSubmitting || isBootstrapping || !file}
-                className="w-full rounded-xl bg-ember px-5 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:bg-brass disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full rounded-2xl border border-white/15 bg-black/20 px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-zinc-200 transition hover:border-white/30 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isSubmitting ? "Mastering..." : "Master Track"}
+                {isSubmitting ? "Rendering…" : "Preview — Free"}
+              </button>
+              <button
+                type="button"
+                onClick={() => submit(false)}
+                disabled={isSubmitting || isBootstrapping || !file}
+                className="w-full rounded-2xl bg-ember px-5 py-4 text-sm font-bold uppercase tracking-[0.18em] text-[#100b08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSubmitting ? "Mastering…" : `Master Track — ${masterPriceLabel}`}
               </button>
             </div>
-          ) : null}
+            <p className="mt-2 text-[11px] text-zinc-500">
+              Preview renders the first 30s with the Standard engine, free and unlimited. Master Track renders the
+              full file{useStemSeparation ? " with stem separation (+€1.99)" : ""} — one-time credit, or included
+              with an All-Access subscription.
+            </p>
+          </div>
+        ) : null}
 
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-            <button
-              type="button"
-              onClick={prevStep}
-              disabled={activeStep === 0}
-              className="w-full rounded-xl border border-white/20 bg-black/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-200 disabled:opacity-40 sm:w-auto"
-            >
-              Back
-            </button>
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={prevStep}
+            disabled={activeStep === 0}
+            className="rounded-xl border border-white/[0.15] bg-black/20 px-[22px] py-3 text-xs font-bold uppercase tracking-[0.12em] text-zinc-200 disabled:opacity-40"
+          >
+            Back
+          </button>
+          {activeStep < steps.length - 1 ? (
             <button
               type="button"
               onClick={nextStep}
-              disabled={activeStep === steps.length - 1 || (activeStep === 0 && !canGoNextFromChoose)}
-              className="w-full rounded-xl border border-brass/40 bg-brass/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-brass disabled:opacity-40 sm:w-auto"
+              disabled={activeStep === 0 && !canGoNextFromChoose}
+              className="rounded-xl border border-brass/[0.55] bg-brass/[0.18] px-[22px] py-3 text-xs font-bold uppercase tracking-[0.12em] text-brass disabled:opacity-40"
             >
               Next
             </button>
-          </div>
-
-          {activeStep !== 2 ? (
-            <button
-              type="button"
-              onClick={submit}
-              disabled={isSubmitting || isBootstrapping || !file}
-              className="w-full rounded-xl bg-ember px-5 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:bg-brass disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSubmitting ? "Mastering..." : "Quick Master (Any Step)"}
-            </button>
           ) : null}
-
-          {isSubmitting ? (
-            <div className="space-y-3 rounded-2xl border border-brass/25 bg-black/25 p-4">
-              <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.14em]">
-                <span className="text-brass">Mastering In Progress</span>
-                <span className="text-zinc-200">{masteringProgress}%</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-ember to-brass transition-all duration-500"
-                  style={{ width: `${masteringProgress}%` }}
-                />
-              </div>
-              <p className="text-sm text-zinc-200">{progressMessage}</p>
-              <div className="max-h-28 overflow-y-auto rounded-xl border border-white/10 bg-black/25 p-3">
-                {progressLogs.map((log) => (
-                  <p key={`${log.ts}-${log.text}`} className="text-xs text-zinc-400">
-                    {log.text}
-                  </p>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {isBootstrapping ? <p className="text-xs text-zinc-400">Loading catalog...</p> : null}
-          {status ? <p className="text-sm text-brass">{status}</p> : null}
-          {error ? <p className="text-sm text-red-300">{error}</p> : null}
         </div>
-      </article>
 
-      <aside className="glass-panel reveal reveal-delay-2 min-w-0 rounded-3xl p-3 sm:p-5 md:p-8">
-        <h2 className="font-[var(--font-title)] text-2xl">Mastering Report</h2>
-        {!result ? (
-          <div className="mt-3 space-y-4 text-sm text-zinc-300">
-            <p>Submit a track to see before/after loudness, processing metadata, and instant A/B playback.</p>
-            {inputPreviewUrl ? (
-              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">Input Signal Preview</p>
-                <SignalVisualizer src={inputPreviewUrl} />
-              </div>
-            ) : null}
+        {activeStep !== 2 ? (
+          <button
+            type="button"
+            onClick={() => submit(true)}
+            disabled={isSubmitting || isBootstrapping || !file}
+            className="mt-3 w-full rounded-xl border border-white/10 bg-black/20 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-300 transition hover:border-white/25 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isSubmitting ? "Rendering…" : "Quick Preview — Free (Any Step)"}
+          </button>
+        ) : null}
+
+        {isBootstrapping ? <p className="mt-3 text-xs text-zinc-400">Loading catalog...</p> : null}
+        {status ? <p className="mt-3 text-sm text-brass">{status}</p> : null}
+        {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+      </div>
+
+      <aside className="glass-panel sticky top-6 min-w-0 rounded-[20px] p-[22px]">
+        <h2 className="m-0 font-[var(--font-title)] text-lg">Mastering Report</h2>
+
+        {isSubmitting ? (
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between text-[11px] uppercase tracking-[0.1em]">
+              <span className="text-brass">Processing</span>
+              <span>{masteringProgress}%</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-ember to-brass transition-all duration-500"
+                style={{ width: `${masteringProgress}%` }}
+              />
+            </div>
+            <p className="mt-3 text-[13px] text-zinc-300">{progressMessage}</p>
+            <div className="mt-3 max-h-28 overflow-y-auto rounded-xl border border-white/10 bg-black/25 p-3">
+              {progressLogs.map((log) => (
+                <p key={`${log.ts}-${log.text}`} className="text-xs text-zinc-500">
+                  {log.text}
+                </p>
+              ))}
+            </div>
           </div>
-        ) : (
-          <div className="mt-4 space-y-4 text-sm">
+        ) : null}
+
+        {!isSubmitting && result ? (
+          <div className="mt-4 flex flex-col gap-3.5">
             {(result.source_warnings || []).map((warning) => (
               <div key={warning} className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200">
                 ⚠ {warning}
               </div>
             ))}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                <p className="text-xs uppercase tracking-[0.14em] text-zinc-400">Before LUFS</p>
-                <p className="mt-1 text-lg font-semibold">{result.before_lufs}</p>
+                <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-400">Before LUFS</p>
+                <p className="mt-1.5 text-[17px] font-bold">{result.before_lufs}</p>
               </div>
               <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                <p className="text-xs uppercase tracking-[0.14em] text-zinc-400">After LUFS</p>
-                <p className="mt-1 text-lg font-semibold text-brass">{result.after_lufs}</p>
+                <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-400">After LUFS</p>
+                <p className="mt-1.5 text-[17px] font-bold text-brass">{result.after_lufs}</p>
               </div>
             </div>
 
@@ -549,32 +529,32 @@ export default function MasteringConsole() {
             ) : null}
 
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">Original Signal</p>
+              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">Original Signal</p>
               <SignalVisualizer src={result.originalUrl} gainDb={result.ab_gain_match?.before_gain_db || 0} />
             </div>
 
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">Mastered Signal</p>
+              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">Mastered Signal</p>
               <SignalVisualizer src={result.masteredUrl} barColor="#dfc95a" gainDb={result.ab_gain_match?.after_gain_db || 0} />
               <a
                 href={result.masteredUrl}
                 download
-                className="mt-3 inline-flex w-full justify-center rounded-lg border border-brass/40 bg-brass/20 px-3 py-2 text-xs uppercase tracking-[0.14em] text-brass hover:bg-brass/30"
+                className="mt-3 inline-flex w-full justify-center rounded-lg border border-brass/40 bg-brass/[0.18] px-3 py-2.5 text-xs uppercase tracking-[0.1em] text-brass hover:bg-brass/25"
               >
                 Download Master
               </a>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">Codec Preview</p>
+            <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">Codec Preview</p>
               <p className="mb-3 text-[11px] text-zinc-500">
-                Hear what actually reaches a listener after streaming compression — real encode/decode round-trip, not an estimate.
+                Hear what actually reaches a listener after streaming compression — real encode/decode round-trip.
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={codecChoice}
                   onChange={(e) => setCodecChoice(e.target.value)}
-                  className="rounded-lg border border-white/10 bg-black/40 px-2 py-2 text-xs text-zinc-100"
+                  className="flex-1 rounded-lg border border-white/[0.12] bg-black/30 px-2 py-2 text-xs text-zinc-100"
                 >
                   {CODEC_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -586,7 +566,7 @@ export default function MasteringConsole() {
                   type="button"
                   onClick={handleCodecPreview}
                   disabled={codecPreviewLoading}
-                  className="rounded-lg border border-brass/40 bg-brass/20 px-3 py-2 text-xs uppercase tracking-[0.14em] text-brass hover:bg-brass/30 disabled:opacity-50"
+                  className="rounded-lg border border-brass/40 bg-brass/[0.18] px-3.5 py-2 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
                 >
                   {codecPreviewLoading ? "Encoding…" : "Preview"}
                 </button>
@@ -598,15 +578,15 @@ export default function MasteringConsole() {
                 <div className="mt-3 space-y-3">
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-lg border border-white/10 bg-black/30 p-2">
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500">True Peak Δ</p>
+                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-500">True Peak Δ</p>
                       <p className="mt-1 text-sm font-semibold">{codecPreview.true_peak_delta_db > 0 ? "+" : ""}{codecPreview.true_peak_delta_db} dB</p>
                     </div>
                     <div className="rounded-lg border border-white/10 bg-black/30 p-2">
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500">LUFS Δ</p>
+                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-500">LUFS Δ</p>
                       <p className="mt-1 text-sm font-semibold">{codecPreview.lufs_delta_db > 0 ? "+" : ""}{codecPreview.lufs_delta_db} dB</p>
                     </div>
                     <div className="rounded-lg border border-white/10 bg-black/30 p-2">
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500">High-Freq Δ</p>
+                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-500">High-Freq Δ</p>
                       <p className="mt-1 text-sm font-semibold">{codecPreview.high_frequency_change_db > 0 ? "+" : ""}{codecPreview.high_frequency_change_db} dB</p>
                     </div>
                   </div>
@@ -616,12 +596,24 @@ export default function MasteringConsole() {
             </div>
 
             <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-              <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">Processing Summary</p>
+              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">Processing Summary</p>
               <ProcessingSummary result={result} />
             </div>
           </div>
-        )}
+        ) : null}
+
+        {!isSubmitting && !result ? (
+          <div className="mt-4 space-y-3.5 text-sm text-zinc-300">
+            <p className="m-0">Submit a track to see before/after loudness, processing metadata, and instant A/B playback.</p>
+            {inputPreviewUrl ? (
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="m-0 mb-2 text-xs uppercase tracking-[0.1em] text-zinc-400">Input Signal Preview</p>
+                <SignalVisualizer src={inputPreviewUrl} />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </aside>
-    </section>
+    </div>
   );
 }

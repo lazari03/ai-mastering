@@ -1,6 +1,5 @@
-import fs from "node:fs";
-import { settings } from "../config/settings.js";
-import { listCustomPresets } from "./customPresetsService.js";
+import { listCustomPresets, getCustomPreset } from "./customPresetsService.js";
+import { listBuiltInPresets } from "./builtinPresetsService.js";
 
 const PRESET_DISPLAY_NAMES = {
   streaming_pop_glue: "Streaming Pop Glue",
@@ -50,22 +49,16 @@ export function normalizePreset(name, value, extra = {}) {
   };
 }
 
-export function listBuiltInPresets() {
-  try {
-    const raw = fs.readFileSync(settings.presetsFile, "utf-8");
-    const parsed = JSON.parse(raw);
-    const presets = parsed?.presets || {};
-    return Object.entries(presets).map(([name, value]) => normalizePreset(name, value, { custom: false }));
-  } catch {
-    return [];
-  }
+// uid is optional — an anonymous/unauthenticated caller (shouldn't happen
+// given requireAuth gates every route, but keep this safe standalone) just
+// gets the built-in list with no Saved Artists.
+export async function listMixPresets(uid) {
+  const [builtIn, custom] = await Promise.all([listBuiltInPresets(), listCustomPresets(uid)]);
+  return [...builtIn, ...custom];
 }
 
-export function listMixPresets() {
-  return [...listBuiltInPresets(), ...listCustomPresets()];
-}
-
-export function getMixPresetByName(name) {
-  const presets = listMixPresets();
-  return presets.find((item) => item.name === name) || null;
+export async function getMixPresetByName(name, uid) {
+  const builtIn = (await listBuiltInPresets()).find((item) => item.name === name);
+  if (builtIn) return builtIn;
+  return getCustomPreset(name, uid);
 }

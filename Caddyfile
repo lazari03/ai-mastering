@@ -1,0 +1,17 @@
+# Terminates HTTPS and routes to the two containers that need to be
+# public — frontend and the Node API (Python's port 8001 stays internal to
+# the Docker network, it's never reached from outside; see ARCHITECTURE.md
+# §7 on why it has no auth of its own).
+#
+# Caddy gets a cert from Let's Encrypt automatically the first time it
+# starts, using this domain — no manual certbot/nginx config. Requires
+# auralithforge.app's DNS A/AAAA record already pointing at this server's
+# IP before you start Caddy, or the ACME challenge fails.
+
+auralithforge.app {
+	reverse_proxy frontend:3000
+}
+
+api.auralithforge.app {
+	reverse_proxy node-api:8000
+}

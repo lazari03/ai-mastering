@@ -38,7 +38,7 @@ function normalizeTweaks(raw = {}) {
   return out;
 }
 
-function resolveConfig(input) {
+async function resolveConfig(input, uid) {
   const {
     genre,
     style = "modern",
@@ -68,7 +68,7 @@ function resolveConfig(input) {
   };
 
   if (mix_preset) {
-    const preset = getMixPresetByName(mix_preset);
+    const preset = await getMixPresetByName(mix_preset, uid);
     if (!preset) {
       throw new Error(`Unknown mixing preset '${mix_preset}'`);
     }
@@ -277,8 +277,8 @@ async function processMasteringViaFfmpegFallback({ file, config }) {
   };
 }
 
-export async function processMastering({ file, referenceFile = null, fields }) {
-  const config = resolveConfig(fields);
+export async function processMastering({ file, referenceFile = null, fields, uid }) {
+  const config = await resolveConfig(fields, uid);
 
   if (settings.masteringEngine !== "adaptive_python") {
     return processMasteringViaFfmpegFallback({ file, config });

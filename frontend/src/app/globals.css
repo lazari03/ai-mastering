@@ -59,3 +59,33 @@ main {
   box-shadow: 0 10px 32px rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(8px);
 }
+
+.legal-prose h2 {
+  margin: 0 0 0.6em;
+  font-family: var(--font-title), sans-serif;
+  font-size: 1.15rem;
+  color: #fff;
+}
+
+.legal-prose p {
+  margin: 0 0 0.9em;
+}
+
+.legal-prose ul {
+  margin: 0 0 0.9em;
+  padding-left: 1.3em;
+}
+
+.legal-prose li {
+  margin-bottom: 0.4em;
+}
+
+.legal-prose section + section {
+  margin-top: 1.75rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.legal-prose strong {
+  color: #e8ecef;
+}

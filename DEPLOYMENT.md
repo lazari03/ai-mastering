@@ -96,8 +96,7 @@ for the one place that isn't true).
 | `OUTPUT_DIR` | `./outputs` | same — everything else's output lives in the Python service's own storage |
 | `MAX_UPLOAD_MB` | `200` | |
 | `MASTERING_ENGINE` | `adaptive_python` | anything else falls back to the crude in-Node ffmpeg filter chain — see ARCHITECTURE.md §3, don't run production on this |
-| `CUSTOM_PRESETS_FILE` | `./custom_presets.json` | user-imported presets, separate from the curated `mixing_presets.json` — resolved entirely in Node, the Python service has no knowledge of these |
-| `FIREBASE_SERVICE_ACCOUNT_PATH` | *(none — required)* | path to the service account JSON from Firebase console; see [FIREBASE_SETUP.md](FIREBASE_SETUP.md). Every route except `/health` 500s with a clear "auth service misconfigured" error until this (or the next var) is set. |
+| `FIREBASE_SERVICE_ACCOUNT_PATH` | *(none — required)* | path to the service account JSON from Firebase console; see [FIREBASE_SETUP.md](FIREBASE_SETUP.md). Every route except `/health` 500s with a clear "auth service misconfigured" error until this (or the next var) is set. Also used for Firestore (Saved Artists — see below), not just token verification. |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | *(none)* | the same file's content, inline — for hosts that only support env vars, not file uploads. Use exactly one of these two. |
 
 If deploying `backend-node` and `backend/` on different machines/
@@ -105,6 +104,15 @@ containers, that's fully supported now — they only need `PYTHON_API_BASE_URL`
 to resolve to wherever the FastAPI service is reachable, no shared
 filesystem required (Node proxies file bytes over HTTP, it never reads the
 Python service's storage directly).
+
+**Saved Artists (user-imported presets) live in Firestore**, one doc per
+artist under `users/{uid}/artists/{slug}` — private per-account, not a
+local file. Enable Firestore in the Firebase console (Build → Firestore
+Database → Create database) before deploying; the same service account
+above already has access, no separate credential needed. No security
+rules to write either — every read/write goes through `firebase-admin`
+on the server with its own privileged credential, the client never talks
+to Firestore directly.
 
 ## 4. Frontend setup
 
@@ -127,6 +135,39 @@ web config — see [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for where to get
 them. Safe to expose client-side by design (Firebase's security model
 doesn't depend on these being secret); same build-time-baked-in rule
 applies.
+
+## 4a. Docker (the actual recommended path)
+
+Sections 2-4 are the manual/bare-metal steps. `docker-compose.yml` at the
+repo root does the same thing in three containers plus a fourth — Caddy —
+that terminates HTTPS automatically via Let's Encrypt. This is the
+supported production path; use the manual steps only if you have a reason
+to avoid Docker.
+
+```bash
+cp .env.example .env   # fill in real values — see the file for what's needed
+docker compose up -d --build
+```
+
+Requires, before you run it:
+- DNS: an A record for `auralithforge.app` and one for `api.auralithforge.app`,
+  both pointing at this server's IP. Caddy's Let's Encrypt challenge fails
+  without this already resolving.
+- Ports 80 and 443 open on the server's firewall (Caddy needs both — 80
+  for the ACME HTTP challenge, 443 for actual traffic).
+- Firebase Console → Authentication → Settings → Authorized domains — add
+  `auralithforge.app`. Easy to forget; sign-in (especially Google) fails
+  silently on the real domain until it's added.
+- `FIREBASE_SERVICE_ACCOUNT_JSON` in `.env` — the full service account
+  JSON on one line, not a file path (see `.env.example`'s comment on why
+  inline is simpler than a volume mount here).
+
+`python-service` and `node-api` publish no ports to the host at all —
+only Caddy (`Caddyfile`, routes by hostname to `frontend:3000` and
+`node-api:8000` over the internal Docker network) and the browser ever
+reach them. Rebuild the frontend image (`docker compose build frontend`)
+after changing any `NEXT_PUBLIC_*` value — those bake into the JS bundle
+at build time, not read at container start.
 
 ## 5. Things that will bite you in production
 

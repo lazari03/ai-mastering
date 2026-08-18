@@ -39,56 +39,62 @@ export default function ChordDetector({ file, previewUrl }) {
   const chordChips = useMemo(() => analysis?.chords || [], [analysis]);
 
   return (
-    <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-xs uppercase tracking-[0.14em] text-zinc-400">Chord & Key Detector</p>
-        <button
-          type="button"
-          onClick={detect}
-          disabled={!file || isLoading}
-          className="rounded-lg border border-brass/40 bg-brass/20 px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-brass disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {isLoading ? "Analyzing..." : "Detect Chords"}
-        </button>
-      </div>
+    <div>
+      <button
+        type="button"
+        onClick={detect}
+        disabled={!file || isLoading}
+        className="w-full rounded-2xl bg-ember px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-[#100b08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isLoading ? "Analyzing..." : "Detect Chords — €1.49"}
+      </button>
+      <p className="mt-1.5 text-[11px] text-zinc-500">One-time credit, or included with an All-Access subscription.</p>
 
-      {error ? <p className="text-xs text-red-300">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
 
       {analysis ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full border border-white/15 px-2.5 py-1 text-zinc-200">BPM: {analysis.bpm}</span>
-            <span className="rounded-full border border-white/15 px-2.5 py-1 text-zinc-200">Key: {analysis.key}</span>
+        <div className="mt-5 space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-center">
+              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">Key</p>
+              <p className="mt-1.5 text-xl font-bold">{analysis.key}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-center">
+              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">BPM</p>
+              <p className="mt-1.5 text-xl font-bold">{analysis.bpm}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-center">
+              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">Time Sig.</p>
+              <p className="mt-1.5 text-xl font-bold">4/4</p>
+            </div>
           </div>
+
           <p className="text-[11px] text-zinc-500">
             Estimated from the audio, not ground truth — a starting point for the key and chords, not a guaranteed-accurate transcription.
           </p>
 
-          <audio
-            ref={audioRef}
-            src={previewUrl}
-            controls
-            onTimeUpdate={onTimeUpdate}
-            className="w-full"
-          />
+          <audio ref={audioRef} src={previewUrl} controls onTimeUpdate={onTimeUpdate} className="w-full" />
 
-          <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto rounded-lg border border-white/10 bg-black/25 p-2">
-            {chordChips.map((c, idx) => (
-              <span
-                key={`${c.start}-${c.chord}`}
-                className={`rounded-md border px-2 py-1 text-xs transition ${
-                  idx === activeIndex
-                    ? "border-ember bg-ember/30 text-ember font-semibold"
-                    : "border-white/10 bg-black/20 text-zinc-400"
-                }`}
-              >
-                {c.chord}
-              </span>
-            ))}
+          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+            <p className="m-0 mb-2.5 text-[11px] uppercase tracking-[0.12em] text-zinc-400">Chord Progression</p>
+            <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">
+              {chordChips.map((c, idx) => (
+                <span
+                  key={`${c.start}-${c.chord}`}
+                  className={`rounded-lg border px-3.5 py-2 text-sm font-semibold transition ${
+                    idx === activeIndex
+                      ? "border-brass bg-brass/[0.18] text-brass"
+                      : "border-white/15 bg-black/20 text-zinc-300"
+                  }`}
+                >
+                  {c.chord}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       ) : (
-        <p className="text-xs text-zinc-400">
+        <p className="mt-3 text-xs text-zinc-400">
           {file ? "Detect BPM, key, and chords, then play along." : "Choose an audio file first."}
         </p>
       )}

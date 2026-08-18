@@ -5,9 +5,32 @@ import { useEffect, useRef } from "react";
 export default function SignalVisualizer({ src, className = "", barColor = "#e85d2a", gainDb = 0 }) {
   const canvasRef = useRef(null);
   const audioRef = useRef(null);
+  const gainNodeRef = useRef(null);
+  const barColorRef = useRef(barColor);
+
+  // Live-updated without touching the audio graph — see the mount-only
+  // effect below for why gainDb/barColor can't be dependencies there.
+  useEffect(() => {
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = Math.pow(10, gainDb / 20);
+    }
+  }, [gainDb]);
 
   useEffect(() => {
-    if (!src || !canvasRef.current || !audioRef.current) return;
+    barColorRef.current = barColor;
+  }, [barColor]);
+
+  // Mount-only — deliberately no [src, barColor, gainDb] deps. An
+  // HTMLMediaElement can have createMediaElementSource() called on it
+  // exactly once, ever, even across separate AudioContexts (calling it a
+  // second time throws "InvalidStateError: already connected to a
+  // different MediaElementSourceNode"). Re-running this on every gainDb/
+  // barColor change — which happens once ab_gain_match resolves after
+  // mount — was doing exactly that. src changes are handled by React
+  // updating the <audio src> attribute directly; the already-connected
+  // graph keeps analyzing whatever the element is currently playing.
+  useEffect(() => {
+    if (!canvasRef.current || !audioRef.current) return;
 
     const canvas = canvasRef.current;
     const audio = audioRef.current;
@@ -36,6 +59,7 @@ export default function SignalVisualizer({ src, className = "", barColor = "#e85
         // clipping on playback.
         gainNode = audioContext.createGain();
         gainNode.gain.value = Math.pow(10, gainDb / 20);
+        gainNodeRef.current = gainNode;
 
         sourceNode = audioContext.createMediaElementSource(audio);
         sourceNode.connect(analyser);
@@ -118,7 +142,7 @@ export default function SignalVisualizer({ src, className = "", barColor = "#e85
           } else {
             ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
             ctx.fillRect(0, 0, width, height);
-            ctx.strokeStyle = barColor;
+            ctx.strokeStyle = barColorRef.current;
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(0, height * 0.65);
@@ -147,8 +171,10 @@ export default function SignalVisualizer({ src, className = "", barColor = "#e85
       if (audioContext && audioContext.state !== "closed") {
         audioContext.close();
       }
+      gainNodeRef.current = null;
     };
-  }, [src, barColor, gainDb]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className={`space-y-2 ${className}`}>

@@ -107,6 +107,51 @@ export async function postImportPreset(formData) {
   });
 }
 
+export async function deleteCustomPreset(name) {
+  return request(`/custom-presets/${encodeURIComponent(name)}`, { method: "DELETE" });
+}
+
+export async function postProfile(profile) {
+  return request("/profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(profile),
+  });
+}
+
+export async function getProfile() {
+  return request("/profile");
+}
+
+export async function getJobs() {
+  return request("/jobs");
+}
+
+export async function deleteAccountData() {
+  return request("/account", { method: "DELETE" });
+}
+
+export async function getBillingStatus() {
+  return request("/billing/status");
+}
+
+export async function getEntitlements() {
+  return request("/billing/entitlements");
+}
+
+// item: "subscription" | "master_standard" | "master_professional" | "chords" | "stem_addon"
+export async function postCheckout(item, successUrl) {
+  return request("/billing/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ item, success_url: successUrl }),
+  });
+}
+
+export async function postBillingPortal() {
+  return request("/billing/portal", { method: "POST" });
+}
+
 export async function postCodecPreview(jobId, codec) {
   return request(
     "/codec-preview",

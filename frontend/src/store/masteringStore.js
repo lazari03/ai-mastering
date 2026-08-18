@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { fetchCatalog, importPreset, runMasteringJob } from "@/domain/mastering/masteringDomain";
+import { fetchCatalog, importPreset, deletePreset, runMasteringJob } from "@/domain/mastering/masteringDomain";
 
 const EMPTY_TWEAKS = {
   low_end: 0,
@@ -121,12 +121,12 @@ export const useMasteringStore = create((set, get) => ({
     set({ tier: tier === "professional" ? "professional" : "standard" });
   },
 
-  async importPreset(file) {
+  async importPreset(file, displayName) {
     if (!file) return;
     set({ isImportingPreset: true, importError: "" });
 
     try {
-      const preset = await importPreset(file);
+      const preset = await importPreset(file, displayName);
       const catalog = await fetchCatalog();
       set({
         presets: catalog.presets,
@@ -143,7 +143,23 @@ export const useMasteringStore = create((set, get) => ({
     }
   },
 
-  async submit() {
+  async deletePreset(name) {
+    try {
+      await deletePreset(name);
+      const catalog = await fetchCatalog();
+      const stillSelected = catalog.presets.some((p) => p.name === get().selectedPreset);
+      set({
+        presets: catalog.presets,
+        ...(stillSelected ? {} : { selectedPreset: "" }),
+      });
+    } catch (err) {
+      set({ importError: err.message || "Failed to remove preset" });
+    }
+  },
+
+  // preview=true is the free path (30s, Standard engine, no stems, no
+  // paywall — see PRICING.md); preview=false is the paid full render.
+  async submit(preview = false) {
     const state = get();
 
     if (!state.file) {
@@ -156,7 +172,12 @@ export const useMasteringStore = create((set, get) => ({
       return;
     }
 
-    set({ isSubmitting: true, status: "Analyzing and mastering...", error: "", result: null });
+    set({
+      isSubmitting: true,
+      status: preview ? "Rendering preview..." : "Analyzing and mastering...",
+      error: "",
+      result: null,
+    });
 
     try {
       const response = await runMasteringJob({
@@ -169,11 +190,12 @@ export const useMasteringStore = create((set, get) => ({
         useStemSeparation: state.useStemSeparation,
         mixPreset: state.selectedPreset || null,
         tier: state.tier,
+        preview,
       });
 
       set({
         isSubmitting: false,
-        status: "Mastering complete.",
+        status: preview ? "Preview ready." : "Mastering complete.",
         result: response,
       });
     } catch (err) {

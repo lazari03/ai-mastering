@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import SignalVisualizer from "@/components/audio/SignalVisualizer";
+import FileDropzone from "@/components/ui/FileDropzone";
 import { postClean, toAbsoluteUrl } from "@/network/http/client";
 
 export default function CleanAudioPanel() {
@@ -41,28 +42,25 @@ export default function CleanAudioPanel() {
   };
 
   return (
-    <section className="mx-auto grid w-full max-w-4xl gap-4">
-      <article className="glass-panel reveal rounded-3xl p-4 sm:p-6 md:p-8">
-        <h1 className="font-[var(--font-title)] text-2xl">Clean Audio</h1>
-        <p className="mt-2 text-sm text-zinc-300">
-          Fix rough phone recordings: noise reduction, level compression, and loudness tuned for Instagram/Reels
-          (-14 LUFS). Pitch is never touched.
-        </p>
+    <div className="mx-auto w-full max-w-[760px]">
+      <h1 className="m-0 font-[var(--font-title)] text-[26px]">Clean Audio</h1>
+      <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-300">
+        Fix rough phone recordings: noise reduction, level compression, and loudness tuned for Instagram/Reels
+        (-14 LUFS). Pitch is never touched.
+      </p>
 
-        <label className="mt-5 block space-y-2">
-          <span className="block text-xs uppercase tracking-[0.18em] text-zinc-300">Audio File</span>
-          <input
-            type="file"
-            accept="audio/*"
-            className="block w-full rounded-xl border border-white/15 bg-black/20 p-3 text-sm"
-            onChange={(event) => {
-              setFile(event.target.files?.[0] || null);
-              setResult(null);
-            }}
-          />
-          <span className="mt-2 block break-all text-xs text-zinc-400">{file ? file.name : "No file selected"}</span>
-        </label>
+      <div className="mt-6">
+        <FileDropzone
+          id="cleanFileInput"
+          fileName={file?.name}
+          onChange={(event) => {
+            setFile(event.target.files?.[0] || null);
+            setResult(null);
+          }}
+        />
+      </div>
 
+      <div className="mt-4">
         {previewUrl ? (
           <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
             <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">Original</p>
@@ -107,7 +105,7 @@ export default function CleanAudioPanel() {
             </div>
           </div>
         ) : null}
-      </article>
-    </section>
+      </div>
+    </div>
   );
 }

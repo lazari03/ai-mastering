@@ -4,12 +4,23 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  getAdditionalUserInfo,
+  deleteUser,
   signOut as firebaseSignOut,
 } from "firebase/auth";
 
 import { getFirebaseAuth, getGoogleProvider, isFirebaseConfigured } from "@/lib/firebase";
+import { postProfile, deleteAccountData } from "@/network/http/client";
 
 const NOT_CONFIGURED_MESSAGE = "Sign-in isn't set up yet — see FIREBASE_SETUP.md.";
+
+// Bump when Terms/Privacy content materially changes — lets us tell, from
+// stored data alone, which users accepted an older version.
+export const TERMS_VERSION = "2026-08-16";
 
 function readableAuthError(error) {
   // Firebase's own messages are technically accurate but not what a user
@@ -89,14 +100,40 @@ export const useAuthStore = create((set) => ({
     set({ error: "" });
   },
 
-  async signUp(email, password) {
+  async signUp(email, password, profile = {}) {
     if (!isFirebaseConfigured()) {
       set({ error: NOT_CONFIGURED_MESSAGE });
       return;
     }
+    if (!profile.termsAccepted) {
+      set({ error: "You need to accept the Terms & Conditions and Privacy Policy to create an account." });
+      return;
+    }
     set({ busy: true, error: "" });
     try {
-      await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
+      const auth = getFirebaseAuth();
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+
+      const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+      if (displayName) {
+        await updateProfile(credential.user, { displayName });
+      }
+
+      // Best-effort: the account already exists at this point regardless of
+      // whether this succeeds, so a Firestore/network hiccup here shouldn't
+      // block sign-up or surface as an auth error.
+      try {
+        await postProfile({
+          firstName: profile.firstName || "",
+          lastName: profile.lastName || "",
+          phone: profile.phone || "",
+          termsAcceptedAt: new Date().toISOString(),
+          termsVersion: TERMS_VERSION,
+        });
+      } catch (profileError) {
+        console.error("Failed to save profile details:", profileError);
+      }
+
       set({ busy: false });
     } catch (error) {
       set({ busy: false, error: readableAuthError(error) });
@@ -117,14 +154,31 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  async signInWithGoogle() {
+  async signInWithGoogle(termsAccepted) {
     if (!isFirebaseConfigured()) {
       set({ error: NOT_CONFIGURED_MESSAGE });
       return;
     }
     set({ busy: true, error: "" });
     try {
-      await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
+      const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
+
+      // Google sign-in doubles as sign-up for a brand-new account — only
+      // record terms acceptance (and only if it was actually given) the
+      // first time this account is ever seen, not on every later sign-in.
+      if (getAdditionalUserInfo(result)?.isNewUser) {
+        if (!termsAccepted) {
+          await firebaseSignOut(getFirebaseAuth());
+          set({ busy: false, error: "You need to accept the Terms & Conditions and Privacy Policy to create an account." });
+          return;
+        }
+        try {
+          await postProfile({ termsAcceptedAt: new Date().toISOString(), termsVersion: TERMS_VERSION });
+        } catch (profileError) {
+          console.error("Failed to save profile details:", profileError);
+        }
+      }
+
       set({ busy: false });
     } catch (error) {
       set({ busy: false, error: readableAuthError(error) });
@@ -133,5 +187,69 @@ export const useAuthStore = create((set) => ({
 
   async signOut() {
     await firebaseSignOut(getFirebaseAuth());
+  },
+
+  // Deletes every trace of the account: Firestore data first (profile,
+  // Saved Artists, job history — while the ID token is still valid), then
+  // the Firebase Auth account itself. Requires re-authentication like
+  // changePassword — deleteUser() throws auth/requires-recent-login
+  // otherwise, and this is far more destructive than a password change to
+  // get wrong. currentPassword is only used for password-auth accounts;
+  // Google-only accounts re-authenticate via a fresh popup instead.
+  async deleteAccount(currentPassword) {
+    const auth = getFirebaseAuth();
+    const user = auth?.currentUser;
+    if (!user) {
+      set({ error: "You need to be signed in to delete your account." });
+      return false;
+    }
+    set({ busy: true, error: "" });
+    try {
+      const isPasswordAccount = user.providerData.some((p) => p.providerId === "password");
+      if (isPasswordAccount) {
+        if (!currentPassword) {
+          set({ busy: false, error: "Enter your current password to confirm account deletion." });
+          return false;
+        }
+        const credential = EmailAuthProvider.credential(user.email, currentPassword);
+        await reauthenticateWithCredential(user, credential);
+      } else {
+        const { reauthenticateWithPopup } = await import("firebase/auth");
+        await reauthenticateWithPopup(user, getGoogleProvider());
+      }
+
+      await deleteAccountData();
+      await deleteUser(user);
+
+      set({ busy: false });
+      return true;
+    } catch (error) {
+      set({ busy: false, error: readableAuthError(error) });
+      return false;
+    }
+  },
+
+  // Firebase requires a "recent" sign-in for sensitive operations like a
+  // password change — re-authenticate with the current password first
+  // rather than surfacing Firebase's opaque auth/requires-recent-login
+  // error to the user.
+  async changePassword(currentPassword, newPassword) {
+    const auth = getFirebaseAuth();
+    const user = auth?.currentUser;
+    if (!user?.email) {
+      set({ error: "You need to be signed in to change your password." });
+      return false;
+    }
+    set({ busy: true, error: "" });
+    try {
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, newPassword);
+      set({ busy: false });
+      return true;
+    } catch (error) {
+      set({ busy: false, error: readableAuthError(error) });
+      return false;
+    }
   },
 }));

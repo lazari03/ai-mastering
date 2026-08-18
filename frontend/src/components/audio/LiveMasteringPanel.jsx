@@ -169,7 +169,11 @@ export default function LiveMasteringPanel({ file, previewUrl, tweaks, onChangeT
         <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">
           Live Preview {engineReady ? "" : "(loading engine...)"}
         </p>
-        <audio ref={audioRef} src={previewUrl} controls className="w-full" />
+        {/* key forces a brand-new DOM node per file — an HTMLMediaElement can
+            only ever have createMediaElementSource() called on it once,
+            permanently, even across engine instances/AudioContexts. Reusing
+            the same element for a second file throws InvalidStateError. */}
+        <audio key={previewUrl} ref={audioRef} src={previewUrl} controls className="w-full" />
         <p className="mt-2 text-[10px] text-zinc-500">
           Instant in-browser preview so you can hear changes immediately. The final download is still rendered by the
           real mastering engine — this preview approximates it, it isn&apos;t bit-identical.
