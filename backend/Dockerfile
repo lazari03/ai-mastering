@@ -14,8 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY requirements.txt .
+# setuptools: madmom imports pkg_resources at runtime (not just build time),
+# which ships inside setuptools — python:3.12-slim doesn't include it by
+# default the way a full python.org install or a local venv historically
+# did, so this crashes on import even after a successful pip install.
 RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir cython \
+    && pip install --no-cache-dir cython setuptools \
     && pip install --no-cache-dir --no-build-isolation madmom
 
 COPY . .
