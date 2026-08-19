@@ -1,16 +1,19 @@
 FROM node:20-slim
 
+# Needed for the /master preview path (truncateToPreview in
+# masteringRoutes.js), which shells out to ffmpeg directly in Node rather
+# than going through the Python service — that one route runs regardless of
+# MASTERING_ENGINE, so ffmpeg has to be present even though the main
+# adaptive_python path forwards everything else over HTTP.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
 COPY . .
-
-# Legacy ffmpeg-fallback engine path only (see server.js's production
-# guard, which refuses to boot on that engine anyway) — not installed here
-# on purpose, keeps this image lean. The real path never shells out to
-# ffmpeg; it forwards to the Python service over HTTP.
 
 EXPOSE 8000
 

@@ -106,6 +106,10 @@ export async function runMasteringJob(input) {
     formData.append("mix_preset", input.mixPreset);
   }
 
+  if (input.processing) {
+    formData.append("processing", JSON.stringify(input.processing));
+  }
+
   if (input.referenceFile) {
     formData.append("reference_file", input.referenceFile);
   }

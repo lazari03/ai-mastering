@@ -106,18 +106,25 @@ def resolve_mastering_config(
                 "output": preset.get("output"),
             }
 
-    if resolved["genre"] is None:
-        raise HTTPException(400, "genre is required when mix_preset is not provided")
+    # A full preset (has a "processing" block) is a self-sufficient literal
+    # instruction set for preset_dsp_engine — genre/style/tags on it are
+    # cosmetic labels only, not engine inputs, so an imported preset whose
+    # genre/style/tags don't match this app's fixed enums (e.g. one
+    # generated externally, or with no genre at all) still runs correctly
+    # instead of 400ing on a validation that doesn't apply to it.
+    if resolved["full_preset"] is None:
+        if resolved["genre"] is None:
+            raise HTTPException(400, "genre is required when mix_preset is not provided")
 
-    if resolved["genre"] not in list_genres():
-        raise HTTPException(400, f"Unknown genre '{resolved['genre']}'. Options: {list_genres()}")
+        if resolved["genre"] not in list_genres():
+            raise HTTPException(400, f"Unknown genre '{resolved['genre']}'. Options: {list_genres()}")
 
-    if resolved["style"] not in list_styles():
-        raise HTTPException(400, f"Unknown style '{resolved['style']}'. Options: {list_styles()}")
+        if resolved["style"] not in list_styles():
+            raise HTTPException(400, f"Unknown style '{resolved['style']}'. Options: {list_styles()}")
 
-    unknown_tags = [tag for tag in resolved["tags"] if tag not in list_tags()]
-    if unknown_tags:
-        raise HTTPException(400, f"Unknown tag(s) {unknown_tags}. Options: {list_tags()}")
+        unknown_tags = [tag for tag in resolved["tags"] if tag not in list_tags()]
+        if unknown_tags:
+            raise HTTPException(400, f"Unknown tag(s) {unknown_tags}. Options: {list_tags()}")
 
     if resolved["output_format"] not in ALLOWED_OUTPUT_FORMATS:
         raise HTTPException(400, f"output_format must be one of {sorted(ALLOWED_OUTPUT_FORMATS)}")

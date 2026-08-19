@@ -48,6 +48,7 @@ async function resolveConfig(input, uid) {
     output_format = "wav",
     mix_preset = null,
     tier = "standard",
+    processing = null,
   } = input;
 
   const resolved = {
@@ -90,15 +91,40 @@ async function resolveConfig(input, uid) {
     }
   }
 
-  if (!resolved.genre || !GENRES.includes(resolved.genre)) {
-    throw new Error(`Invalid genre. Options: ${GENRES.join(", ")}`);
+  // Pro Mastering's manual parameter panel — the user builds a processing
+  // spec straight from sliders in the same shape as a saved preset's
+  // "processing" block, without first saving it as a Saved Artist. Only
+  // applies when no named mix_preset already set one (a saved preset name
+  // wins if both are somehow sent).
+  if (processing && !resolved.fullPreset) {
+    if (typeof processing !== "object" || Array.isArray(processing)) {
+      throw new Error("'processing' must be a JSON object");
+    }
+    resolved.fullPreset = {
+      name: "pro-manual",
+      genre: resolved.genre,
+      style: resolved.style,
+      processing,
+      quality_control: null,
+      output: processing.output || null,
+    };
   }
-  if (!STYLES.includes(resolved.style)) {
-    throw new Error(`Invalid style. Options: ${STYLES.join(", ")}`);
-  }
-  for (const tag of resolved.tags) {
-    if (!TAGS.includes(tag)) {
-      throw new Error(`Invalid tag '${tag}'.`);
+
+  // A full preset (fullPreset set) is a self-sufficient literal instruction
+  // set for preset_dsp_engine — genre/style/tags are cosmetic labels on it,
+  // not engine inputs, so they're not validated against the app's fixed
+  // enums here. Mirrors backend/app/services/mastering_service.py.
+  if (!resolved.fullPreset) {
+    if (!resolved.genre || !GENRES.includes(resolved.genre)) {
+      throw new Error(`Invalid genre. Options: ${GENRES.join(", ")}`);
+    }
+    if (!STYLES.includes(resolved.style)) {
+      throw new Error(`Invalid style. Options: ${STYLES.join(", ")}`);
+    }
+    for (const tag of resolved.tags) {
+      if (!TAGS.includes(tag)) {
+        throw new Error(`Invalid tag '${tag}'.`);
+      }
     }
   }
 
@@ -106,7 +132,14 @@ async function resolveConfig(input, uid) {
 }
 
 export async function runFfmpeg(args) {
-  await execFileAsync("ffmpeg", ["-y", ...args], { maxBuffer: 20 * 1024 * 1024 });
+  try {
+    await execFileAsync("ffmpeg", ["-y", ...args], { maxBuffer: 20 * 1024 * 1024 });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error("ffmpeg is not installed or not on PATH for this process — install it (e.g. `apt-get install ffmpeg` / `brew install ffmpeg`) and restart the server.");
+    }
+    throw error;
+  }
 }
 
 // ------------------------------------------------ Python service client ---

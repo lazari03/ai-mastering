@@ -93,5 +93,10 @@ export function articleJsonLd({ title, description, path, datePublished, image }
 }
 
 export function JsonLd({ data }) {
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />;
+  // JSON.stringify doesn't escape "</script>" — a value containing that
+  // sequence would break out of the tag. Nothing here is user-controlled
+  // today (site config + hardcoded blog post text), but escaping "<" is
+  // free insurance against that ever changing later.
+  const json = JSON.stringify(data).replace(/</g, "\\u003c");
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: json }} />;
 }

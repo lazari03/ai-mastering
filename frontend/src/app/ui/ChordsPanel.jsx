@@ -25,7 +25,12 @@ export default function ChordsPanel() {
       <p className="mt-2 text-sm leading-relaxed text-zinc-300">Detect BPM, key, and chords, then play along in sync.</p>
 
       <div className="mt-6">
-        <FileDropzone id="chordsFileInput" fileName={file?.name} onChange={(event) => setFile(event.target.files?.[0] || null)} />
+        <FileDropzone
+          id="chordsFileInput"
+          fileName={file?.name}
+          onChange={(event) => setFile(event.target.files?.[0] || null)}
+          onRemove={() => setFile(null)}
+        />
       </div>
 
       <div className="mt-4">

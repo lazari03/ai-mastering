@@ -57,6 +57,10 @@ export default function CleanAudioPanel() {
             setFile(event.target.files?.[0] || null);
             setResult(null);
           }}
+          onRemove={() => {
+            setFile(null);
+            setResult(null);
+          }}
         />
       </div>
 

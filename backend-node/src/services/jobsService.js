@@ -14,6 +14,10 @@ function jobsCollection(uid) {
   return getFirestore().collection("users").doc(uid).collection("jobs");
 }
 
+// Recorded for every render, previews included — ownsJob() below needs a
+// record to exist for a legitimate preview download to pass its
+// ownership check. listJobs() filters preview:true back out so "My
+// Masters" still only shows real renders, same as before.
 export async function recordJob(uid, job) {
   if (!uid || !job?.job_id) return;
   const now = new Date();
@@ -29,18 +33,32 @@ export async function recordJob(uid, job) {
     original_filename: job.original_filename || null,
     before_lufs: job.before_lufs ?? null,
     after_lufs: job.after_lufs ?? null,
+    preview: Boolean(job.preview),
   });
+}
+
+// Ownership check for the download/:jobId, download-codec-preview/:jobId,
+// and original/:jobId routes — without this, any signed-in user could
+// download any OTHER user's mastered file, original upload, or preview
+// just by knowing/guessing a job_id. job_id lookups are always scoped to
+// the requesting uid's own subcollection, so a job that isn't there for
+// this uid returns false regardless of whether it exists for someone else.
+export async function ownsJob(uid, jobId) {
+  if (!uid || !jobId) return false;
+  const doc = await jobsCollection(uid).doc(jobId).get();
+  return doc.exists;
 }
 
 export async function listJobs(uid, limit = 25) {
   if (!uid) return [];
-  const snapshot = await jobsCollection(uid).orderBy("created_at", "desc").limit(limit).get();
-  return snapshot.docs.map((doc) => {
-    const data = doc.data();
-    return {
+  const snapshot = await jobsCollection(uid).orderBy("created_at", "desc").limit(limit * 2).get();
+  return snapshot.docs
+    .map((doc) => doc.data())
+    .filter((data) => !data.preview)
+    .slice(0, limit)
+    .map((data) => ({
       ...data,
       created_at: data.created_at?.toDate?.().toISOString() || null,
       expires_at: data.expires_at?.toDate?.().toISOString() || null,
-    };
-  });
+    }));
 }

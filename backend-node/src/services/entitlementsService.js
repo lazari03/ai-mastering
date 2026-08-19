@@ -65,6 +65,42 @@ export async function consumeCredit(uid, creditKey) {
   });
 }
 
+// Free tier — every non-subscribed user gets 3 full-length Standard
+// masters per calendar month at no cost (Professional and stem
+// separation are never covered by this, only ever by a credit or the
+// subscription). Stored at users/{uid}.freeQuota = { month: "2026-08",
+// used: N } — "month" resets the counter the first time a new calendar
+// month is seen, no cron job needed to zero it out.
+const FREE_MASTERS_PER_MONTH = 3;
+
+function currentMonthKey() {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+export async function getFreeQuotaStatus(uid) {
+  const doc = await userDoc(uid).get();
+  const quota = doc.data()?.freeQuota;
+  const used = quota?.month === currentMonthKey() ? Number(quota.used || 0) : 0;
+  return { used, remaining: Math.max(0, FREE_MASTERS_PER_MONTH - used), limit: FREE_MASTERS_PER_MONTH };
+}
+
+// Same atomic check-and-consume pattern as consumeCredit — a transaction
+// so concurrent requests can't both pass a "do I have quota left" check
+// against the same remaining slot.
+export async function consumeFreeQuota(uid) {
+  const db = getFirestore();
+  return db.runTransaction(async (tx) => {
+    const ref = userDoc(uid);
+    const doc = await tx.get(ref);
+    const quota = doc.data()?.freeQuota;
+    const used = quota?.month === currentMonthKey() ? Number(quota.used || 0) : 0;
+    if (used >= FREE_MASTERS_PER_MONTH) return false;
+    tx.set(ref, { freeQuota: { month: currentMonthKey(), used: used + 1 } }, { merge: true });
+    return true;
+  });
+}
+
 // Applies a Polar order.paid webhook event — routes the purchased product
 // to the right credit bucket. Ignores orders tied to a subscription
 // (recurring invoices also fire order.paid; those are handled by the

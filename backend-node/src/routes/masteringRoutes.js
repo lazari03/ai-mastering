@@ -12,9 +12,9 @@ import { listMixPresets } from "../services/presetsService.js";
 import { importCustomPreset, deleteCustomPreset } from "../services/customPresetsService.js";
 import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPresetsService.js";
 import { saveProfile, getProfile, deleteAllUserData } from "../services/profileService.js";
-import { recordJob, listJobs } from "../services/jobsService.js";
+import { recordJob, listJobs, ownsJob } from "../services/jobsService.js";
 import { createCheckoutUrl, createPortalUrl, getSubscriptionStatus, isSubscriptionActive } from "../services/polarService.js";
-import { getCredits, consumeCredit } from "../services/entitlementsService.js";
+import { getCredits, consumeCredit, getFreeQuotaStatus, consumeFreeQuota } from "../services/entitlementsService.js";
 
 const router = express.Router();
 
@@ -111,11 +111,12 @@ router.get("/billing/status", async (req, res) => {
 // paywall UI actually needs to decide what to show.
 router.get("/billing/entitlements", async (req, res) => {
   try {
-    const [subscription, credits] = await Promise.all([
+    const [subscription, credits, freeQuota] = await Promise.all([
       getSubscriptionStatus(req.user.uid),
       getCredits(req.user.uid),
+      getFreeQuotaStatus(req.user.uid),
     ]);
-    return res.json({ subscription, credits });
+    return res.json({ subscription, credits, freeQuota });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to load entitlements" });
   }
@@ -220,7 +221,14 @@ const PREVIEW_SECONDS = 30;
 
 async function truncateToPreview(inputPath, workDir) {
   const outputPath = path.join(workDir, `${path.basename(inputPath)}_preview.wav`);
-  await execFileAsync("ffmpeg", ["-y", "-i", inputPath, "-t", String(PREVIEW_SECONDS), outputPath]);
+  try {
+    await execFileAsync("ffmpeg", ["-y", "-i", inputPath, "-t", String(PREVIEW_SECONDS), outputPath]);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error("ffmpeg is not installed or not on PATH for this server process — install it and restart.");
+    }
+    throw error;
+  }
   return outputPath;
 }
 
@@ -234,35 +242,50 @@ router.post("/master", masterUpload, async (req, res) => {
   const tier = !preview && req.body.tier === "professional" ? "professional" : "standard";
   const useStemSeparation = !preview && req.body.use_stem_separation === "true";
 
-  // Master Audio is a paid feature — free accounts get preview only. Only
-  // gated once the relevant Polar product is actually configured, so
-  // local dev / pre-launch stays open rather than every render 402ing
-  // before you've set an env var. Credits are checked (not consumed) here
-  // and only actually spent after a successful render below — a render
-  // that fails midway shouldn't cost the user anything.
+  // Master Audio is a paid feature, with one free allowance: 3 full-length
+  // Standard masters per calendar month, no stem separation (Professional
+  // and stems are never free, only ever a credit or the subscription).
+  // Credit checks are only enforced once the relevant Polar product is
+  // actually configured, so local dev / pre-launch stays open rather than
+  // every render 402ing before you've set an env var. Both free quota and
+  // credits are checked (not consumed) here, and only actually spent
+  // after a successful render below — a render that fails midway
+  // shouldn't cost the user anything.
   const creditKey = tier === "professional" ? "masterProfessional" : "masterStandard";
   const needsStemCredit = useStemSeparation && Boolean(settings.polarProducts.stemAddon);
+  const canUseFreeQuota = tier === "standard" && !needsStemCredit;
   let mustConsumeCredits = false;
+  let mustConsumeFreeQuota = false;
 
-  if (!preview && (settings.polarProducts[creditKey] || needsStemCredit)) {
+  if (!preview) {
     const subscribed = await isSubscriptionActive(req.user.uid).catch(() => false);
     if (!subscribed) {
-      const credits = await getCredits(req.user.uid);
-      const missing = [];
-      if (settings.polarProducts[creditKey] && credits[creditKey] < 1) missing.push(CREDIT_PRICE_LABEL[creditKey]);
-      if (needsStemCredit && credits.stemAddon < 1) missing.push(CREDIT_PRICE_LABEL.stemAddon);
-      if (missing.length) {
-        return res.status(402).json({
-          detail: `This needs ${missing.join(" and ")}, or an active All-Access subscription (€19/mo). Buy in Settings → Billing.`,
-        });
+      if (canUseFreeQuota) {
+        const quota = await getFreeQuotaStatus(req.user.uid);
+        if (quota.remaining > 0) mustConsumeFreeQuota = true;
       }
-      mustConsumeCredits = true;
+      if (!mustConsumeFreeQuota && (settings.polarProducts[creditKey] || needsStemCredit)) {
+        const credits = await getCredits(req.user.uid);
+        const missing = [];
+        if (settings.polarProducts[creditKey] && credits[creditKey] < 1) missing.push(CREDIT_PRICE_LABEL[creditKey]);
+        if (needsStemCredit && credits.stemAddon < 1) missing.push(CREDIT_PRICE_LABEL.stemAddon);
+        if (missing.length) {
+          const quotaNote = canUseFreeQuota ? " Your 3 free Standard masters this month are used up — they reset next month." : "";
+          return res.status(402).json({
+            detail: `This needs ${missing.join(" and ")}, or an active All-Access subscription (€19/mo).${quotaNote} Buy in Settings → Billing.`,
+          });
+        }
+        mustConsumeCredits = true;
+      }
     }
   }
 
   try {
     const tags = JSON.parse(req.body.tags || "[]");
     const tweaks = JSON.parse(req.body.tweaks || "{}");
+    // Pro Mastering's manual parameter panel — never on preview, which is
+    // always the cheap Standard/adaptive path (see PREVIEW_SECONDS above).
+    const processing = !preview && req.body.processing ? JSON.parse(req.body.processing) : null;
 
     let masterFile = file;
     if (preview) {
@@ -283,6 +306,7 @@ router.post("/master", masterUpload, async (req, res) => {
         output_format: req.body.output_format || "wav",
         mix_preset: preview ? null : req.body.mix_preset || null,
         tier,
+        processing,
       },
     });
 
@@ -292,28 +316,33 @@ router.post("/master", masterUpload, async (req, res) => {
     // somehow fails (Firestore hiccup), the user already has their file —
     // log it rather than fail a response that already succeeded; worst
     // case is one unbilled render, not a broken purchase.
-    if (mustConsumeCredits) {
+    if (mustConsumeFreeQuota) {
+      consumeFreeQuota(req.user.uid).catch((error) =>
+        console.error("Failed to consume free quota after successful render:", error.message)
+      );
+    } else if (mustConsumeCredits) {
       Promise.all([
         settings.polarProducts[creditKey] ? consumeCredit(req.user.uid, creditKey) : null,
         needsStemCredit ? consumeCredit(req.user.uid, "stemAddon") : null,
       ]).catch((error) => console.error("Failed to consume credit after successful render:", error.message));
     }
 
+    // Recorded regardless of preview — ownsJob() needs this to exist for
+    // the download routes to work at all, even for a preview. listJobs()
+    // filters preview:true back out, so "My Masters" stays uncluttered.
     // Best-effort — a Firestore hiccup here shouldn't fail a render that
     // already succeeded and already has a real file waiting for the user.
-    // Previews aren't real renders — don't clutter job history with them.
-    if (!preview) {
-      recordJob(req.user.uid, {
-        job_id: result.job_id,
-        genre: req.body.genre || null,
-        style: req.body.style || "modern",
-        tier,
-        output_format: req.body.output_format || "wav",
-        original_filename: file.originalname,
-        before_lufs: result.before_lufs,
-        after_lufs: result.after_lufs,
-      }).catch((error) => console.error("Failed to record job history:", error.message));
-    }
+    recordJob(req.user.uid, {
+      job_id: result.job_id,
+      genre: req.body.genre || null,
+      style: req.body.style || "modern",
+      tier,
+      output_format: req.body.output_format || "wav",
+      original_filename: file.originalname,
+      before_lufs: result.before_lufs,
+      after_lufs: result.after_lufs,
+      preview,
+    }).catch((error) => console.error("Failed to record job history:", error.message));
 
     return res.json({ ...result, preview });
   } catch (error) {
@@ -374,6 +403,9 @@ router.post("/codec-preview", async (req, res) => {
   if (!jobId) {
     return res.status(400).json({ detail: "job_id is required" });
   }
+  if (!(await ownsJob(req.user.uid, jobId))) {
+    return res.status(404).json({ detail: "Job not found" });
+  }
   try {
     const result = await previewCodec(jobId, codec || "mp3_128");
     return res.json(result);
@@ -401,13 +433,25 @@ async function proxyFromPython(pythonPath, res, notFoundMessage) {
   return res.send(buffer);
 }
 
-router.get("/download-codec-preview/:jobId/:codec", (req, res) => {
+// All three below serve a specific user's audio — job_id alone isn't
+// enough to authorize access (a signed-in user, but any signed-in user,
+// could otherwise download anyone else's file by guessing/reusing a
+// job_id). ownsJob() scopes the lookup to the requester's own Firestore
+// subcollection, so this also covers previews (recorded with preview:true,
+// see recordJob) not just full purchased renders.
+router.get("/download-codec-preview/:jobId/:codec", async (req, res) => {
   const { jobId, codec } = req.params;
+  if (!(await ownsJob(req.user.uid, jobId))) {
+    return res.status(404).json({ detail: "Codec preview not found — run /codec-preview first" });
+  }
   return proxyFromPython(`/download-codec-preview/${jobId}/${codec}`, res, "Codec preview not found — run /codec-preview first");
 });
 
-router.get("/download/:jobId.:ext", (req, res) => {
+router.get("/download/:jobId.:ext", async (req, res) => {
   const { jobId, ext } = req.params;
+  if (!(await ownsJob(req.user.uid, jobId))) {
+    return res.status(404).json({ detail: "File not found" });
+  }
   // Local file first — covers the legacy node_ffmpeg engine path, which
   // still writes directly to Node's own outputDir (see
   // masteringService.js:processMasteringViaFfmpegFallback). Everything
@@ -420,7 +464,10 @@ router.get("/download/:jobId.:ext", (req, res) => {
   return proxyFromPython(`/download/${jobId}.${ext}`, res, "File not found");
 });
 
-router.get("/original/:jobId", (req, res) => {
+router.get("/original/:jobId", async (req, res) => {
+  if (!(await ownsJob(req.user.uid, req.params.jobId))) {
+    return res.status(404).json({ detail: "Original not found" });
+  }
   const prefix = `${req.params.jobId}_input`;
   const localMatches = fs.readdirSync(settings.uploadDir).filter((name) => name.startsWith(prefix));
   if (localMatches.length) {

@@ -93,6 +93,16 @@ export default function BillingPanel() {
             </button>
           </div>
 
+          {/* Free monthly quota — 3 Standard masters, resets calendar-monthly */}
+          {!subscribed && entitlements.freeQuota ? (
+            <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="m-0 text-sm text-white">Free Standard masters this month</p>
+              <p className="m-0 text-xs text-zinc-500">
+                {entitlements.freeQuota.remaining} of {entitlements.freeQuota.limit} left · resets next month
+              </p>
+            </div>
+          ) : null}
+
           {/* Pay-per-use credits */}
           <p className="mb-2 mt-4 text-[11px] uppercase tracking-[0.1em] text-zinc-500">
             {subscribed ? "Covered by your subscription" : "Or buy what you need, no subscription"}

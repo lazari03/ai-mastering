@@ -69,25 +69,39 @@ function parseImportedPreset(raw, artistName) {
     throw new Error("Preset file must be a JSON object");
   }
 
-  const resolvedName = artistName || raw.name;
+  const resolvedName = artistName || raw.name || raw.display_name;
   const slug = slugify(resolvedName);
   if (!slug) {
-    throw new Error("Preset needs a name — either an artist name or a non-empty 'name' field in the file");
+    throw new Error("Preset needs a name — either an artist name or a non-empty 'name'/'display_name' field in the file");
   }
-  if (!GENRES.includes(raw.genre)) {
-    throw new Error(`genre must be one of: ${GENRES.join(", ")}`);
-  }
-  const style = raw.style || "modern";
-  if (!STYLES.includes(style)) {
-    throw new Error(`style must be one of: ${STYLES.join(", ")}`);
-  }
-  const tags = Array.isArray(raw.tags) ? raw.tags : [];
-  const unknownTags = tags.filter((tag) => !TAGS.includes(tag));
-  if (unknownTags.length) {
-    throw new Error(`Unknown tag(s): ${unknownTags.join(", ")}`);
-  }
-  if (raw.processing && (typeof raw.processing !== "object" || Array.isArray(raw.processing))) {
+  if (raw.processing !== undefined && raw.processing !== null && (typeof raw.processing !== "object" || Array.isArray(raw.processing))) {
     throw new Error("'processing' must be a JSON object");
+  }
+  const hasProcessing = Boolean(raw.processing);
+
+  // A full professional preset (has a "processing" block, e.g. exported
+  // from Pro Mastering or generated externally) is a self-sufficient
+  // instruction set for preset_dsp_engine — genre/style/tags are cosmetic
+  // labels on it, not inputs the engine reads, so they're accepted as-is
+  // rather than validated against the app's fixed enums. Only the legacy
+  // tweak-based shape (no "processing") actually needs a real genre/style/
+  // tag the adaptive engine understands, since those values drive it directly.
+  let genre = raw.genre || "";
+  let style = raw.style || "modern";
+  let tags = Array.isArray(raw.tags) ? raw.tags : [];
+  if (!hasProcessing) {
+    if (!GENRES.includes(raw.genre)) {
+      throw new Error(`genre must be one of: ${GENRES.join(", ")}`);
+    }
+    if (!STYLES.includes(style)) {
+      throw new Error(`style must be one of: ${STYLES.join(", ")}`);
+    }
+    const unknownTags = tags.filter((tag) => !TAGS.includes(tag));
+    if (unknownTags.length) {
+      throw new Error(`Unknown tag(s): ${unknownTags.join(", ")}`);
+    }
+  } else {
+    tags = tags.filter((tag) => TAGS.includes(tag));
   }
   const outputFormat = raw.output_format === "mp3" ? "mp3" : "wav";
 
@@ -95,7 +109,7 @@ function parseImportedPreset(raw, artistName) {
     slug,
     artist: {
       artist_name: artistName || raw.display_name || raw.name,
-      genre: raw.genre,
+      genre,
       style,
       tags,
       tweaks: normalizeTweaks(raw.tweaks),
