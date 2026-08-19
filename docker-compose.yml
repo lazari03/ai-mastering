@@ -49,11 +49,14 @@ services:
       POLAR_ACCESS_TOKEN: ${POLAR_ACCESS_TOKEN}
       POLAR_WEBHOOK_SECRET: ${POLAR_WEBHOOK_SECRET}
       POLAR_ENVIRONMENT: ${POLAR_ENVIRONMENT:-sandbox}
-      POLAR_SUBSCRIPTION_PRODUCT_ID: ${POLAR_SUBSCRIPTION_PRODUCT_ID}
-      POLAR_MASTER_STANDARD_PRODUCT_ID: ${POLAR_MASTER_STANDARD_PRODUCT_ID}
-      POLAR_MASTER_PROFESSIONAL_PRODUCT_ID: ${POLAR_MASTER_PROFESSIONAL_PRODUCT_ID}
+      POLAR_PLAN_STUDIO_PRODUCT_ID: ${POLAR_PLAN_STUDIO_PRODUCT_ID}
+      POLAR_PLAN_PRO_PRODUCT_ID: ${POLAR_PLAN_PRO_PRODUCT_ID}
       POLAR_CHORDS_PRODUCT_ID: ${POLAR_CHORDS_PRODUCT_ID}
-      POLAR_STEM_ADDON_PRODUCT_ID: ${POLAR_STEM_ADDON_PRODUCT_ID}
+      # Signs the ?dl= download tokens and public /shared/ links — must
+      # stay stable across restarts or every outstanding link breaks the
+      # moment this container redeploys (see settings.js:downloadTokenSecret).
+      DOWNLOAD_TOKEN_SECRET: ${DOWNLOAD_TOKEN_SECRET}
+      SESSION_MAX_AGE_DAYS: ${SESSION_MAX_AGE_DAYS:-14}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
       interval: 30s

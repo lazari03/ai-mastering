@@ -49,6 +49,17 @@ if (settings.nodeEnv === "production" && settings.corsOrigins.includes("*")) {
 
 const app = express();
 
+// Caddy terminates HTTPS and reverse-proxies to this container over plain
+// HTTP — without this, Express never trusts Caddy's X-Forwarded-Proto
+// header, so req.protocol always reports "http" even though the real
+// public request was HTTPS. That bug was building http:// share-download
+// links (masteringRoutes.js's /shared/:jobId/info) from an HTTPS page,
+// which browsers silently mixed-content-block — surfaced to the user as a
+// bare "NetworkError when attempting to fetch resource" with no other
+// detail. Safe to trust unconditionally here: Caddy is the only thing
+// that ever talks to this container (see ARCHITECTURE.md §7 / Caddyfile).
+app.set("trust proxy", true);
+
 app.use(
   cors({
     origin: settings.corsOrigins.includes("*") ? true : settings.corsOrigins,
