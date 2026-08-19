@@ -459,6 +459,26 @@ router.post("/clean", upload.single("file"), async (req, res) => {
   }
   try {
     const result = await cleanAudio(req.file, req.body.output_format || "mp3");
+
+    // Without this, ownsJob(uid, jobId) never finds a record for a clean
+    // job — every /download/:jobId.:ext for a cleaned file 404'd "File not
+    // found" unconditionally, regardless of anything else being correct.
+    // Awaited (not fire-and-forget) so the record is guaranteed to exist
+    // before the response reaches the frontend, which tries to build a
+    // download URL immediately.
+    try {
+      await recordJob(req.user.uid, {
+        job_id: result.job_id,
+        tier: "clean",
+        output_format: req.body.output_format || "mp3",
+        original_filename: req.file.originalname,
+        before_lufs: result.before_lufs,
+        after_lufs: result.after_lufs,
+      });
+    } catch (error) {
+      console.error("Failed to record clean-audio job history:", error.message);
+    }
+
     return res.json(result);
   } catch (error) {
     const detail = error?.stderr || error?.message || "Cleanup failed";
