@@ -49,6 +49,24 @@ export async function ownsJob(uid, jobId) {
   return doc.exists;
 }
 
+// Used by the share-link mint route to read expires_at/output_format
+// without a client-suppliable uid — same ownership scoping as ownsJob(),
+// just returning the doc instead of a boolean.
+export async function getJob(uid, jobId) {
+  if (!uid || !jobId) return null;
+  const doc = await jobsCollection(uid).doc(jobId).get();
+  return doc.exists ? doc.data() : null;
+}
+
+export async function deleteJob(uid, jobId) {
+  if (!uid || !jobId) return false;
+  const ref = jobsCollection(uid).doc(jobId);
+  const doc = await ref.get();
+  if (!doc.exists) return false;
+  await ref.delete();
+  return true;
+}
+
 export async function listJobs(uid, limit = 25) {
   if (!uid) return [];
   const snapshot = await jobsCollection(uid).orderBy("created_at", "desc").limit(limit * 2).get();

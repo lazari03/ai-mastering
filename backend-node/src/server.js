@@ -66,11 +66,20 @@ app.use(express.urlencoded({ extended: true }));
 
 // Every route requires a signed-in Firebase user except /health (load
 // balancers/uptime monitors don't carry a user token), /admin/* (gated
-// instead by requireAdminKey in masteringRoutes.js), and /webhooks/*
-// (gated by signature verification, handled above and already responded
-// to by the time a request would reach here).
+// instead by requireAdminKey in masteringRoutes.js), /webhooks/* (gated
+// by signature verification, handled above and already responded to by
+// the time a request would reach here), and /shared/* — a share link is
+// explicitly meant for someone with no account at all; it's gated by its
+// own ?token= instead (verifyShareToken, inside the route itself).
 app.use((req, res, next) => {
-  if (req.path === "/health" || req.path.startsWith("/admin/") || req.path.startsWith("/webhooks/")) return next();
+  if (
+    req.path === "/health" ||
+    req.path.startsWith("/admin/") ||
+    req.path.startsWith("/webhooks/") ||
+    req.path.startsWith("/shared/")
+  ) {
+    return next();
+  }
 
   if (isDownloadPath(req.path)) {
     const uid = verifyDownloadToken(req.query.dl);

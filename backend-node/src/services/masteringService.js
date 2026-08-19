@@ -181,6 +181,29 @@ export async function postMultipartToPython(pathname, { fields = {}, files = {} 
   return payload;
 }
 
+// Deletes every file a job ever produced — the "Delete" button in My
+// Masters, not the automatic 48h sweep (which runs regardless, this just
+// does it early on request). Covers both storage locations: the Python
+// service's own upload/output dirs (the default adaptive_python path) and
+// Node's local outputDir (the legacy node_ffmpeg fallback engine, see
+// processMasteringViaFfmpegFallback above). Best-effort on the Python side
+// — a network hiccup there shouldn't block the Firestore record from being
+// removed too; the 48h sweep is the backstop either way.
+export async function deleteJobFiles(jobId) {
+  try {
+    await fetch(`${settings.pythonApiBaseUrl}/files/${jobId}`, { method: "DELETE" });
+  } catch (error) {
+    console.error(`Failed to delete Python-side files for job ${jobId}:`, error.message);
+  }
+  for (const dir of [settings.uploadDir, settings.outputDir]) {
+    for (const name of fs.readdirSync(dir)) {
+      if (name.startsWith(`${jobId}_`)) {
+        fs.unlink(path.join(dir, name), () => {});
+      }
+    }
+  }
+}
+
 function buildFilterChain({ genre, style, tags, tweaks }) {
   const isLoud = tags.includes("louder");
   const isWide = tags.includes("wider");

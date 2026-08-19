@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { getJobs, toAuthedDownloadUrl } from "@/network/http/client";
+import { getJobs, toAuthedDownloadUrl, deleteJobRecord, postShareJob, downloadFileSafely } from "@/network/http/client";
 
 function timeUntil(iso) {
   if (!iso) return null;
@@ -16,6 +16,12 @@ function timeUntil(iso) {
 export default function MyMastersPanel() {
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState("");
+  const [busyJobId, setBusyJobId] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState("");
+  const [shareLinks, setShareLinks] = useState({}); // job_id -> { url, expires_at }
+  const [shareErrors, setShareErrors] = useState({});
+  const [copiedJobId, setCopiedJobId] = useState("");
+  const [downloadErrors, setDownloadErrors] = useState({});
 
   useEffect(() => {
     getJobs()
@@ -35,6 +41,55 @@ export default function MyMastersPanel() {
       .catch((err) => setError(err?.message || "Failed to load history"));
   }, []);
 
+  const handleDelete = async (jobId) => {
+    setBusyJobId(jobId);
+    try {
+      await deleteJobRecord(jobId);
+      setJobs((prev) => prev.filter((j) => j.job_id !== jobId));
+      setConfirmDeleteId("");
+    } catch (err) {
+      setError(err?.message || "Failed to delete");
+    } finally {
+      setBusyJobId("");
+    }
+  };
+
+  const handleShare = async (jobId) => {
+    setBusyJobId(jobId);
+    setShareErrors((prev) => ({ ...prev, [jobId]: "" }));
+    try {
+      const { url, expires_at } = await postShareJob(jobId);
+      setShareLinks((prev) => ({ ...prev, [jobId]: { url, expires_at } }));
+    } catch (err) {
+      setShareErrors((prev) => ({ ...prev, [jobId]: err?.message || "Failed to create share link" }));
+    } finally {
+      setBusyJobId("");
+    }
+  };
+
+  const handleDownload = async (job) => {
+    setBusyJobId(job.job_id);
+    setDownloadErrors((prev) => ({ ...prev, [job.job_id]: "" }));
+    try {
+      await downloadFileSafely(job.downloadUrl, `mastered_${job.job_id}.${job.output_format || "wav"}`);
+    } catch (err) {
+      setDownloadErrors((prev) => ({ ...prev, [job.job_id]: err?.message || "Download failed" }));
+    } finally {
+      setBusyJobId("");
+    }
+  };
+
+  const copyShareLink = async (jobId, url) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedJobId(jobId);
+      setTimeout(() => setCopiedJobId(""), 2000);
+    } catch {
+      // Clipboard API unavailable (non-HTTPS, permissions) — the link is
+      // still visible and selectable in the box, just not one-click.
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-[820px]">
       <h1 className="m-0 font-[var(--font-title)] text-[26px]">My Masters</h1>
@@ -50,6 +105,8 @@ export default function MyMastersPanel() {
         {jobs?.map((job) => {
           const expiry = timeUntil(job.expires_at);
           const expired = expiry === "expired";
+          const share = shareLinks[job.job_id];
+          const isBusy = busyJobId === job.job_id;
           return (
             <div key={job.job_id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -79,13 +136,77 @@ export default function MyMastersPanel() {
                   >
                     Original
                   </a>
-                  <a
-                    href={job.downloadUrl}
-                    download
-                    className="rounded-lg border border-brass/40 bg-brass/[0.15] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25"
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(job)}
+                    disabled={isBusy}
+                    className="rounded-lg border border-brass/40 bg-brass/[0.15] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
                   >
-                    Download Master
-                  </a>
+                    {isBusy ? "…" : "Download"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleShare(job.job_id)}
+                    disabled={isBusy}
+                    className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-50"
+                  >
+                    {isBusy ? "…" : "Share"}
+                  </button>
+                  {confirmDeleteId === job.job_id ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(job.job_id)}
+                        disabled={isBusy}
+                        className="rounded-lg border border-red-400/50 bg-red-500/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-200 disabled:opacity-50"
+                      >
+                        {isBusy ? "Deleting…" : "Confirm delete"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId("")}
+                        className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(job.job_id)}
+                      className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-300 hover:border-red-400/50"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              ) : null}
+
+              {shareErrors[job.job_id] ? <p className="mt-2 text-xs text-red-300">{shareErrors[job.job_id]}</p> : null}
+              {downloadErrors[job.job_id] ? <p className="mt-2 text-xs text-red-300">⚠ {downloadErrors[job.job_id]}</p> : null}
+
+              {share ? (
+                <div className="mt-3 rounded-xl border border-brass/25 bg-brass/[0.06] p-3">
+                  <p className="m-0 text-[11px] uppercase tracking-[0.1em] text-brass">Share link — no sign-in needed</p>
+                  <p className="mt-1 text-[11px] text-zinc-400">
+                    Anyone with this link can play or download just this file. It stops working once the file expires
+                    ({timeUntil(share.expires_at)}) — same as everything else here, nothing is stored longer than that.
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <input
+                      readOnly
+                      value={share.url}
+                      onFocus={(e) => e.target.select()}
+                      className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/30 px-2.5 py-2 text-[11px] text-zinc-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => copyShareLink(job.job_id, share.url)}
+                      className="shrink-0 rounded-lg border border-brass/40 bg-brass/[0.18] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25"
+                    >
+                      {copiedJobId === job.job_id ? "Copied" : "Copy"}
+                    </button>
+                  </div>
                 </div>
               ) : null}
             </div>

@@ -18,6 +18,16 @@ export const settings = {
   port: Number(process.env.PORT || 8000),
   masteringEngine: process.env.MASTERING_ENGINE || "adaptive_python",
   corsOrigins: (process.env.CORS_ORIGINS || "*").split(",").map((v) => v.trim()).filter(Boolean),
+  // The real frontend's public origin (e.g. https://auralithforge.app) —
+  // same var CORS_ORIGINS is seeded from in docker-compose.yml. Used to
+  // build share links (see /jobs/:jobId/share) that point at the
+  // frontend's own simple download page instead of straight at this API.
+  // Falls back to null, in which case the route builds the link from the
+  // incoming request's own host instead — fine for local dev, not
+  // something to rely on in production (a request can be spoofed/proxied
+  // in ways that make req.host unreliable for anything security-sensitive,
+  // though a share link's own token is what's actually authoritative here).
+  frontendOrigin: process.env.FRONTEND_ORIGIN || null,
   uploadDir: toAbs(process.env.UPLOAD_DIR, "uploads"),
   outputDir: toAbs(process.env.OUTPUT_DIR, "outputs"),
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB || 200),

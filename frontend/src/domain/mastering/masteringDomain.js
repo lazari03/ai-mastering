@@ -124,5 +124,9 @@ export async function runMasteringJob(input) {
     ...response,
     originalUrl,
     masteredUrl,
+    // Threaded through so the app shell can tell "just finished a real
+    // master" from "just finished a preview" and only auto-navigate to My
+    // Masters for the former (see AppClient.jsx).
+    preview: Boolean(input.preview),
   };
 }

@@ -38,3 +38,36 @@ export function verifyDownloadToken(token) {
   if (!uid || !Number.isFinite(exp) || Date.now() > exp) return null;
   return uid;
 }
+
+// Share links — deliberately a separate token namespace from the personal
+// ?dl= download token above: this one is meant to be handed to someone
+// who is NOT signed in at all (a bandmate, a client, a WeTransfer-style
+// "here's the file" link), and is scoped to exactly one job_id rather than
+// "any of this uid's jobs". expiresAt is capped by the caller (see
+// masteringRoutes.js's /jobs/:jobId/share) at the job's own expires_at —
+// a share link can't outlive the file it points to, since the file itself
+// is deleted (by the 48h sweep or an explicit delete) regardless of
+// whether the link would otherwise still be "valid".
+export function mintShareToken(uid, jobId, expiresAt) {
+  const exp = expiresAt.getTime();
+  const payload = `${uid}.${jobId}.${exp}`;
+  return `${Buffer.from(payload).toString("base64url")}.${sign(payload)}`;
+}
+
+// Returns { uid, jobId } on success — the caller (GET /shared/:jobId)
+// still double-checks jobId against the URL's own :jobId param, so a
+// token minted for one job can't be replayed against a different job's
+// share URL even if somehow both were guessed/leaked together.
+export function verifyShareToken(token) {
+  if (!token || typeof token !== "string" || !token.includes(".")) return null;
+  const [encodedPayload, sig] = token.split(".");
+  const payload = Buffer.from(encodedPayload, "base64url").toString("utf8");
+  const expectedSig = sign(payload);
+  if (sig?.length !== expectedSig.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) {
+    return null;
+  }
+  const [uid, jobId, expStr] = payload.split(".");
+  const exp = Number(expStr);
+  if (!uid || !jobId || !Number.isFinite(exp) || Date.now() > exp) return null;
+  return { uid, jobId };
+}

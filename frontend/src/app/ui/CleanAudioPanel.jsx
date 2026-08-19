@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import SignalVisualizer from "@/components/audio/SignalVisualizer";
 import FileDropzone from "@/components/ui/FileDropzone";
-import { postClean, toAuthedDownloadUrl } from "@/network/http/client";
+import { postClean, toAuthedDownloadUrl, downloadFileSafely } from "@/network/http/client";
 
 export default function CleanAudioPanel() {
   const [file, setFile] = useState(null);
@@ -13,6 +13,8 @@ export default function CleanAudioPanel() {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [downloadUrl, setDownloadUrl] = useState("");
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
 
   useEffect(() => {
     if (!file) {
@@ -103,13 +105,25 @@ export default function CleanAudioPanel() {
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
               <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">Cleaned Signal</p>
               <SignalVisualizer src={downloadUrl} barColor="#dfc95a" />
-              <a
-                href={downloadUrl}
-                download
-                className="mt-3 inline-flex w-full justify-center rounded-lg border border-brass/40 bg-brass/20 px-3 py-2 text-xs uppercase tracking-[0.14em] text-brass hover:bg-brass/30"
+              <button
+                type="button"
+                onClick={async () => {
+                  setDownloadError("");
+                  setDownloading(true);
+                  try {
+                    await downloadFileSafely(downloadUrl, `cleaned.${result.download_url?.split(".").pop() || "mp3"}`);
+                  } catch (err) {
+                    setDownloadError(err?.message || "Download failed");
+                  } finally {
+                    setDownloading(false);
+                  }
+                }}
+                disabled={downloading}
+                className="mt-3 inline-flex w-full justify-center rounded-lg border border-brass/40 bg-brass/20 px-3 py-2 text-xs uppercase tracking-[0.14em] text-brass hover:bg-brass/30 disabled:opacity-50"
               >
-                Download Cleaned Audio
-              </a>
+                {downloading ? "Downloading…" : "Download Cleaned Audio"}
+              </button>
+              {downloadError ? <p className="mt-2 text-xs text-red-300">⚠ {downloadError}</p> : null}
             </div>
           </div>
         ) : null}

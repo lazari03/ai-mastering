@@ -128,6 +128,24 @@ def get_original(job_id: str):
     return FileResponse(matches[0])
 
 
+@router.delete("/files/{job_id}")
+def delete_job_files(job_id: str) -> dict:
+    # Every file this job ever produced (input, decoded intermediates,
+    # mastered output in every format, codec-preview renders) is named
+    # "{job_id}_..." in either upload_dir or output_dir — same convention
+    # storage_cleanup.py's automatic 48h sweep relies on, just triggered
+    # immediately instead of waiting for the age-based sweep. No ownership
+    # check here — Node's DELETE /jobs/:jobId already verified the
+    # requester owns this job_id before ever calling this.
+    removed = 0
+    for directory in (settings.upload_dir, settings.output_dir):
+        for path in directory.glob(f"{job_id}_*"):
+            if path.is_file():
+                path.unlink(missing_ok=True)
+                removed += 1
+    return {"removed": removed}
+
+
 @router.post("/codec-preview", response_model=CodecPreviewResponse)
 def codec_preview(job_id: str = Form(...), codec: str = Form("mp3_128")) -> dict:
     if codec not in SUPPORTED_CODECS:

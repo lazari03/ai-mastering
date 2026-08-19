@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -15,6 +15,7 @@ import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
 import { IconClean, IconMaster, IconChords, IconMyMasters, IconHelp, IconSettings, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
 import { useAuthStore } from "@/store/authStore";
+import { useMasteringStore } from "@/store/masteringStore";
 import { useLanguage } from "@/lib/i18n";
 
 const TABS = [
@@ -56,6 +57,20 @@ export default function AppClient() {
       router.replace("/login");
     }
   }, [loading, user, router]);
+
+  // Hitting "Master Track" (a real render, not the free 30s preview) jumps
+  // straight to My Masters once it lands — that's where Download/Share/
+  // Delete live, so there's no reason to make the user go find it
+  // themselves. Previews stay on the Master tab (the aside there is
+  // already the right place to A/B a preview against the original).
+  const masteringResult = useMasteringStore((s) => s.result);
+  const lastAutoNavJobId = useRef(null);
+  useEffect(() => {
+    if (!masteringResult?.job_id || masteringResult.preview) return;
+    if (masteringResult.job_id === lastAutoNavJobId.current) return;
+    lastAutoNavJobId.current = masteringResult.job_id;
+    setActiveTab("myMasters");
+  }, [masteringResult]);
 
   // While Firebase's async session check is still running, or once it's
   // resolved to "not signed in" and the redirect above is about to fire —

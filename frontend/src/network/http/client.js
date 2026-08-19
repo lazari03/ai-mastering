@@ -142,6 +142,20 @@ export async function getJobs() {
   return request("/jobs");
 }
 
+export async function deleteJobRecord(jobId) {
+  return request(`/jobs/${jobId}`, { method: "DELETE" });
+}
+
+export async function postShareJob(jobId) {
+  return request(`/jobs/${jobId}/share`, { method: "POST" });
+}
+
+// Public — no signed-in user needed (or expected). Backs the simple
+// /shared/[jobId] page a share link points recipients at.
+export async function getSharedJobInfo(jobId, token) {
+  return request(`/shared/${jobId}/info?token=${encodeURIComponent(token)}`);
+}
+
 export async function deleteAccountData() {
   return request("/account", { method: "DELETE" });
 }
@@ -219,4 +233,40 @@ export async function toAuthedDownloadUrl(path) {
   const token = await getDownloadToken();
   const separator = path.includes("?") ? "&" : "?";
   return `${API_BASE}${path}${separator}dl=${encodeURIComponent(token)}`;
+}
+
+// A plain <a href download> saves whatever bytes come back no matter what
+// they actually are — if the request 401s/404s/500s, the browser happily
+// "downloads" the error page's HTML/JSON body with an audio-looking
+// filename instead of failing visibly. This fetches first, checks the
+// response actually succeeded and isn't HTML, and only then saves it —
+// throwing a real error otherwise instead of silently handing the user a
+// broken file that looks like it worked.
+export async function downloadFileSafely(url, filename) {
+  let response;
+  try {
+    response = await fetch(url);
+  } catch (error) {
+    throw new Error(`Could not reach the download — ${error.message}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!response.ok || contentType.includes("text/html")) {
+    let detail = `Download failed (HTTP ${response.status})`;
+    if (contentType.includes("application/json")) {
+      const payload = await response.json().catch(() => null);
+      if (payload?.detail) detail = payload.detail;
+    }
+    throw new Error(detail);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename || "";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
 }

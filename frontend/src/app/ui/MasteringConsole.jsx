@@ -7,7 +7,7 @@ import ProParamsPanel from "@/components/audio/ProParamsPanel";
 import SignalVisualizer from "@/components/audio/SignalVisualizer";
 import FileDropzone from "@/components/ui/FileDropzone";
 import { previewCodec } from "@/domain/mastering/masteringDomain";
-import { getEntitlements } from "@/network/http/client";
+import { getEntitlements, downloadFileSafely } from "@/network/http/client";
 import { useMasteringStore } from "@/store/masteringStore";
 
 const CODEC_OPTIONS = [
@@ -36,6 +36,8 @@ export default function MasteringConsole() {
   const [codecPreview, setCodecPreview] = useState(null);
   const [codecPreviewLoading, setCodecPreviewLoading] = useState(false);
   const [codecPreviewError, setCodecPreviewError] = useState("");
+  const [downloadError, setDownloadError] = useState("");
+  const [downloading, setDownloading] = useState(false);
   const [entitlements, setEntitlements] = useState(null);
 
   const {
@@ -728,13 +730,25 @@ export default function MasteringConsole() {
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
               <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">Mastered Signal</p>
               <SignalVisualizer src={result.masteredUrl} barColor="#dfc95a" gainDb={result.ab_gain_match?.after_gain_db || 0} />
-              <a
-                href={result.masteredUrl}
-                download
-                className="mt-3 inline-flex w-full justify-center rounded-lg border border-brass/40 bg-brass/[0.18] px-3 py-2.5 text-xs uppercase tracking-[0.1em] text-brass hover:bg-brass/25"
+              <button
+                type="button"
+                onClick={async () => {
+                  setDownloadError("");
+                  setDownloading(true);
+                  try {
+                    await downloadFileSafely(result.masteredUrl, `mastered_${result.job_id}.${result.download_url?.split(".").pop() || "wav"}`);
+                  } catch (err) {
+                    setDownloadError(err?.message || "Download failed");
+                  } finally {
+                    setDownloading(false);
+                  }
+                }}
+                disabled={downloading}
+                className="mt-3 inline-flex w-full justify-center rounded-lg border border-brass/40 bg-brass/[0.18] px-3 py-2.5 text-xs uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
               >
-                Download Master
-              </a>
+                {downloading ? "Downloading…" : "Download Master"}
+              </button>
+              {downloadError ? <p className="mt-2 text-xs text-red-300">⚠ {downloadError}</p> : null}
             </div>
 
             <div className="rounded-xl border border-white/10 bg-black/25 p-3">

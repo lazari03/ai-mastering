@@ -6,17 +6,17 @@ import multer from "multer";
 
 import { GENRES, STYLES, TAGS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
-import { processMastering, execFileAsync } from "../services/masteringService.js";
+import { processMastering, execFileAsync, deleteJobFiles } from "../services/masteringService.js";
 import { analyzeChords, cleanAudio, previewCodec } from "../services/chordCleanService.js";
 import { listMixPresets } from "../services/presetsService.js";
 import { importCustomPreset, deleteCustomPreset } from "../services/customPresetsService.js";
 import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPresetsService.js";
 import { saveProfile, getProfile, deleteAllUserData } from "../services/profileService.js";
-import { recordJob, listJobs, ownsJob } from "../services/jobsService.js";
+import { recordJob, listJobs, ownsJob, getJob, deleteJob } from "../services/jobsService.js";
 import { createCheckoutUrl, createPortalUrl, getSubscriptionStatus, getPlan } from "../services/polarService.js";
 import { getCredits, consumeCredit, getFreeQuotaStatus, consumeFreeQuota } from "../services/entitlementsService.js";
 import { getAuth } from "../config/firebase.js";
-import { mintDownloadToken } from "../services/downloadTokenService.js";
+import { mintDownloadToken, mintShareToken, verifyShareToken } from "../services/downloadTokenService.js";
 
 const router = express.Router();
 
@@ -92,6 +92,48 @@ router.get("/jobs", async (req, res) => {
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to load job history" });
   }
+});
+
+// Deletes a job's actual files (not just the Firestore record) right now,
+// rather than waiting on the automatic 48h sweep — the "Delete" button in
+// My Masters. Also invalidates any share link for this job implicitly:
+// the link's token still verifies fine, but the file it points to is gone,
+// so /shared/:jobId 404s the moment this finishes — no separate
+// revocation list needed.
+router.delete("/jobs/:jobId", async (req, res) => {
+  if (!(await ownsJob(req.user.uid, req.params.jobId))) {
+    return res.status(404).json({ detail: "Job not found" });
+  }
+  await deleteJobFiles(req.params.jobId);
+  await deleteJob(req.user.uid, req.params.jobId);
+  return res.json({ ok: true });
+});
+
+// Mints a public, no-login-required link to exactly one job's mastered
+// file — "the share button," scoped tighter than a WeTransfer link in one
+// way (only ever this one file, never a folder) and looser in another
+// (no separate delete-the-link step; it just stops working once the file
+// itself expires or is deleted, same as everything else in this app's
+// 48h-retention model). expiresAt is capped at the job's own expiry so a
+// share link can never promise access longer than the file will exist.
+router.post("/jobs/:jobId/share", async (req, res) => {
+  const job = await getJob(req.user.uid, req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ detail: "Job not found" });
+  }
+  const expiresAt = job.expires_at?.toDate ? job.expires_at.toDate() : new Date(job.expires_at);
+  if (!expiresAt || expiresAt.getTime() <= Date.now()) {
+    return res.status(410).json({ detail: "This master has already expired and can't be shared anymore." });
+  }
+  const token = mintShareToken(req.user.uid, req.params.jobId, expiresAt);
+  // Points at the frontend's own simple download page (SharedMasterClient),
+  // not straight at this API — a plain file response has no branding, no
+  // "invalid/expired" explanation, nothing but a bare download. The page
+  // calls GET /shared/:jobId/info with the same token to render itself,
+  // then links to the actual file (this API's /shared/:jobId) to download it.
+  const base = settings.frontendOrigin || `${req.protocol}://${req.get("host")}`;
+  const url = `${base}/shared/${req.params.jobId}?token=${encodeURIComponent(token)}`;
+  return res.json({ url, expires_at: expiresAt.toISOString() });
 });
 
 // Wipes everything this app stored in Firestore for the caller (profile,
@@ -344,9 +386,7 @@ router.post("/master", masterUpload, async (req, res) => {
     // Recorded regardless of preview — ownsJob() needs this to exist for
     // the download routes to work at all, even for a preview. listJobs()
     // filters preview:true back out, so "My Masters" stays uncluttered.
-    // Best-effort — a Firestore hiccup here shouldn't fail a render that
-    // already succeeded and already has a real file waiting for the user.
-    recordJob(req.user.uid, {
+    const recordJobPromise = recordJob(req.user.uid, {
       job_id: result.job_id,
       genre: req.body.genre || null,
       style: req.body.style || "modern",
@@ -356,7 +396,25 @@ router.post("/master", masterUpload, async (req, res) => {
       before_lufs: result.before_lufs,
       after_lufs: result.after_lufs,
       preview,
-    }).catch((error) => console.error("Failed to record job history:", error.message));
+    });
+    if (preview) {
+      // Best-effort — a Firestore hiccup here shouldn't fail a preview
+      // response that already succeeded and already has a real file
+      // waiting for the user.
+      recordJobPromise.catch((error) => console.error("Failed to record job history:", error.message));
+    } else {
+      // Awaited for a real master — the frontend auto-navigates straight
+      // to My Masters on this response (see AppClient.jsx), so the
+      // Firestore write needs to have actually landed by the time that
+      // happens, not still be in flight. Still best-effort in the sense
+      // that a failure here doesn't fail the response — the render
+      // already succeeded and the file already exists — just logged.
+      try {
+        await recordJobPromise;
+      } catch (error) {
+        console.error("Failed to record job history:", error.message);
+      }
+    }
 
     return res.json({ ...result, preview });
   } catch (error) {
@@ -491,6 +549,55 @@ router.get("/original/:jobId", async (req, res) => {
     return res.sendFile(path.join(settings.uploadDir, localMatches[0]));
   }
   return proxyFromPython(`/original/${req.params.jobId}`, res, "Original not found");
+});
+
+// Public metadata for the frontend's simple /shared/:jobId page — just
+// enough to render "here's the file, want it?" without exposing anything
+// else about the account that shared it. Same public/token-only auth as
+// the file route right below.
+router.get("/shared/:jobId/info", async (req, res) => {
+  const claim = verifyShareToken(req.query.token);
+  if (!claim || claim.jobId !== req.params.jobId) {
+    return res.status(404).json({ detail: "This link is invalid or has expired." });
+  }
+  const job = await getJob(claim.uid, req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ detail: "This link is invalid or has expired." });
+  }
+  const ext = job.output_format || "wav";
+  return res.json({
+    filename: job.original_filename || `mastered_${req.params.jobId}.${ext}`,
+    genre: job.genre || null,
+    tier: job.tier || null,
+    before_lufs: job.before_lufs ?? null,
+    after_lufs: job.after_lufs ?? null,
+    expires_at: job.expires_at?.toDate ? job.expires_at.toDate().toISOString() : job.expires_at || null,
+    download_url: `${req.protocol}://${req.get("host")}/shared/${req.params.jobId}?token=${encodeURIComponent(req.query.token)}`,
+  });
+});
+
+// Public — deliberately NOT behind requireAuth (see server.js's auth gate,
+// which exempts /shared/ the same way it exempts /health and /webhooks/).
+// Authorization here is the ?token= itself, not a signed-in session: this
+// is the link a user hands to someone with no account at all. verifyShareToken
+// both checks the signature/expiry AND that the token's embedded jobId
+// matches this URL's :jobId — a token can't be replayed against a
+// different job's share link.
+router.get("/shared/:jobId", async (req, res) => {
+  const claim = verifyShareToken(req.query.token);
+  if (!claim || claim.jobId !== req.params.jobId) {
+    return res.status(404).json({ detail: "This link is invalid or has expired." });
+  }
+  const job = await getJob(claim.uid, req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ detail: "This link is invalid or has expired." });
+  }
+  const ext = job.output_format || "wav";
+  const localPath = path.join(settings.outputDir, `${req.params.jobId}_mastered.${ext}`);
+  if (fs.existsSync(localPath)) {
+    return res.download(localPath, `mastered_${req.params.jobId}.${ext}`);
+  }
+  return proxyFromPython(`/download/${req.params.jobId}.${ext}`, res, "This link is invalid or has expired.");
 });
 
 export default router;

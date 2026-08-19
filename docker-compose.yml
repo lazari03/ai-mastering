@@ -35,6 +35,10 @@ services:
       # live. Leaving this at "*" in production only warns, doesn't block,
       # but don't ship it that way.
       CORS_ORIGINS: ${FRONTEND_ORIGIN:-*}
+      # Same origin, read directly (not just as CORS_ORIGINS) so share
+      # links can point at the frontend's own /shared/:jobId page — see
+      # settings.js:frontendOrigin.
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
       ADMIN_API_KEY: ${ADMIN_API_KEY}
       # Inline JSON is simpler in Docker than mounting the service account
       # file — no volume needed. Set this in a .env next to this compose
