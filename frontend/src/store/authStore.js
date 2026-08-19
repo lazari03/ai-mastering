@@ -16,7 +16,7 @@ import {
 import { getFirebaseAuth, getGoogleProvider, isFirebaseConfigured } from "@/lib/firebase";
 import { postProfile, deleteAccountData, postSignOutEverywhere } from "@/network/http/client";
 
-const NOT_CONFIGURED_MESSAGE = "Sign-in isn't set up yet — see FIREBASE_SETUP.md.";
+const NOT_CONFIGURED_MESSAGE = "Site is under maintenance";
 
 // Bump when Terms/Privacy content materially changes — lets us tell, from
 // stored data alone, which users accepted an older version.

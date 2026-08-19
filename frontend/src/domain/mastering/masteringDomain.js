@@ -7,8 +7,7 @@ import {
   postImportPreset,
   deleteCustomPreset,
   postCodecPreview,
-  getOriginalUrl,
-  toAbsoluteUrl,
+  toAuthedDownloadUrl,
 } from "@/network/http/client";
 
 const TWEAK_KEYS = ["low_end", "punch", "presence", "brightness", "warmth", "width", "loudness"];
@@ -80,7 +79,7 @@ export async function previewCodec(jobId, codec) {
   const response = await postCodecPreview(jobId, codec);
   return {
     ...response,
-    previewUrl: toAbsoluteUrl(response.preview_download_url),
+    previewUrl: await toAuthedDownloadUrl(response.preview_download_url),
   };
 }
 
@@ -116,9 +115,14 @@ export async function runMasteringJob(input) {
 
   const response = await postMaster(formData);
 
+  const [originalUrl, masteredUrl] = await Promise.all([
+    toAuthedDownloadUrl(`/original/${response.job_id}`),
+    toAuthedDownloadUrl(response.download_url),
+  ]);
+
   return {
     ...response,
-    originalUrl: getOriginalUrl(response.job_id),
-    masteredUrl: toAbsoluteUrl(response.download_url),
+    originalUrl,
+    masteredUrl,
   };
 }

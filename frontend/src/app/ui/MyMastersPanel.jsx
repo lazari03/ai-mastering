@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { getJobs, getOriginalUrl, toAbsoluteUrl } from "@/network/http/client";
+import { getJobs, toAuthedDownloadUrl } from "@/network/http/client";
 
 function timeUntil(iso) {
   if (!iso) return null;
@@ -19,7 +19,19 @@ export default function MyMastersPanel() {
 
   useEffect(() => {
     getJobs()
-      .then(setJobs)
+      .then(async (list) => {
+        // Built once per job here (not per-render, and not via a raw
+        // toAbsoluteUrl) — these routes need the ?dl= token to work at all
+        // from a plain <a href>, see toAuthedDownloadUrl's own comment.
+        const enriched = await Promise.all(
+          list.map(async (job) => ({
+            ...job,
+            originalUrl: await toAuthedDownloadUrl(`/original/${job.job_id}`),
+            downloadUrl: await toAuthedDownloadUrl(`/download/${job.job_id}.${job.output_format || "wav"}`),
+          }))
+        );
+        setJobs(enriched);
+      })
       .catch((err) => setError(err?.message || "Failed to load history"));
   }, []);
 
@@ -62,13 +74,13 @@ export default function MyMastersPanel() {
               {!expired ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <a
-                    href={getOriginalUrl(job.job_id)}
+                    href={job.originalUrl}
                     className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30"
                   >
                     Original
                   </a>
                   <a
-                    href={toAbsoluteUrl(`/download/${job.job_id}.${job.output_format || "wav"}`)}
+                    href={job.downloadUrl}
                     download
                     className="rounded-lg border border-brass/40 bg-brass/[0.15] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25"
                   >

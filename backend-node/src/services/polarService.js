@@ -34,10 +34,9 @@ function userDoc(uid) {
   return getFirestore().collection("users").doc(uid);
 }
 
-// productKey is one of settings.polarProducts' keys ("subscription",
-// "masterStandard", "masterProfessional", "chords", "stemAddon") — the
-// route layer resolves the human-facing item name to this, this resolves
-// it to an actual Polar product ID.
+// productKey is one of settings.polarProducts' keys ("planStudio",
+// "planPro", "chords") — the route layer resolves the human-facing item
+// name to this, this resolves it to an actual Polar product ID.
 export async function createCheckoutUrl(uid, email, productKey, successUrl) {
   const productId = settings.polarProducts[productKey];
   if (!productId) {
@@ -74,6 +73,21 @@ export async function getSubscriptionStatus(uid) {
 export async function isSubscriptionActive(uid) {
   const status = await getSubscriptionStatus(uid);
   return status.active;
+}
+
+// "free" | "studio" | "pro" — the single source of truth every gating
+// check (masteringRoutes.js) reads instead of juggling credit balances.
+// Derived from which Polar product the active subscription is actually
+// for, not just whether one exists — an active subscription against an
+// unrecognized product ID (shouldn't happen outside manual Polar dashboard
+// fiddling) falls back to "free" rather than granting access by accident.
+export async function getPlan(uid) {
+  const doc = await userDoc(uid).get();
+  const sub = doc.data()?.subscription;
+  if (!sub || !ACTIVE_STATUSES.has(sub.status)) return "free";
+  if (sub.productId && sub.productId === settings.polarProducts.planPro) return "pro";
+  if (sub.productId && sub.productId === settings.polarProducts.planStudio) return "studio";
+  return "free";
 }
 
 // Verifies the signature (throws WebhookVerificationError on failure —

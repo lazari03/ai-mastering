@@ -1,4 +1,5 @@
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 
@@ -28,6 +29,15 @@ export const settings = {
   // older than this many days, requireAuth rejects the token and the
   // frontend force-signs-out. See requireAuth.js.
   sessionMaxAgeDays: Number(process.env.SESSION_MAX_AGE_DAYS || 14),
+  // Signs the short-lived download tokens that let <a href download>/
+  // <audio src>/direct navigation reach the auth-gated download routes
+  // (see services/downloadTokenService.js) — neither can attach an
+  // Authorization header the way a real fetch() call can. Falls back to a
+  // random secret generated at boot so local dev works with zero setup;
+  // set DOWNLOAD_TOKEN_SECRET for real in production so tokens survive a
+  // restart (an unset one invalidates every outstanding link on redeploy —
+  // not a security problem, just an avoidable rough edge).
+  downloadTokenSecret: process.env.DOWNLOAD_TOKEN_SECRET || crypto.randomBytes(32).toString("hex"),
   // Gates the admin-only built-in preset endpoints (see
   // services/builtinPresetsService.js) — unset means those routes 501
   // rather than silently accepting an unauthenticated request.
@@ -48,20 +58,22 @@ export const settings = {
   // see services/customPresetsService.js — not a local file.
 
   // Polar (Merchant of Record). See services/polarService.js and
-  // PRICING.md for the plan this backs: a €19/mo All-Access subscription
-  // (unlimited everything paid) plus four à la carte one-time products for
-  // people who don't want a subscription. Each maps to one Polar product —
-  // unset product IDs just mean that specific item can't be purchased yet
-  // (checkout route 400s with a clear message), not a crash; the free
-  // tier (Clean Audio, mastering previews) works with none of this set.
+  // PRICING.md for the plan this backs: 3 plans, not a subscription plus a
+  // pile of à la carte items —
+  //   Free    — 3 Standard masters/month, no Professional, no stems
+  //   Studio  — unlimited Standard + Professional masters, stems included
+  //   All-Access — Studio + unlimited chord detection
+  // Chord detection stays a small one-time credit for Free/Studio users
+  // who don't want to jump straight to All-Access. Unset product IDs just
+  // mean that specific item can't be purchased yet (checkout route 400s
+  // with a clear message), not a crash; the free tier (Clean Audio,
+  // mastering previews, 3 masters/month) works with none of this set.
   polarAccessToken: process.env.POLAR_ACCESS_TOKEN || null,
   polarWebhookSecret: process.env.POLAR_WEBHOOK_SECRET || null,
   polarServer: process.env.POLAR_ENVIRONMENT === "production" ? "production" : "sandbox",
   polarProducts: {
-    subscription: process.env.POLAR_SUBSCRIPTION_PRODUCT_ID || null,
-    masterStandard: process.env.POLAR_MASTER_STANDARD_PRODUCT_ID || null,
-    masterProfessional: process.env.POLAR_MASTER_PROFESSIONAL_PRODUCT_ID || null,
+    planStudio: process.env.POLAR_PLAN_STUDIO_PRODUCT_ID || null,
+    planPro: process.env.POLAR_PLAN_PRO_PRODUCT_ID || null,
     chords: process.env.POLAR_CHORDS_PRODUCT_ID || null,
-    stemAddon: process.env.POLAR_STEM_ADDON_PRODUCT_ID || null,
   },
 };

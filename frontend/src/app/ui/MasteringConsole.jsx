@@ -193,36 +193,33 @@ export default function MasteringConsole() {
   const builtInPresets = useMemo(() => presets.filter((preset) => !preset.custom), [presets]);
   const savedArtistPresets = useMemo(() => presets.filter((preset) => preset.custom), [presets]);
 
-  const masterPriceLabel = tier === "professional" ? "€4.99" : "€2.99";
-
-  // Reflects real entitlement state so the button doesn't just discover
-  // "you can't afford this" via a 402 after the render already ran.
-  const subscribed = Boolean(entitlements?.subscription?.active);
-  const creditKey = tier === "professional" ? "masterProfessional" : "masterStandard";
-  const hasCredit = Boolean(entitlements?.credits?.[creditKey] > 0);
+  // Reflects real entitlement state so the button/controls don't just
+  // discover "you can't do this" via a 402 after the render already ran.
+  // Three plans (see lib/pricing.js): Free (3 Standard masters/month, no
+  // Professional tier, no stems), Studio+ (unlimited Standard +
+  // Professional mastering, stems included). Disabled in the UI (not just
+  // hidden) so a Free user can never toggle these client-side; the backend
+  // enforces the exact same plan check independently either way (see
+  // masteringRoutes.js's /master gating).
+  const plan = entitlements?.plan || "free";
+  const planUnlocked = plan === "studio" || plan === "pro";
   const canUseFreeQuota = tier === "standard" && !useStemSeparation && (entitlements?.freeQuota?.remaining || 0) > 0;
-  const masterUnlocked = subscribed || hasCredit || canUseFreeQuota;
+  const masterUnlocked = planUnlocked || canUseFreeQuota;
   const masterButtonLabel = isSubmitting
     ? "Mastering…"
-    : subscribed
-      ? "Master Track — Included"
+    : planUnlocked
+      ? "Master Track — Unlimited"
       : canUseFreeQuota
         ? `Master Track — Free (${entitlements.freeQuota.remaining} left)`
-        : hasCredit
-          ? "Master Track — Use credit"
-          : `Master Track — ${masterPriceLabel}`;
+        : "Master Track — Upgrade to Studio";
 
-  // Stem separation: paid-only, real entitlement — a purchased add-on
-  // credit or an active All-Access subscription. Disabled in the UI (not
-  // just hidden) so a free/lower-tier user can never toggle it on client-
-  // side; the backend enforces the same check independently either way
-  // (see masteringRoutes.js's needsStemCredit gate).
-  const stemUnlocked = Boolean(entitlements) && (subscribed || Boolean(entitlements?.credits?.stemAddon > 0));
+  const professionalUnlocked = planUnlocked;
+  const stemUnlocked = planUnlocked;
   useEffect(() => {
-    if (entitlements && !stemUnlocked && useStemSeparation) {
-      setUseStemSeparation(false);
-    }
-  }, [entitlements, stemUnlocked]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!entitlements) return;
+    if (!stemUnlocked && useStemSeparation) setUseStemSeparation(false);
+    if (!professionalUnlocked && tier === "professional") setTier("standard");
+  }, [entitlements, stemUnlocked, professionalUnlocked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canGoNextFromAudio = Boolean(file);
   const canGoNextFromMode = referenceMode || mode === "pro" || Boolean(selectedGenre || selectedPreset);
@@ -346,7 +343,7 @@ export default function MasteringConsole() {
                   </label>
                   {!stemUnlocked ? (
                     <p className="mt-1.5 text-[11px] text-zinc-500">
-                      Included with All-Access, or buy the add-on in Settings → Billing.
+                      Included with the Studio plan or higher — upgrade in Settings → Billing.
                     </p>
                   ) : null}
                 </div>
@@ -400,9 +397,14 @@ export default function MasteringConsole() {
                         onChange={(event) => setTier(event.target.value)}
                         className="w-full rounded-[10px] border border-white/15 bg-black/25 p-2.5 text-[13px] text-white"
                       >
-                        <option value="standard">Standard (free)</option>
-                        <option value="professional">Professional (true-peak limiting)</option>
+                        <option value="standard">Standard</option>
+                        <option value="professional" disabled={!professionalUnlocked}>
+                          Professional (true-peak limiting){!professionalUnlocked ? " — Studio plan" : ""}
+                        </option>
                       </select>
+                      {!professionalUnlocked ? (
+                        <span className="mt-1 block text-[10px] text-zinc-500">Needs the Studio plan or higher.</span>
+                      ) : null}
                     </label>
                   </div>
                   {selectedPresetMeta ? (
@@ -464,7 +466,7 @@ export default function MasteringConsole() {
                     </label>
                     {!stemUnlocked ? (
                       <p className="mt-1.5 text-[11px] text-zinc-500">
-                        Included with All-Access, or buy the add-on in Settings → Billing.
+                        Included with the Studio plan or higher — upgrade in Settings → Billing.
                       </p>
                     ) : null}
                   </div>
@@ -621,8 +623,8 @@ export default function MasteringConsole() {
             </div>
             <p className="mt-2 text-[11px] text-zinc-500">
               Preview renders the first 30s with the Standard engine, free and unlimited. Master Track renders the
-              full file{useStemSeparation ? " with stem separation (+€1.99)" : ""} — one-time credit, or included
-              with an All-Access subscription. Full result and A/B comparison appear on the right once it&apos;s done.
+              full file — 3 free Standard masters/month, then unlimited mastering{useStemSeparation ? " and stems" : ""}{" "}
+              on the Studio plan or higher. Full result and A/B comparison appear on the right once it&apos;s done.
             </p>
           </div>
         ) : null}

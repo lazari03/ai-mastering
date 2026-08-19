@@ -113,8 +113,8 @@ const DICT = {
   },
   "faq.q2": { en: "What's the difference between Standard and Professional?", sq: "Cili është ndryshimi midis Standard dhe Professional?" },
   "faq.a2": {
-    en: "Standard applies fast, safe adaptive mastering. Professional adds oversampled true-peak limiting, finer dynamic EQ, and tempo-aware compression timing for release-grade results — both are paid full-length renders (€2.99 / €4.99, or unlimited with All-Access). Free previews use the Standard engine.",
-    sq: "Standard aplikon masterizim adaptiv të shpejtë dhe të sigurt. Professional shton kufizim true-peak me oversampling, EQ dinamik më të hollësishëm, dhe kohëzgjatje kompresimi të ndjeshme ndaj tempos — të dyja janë render me pagesë (€2.99 / €4.99, ose të pakufizuara me All-Access). Parapamjet falas përdorin motorin Standard.",
+    en: "Standard applies fast, safe adaptive mastering — 3 full-length renders a month are free. Professional adds oversampled true-peak limiting, finer dynamic EQ, and tempo-aware compression timing for release-grade results, unlocked unlimited (along with unlimited Standard) on the Studio plan or higher. Free previews use the Standard engine.",
+    sq: "Standard aplikon masterizim adaptiv të shpejtë dhe të sigurt — 3 renderë të plotë në muaj janë falas. Professional shton kufizim true-peak me oversampling, EQ dinamik më të hollësishëm, dhe kohëzgjatje kompresimi të ndjeshme ndaj tempos, i pakufizuar (bashkë me Standard të pakufizuar) me planin Studio ose më lart. Parapamjet falas përdorin motorin Standard.",
   },
   "faq.q3": { en: "Can I save an artist's exact mastering chain?", sq: "Mund ta ruaj zinxhirin e saktë të masterizimit të një artisti?" },
   "faq.a3": {
@@ -128,8 +128,8 @@ const DICT = {
   },
   "faq.q5": { en: "Is stem separation available?", sq: "A ofrohet ndarja e instrumenteve (stems)?" },
   "faq.a5": {
-    en: "Yes — enable stem-aware processing to master vocals, drums, bass, and other elements with independent, more targeted control. It's a €1.99 add-on on top of a master credit, or included free with All-Access.",
-    sq: "Po — aktivizo përpunimin me ndarje instrumentesh për të masterizuar vokalet, daullet, basin, dhe elementë të tjerë me kontroll të pavarur. Është një shtesë €1.99 mbi një kredit masterizimi, ose e përfshirë falas me All-Access.",
+    en: "Yes — enable stem-aware processing to master vocals, drums, bass, and other elements with independent, more targeted control. It's included free with the Studio plan or higher — not available on Free.",
+    sq: "Po — aktivizo përpunimin me ndarje instrumentesh për të masterizuar vokalet, daullet, basin, dhe elementë të tjerë me kontroll të pavarur. Është e përfshirë falas me planin Studio ose më lart — nuk ofrohet në planin Free.",
   },
   "faq.q6": { en: "Can I hear how it'll sound on Spotify or Instagram before downloading?", sq: "Mund të dëgjoj si do tingëllojë në Spotify apo Instagram para se ta shkarkoj?" },
   "faq.a6": {
@@ -143,8 +143,8 @@ const DICT = {
   },
   "faq.q8": { en: "What's actually free?", sq: "Çfarë është vërtet falas?" },
   "faq.a8": {
-    en: "Clean Audio (unlimited) and 30-second mastering previews (unlimited, Standard engine). Full-length masters, stem separation, and chord detection are paid — buy what you need one at a time, or get everything unlimited with the €19/mo All-Access subscription.",
-    sq: "Clean Audio (i pakufizuar) dhe parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard). Masterat e plotë, ndarja e instrumenteve, dhe zbulimi i akordeve janë me pagesë — bli çfarë të duhet një nga një, ose merr gjithçka të pakufizuar me abonimin All-Access €19/muaj.",
+    en: "Clean Audio (unlimited), 30-second mastering previews (unlimited, Standard engine), and 3 full-length Standard masters a month, forever, on the Free plan. Unlimited mastering and stem separation need Studio (€9.99/mo); unlimited chord detection needs All-Access (€19.99/mo).",
+    sq: "Clean Audio (i pakufizuar), parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard), dhe 3 masterë të plotë Standard në muaj, përgjithmonë, në planin Free. Masterizimi i pakufizuar dhe ndarja e instrumenteve kërkojnë Studio (€9.99/muaj); zbulimi i pakufizuar i akordeve kërkon All-Access (€19.99/muaj).",
   },
 
   "contact.eyebrow": { en: "Contact", sq: "Kontakt" },
@@ -190,33 +190,18 @@ const DICT = {
   "gallery.img3.caption": { en: "Built for people who mix for a living", sq: "Ndërtuar për njerëz që miksojnë për jetesë" },
 
   "pricing.eyebrow": { en: "Pricing", sq: "Çmimet" },
-  "pricing.title": { en: "Affordable, no confusing tiers", sq: "Të përballueshme, pa nivele konfuze" },
+  "pricing.title": { en: "Three plans. No confusing add-ons.", sq: "Tre plane. Pa shtesa konfuze." },
   "pricing.subtitle": {
-    en: "Clean Audio and previews are always free. Pay per use, or go unlimited with one subscription.",
-    sq: "Clean Audio dhe parapamjet janë gjithmonë falas. Paguaj sipas përdorimit, ose merr të pakufizuar me një abonim.",
-  },
-  "pricing.subLabel": { en: "All-Access subscription", sq: "Abonimi All-Access" },
-  "pricing.subBlurb": {
-    en: "One price. Everything unlocked. Built for anyone mastering more than a couple of tracks a month.",
-    sq: "Një çmim. Gjithçka e zhbllokuar. Ndërtuar për këdo që masterizon më shumë se pak këngë në muaj.",
+    en: "Start free with 3 full masters a month. Upgrade only when you actually need more.",
+    sq: "Fillo falas me 3 masterë të plotë në muaj. Përmirëso vetëm kur të nevojitet më shumë.",
   },
   "pricing.badge": { en: "Best Value", sq: "Vlera më e Mirë" },
-  "pricing.subCta": { en: "Get All-Access", sq: "Merr All-Access" },
+  "pricing.freeCta": { en: "Start Free", sq: "Fillo Falas" },
+  "pricing.subCta": { en: "Get Started", sq: "Fillo Tani" },
   "pricing.subReassurance": { en: "Cancel anytime, no questions asked.", sq: "Anulo kur të duash, pa pyetje." },
-  "pricing.feat1": { en: "Unlimited Standard mastering", sq: "Masterizim i pakufizuar Standard" },
-  "pricing.feat2": { en: "Unlimited Professional mastering", sq: "Masterizim i pakufizuar Professional" },
-  "pricing.feat3": { en: "Unlimited chord & key detection", sq: "Zbulim i pakufizuar akordesh & tonaliteti" },
-  "pricing.feat4": { en: "Stem separation included, no extra fee", sq: "Ndarje instrumentesh e përfshirë, pa tarifë shtesë" },
-  "pricing.feat5": { en: "Priority support", sq: "Asistencë prioritare" },
-  "pricing.alaCarteLabel": { en: "Or pay as you go — no subscription", sq: "Ose paguaj sipas përdorimit — pa abonim" },
-  "pricing.breakeven": {
-    en: "4 Professional masters (or 7 Standard) already cost more separately than a month of All-Access — it pays for itself fast once you're mastering regularly.",
-    sq: "4 masterë Professional (ose 7 Standard) kushtojnë tashmë më shumë veç e veç sesa një muaj All-Access — shlyhet shpejt kur masterizon rregullisht.",
-  },
-  "pricing.freeLabel": { en: "Always free", sq: "Gjithmonë falas" },
-  "pricing.freeBlurb": {
-    en: "Clean Audio (unlimited) and 30-second mastering previews (unlimited, Standard engine) never require payment.",
-    sq: "Clean Audio (i pakufizuar) dhe parapamjet 30-sekondëshe të masterizimit (të pakufizuara, motori Standard) nuk kërkojnë kurrë pagesë.",
+  "pricing.chordsNote": {
+    en: "unlimited on All-Access.",
+    sq: "e pakufizuar me All-Access.",
   },
 
   "app.tab.clean": { en: "Clean Audio", sq: "Pastro Audio" },

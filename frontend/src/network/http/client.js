@@ -190,3 +190,33 @@ export function getOriginalUrl(jobId) {
 export function toAbsoluteUrl(path) {
   return `${API_BASE}${path}`;
 }
+
+// The download/original/codec-preview-download routes serve real files to
+// <a href download>, <audio src>, and direct navigation — none of which
+// can attach the Authorization header request() uses. They're checked
+// against ?dl=<token> instead (see backend's downloadTokenService.js /
+// server.js) — this fetches and caches that token (server-side TTL is 6h;
+// refetched a bit before that so a long-open tab doesn't hand out a URL
+// that's about to go stale).
+let _downloadToken = null;
+let _downloadTokenFetchedAt = 0;
+const DOWNLOAD_TOKEN_SOFT_TTL_MS = 5 * 60 * 60 * 1000;
+
+async function getDownloadToken() {
+  if (_downloadToken && Date.now() - _downloadTokenFetchedAt < DOWNLOAD_TOKEN_SOFT_TTL_MS) {
+    return _downloadToken;
+  }
+  const { token } = await request("/download-token");
+  _downloadToken = token;
+  _downloadTokenFetchedAt = Date.now();
+  return token;
+}
+
+// Same as toAbsoluteUrl, but appends the download token so the resulting
+// URL actually works when handed to <a href>/<audio src>/window navigation
+// instead of 401ing with "Missing or malformed Authorization header".
+export async function toAuthedDownloadUrl(path) {
+  const token = await getDownloadToken();
+  const separator = path.includes("?") ? "&" : "?";
+  return `${API_BASE}${path}${separator}dl=${encodeURIComponent(token)}`;
+}

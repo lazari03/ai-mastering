@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import SignalVisualizer from "@/components/audio/SignalVisualizer";
 import FileDropzone from "@/components/ui/FileDropzone";
-import { postClean, toAbsoluteUrl } from "@/network/http/client";
+import { postClean, toAuthedDownloadUrl } from "@/network/http/client";
 
 export default function CleanAudioPanel() {
   const [file, setFile] = useState(null);
@@ -12,6 +12,7 @@ export default function CleanAudioPanel() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [downloadUrl, setDownloadUrl] = useState("");
 
   useEffect(() => {
     if (!file) {
@@ -34,6 +35,7 @@ export default function CleanAudioPanel() {
       formData.append("output_format", "mp3");
       const response = await postClean(formData);
       setResult(response);
+      setDownloadUrl(await toAuthedDownloadUrl(response.download_url));
     } catch (err) {
       setError(err?.message || "Cleanup failed");
     } finally {
@@ -56,10 +58,12 @@ export default function CleanAudioPanel() {
           onChange={(event) => {
             setFile(event.target.files?.[0] || null);
             setResult(null);
+            setDownloadUrl("");
           }}
           onRemove={() => {
             setFile(null);
             setResult(null);
+            setDownloadUrl("");
           }}
         />
       </div>
@@ -98,9 +102,9 @@ export default function CleanAudioPanel() {
 
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
               <p className="mb-2 text-xs uppercase tracking-[0.14em] text-zinc-400">Cleaned Signal</p>
-              <SignalVisualizer src={toAbsoluteUrl(result.download_url)} barColor="#dfc95a" />
+              <SignalVisualizer src={downloadUrl} barColor="#dfc95a" />
               <a
-                href={toAbsoluteUrl(result.download_url)}
+                href={downloadUrl}
                 download
                 className="mt-3 inline-flex w-full justify-center rounded-lg border border-brass/40 bg-brass/20 px-3 py-2 text-xs uppercase tracking-[0.14em] text-brass hover:bg-brass/30"
               >

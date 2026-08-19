@@ -5,8 +5,24 @@ import express from "express";
 
 import { settings } from "./config/settings.js";
 import { requireAuth } from "./middleware/auth.js";
+import { verifyDownloadToken } from "./services/downloadTokenService.js";
 import masteringRoutes from "./routes/masteringRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
+
+// <a href download>, <audio src>, and direct browser navigation to a
+// download-family route can't attach an Authorization header — a ?dl=
+// query token (see downloadTokenService.js) is checked first as an
+// alternate credential for exactly these paths, falling through to normal
+// header-based requireAuth if it's missing/invalid (so a real fetch() call
+// with a Bearer header, e.g. from a future non-browser client, still works
+// too). ownsJob() inside each route still checks the resolved uid actually
+// owns the requested job either way — this only replaces *how* the uid is
+// established, not the ownership check itself.
+const DOWNLOAD_PATH_PREFIXES = ["/download/", "/download-codec-preview/", "/original/"];
+
+function isDownloadPath(reqPath) {
+  return DOWNLOAD_PATH_PREFIXES.some((prefix) => reqPath.startsWith(prefix));
+}
 
 fs.mkdirSync(settings.uploadDir, { recursive: true });
 fs.mkdirSync(settings.outputDir, { recursive: true });
@@ -55,6 +71,15 @@ app.use(express.urlencoded({ extended: true }));
 // to by the time a request would reach here).
 app.use((req, res, next) => {
   if (req.path === "/health" || req.path.startsWith("/admin/") || req.path.startsWith("/webhooks/")) return next();
+
+  if (isDownloadPath(req.path)) {
+    const uid = verifyDownloadToken(req.query.dl);
+    if (uid) {
+      req.user = { uid, email: null };
+      return next();
+    }
+  }
+
   return requireAuth(req, res, next);
 });
 

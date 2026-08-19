@@ -122,16 +122,17 @@ export default function TermsPage() {
       <section>
         <h2>8. Fees and paid plans</h2>
         <p>
-          Clean Audio is free, unlimited. Mastering previews (30-second, Standard engine) are free, unlimited.
-          Full-length mastering, stem separation, and chord detection are paid — either purchased individually as
-          one-time credits, or unlocked unlimited via the All-Access subscription. Current pricing is listed in the
-          app (Settings → Billing) and may change; we&apos;ll show you the price before you pay, every time. Our{" "}
+          Clean Audio is free, unlimited. Mastering previews (30-second, Standard engine) are free, unlimited, and
+          every account gets 3 free full-length Standard masters per calendar month. Beyond that, mastering and
+          stem separation require the Studio or All-Access monthly plan; chord detection is available as a
+          one-time credit or unlimited on the All-Access plan. Current pricing is listed in the app (Settings →
+          Billing) and may change; we&apos;ll show you the price before you pay, every time. Our{" "}
           <a href="/refund" className="text-brass hover:text-ember">Refund Policy</a> applies to all purchases.
         </p>
         <p>
-          The All-Access subscription renews automatically each month until you cancel. You can cancel anytime from
-          Settings → Billing → Manage billing — it stays active through the end of the period you already paid for,
-          then does not renew.
+          Studio and All-Access subscriptions renew automatically each month until you cancel. You can cancel
+          anytime from Settings → Billing → Manage billing — it stays active through the end of the period you
+          already paid for, then does not renew.
         </p>
       </section>
 

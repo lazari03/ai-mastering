@@ -14,30 +14,32 @@ export default function RefundPage() {
       <section>
         <h2>1. What's paid</h2>
         <p>
-          Clean Audio and mastering previews are free, unlimited, and never require payment. Full-length mastering,
-          stem separation, and chord detection are paid — either as one-time credits (see current pricing in the app
-          under Settings → Billing) or unlimited via the All-Access monthly subscription. This policy covers both.
+          Clean Audio, mastering previews, and 3 full-length Standard masters/month are free and never require
+          payment. Beyond that, mastering and stem separation are unlocked via the Studio or All-Access monthly
+          plans (see current pricing in the app under Settings → Billing); chord detection is available either as
+          a one-time credit or unlimited on the All-Access plan. This policy covers both.
         </p>
       </section>
 
       <section>
-        <h2>2. One-time purchases (master/chords/stem-separation credits)</h2>
+        <h2>2. One-time purchases (chord detection credits)</h2>
         <p>You're eligible for a full refund of a credit purchase if:</p>
         <ul>
           <li>You request it within <strong>14 days</strong> of the charge; and</li>
-          <li>The credit hasn't been used yet — once a credit is spent on a render or analysis, the compute cost has already been incurred and that specific credit is non-refundable (see Section 4).</li>
+          <li>The credit hasn't been used yet — once a credit is spent on an analysis, the compute cost has already been incurred and that specific credit is non-refundable (see Section 4).</li>
         </ul>
         <p>Unused credits don't expire, so there's no rush to use them before deciding whether to keep them.</p>
       </section>
 
       <section>
-        <h2>3. All-Access subscription</h2>
+        <h2>3. Studio / All-Access subscriptions</h2>
         <p>
-          If you subscribe and decide it's not for you, request a refund of your <strong>most recent charge</strong>{" "}
-          within 14 days of that charge, provided you haven't substantially used the subscription in that period
-          (e.g. run several full-length masters or chord analyses that would otherwise have cost individual
-          credits). Cancelling stops future renewals immediately (Settings → Billing → Manage billing) but doesn't
-          by itself refund the current period — request that separately if you want it.
+          If you subscribe to either plan and decide it's not for you, request a refund of your{" "}
+          <strong>most recent charge</strong> within 14 days of that charge, provided you haven't substantially used
+          the plan in that period (e.g. run several full-length masters or chord analyses that would otherwise have
+          cost individual credits, or used stem separation). Cancelling stops future renewals immediately (Settings →
+          Billing → Manage billing) but doesn't by itself refund the current period — request that separately if you
+          want it.
         </p>
       </section>
 

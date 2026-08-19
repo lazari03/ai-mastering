@@ -1,14 +1,14 @@
 import { getFirestore } from "../config/firebase.js";
 import { settings } from "../config/settings.js";
 
-// Pay-per-use credits — separate from the subscription (see polarService.js
-// for that). Each one-time Polar purchase increments exactly one bucket
-// here; each paid action (a full master render, a stem-separation add-on,
-// a chord detection) consumes exactly one, only if no active subscription
-// already covers it for free. Stored at users/{uid}.credits so checking
-// entitlement before a render is a local Firestore read, not a Polar API
-// call — same pattern as subscription status.
-const CREDIT_KEYS = ["masterStandard", "masterProfessional", "chords", "stemAddon"];
+// Pay-per-use credits — separate from the 3 subscription plans (see
+// polarService.js's getPlan()). Mastering and stem separation are gated by
+// plan tier now, not credits (see masteringRoutes.js) — chord detection is
+// the one thing that stays a small one-time purchase for Free/Studio users
+// who don't want to jump to the top plan just for it. Stored at
+// users/{uid}.credits so checking entitlement before a render is a local
+// Firestore read, not a Polar API call — same pattern as subscription status.
+const CREDIT_KEYS = ["chords"];
 
 // Maps a Polar product ID (from settings.polarProducts) to the credit
 // bucket it tops up. Built lazily, not at module load, so it always

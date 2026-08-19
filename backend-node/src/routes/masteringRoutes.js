@@ -13,9 +13,10 @@ import { importCustomPreset, deleteCustomPreset } from "../services/customPreset
 import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPresetsService.js";
 import { saveProfile, getProfile, deleteAllUserData } from "../services/profileService.js";
 import { recordJob, listJobs, ownsJob } from "../services/jobsService.js";
-import { createCheckoutUrl, createPortalUrl, getSubscriptionStatus, isSubscriptionActive } from "../services/polarService.js";
+import { createCheckoutUrl, createPortalUrl, getSubscriptionStatus, getPlan } from "../services/polarService.js";
 import { getCredits, consumeCredit, getFreeQuotaStatus, consumeFreeQuota } from "../services/entitlementsService.js";
 import { getAuth } from "../config/firebase.js";
+import { mintDownloadToken } from "../services/downloadTokenService.js";
 
 const router = express.Router();
 
@@ -44,6 +45,14 @@ function requireAdminKey(req, res, next) {
 
 router.get("/health", (_req, res) => {
   res.json({ status: "ok", version: "1.0.0", runtime: "node" });
+});
+
+// Mints the short-lived ?dl= token that download/original/codec-preview
+// links need (see downloadTokenService.js / server.js's auth gate) — this
+// route itself is still behind normal Bearer-header auth, it's the one
+// place that trades a header for a URL-embeddable token.
+router.get("/download-token", (req, res) => {
+  res.json({ token: mintDownloadToken(req.user.uid) });
 });
 
 router.get("/genres", (_req, res) => {
@@ -122,28 +131,27 @@ router.get("/billing/status", async (req, res) => {
   }
 });
 
-// { subscription, credits } in one call — what the frontend's pricing/
-// paywall UI actually needs to decide what to show.
+// { plan, subscription, credits, freeQuota } in one call — what the
+// frontend's pricing/paywall UI actually needs to decide what to show.
 router.get("/billing/entitlements", async (req, res) => {
   try {
-    const [subscription, credits, freeQuota] = await Promise.all([
+    const [plan, subscription, credits, freeQuota] = await Promise.all([
+      getPlan(req.user.uid),
       getSubscriptionStatus(req.user.uid),
       getCredits(req.user.uid),
       getFreeQuotaStatus(req.user.uid),
     ]);
-    return res.json({ subscription, credits, freeQuota });
+    return res.json({ plan, subscription, credits, freeQuota });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to load entitlements" });
   }
 });
 
-// body.item is one of: subscription | master_standard | master_professional | chords | stem_addon
+// body.item is one of: plan_studio | plan_pro | chords
 const CHECKOUT_ITEM_TO_PRODUCT_KEY = {
-  subscription: "subscription",
-  master_standard: "masterStandard",
-  master_professional: "masterProfessional",
+  plan_studio: "planStudio",
+  plan_pro: "planPro",
   chords: "chords",
-  stem_addon: "stemAddon",
 };
 
 router.post("/billing/checkout", async (req, res) => {
@@ -222,9 +230,6 @@ const masterUpload = upload.fields([
 ]);
 
 const CREDIT_PRICE_LABEL = {
-  masterStandard: "a Standard master credit (€2.99)",
-  masterProfessional: "a Professional master credit (€4.99)",
-  stemAddon: "the stem separation add-on (€1.99)",
   chords: "a chord detection credit (€1.49)",
 };
 
@@ -257,41 +262,40 @@ router.post("/master", masterUpload, async (req, res) => {
   const tier = !preview && req.body.tier === "professional" ? "professional" : "standard";
   const useStemSeparation = !preview && req.body.use_stem_separation === "true";
 
-  // Master Audio is a paid feature, with one free allowance: 3 full-length
-  // Standard masters per calendar month, no stem separation (Professional
-  // and stems are never free, only ever a credit or the subscription).
-  // Credit checks are only enforced once the relevant Polar product is
-  // actually configured, so local dev / pre-launch stays open rather than
-  // every render 402ing before you've set an env var. Both free quota and
-  // credits are checked (not consumed) here, and only actually spent
+  // Three plans (see PRICING.md): Free (3 Standard masters/month, no
+  // Professional tier, no stems), Studio (unlimited Standard +
+  // Professional masters, stems included), All-Access (Studio + unlimited
+  // chord detection — see /analyze-chords below). Professional tier and
+  // stem separation are Studio+ only, with no one-time-purchase bypass —
+  // that a-la-carte clutter is exactly what the 3-plan model replaced.
+  // Free quota is checked (not consumed) here and only actually spent
   // after a successful render below — a render that fails midway
   // shouldn't cost the user anything.
-  const creditKey = tier === "professional" ? "masterProfessional" : "masterStandard";
-  const needsStemCredit = useStemSeparation && Boolean(settings.polarProducts.stemAddon);
-  const canUseFreeQuota = tier === "standard" && !needsStemCredit;
-  let mustConsumeCredits = false;
   let mustConsumeFreeQuota = false;
 
   if (!preview) {
-    const subscribed = await isSubscriptionActive(req.user.uid).catch(() => false);
-    if (!subscribed) {
-      if (canUseFreeQuota) {
-        const quota = await getFreeQuotaStatus(req.user.uid);
-        if (quota.remaining > 0) mustConsumeFreeQuota = true;
+    const plan = await getPlan(req.user.uid).catch(() => "free");
+    const planUnlocked = plan === "studio" || plan === "pro";
+
+    if (tier === "professional" && !planUnlocked) {
+      return res.status(402).json({
+        detail: "Professional mastering needs the Studio plan or higher (€9.99/mo). Upgrade in Settings → Billing.",
+      });
+    }
+    if (useStemSeparation && !planUnlocked) {
+      return res.status(402).json({
+        detail: "Stem separation needs the Studio plan or higher (€9.99/mo). Upgrade in Settings → Billing.",
+      });
+    }
+    if (!planUnlocked) {
+      const quota = await getFreeQuotaStatus(req.user.uid);
+      if (quota.remaining <= 0) {
+        return res.status(402).json({
+          detail:
+            "You've used your 3 free Standard masters this month — they reset next month, or upgrade to Studio (€9.99/mo) for unlimited mastering. Upgrade in Settings → Billing.",
+        });
       }
-      if (!mustConsumeFreeQuota && (settings.polarProducts[creditKey] || needsStemCredit)) {
-        const credits = await getCredits(req.user.uid);
-        const missing = [];
-        if (settings.polarProducts[creditKey] && credits[creditKey] < 1) missing.push(CREDIT_PRICE_LABEL[creditKey]);
-        if (needsStemCredit && credits.stemAddon < 1) missing.push(CREDIT_PRICE_LABEL.stemAddon);
-        if (missing.length) {
-          const quotaNote = canUseFreeQuota ? " Your 3 free Standard masters this month are used up — they reset next month." : "";
-          return res.status(402).json({
-            detail: `This needs ${missing.join(" and ")}, or an active All-Access subscription (€19/mo).${quotaNote} Buy in Settings → Billing.`,
-          });
-        }
-        mustConsumeCredits = true;
-      }
+      mustConsumeFreeQuota = true;
     }
   }
 
@@ -335,11 +339,6 @@ router.post("/master", masterUpload, async (req, res) => {
       consumeFreeQuota(req.user.uid).catch((error) =>
         console.error("Failed to consume free quota after successful render:", error.message)
       );
-    } else if (mustConsumeCredits) {
-      Promise.all([
-        settings.polarProducts[creditKey] ? consumeCredit(req.user.uid, creditKey) : null,
-        needsStemCredit ? consumeCredit(req.user.uid, "stemAddon") : null,
-      ]).catch((error) => console.error("Failed to consume credit after successful render:", error.message));
     }
 
     // Recorded regardless of preview — ownsJob() needs this to exist for
@@ -370,17 +369,20 @@ router.post("/analyze-chords", upload.single("file"), async (req, res) => {
     return res.status(400).json({ detail: "file is required" });
   }
   // Chord detection is fully paid — no free preview (unlike Master Audio).
-  // Same "only gate once configured" escape hatch as everywhere else.
-  // Checked (not consumed) before running — only spent after success, same
-  // reasoning as /master: a failed analysis shouldn't cost the user.
+  // Only the top plan (All-Access) includes it for free; Studio still pays
+  // per credit, same as Free — chords was never part of what "master +
+  // stems" (Studio) promises. Same "only gate once configured" escape
+  // hatch as everywhere else. Checked (not consumed) before running — only
+  // spent after success, same reasoning as /master: a failed analysis
+  // shouldn't cost the user.
   let mustConsumeChordsCredit = false;
   if (settings.polarProducts.chords) {
-    const subscribed = await isSubscriptionActive(req.user.uid).catch(() => false);
-    if (!subscribed) {
+    const plan = await getPlan(req.user.uid).catch(() => "free");
+    if (plan !== "pro") {
       const credits = await getCredits(req.user.uid);
       if (credits.chords < 1) {
         return res.status(402).json({
-          detail: `Show Chords needs ${CREDIT_PRICE_LABEL.chords}, or an active All-Access subscription (€19/mo). Buy in Settings → Billing.`,
+          detail: `Show Chords needs ${CREDIT_PRICE_LABEL.chords}, or the All-Access plan (€19.99/mo). Buy in Settings → Billing.`,
         });
       }
       mustConsumeChordsCredit = true;
