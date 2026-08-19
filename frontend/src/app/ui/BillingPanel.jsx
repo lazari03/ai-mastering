@@ -1,20 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { getEntitlements, postCheckout, postBillingPortal } from "@/network/http/client";
-import { PLANS, PLAN_ORDER, CHORDS } from "@/lib/pricing";
+import { postCheckout, postBillingPortal } from "@/network/http/client";
+import { PLANS, PLAN_ORDER } from "@/lib/pricing";
+import { useEntitlementsStore } from "@/store/entitlementsStore";
 
 export default function BillingPanel() {
-  const [entitlements, setEntitlements] = useState(null);
+  const { plan: currentPlan, masterQuota, loaded } = useEntitlementsStore();
   const [busyItem, setBusyItem] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
-
-  useEffect(() => {
-    getEntitlements()
-      .then(setEntitlements)
-      .catch(() => setEntitlements({ plan: "free", subscription: { active: false }, credits: {}, freeQuota: null }));
-  }, []);
 
   const buy = async (item) => {
     setBusyItem(item);
@@ -40,14 +35,11 @@ export default function BillingPanel() {
     }
   };
 
-  const currentPlan = entitlements?.plan || "free";
-  const chordsBalance = entitlements?.credits?.chords || 0;
-
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
       <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Billing</h2>
 
-      {entitlements === null ? (
+      {!loaded ? (
         <p className="mt-2 text-xs text-zinc-400">Loading…</p>
       ) : (
         <>
@@ -103,37 +95,14 @@ export default function BillingPanel() {
             })}
           </div>
 
-          {currentPlan === "free" && entitlements.freeQuota ? (
+          {masterQuota ? (
             <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="m-0 text-sm text-white">Free Standard masters this month</p>
+              <p className="m-0 text-sm text-white">Masters this month</p>
               <p className="m-0 text-xs text-zinc-500">
-                {entitlements.freeQuota.remaining} of {entitlements.freeQuota.limit} left · resets next month
+                {masterQuota.remaining} of {masterQuota.limit} left · resets next month
               </p>
             </div>
           ) : null}
-
-          {/* Chord detection — the one thing left outside the 3 plans, for
-              Free/Studio users who want it without jumping to All-Access. */}
-          {currentPlan !== "pro" ? (
-            <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
-              <div className="min-w-0">
-                <p className="m-0 truncate text-sm text-white">{CHORDS.label}</p>
-                <p className="m-0 text-xs text-zinc-500">
-                  {CHORDS.price} {chordsBalance > 0 ? `· ${chordsBalance} owned` : ""}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => buy(CHORDS.item)}
-                disabled={Boolean(busyItem)}
-                className="shrink-0 rounded-full border border-white/15 bg-black/20 px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-50"
-              >
-                {busyItem === CHORDS.item ? "…" : "Buy"}
-              </button>
-            </div>
-          ) : (
-            <p className="mt-3 text-xs text-zinc-500">Chord detection is unlimited on your plan.</p>
-          )}
         </>
       )}
       {checkoutError ? <p className="mt-3 text-sm text-red-300">{checkoutError}</p> : null}

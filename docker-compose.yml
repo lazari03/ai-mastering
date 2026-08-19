@@ -51,7 +51,6 @@ services:
       POLAR_ENVIRONMENT: ${POLAR_ENVIRONMENT:-sandbox}
       POLAR_PLAN_STUDIO_PRODUCT_ID: ${POLAR_PLAN_STUDIO_PRODUCT_ID}
       POLAR_PLAN_PRO_PRODUCT_ID: ${POLAR_PLAN_PRO_PRODUCT_ID}
-      POLAR_CHORDS_PRODUCT_ID: ${POLAR_CHORDS_PRODUCT_ID}
       # Signs the ?dl= download tokens and public /shared/ links — must
       # stay stable across restarts or every outstanding link breaks the
       # moment this container redeploys (see settings.js:downloadTokenSecret).

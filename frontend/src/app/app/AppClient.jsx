@@ -13,9 +13,11 @@ import SettingsPanel from "@/app/ui/SettingsPanel";
 import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
+import EntitlementsBadge from "@/components/app/EntitlementsBadge";
 import { IconClean, IconMaster, IconChords, IconMyMasters, IconHelp, IconSettings, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
 import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
+import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { useLanguage } from "@/lib/i18n";
 
 const TABS = [
@@ -58,19 +60,40 @@ export default function AppClient() {
     }
   }, [loading, user, router]);
 
+  // Fetched once here (not per-component) — every entitlement-gated button
+  // and the badge below all read this same cached value instead of each
+  // fetching its own copy, which is what used to let one button show
+  // "unlocked" while another still thought the user was on Free. Refreshed
+  // again below whenever something could plausibly have changed it.
+  const fetchEntitlements = useEntitlementsStore((s) => s.fetch);
+  const refreshEntitlements = useEntitlementsStore((s) => s.refresh);
+  useEffect(() => {
+    if (user) fetchEntitlements();
+  }, [user, fetchEntitlements]);
+
+  // Covers returning from a Polar checkout: the user lands back on /app
+  // (any tab) and this re-checks entitlements immediately rather than
+  // trusting a value fetched before they paid. Also covers the mundane
+  // case of just switching tabs after a while — cheap enough to not matter.
+  useEffect(() => {
+    if (user) refreshEntitlements();
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Hitting "Master Track" (a real render, not the free 30s preview) jumps
   // straight to My Masters once it lands — that's where Download/Share/
   // Delete live, so there's no reason to make the user go find it
   // themselves. Previews stay on the Master tab (the aside there is
   // already the right place to A/B a preview against the original).
+  // Also refreshes entitlements — a real master just spent one quota slot.
   const masteringResult = useMasteringStore((s) => s.result);
   const lastAutoNavJobId = useRef(null);
   useEffect(() => {
     if (!masteringResult?.job_id || masteringResult.preview) return;
     if (masteringResult.job_id === lastAutoNavJobId.current) return;
     lastAutoNavJobId.current = masteringResult.job_id;
+    refreshEntitlements();
     setActiveTab("myMasters");
-  }, [masteringResult]);
+  }, [masteringResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // While Firebase's async session check is still running, or once it's
   // resolved to "not signed in" and the redirect above is about to fire —
@@ -230,6 +253,7 @@ export default function AppClient() {
       <main className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-10 md:py-8">{active.render()}</main>
 
       <NotificationBanner activeTab={activeTab} onView={() => setActiveTab("master")} />
+      <EntitlementsBadge onClick={() => setActiveTab("settings")} />
     </div>
   );
 }

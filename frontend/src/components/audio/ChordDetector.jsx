@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import { postAnalyzeChords } from "@/network/http/client";
+import { useEntitlementsStore, planUnlocksChordsAndShare } from "@/store/entitlementsStore";
 
 export default function ChordDetector({ file, previewUrl }) {
   const [analysis, setAnalysis] = useState(null);
@@ -11,8 +12,11 @@ export default function ChordDetector({ file, previewUrl }) {
   const [activeIndex, setActiveIndex] = useState(-1);
   const audioRef = useRef(null);
 
+  const { plan } = useEntitlementsStore();
+  const chordsUnlocked = planUnlocksChordsAndShare(plan);
+
   const detect = async () => {
-    if (!file) return;
+    if (!file || !chordsUnlocked) return;
     setIsLoading(true);
     setError("");
     try {
@@ -43,12 +47,16 @@ export default function ChordDetector({ file, previewUrl }) {
       <button
         type="button"
         onClick={detect}
-        disabled={!file || isLoading}
+        disabled={!file || isLoading || !chordsUnlocked}
         className="w-full rounded-2xl bg-ember px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-[#100b08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isLoading ? "Analyzing..." : "Detect Chords — €1.49"}
+        {isLoading ? "Analyzing..." : chordsUnlocked ? "Detect Chords" : "Detect Chords — All-Access"}
       </button>
-      <p className="mt-1.5 text-[11px] text-zinc-500">One-time credit, or included with an All-Access subscription.</p>
+      <p className="mt-1.5 text-[11px] text-zinc-500">
+        {chordsUnlocked
+          ? "Unlimited on your plan."
+          : "Included with All-Access (€19.99/mo) — not available on Free or Studio. Upgrade in Settings → Billing."}
+      </p>
 
       {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
 

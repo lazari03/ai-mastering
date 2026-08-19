@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { Readable } from "node:stream";
 
 import express from "express";
 import multer from "multer";
@@ -14,7 +15,7 @@ import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPre
 import { saveProfile, getProfile, deleteAllUserData } from "../services/profileService.js";
 import { recordJob, listJobs, ownsJob, getJob, deleteJob } from "../services/jobsService.js";
 import { createCheckoutUrl, createPortalUrl, getSubscriptionStatus, getPlan } from "../services/polarService.js";
-import { getCredits, consumeCredit, getFreeQuotaStatus, consumeFreeQuota } from "../services/entitlementsService.js";
+import { getMasterQuotaStatus, consumeMasterQuota, PLAN_MASTER_LIMITS } from "../services/entitlementsService.js";
 import { getAuth } from "../config/firebase.js";
 import { mintDownloadToken, mintShareToken, verifyShareToken } from "../services/downloadTokenService.js";
 
@@ -116,7 +117,13 @@ router.delete("/jobs/:jobId", async (req, res) => {
 // itself expires or is deleted, same as everything else in this app's
 // 48h-retention model). expiresAt is capped at the job's own expiry so a
 // share link can never promise access longer than the file will exist.
+// All-Access only — same reasoning as chord detection, a real plan
+// feature, not something Free/Studio can reach around a purchase.
 router.post("/jobs/:jobId/share", async (req, res) => {
+  const plan = await getPlan(req.user.uid).catch(() => "free");
+  if (plan !== "pro") {
+    return res.status(402).json({ detail: "Share links are an All-Access feature (€19.99/mo). Upgrade in Settings → Billing." });
+  }
   const job = await getJob(req.user.uid, req.params.jobId);
   if (!job) {
     return res.status(404).json({ detail: "Job not found" });
@@ -173,27 +180,29 @@ router.get("/billing/status", async (req, res) => {
   }
 });
 
-// { plan, subscription, credits, freeQuota } in one call — what the
-// frontend's pricing/paywall UI actually needs to decide what to show.
+// { plan, subscription, masterQuota } in one call — the single source of
+// truth every button/paywall in the frontend reads from (see
+// frontend/src/store/entitlementsStore.js) instead of each component
+// fetching and caching its own copy, which is what used to let one button
+// show "unlocked" while another still thought the user was on Free.
 router.get("/billing/entitlements", async (req, res) => {
   try {
-    const [plan, subscription, credits, freeQuota] = await Promise.all([
-      getPlan(req.user.uid),
+    const plan = await getPlan(req.user.uid);
+    const [subscription, masterQuota] = await Promise.all([
       getSubscriptionStatus(req.user.uid),
-      getCredits(req.user.uid),
-      getFreeQuotaStatus(req.user.uid),
+      getMasterQuotaStatus(req.user.uid, plan),
     ]);
-    return res.json({ plan, subscription, credits, freeQuota });
+    return res.json({ plan, subscription, masterQuota });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to load entitlements" });
   }
 });
 
-// body.item is one of: plan_studio | plan_pro | chords
+// body.item is one of: plan_studio | plan_pro — no à la carte items left,
+// see settings.js's polarProducts comment.
 const CHECKOUT_ITEM_TO_PRODUCT_KEY = {
   plan_studio: "planStudio",
   plan_pro: "planPro",
-  chords: "chords",
 };
 
 router.post("/billing/checkout", async (req, res) => {
@@ -271,10 +280,6 @@ const masterUpload = upload.fields([
   { name: "reference_file", maxCount: 1 },
 ]);
 
-const CREDIT_PRICE_LABEL = {
-  chords: "a chord detection credit (€1.49)",
-};
-
 // 30s is enough to hear what the engine does to a track without it being a
 // usable file — Standard engine only, never Professional, never stems (the
 // input truncation happens before the file ever reaches the DSP pipeline,
@@ -304,20 +309,24 @@ router.post("/master", masterUpload, async (req, res) => {
   const tier = !preview && req.body.tier === "professional" ? "professional" : "standard";
   const useStemSeparation = !preview && req.body.use_stem_separation === "true";
 
-  // Three plans (see PRICING.md): Free (3 Standard masters/month, no
-  // Professional tier, no stems), Studio (unlimited Standard +
-  // Professional masters, stems included), All-Access (Studio + unlimited
-  // chord detection — see /analyze-chords below). Professional tier and
-  // stem separation are Studio+ only, with no one-time-purchase bypass —
-  // that a-la-carte clutter is exactly what the 3-plan model replaced.
-  // Free quota is checked (not consumed) here and only actually spent
-  // after a successful render below — a render that fails midway
-  // shouldn't cost the user anything.
-  let mustConsumeFreeQuota = false;
+  // Two plans + Free (see PRICING.md): Free (3 Standard masters/month, no
+  // Professional tier, no stems, no chords), Studio (50 masters/month,
+  // Standard + Professional, stems included, no chords), All-Access (250
+  // masters/month, everything including unlimited chord detection — see
+  // /analyze-chords below). Professional tier and stem separation are
+  // Studio+ only, with no one-time-purchase bypass — every paid feature is
+  // plan-gated, no à la carte items left to buy around a plan's limits.
+  // Every plan (including paid ones) has a monthly master quota now, not
+  // just Free — checked (not consumed) here and only actually spent after
+  // a successful render below, so a render that fails midway never costs
+  // the user a slot.
+  let mustConsumeQuota = false;
+  let quotaLimit = PLAN_MASTER_LIMITS.free;
 
   if (!preview) {
     const plan = await getPlan(req.user.uid).catch(() => "free");
     const planUnlocked = plan === "studio" || plan === "pro";
+    quotaLimit = PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free;
 
     if (tier === "professional" && !planUnlocked) {
       return res.status(402).json({
@@ -329,16 +338,15 @@ router.post("/master", masterUpload, async (req, res) => {
         detail: "Stem separation needs the Studio plan or higher (€9.99/mo). Upgrade in Settings → Billing.",
       });
     }
-    if (!planUnlocked) {
-      const quota = await getFreeQuotaStatus(req.user.uid);
-      if (quota.remaining <= 0) {
-        return res.status(402).json({
-          detail:
-            "You've used your 3 free Standard masters this month — they reset next month, or upgrade to Studio (€9.99/mo) for unlimited mastering. Upgrade in Settings → Billing.",
-        });
-      }
-      mustConsumeFreeQuota = true;
+
+    const quota = await getMasterQuotaStatus(req.user.uid, plan);
+    if (quota.remaining <= 0) {
+      const upsell = plan === "free" ? " Upgrade to Studio (€9.99/mo) for 50/month." : plan === "studio" ? " Upgrade to All-Access (€19.99/mo) for 250/month." : "";
+      return res.status(402).json({
+        detail: `You've used your ${quotaLimit} masters this month — they reset next month.${upsell} Manage in Settings → Billing.`,
+      });
     }
+    mustConsumeQuota = true;
   }
 
   try {
@@ -377,9 +385,9 @@ router.post("/master", masterUpload, async (req, res) => {
     // somehow fails (Firestore hiccup), the user already has their file —
     // log it rather than fail a response that already succeeded; worst
     // case is one unbilled render, not a broken purchase.
-    if (mustConsumeFreeQuota) {
-      consumeFreeQuota(req.user.uid).catch((error) =>
-        console.error("Failed to consume free quota after successful render:", error.message)
+    if (mustConsumeQuota) {
+      consumeMasterQuota(req.user.uid, quotaLimit).catch((error) =>
+        console.error("Failed to consume master quota after successful render:", error.message)
       );
     }
 
@@ -426,33 +434,18 @@ router.post("/analyze-chords", upload.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ detail: "file is required" });
   }
-  // Chord detection is fully paid — no free preview (unlike Master Audio).
-  // Only the top plan (All-Access) includes it for free; Studio still pays
-  // per credit, same as Free — chords was never part of what "master +
-  // stems" (Studio) promises. Same "only gate once configured" escape
-  // hatch as everywhere else. Checked (not consumed) before running — only
-  // spent after success, same reasoning as /master: a failed analysis
-  // shouldn't cost the user.
-  let mustConsumeChordsCredit = false;
-  if (settings.polarProducts.chords) {
-    const plan = await getPlan(req.user.uid).catch(() => "free");
-    if (plan !== "pro") {
-      const credits = await getCredits(req.user.uid);
-      if (credits.chords < 1) {
-        return res.status(402).json({
-          detail: `Show Chords needs ${CREDIT_PRICE_LABEL.chords}, or the All-Access plan (€19.99/mo). Buy in Settings → Billing.`,
-        });
-      }
-      mustConsumeChordsCredit = true;
-    }
+  // Chord detection is an All-Access-only feature now — not purchasable
+  // separately, and not part of Studio (Studio's promise is "master +
+  // stems", never chords). No credit fallback, no "not configured yet"
+  // escape hatch: this is a pure plan check.
+  const plan = await getPlan(req.user.uid).catch(() => "free");
+  if (plan !== "pro") {
+    return res.status(402).json({
+      detail: "Chord detection is included with the All-Access plan (€19.99/mo). Upgrade in Settings → Billing.",
+    });
   }
   try {
     const result = await analyzeChords(req.file);
-    if (mustConsumeChordsCredit) {
-      consumeCredit(req.user.uid, "chords").catch((error) =>
-        console.error("Failed to consume chords credit after successful analysis:", error.message)
-      );
-    }
     return res.json(result);
   } catch (error) {
     const detail = error?.stderr || error?.message || "Chord detection failed";
@@ -504,8 +497,23 @@ async function proxyFromPython(pythonPath, res, notFoundMessage) {
     return res.status(upstream.status === 404 ? 404 : 502).json({ detail: notFoundMessage });
   }
   res.setHeader("Content-Type", upstream.headers.get("content-type") || "application/octet-stream");
-  const buffer = Buffer.from(await upstream.arrayBuffer());
-  return res.send(buffer);
+  const contentLength = upstream.headers.get("content-length");
+  if (contentLength) res.setHeader("Content-Length", contentLength);
+
+  // Streamed straight through, not buffered — a mastered WAV can be tens
+  // of MB, and the previous Buffer.from(await upstream.arrayBuffer())
+  // waited for the ENTIRE file from Python before sending a single byte
+  // to the browser, then held the whole thing in memory on top of that.
+  // This pipes bytes to the client as they arrive from Python instead,
+  // so the two transfers overlap instead of running fully sequentially —
+  // the actual cause of "the download takes forever."
+  const nodeStream = Readable.fromWeb(upstream.body);
+  nodeStream.on("error", (error) => {
+    console.error("Error streaming file from Python service:", error.message);
+    if (!res.headersSent) res.status(502).end();
+    else res.end();
+  });
+  return nodeStream.pipe(res);
 }
 
 // All three below serve a specific user's audio — job_id alone isn't

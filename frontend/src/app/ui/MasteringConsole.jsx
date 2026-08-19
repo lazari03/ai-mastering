@@ -7,8 +7,9 @@ import ProParamsPanel from "@/components/audio/ProParamsPanel";
 import SignalVisualizer from "@/components/audio/SignalVisualizer";
 import FileDropzone from "@/components/ui/FileDropzone";
 import { previewCodec } from "@/domain/mastering/masteringDomain";
-import { getEntitlements, downloadFileSafely } from "@/network/http/client";
+import { downloadFileSafely } from "@/network/http/client";
 import { useMasteringStore } from "@/store/masteringStore";
+import { useEntitlementsStore, planUnlocksProAndStems } from "@/store/entitlementsStore";
 
 const CODEC_OPTIONS = [
   { value: "mp3_128", label: "MP3 128kbps" },
@@ -38,7 +39,6 @@ export default function MasteringConsole() {
   const [codecPreviewError, setCodecPreviewError] = useState("");
   const [downloadError, setDownloadError] = useState("");
   const [downloading, setDownloading] = useState(false);
-  const [entitlements, setEntitlements] = useState(null);
 
   const {
     isBootstrapping,
@@ -87,11 +87,10 @@ export default function MasteringConsole() {
 
   const referenceMode = Boolean(referenceFile);
 
-  useEffect(() => {
-    getEntitlements().then(setEntitlements).catch(() => {});
-    // re-fetch after every render result so a spent credit/quota slot
-    // is reflected immediately, not just on next page load
-  }, [result]);
+  // Centralized — AppClient fetches this once and refreshes it after every
+  // real master and every tab switch, so this component just reads it
+  // rather than keeping its own independent (and easily stale) copy.
+  const { plan, masterQuota } = useEntitlementsStore();
 
   const [importArtistName, setImportArtistName] = useState("");
   const [importFilePending, setImportFilePending] = useState(null);
@@ -197,31 +196,29 @@ export default function MasteringConsole() {
 
   // Reflects real entitlement state so the button/controls don't just
   // discover "you can't do this" via a 402 after the render already ran.
-  // Three plans (see lib/pricing.js): Free (3 Standard masters/month, no
-  // Professional tier, no stems), Studio+ (unlimited Standard +
-  // Professional mastering, stems included). Disabled in the UI (not just
-  // hidden) so a Free user can never toggle these client-side; the backend
-  // enforces the exact same plan check independently either way (see
-  // masteringRoutes.js's /master gating).
-  const plan = entitlements?.plan || "free";
-  const planUnlocked = plan === "studio" || plan === "pro";
-  const canUseFreeQuota = tier === "standard" && !useStemSeparation && (entitlements?.freeQuota?.remaining || 0) > 0;
-  const masterUnlocked = planUnlocked || canUseFreeQuota;
+  // Professional tier and stem separation are Studio+ only, gated by plan
+  // alone. Every plan (including paid ones) also has a monthly master
+  // quota now — Free 3, Studio 50, All-Access 250 (see lib/pricing.js) —
+  // so "unlocked" here just means "not out of masters this month," not
+  // "unlimited." Disabled in the UI (not just hidden) so a Free user can
+  // never toggle Professional/stems client-side; the backend enforces the
+  // exact same checks independently either way (masteringRoutes.js).
+  const planUnlocked = planUnlocksProAndStems(plan);
+  const masterUnlocked = Boolean(masterQuota?.remaining > 0);
   const masterButtonLabel = isSubmitting
     ? "Mastering…"
-    : planUnlocked
-      ? "Master Track — Unlimited"
-      : canUseFreeQuota
-        ? `Master Track — Free (${entitlements.freeQuota.remaining} left)`
-        : "Master Track — Upgrade to Studio";
+    : masterQuota
+      ? masterUnlocked
+        ? `Master Track — ${masterQuota.remaining}/${masterQuota.limit} left`
+        : "Master Track — Quota used, upgrade"
+      : "Master Track";
 
   const professionalUnlocked = planUnlocked;
   const stemUnlocked = planUnlocked;
   useEffect(() => {
-    if (!entitlements) return;
     if (!stemUnlocked && useStemSeparation) setUseStemSeparation(false);
     if (!professionalUnlocked && tier === "professional") setTier("standard");
-  }, [entitlements, stemUnlocked, professionalUnlocked]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [stemUnlocked, professionalUnlocked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canGoNextFromAudio = Boolean(file);
   const canGoNextFromMode = referenceMode || mode === "pro" || Boolean(selectedGenre || selectedPreset);
@@ -617,7 +614,7 @@ export default function MasteringConsole() {
               <button
                 type="button"
                 onClick={() => submit(false)}
-                disabled={isSubmitting || isBootstrapping || !file || (entitlements && !masterUnlocked)}
+                disabled={isSubmitting || isBootstrapping || !file || (masterQuota && !masterUnlocked)}
                 className="w-full rounded-2xl bg-ember px-5 py-4 text-sm font-bold uppercase tracking-[0.18em] text-[#100b08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {masterButtonLabel}
@@ -625,8 +622,9 @@ export default function MasteringConsole() {
             </div>
             <p className="mt-2 text-[11px] text-zinc-500">
               Preview renders the first 30s with the Standard engine, free and unlimited. Master Track renders the
-              full file — 3 free Standard masters/month, then unlimited mastering{useStemSeparation ? " and stems" : ""}{" "}
-              on the Studio plan or higher. Full result and A/B comparison appear on the right once it&apos;s done.
+              full file — 3/month on Free, 50/month on Studio, 250/month on All-Access
+              {useStemSeparation ? " (stems need Studio or higher)" : ""}. Full result and A/B comparison appear on
+              the right once it&apos;s done.
             </p>
           </div>
         ) : null}

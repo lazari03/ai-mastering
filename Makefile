@@ -1,7 +1,8 @@
 .PHONY: help up down restart ps logs build rebuild deploy \
         logs-python logs-node logs-frontend logs-caddy \
         rebuild-python rebuild-node rebuild-frontend \
-        shell-python shell-node
+        shell-python shell-node \
+        dev-python dev-node dev-frontend
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -57,3 +58,19 @@ shell-python: ## Open a shell inside the running Python container
 
 shell-node: ## Open a shell inside the running Node container
 	docker compose exec node-api sh
+
+# --- Local dev (no Docker) — one terminal tab each -------------------------
+# The Python service MUST be on 8001, never bare `uvicorn app.main:app`
+# (which defaults to 8000 and silently collides with Node — that collision
+# has caused every "downloads html" / "Not Found" / "Cannot GET" bug this
+# project has hit locally). These targets hardcode the right port so
+# there's nothing to remember or get wrong.
+
+dev-python: ## Run the Python DSP service locally on the correct port (8001)
+	cd backend && venv312/bin/python -m uvicorn app.main:app --port 8001 --reload
+
+dev-node: ## Run the Node API locally (port 8000, auto-restarts on file changes)
+	cd backend-node && npm run dev
+
+dev-frontend: ## Run the Next.js frontend locally (port 3000)
+	cd frontend && npm run dev

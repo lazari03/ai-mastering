@@ -8,7 +8,7 @@ import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import Threads from "@/components/reactbits/Threads";
 import { POSTS } from "@/content/posts";
 import { useLanguage } from "@/lib/i18n";
-import { PLANS, PLAN_ORDER, CHORDS } from "@/lib/pricing";
+import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 import { IconCheck } from "@/components/app/icons";
 
 const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
@@ -268,12 +268,6 @@ export default function HomeClient() {
           })}
         </div>
 
-        <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-          <p className="m-0 text-xs font-semibold text-white">{CHORDS.label}</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">
-            {CHORDS.price} per analysis on Free or Studio — {t("pricing.chordsNote")}
-          </p>
-        </div>
       </section>
 
       <section id="how-to" className="reveal reveal-delay-2 mt-16 scroll-mt-24">

@@ -1,20 +1,19 @@
-// Creates the 3 Polar products the pricing model needs (2 subscription
-// plans + 1 one-time credit) instead of clicking through the dashboard —
-// run once per environment (sandbox, then again for production with
-// POLAR_ENVIRONMENT=production).
+// Creates the 2 Polar subscription products the pricing model needs —
+// no one-time products at all anymore, everything is plan-gated (see
+// PRICING.md). Run once per environment (sandbox, then again for
+// production with POLAR_ENVIRONMENT=production).
 //
 // Usage:
 //   POLAR_ACCESS_TOKEN=... POLAR_ENVIRONMENT=production node scripts/seed-polar-products.js
 //
 // Prints each created product's ID — paste those into .env as
-// POLAR_PLAN_STUDIO_PRODUCT_ID / POLAR_PLAN_PRO_PRODUCT_ID / POLAR_CHORDS_PRODUCT_ID.
+// POLAR_PLAN_STUDIO_PRODUCT_ID / POLAR_PLAN_PRO_PRODUCT_ID.
 // Re-running this creates duplicates (Polar has no "upsert by name") —
 // only run it once per environment, or delete the old ones in the
-// dashboard first if you need to redo it. If you're migrating off the old
-// 5-product model, archive POLAR_SUBSCRIPTION_PRODUCT_ID /
-// POLAR_MASTER_STANDARD_PRODUCT_ID / POLAR_MASTER_PROFESSIONAL_PRODUCT_ID /
-// POLAR_STEM_ADDON_PRODUCT_ID in the Polar dashboard — this script doesn't
-// touch them.
+// dashboard first if you need to redo it. If you're migrating off an
+// older product model (a plain "All-Access" subscription, one-time master/
+// chords/stem credits), archive those in the Polar dashboard — this
+// script doesn't touch them.
 import "dotenv/config";
 import { Polar } from "@polar-sh/sdk";
 
@@ -37,7 +36,7 @@ const PRODUCTS = [
     body: {
       name: "Studio",
       description:
-        "Unlimited full-length Standard & Professional mastering, stem separation included. Everything the Free plan has, plus unlimited mastering and stems.",
+        "50 full-length masters a month (Standard & Professional), stem separation included. Everything the Free plan has, plus unlimited-feeling mastering headroom for regular use.",
       recurringInterval: "month",
       prices: fixedPrice(9.99),
     },
@@ -47,17 +46,9 @@ const PRODUCTS = [
     body: {
       name: "All-Access",
       description:
-        "Everything Studio has, plus unlimited chord detection. The full toolkit, nothing metered.",
+        "250 full-length masters a month, stem separation, and unlimited chord detection. The full toolkit, 5x Studio's mastering headroom.",
       recurringInterval: "month",
       prices: fixedPrice(19.99),
-    },
-  },
-  {
-    envVar: "POLAR_CHORDS_PRODUCT_ID",
-    body: {
-      name: "Chord Detection",
-      description: "One full chord, key, and BPM analysis with synced playback so you can follow the progression in real time.",
-      prices: fixedPrice(1.49),
     },
   },
 ];

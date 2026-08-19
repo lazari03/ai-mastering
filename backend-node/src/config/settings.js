@@ -68,22 +68,20 @@ export const settings = {
   // see services/customPresetsService.js — not a local file.
 
   // Polar (Merchant of Record). See services/polarService.js and
-  // PRICING.md for the plan this backs: 3 plans, not a subscription plus a
-  // pile of à la carte items —
-  //   Free    — 3 Standard masters/month, no Professional, no stems
-  //   Studio  — unlimited Standard + Professional masters, stems included
-  //   All-Access — Studio + unlimited chord detection
-  // Chord detection stays a small one-time credit for Free/Studio users
-  // who don't want to jump straight to All-Access. Unset product IDs just
-  // mean that specific item can't be purchased yet (checkout route 400s
-  // with a clear message), not a crash; the free tier (Clean Audio,
-  // mastering previews, 3 masters/month) works with none of this set.
+  // PRICING.md for the plan this backs: 2 subscription tiers, no à la
+  // carte purchases at all —
+  //   Free    — 3 Standard masters/month, no Professional, no stems, no chords
+  //   Studio  — 50 masters/month (Standard + Professional), stems included, no chords
+  //   All-Access — 250 masters/month, stems, unlimited chord detection
+  // Every paid feature is plan-only now — see entitlementsService.js's
+  // PLAN_MASTER_LIMITS and masteringRoutes.js's gating. Unset product IDs
+  // just mean that plan can't be checked out yet (checkout route 400s with
+  // a clear message), not a crash; the free tier works with none of this set.
   polarAccessToken: process.env.POLAR_ACCESS_TOKEN || null,
   polarWebhookSecret: process.env.POLAR_WEBHOOK_SECRET || null,
   polarServer: process.env.POLAR_ENVIRONMENT === "production" ? "production" : "sandbox",
   polarProducts: {
     planStudio: process.env.POLAR_PLAN_STUDIO_PRODUCT_ID || null,
     planPro: process.env.POLAR_PLAN_PRO_PRODUCT_ID || null,
-    chords: process.env.POLAR_CHORDS_PRODUCT_ID || null,
   },
 };

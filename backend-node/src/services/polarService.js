@@ -3,14 +3,14 @@ import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks"
 
 import { settings } from "../config/settings.js";
 import { getFirestore } from "../config/firebase.js";
-import { applyOrderEvent } from "./entitlementsService.js";
 
 // Polar is a Merchant of Record — it handles global VAT/sales tax, so we
 // never register in any jurisdiction ourselves. Subscription state is
 // mirrored into Firestore (users/{uid}.subscription) so gating a render
 // is a cheap local read, not a Polar API call on every /master request.
-// One-time purchases (see entitlementsService.js) work the same way via
-// order.paid events.
+// Everything is plan-gated now (2 subscription tiers, no one-time
+// purchases — see PRICING.md) — order.paid is handled as a no-op below
+// purely so an unexpected event type never crashes the webhook handler.
 //
 // Customers are matched to our own users purely via externalCustomerId
 // (= Firebase uid) on checkout creation — Polar creates/reuses a Customer
@@ -97,17 +97,16 @@ export function verifyWebhook(rawBody, headers) {
   return validateEvent(rawBody, headers, settings.polarWebhookSecret || "");
 }
 
-// Idempotent: replays of the same event just overwrite with the same data
-// (subscription) or, for order.paid, would double-grant a credit on a
-// true replay — Polar doesn't guarantee exactly-once delivery, but retries
-// are rare in practice and a duplicate credit is a minor, refundable
-// mistake, not a security issue. Not worth an idempotency-key table for v1.
+// Idempotent: a replayed subscription.* event just overwrites Firestore
+// with the same data again — Polar doesn't guarantee exactly-once
+// delivery, but a harmless re-write is fine. Not worth an idempotency-key
+// table for v1. order.paid isn't handled — there's nothing left to grant
+// (no one-time products, see PRICING.md); every route re-checks getPlan()
+// fresh anyway, so a subscription.* event alone is what actually unlocks
+// anything.
 export async function applyWebhookEvent(event) {
   if (event.type.startsWith("subscription.")) {
     return applySubscriptionEvent(event);
-  }
-  if (event.type === "order.paid") {
-    return applyOrderEvent(event.data);
   }
 }
 

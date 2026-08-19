@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { getJobs, toAuthedDownloadUrl, deleteJobRecord, postShareJob, downloadFileSafely } from "@/network/http/client";
+import { useEntitlementsStore, planUnlocksChordsAndShare } from "@/store/entitlementsStore";
 
 function timeUntil(iso) {
   if (!iso) return null;
@@ -22,6 +23,9 @@ export default function MyMastersPanel() {
   const [shareErrors, setShareErrors] = useState({});
   const [copiedJobId, setCopiedJobId] = useState("");
   const [downloadErrors, setDownloadErrors] = useState({});
+
+  const { plan } = useEntitlementsStore();
+  const shareUnlocked = planUnlocksChordsAndShare(plan);
 
   useEffect(() => {
     getJobs()
@@ -55,6 +59,7 @@ export default function MyMastersPanel() {
   };
 
   const handleShare = async (jobId) => {
+    if (!shareUnlocked) return;
     setBusyJobId(jobId);
     setShareErrors((prev) => ({ ...prev, [jobId]: "" }));
     try {
@@ -147,10 +152,16 @@ export default function MyMastersPanel() {
                   <button
                     type="button"
                     onClick={() => handleShare(job.job_id)}
-                    disabled={isBusy}
-                    className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-50"
+                    disabled={isBusy || !shareUnlocked}
+                    title={shareUnlocked ? undefined : "Share links are an All-Access feature"}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-50"
                   >
                     {isBusy ? "…" : "Share"}
+                    {!shareUnlocked ? (
+                      <span className="rounded-full border border-brass/40 bg-brass/[0.12] px-1.5 py-0.5 text-[9px] normal-case text-brass">
+                        All-Access
+                      </span>
+                    ) : null}
                   </button>
                   {confirmDeleteId === job.job_id ? (
                     <>
