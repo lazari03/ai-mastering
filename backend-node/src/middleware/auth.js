@@ -1,4 +1,5 @@
 import { getAuth } from "../config/firebase.js";
+import { settings } from "../config/settings.js";
 
 // Verifies the Firebase ID token in the Authorization header and attaches
 // { uid, email } to req.user. Applied to every route except /health (see
@@ -26,11 +27,34 @@ export async function requireAuth(req, res, next) {
   }
 
   try {
-    const decoded = await auth.verifyIdToken(token);
+    // checkRevoked:true costs one extra Firebase Auth lookup per request
+    // but is what actually makes "sign out of all devices" (revokeRefreshTokens,
+    // see authRoutes.js) and password-change invalidation work — without
+    // it, a token minted before the revocation keeps passing verification
+    // right up until its own 1h expiry, silent-refresh or not.
+    const decoded = await auth.verifyIdToken(token, true);
+
+    // auth_time is the timestamp of the original sign-in, not the last
+    // silent token refresh — the client SDK refreshes the ID token forever
+    // in the background, so without this check a session started once
+    // never truly ends. Past the cap, the token is cryptographically valid
+    // but the session itself is too old and must be re-established.
+    const sessionAgeDays = (Date.now() / 1000 - decoded.auth_time) / 86400;
+    if (sessionAgeDays > settings.sessionMaxAgeDays) {
+      return res.status(401).json({
+        detail: `Your session has expired after ${settings.sessionMaxAgeDays} days — please sign in again.`,
+        code: "SESSION_EXPIRED",
+      });
+    }
+
     req.user = { uid: decoded.uid, email: decoded.email || null };
     return next();
   } catch (error) {
     // Covers expired token, malformed token, wrong project, revoked token.
-    return res.status(401).json({ detail: `Invalid or expired token: ${error.message}` });
+    const revoked = error?.code === "auth/id-token-revoked";
+    return res.status(401).json({
+      detail: revoked ? "Your session was revoked — please sign in again." : `Invalid or expired token: ${error.message}`,
+      code: revoked ? "SESSION_EXPIRED" : "INVALID_TOKEN",
+    });
   }
 }

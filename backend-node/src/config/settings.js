@@ -20,6 +20,14 @@ export const settings = {
   uploadDir: toAbs(process.env.UPLOAD_DIR, "uploads"),
   outputDir: toAbs(process.env.OUTPUT_DIR, "outputs"),
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB || 200),
+  // Absolute session lifetime — a Firebase ID token itself only lives 1h,
+  // but the client SDK silently refreshes it forever in the background as
+  // long as the browser holds a refresh token, so "signed in" otherwise
+  // never actually expires on its own. This caps it: once decoded.auth_time
+  // (the timestamp of the original sign-in, not the last token refresh) is
+  // older than this many days, requireAuth rejects the token and the
+  // frontend force-signs-out. See requireAuth.js.
+  sessionMaxAgeDays: Number(process.env.SESSION_MAX_AGE_DAYS || 14),
   // Gates the admin-only built-in preset endpoints (see
   // services/builtinPresetsService.js) — unset means those routes 501
   // rather than silently accepting an unauthenticated request.

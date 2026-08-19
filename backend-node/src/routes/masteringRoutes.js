@@ -15,6 +15,7 @@ import { saveProfile, getProfile, deleteAllUserData } from "../services/profileS
 import { recordJob, listJobs, ownsJob } from "../services/jobsService.js";
 import { createCheckoutUrl, createPortalUrl, getSubscriptionStatus, isSubscriptionActive } from "../services/polarService.js";
 import { getCredits, consumeCredit, getFreeQuotaStatus, consumeFreeQuota } from "../services/entitlementsService.js";
+import { getAuth } from "../config/firebase.js";
 
 const router = express.Router();
 
@@ -95,6 +96,20 @@ router.delete("/account", async (req, res) => {
     return res.json({ ok: true });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to delete account data" });
+  }
+});
+
+// Invalidates every refresh token Firebase has issued for this account —
+// every other signed-in browser/device (and the calling one, once its
+// current ID token expires or the frontend force-signs-out right after
+// calling this) stops being accepted. requireAuth's checkRevoked:true is
+// what actually enforces this at request time; this route just triggers it.
+router.post("/account/sign-out-everywhere", async (req, res) => {
+  try {
+    await getAuth().revokeRefreshTokens(req.user.uid);
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to revoke sessions" });
   }
 });
 

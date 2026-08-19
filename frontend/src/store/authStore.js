@@ -14,7 +14,7 @@ import {
 } from "firebase/auth";
 
 import { getFirebaseAuth, getGoogleProvider, isFirebaseConfigured } from "@/lib/firebase";
-import { postProfile, deleteAccountData } from "@/network/http/client";
+import { postProfile, deleteAccountData, postSignOutEverywhere } from "@/network/http/client";
 
 const NOT_CONFIGURED_MESSAGE = "Sign-in isn't set up yet — see FIREBASE_SETUP.md.";
 
@@ -187,6 +187,25 @@ export const useAuthStore = create((set) => ({
 
   async signOut() {
     await firebaseSignOut(getFirebaseAuth());
+  },
+
+  // Revokes every refresh token Firebase has issued for this account, then
+  // signs this browser out too (revocation alone doesn't invalidate the
+  // ID token this tab is already holding until it naturally expires or the
+  // next request 401s — signing out here is immediate instead of waiting
+  // on that). Every other signed-in device stops being accepted the next
+  // time it makes a request (see requireAuth.js's checkRevoked).
+  async signOutEverywhere() {
+    set({ busy: true, error: "" });
+    try {
+      await postSignOutEverywhere();
+      await firebaseSignOut(getFirebaseAuth());
+      set({ busy: false });
+      return true;
+    } catch (error) {
+      set({ busy: false, error: error?.message || "Failed to sign out of other devices." });
+      return false;
+    }
   },
 
   // Deletes every trace of the account: Firestore data first (profile,

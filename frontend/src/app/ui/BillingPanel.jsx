@@ -27,7 +27,7 @@ export default function BillingPanel() {
     setBusyItem(item);
     setCheckoutError("");
     try {
-      const { url } = await postCheckout(item, `${window.location.origin}/app`);
+      const { url } = await postCheckout(item, `${window.location.origin}/thank-you`);
       window.location.href = url;
     } catch (err) {
       setBusyItem("");

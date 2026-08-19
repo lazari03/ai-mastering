@@ -1,6 +1,8 @@
 import { Space_Grotesk, Inter } from "next/font/google";
 
 import AuthInit from "./AuthInit";
+import Analytics from "@/components/Analytics";
+import CookieBanner from "@/components/CookieBanner";
 import { LanguageProvider } from "@/lib/i18n";
 import { SITE_URL, SITE_NAME, DEFAULT_DESCRIPTION, DEFAULT_KEYWORDS } from "@/lib/seo";
 import "./globals.css";
@@ -36,7 +38,9 @@ export default function RootLayout({ children }) {
       <body className={`${titleFont.variable} ${bodyFont.variable}`}>
         <LanguageProvider>
           <AuthInit />
+          <Analytics />
           {children}
+          <CookieBanner />
         </LanguageProvider>
       </body>
     </html>

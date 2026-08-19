@@ -13,7 +13,8 @@ const fieldStyle =
 
 export default function SettingsPanel() {
   const router = useRouter();
-  const { user, busy, error, changePassword, deleteAccount, clearError } = useAuthStore();
+  const { user, busy, error, changePassword, deleteAccount, signOutEverywhere, clearError } = useAuthStore();
+  const [signOutEverywhereStatus, setSignOutEverywhereStatus] = useState("");
 
   const [profile, setProfile] = useState({ firstName: "", lastName: "", phone: "", studioName: "" });
   const [loaded, setLoaded] = useState(false);
@@ -192,6 +193,30 @@ export default function SettingsPanel() {
           {busy ? "Updating…" : "Update password"}
         </button>
       </form>
+
+      <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-5">
+        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Sessions</h2>
+        <p className="mt-2 text-sm text-zinc-400">
+          Signed-in sessions expire automatically after 14 days. If you signed in on a device you don&apos;t
+          recognize, or just want to be sure, you can end every other signed-in session right now.
+        </p>
+        {signOutEverywhereStatus ? <p className="mt-2 text-sm text-brass">{signOutEverywhereStatus}</p> : null}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setSignOutEverywhereStatus("");
+            const ok = await signOutEverywhere();
+            if (ok) {
+              setSignOutEverywhereStatus("Signed out everywhere. Redirecting…");
+              router.push("/login");
+            }
+          }}
+          className="mt-3 rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35 disabled:opacity-50"
+        >
+          {busy ? "Working…" : "Sign out of all devices"}
+        </button>
+      </div>
 
       <div className="mt-5 rounded-2xl border border-red-500/25 bg-red-500/[0.04] p-5">
         <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-red-300">Danger zone</h2>

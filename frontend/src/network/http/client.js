@@ -56,6 +56,21 @@ async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   const payload = isJson ? await response.json() : await response.text();
 
   if (!response.ok) {
+    // The token refresh above only helps a stale-but-still-valid token —
+    // it can't fix a session the backend has actually invalidated (past
+    // the absolute age cap, or revoked by "sign out of all devices"; see
+    // requireAuth.js). That's a real logout, not a transient error: clear
+    // the stale local Firebase session and send the user back to /login
+    // instead of leaving them stuck re-hitting the same 401 forever.
+    if (response.status === 401 && isJson && payload?.code === "SESSION_EXPIRED") {
+      getFirebaseAuth()
+        ?.signOut()
+        .finally(() => {
+          if (typeof window !== "undefined") {
+            window.location.href = "/login?reason=session_expired";
+          }
+        });
+    }
     const detail = isJson ? payload?.detail || JSON.stringify(payload) : payload;
     throw new Error(detail || `HTTP ${response.status}`);
   }
@@ -129,6 +144,10 @@ export async function getJobs() {
 
 export async function deleteAccountData() {
   return request("/account", { method: "DELETE" });
+}
+
+export async function postSignOutEverywhere() {
+  return request("/account/sign-out-everywhere", { method: "POST" });
 }
 
 export async function getBillingStatus() {
