@@ -6,6 +6,7 @@ import { postCheckout, postBillingPortal } from "@/network/http/client";
 import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { trackEvent } from "@/lib/analytics";
+import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 
 export default function BillingPanel() {
   const { plan: currentPlan, masterQuota, loaded } = useEntitlementsStore();
@@ -49,7 +50,7 @@ export default function BillingPanel() {
       <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Billing</h2>
 
       {!loaded ? (
-        <p className="mt-2 text-xs text-zinc-400">Loading…</p>
+        <LoadingBlock />
       ) : (
         <>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">

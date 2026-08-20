@@ -14,6 +14,7 @@ import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
 import EntitlementsBadge from "@/components/app/EntitlementsBadge";
 import OnboardingTour from "@/components/app/OnboardingTour";
+import { LoadingBlock } from "@/components/ui/Spinner";
 import { IconMaster, IconChords, IconMyMasters, IconHelp, IconSettings, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
 import { getProfile, postProfile } from "@/network/http/client";
 import { useAuthStore } from "@/store/authStore";
@@ -123,7 +124,7 @@ export default function AppClient() {
   if (loading || !user) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-sm text-zinc-400">Loading…</p>
+        <LoadingBlock />
       </main>
     );
   }
@@ -131,7 +132,12 @@ export default function AppClient() {
   const active = TABS.find((tab) => tab.key === activeTab) || TABS[0];
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    // h-screen + overflow-hidden, not min-h-screen — pins the whole shell to
+    // exactly the viewport height so the sidebar/top bar never scroll away
+    // with the page. Only <main> below scrolls (overflow-y-auto), and the
+    // sidebar gets its own overflow-y-auto as a safety valve for short
+    // windows with many tabs, not as its normal behavior.
+    <div className="flex h-screen flex-col overflow-hidden md:flex-row">
       {/* Mobile top bar — the sidebar below is hidden on small screens */}
       <div className="flex items-center justify-between border-b border-white/10 bg-black/20 p-3.5 md:hidden">
         <Link href="/" className="flex items-center gap-2.5">
@@ -195,7 +201,7 @@ export default function AppClient() {
           Collapsed state stays as a slim icon-only rail rather than vanishing
           entirely, so switching tabs never requires reopening it first. */}
       <aside
-        className={`hidden shrink-0 flex-col border-r border-white/10 bg-black/20 transition-[width] duration-150 md:flex ${
+        className={`hidden shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-black/20 transition-[width] duration-150 md:flex ${
           sidebarOpen ? "w-[204px] p-3" : "w-[60px] items-center p-2"
         }`}
       >
