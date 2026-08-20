@@ -7,6 +7,7 @@ import { getProfile, postProfile } from "@/network/http/client";
 import { useAuthStore } from "@/store/authStore";
 import { scorePassword } from "@/lib/passwordStrength";
 import BillingPanel from "./BillingPanel";
+import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 
 const fieldStyle =
   "w-full box-border rounded-xl border border-white/15 bg-black/20 px-3.5 py-3 text-sm text-white outline-none focus:border-brass/60";
@@ -80,7 +81,7 @@ export default function SettingsPanel({ onReplayTutorial }) {
       <p className="mt-2 text-sm text-zinc-300">{user?.email}</p>
 
       {!loaded ? (
-        <p className="mt-4 text-xs text-zinc-400">Loading…</p>
+        <LoadingBlock />
       ) : (
         <form onSubmit={saveProfile} className="mt-6 flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/20 p-5">
           <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Profile</h2>
@@ -188,9 +189,15 @@ export default function SettingsPanel({ onReplayTutorial }) {
         <button
           type="submit"
           disabled={busy}
-          className="self-start rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-brass hover:bg-brass/25 disabled:opacity-50"
+          className="flex items-center gap-2 self-start rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-brass hover:bg-brass/25 disabled:opacity-50"
         >
-          {busy ? "Updating…" : "Update password"}
+          {busy ? (
+            <>
+              <Spinner size={12} /> Updating…
+            </>
+          ) : (
+            "Update password"
+          )}
         </button>
       </form>
 
@@ -226,9 +233,15 @@ export default function SettingsPanel({ onReplayTutorial }) {
               router.push("/login");
             }
           }}
-          className="mt-3 rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35 disabled:opacity-50"
+          className="mt-3 flex items-center gap-2 rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35 disabled:opacity-50"
         >
-          {busy ? "Working…" : "Sign out of all devices"}
+          {busy ? (
+            <>
+              <Spinner size={12} /> Working…
+            </>
+          ) : (
+            "Sign out of all devices"
+          )}
         </button>
       </div>
 
@@ -286,9 +299,15 @@ export default function SettingsPanel({ onReplayTutorial }) {
               <button
                 type="submit"
                 disabled={!canDelete || busy}
-                className="rounded-full border border-red-500/50 bg-red-500/20 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-red-200 hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex items-center gap-2 rounded-full border border-red-500/50 bg-red-500/20 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-red-200 hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {busy ? "Deleting…" : "Permanently delete my account"}
+                {busy ? (
+                  <>
+                    <Spinner size={12} /> Deleting…
+                  </>
+                ) : (
+                  "Permanently delete my account"
+                )}
               </button>
               <button
                 type="button"

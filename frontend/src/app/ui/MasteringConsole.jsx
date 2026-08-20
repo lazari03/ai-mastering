@@ -10,6 +10,7 @@ import { previewCodec } from "@/domain/mastering/masteringDomain";
 import { downloadFileSafely } from "@/network/http/client";
 import { useMasteringStore } from "@/store/masteringStore";
 import { useEntitlementsStore, planUnlocksProAndStems } from "@/store/entitlementsStore";
+import { Spinner } from "@/components/ui/Spinner";
 
 const CODEC_OPTIONS = [
   { value: "mp3_128", label: "MP3 128kbps" },
@@ -564,9 +565,15 @@ export default function MasteringConsole({ onOpenHelp }) {
                             setImportFilePending(null);
                             setImportArtistName("");
                           }}
-                          className="rounded-lg border border-brass/40 bg-brass/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-brass disabled:cursor-not-allowed disabled:opacity-40"
+                          className="flex items-center gap-1.5 rounded-lg border border-brass/40 bg-brass/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-brass disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          {isImportingPreset ? "Importing…" : "Import & Save Artist Master"}
+                          {isImportingPreset ? (
+                            <>
+                              <Spinner size={11} /> Importing…
+                            </>
+                          ) : (
+                            "Import & Save Artist Master"
+                          )}
                         </button>
                         {importFilePending ? (
                           <button
@@ -626,16 +633,23 @@ export default function MasteringConsole({ onOpenHelp }) {
                 type="button"
                 onClick={() => submit(true)}
                 disabled={isSubmitting || isBootstrapping || !file}
-                className="w-full rounded-2xl border border-white/15 bg-black/20 px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-zinc-200 transition hover:border-white/30 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-black/20 px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-zinc-200 transition hover:border-white/30 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isSubmitting ? "Rendering…" : "Preview — Free"}
+                {isSubmitting ? (
+                  <>
+                    <Spinner size={13} /> Rendering…
+                  </>
+                ) : (
+                  "Preview — Free"
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => submit(false)}
                 disabled={isSubmitting || isBootstrapping || !file || (masterQuota && !masterUnlocked)}
-                className="w-full rounded-2xl bg-ember px-5 py-4 text-sm font-bold uppercase tracking-[0.18em] text-[#100b08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-ember px-5 py-4 text-sm font-bold uppercase tracking-[0.18em] text-[#100b08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
               >
+                {isSubmitting ? <Spinner size={14} /> : null}
                 {masterButtonLabel}
               </button>
             </div>
@@ -674,13 +688,23 @@ export default function MasteringConsole({ onOpenHelp }) {
             type="button"
             onClick={() => submit(true)}
             disabled={isSubmitting || isBootstrapping || !file}
-            className="mt-3 w-full rounded-xl border border-white/10 bg-black/20 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-300 transition hover:border-white/25 disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/20 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-300 transition hover:border-white/25 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {isSubmitting ? "Rendering…" : "Quick Preview — Free (Any Step)"}
+            {isSubmitting ? (
+              <>
+                <Spinner size={12} /> Rendering…
+              </>
+            ) : (
+              "Quick Preview — Free (Any Step)"
+            )}
           </button>
         ) : null}
 
-        {isBootstrapping ? <p className="mt-3 text-xs text-zinc-400">Loading catalog...</p> : null}
+        {isBootstrapping ? (
+          <p className="mt-3 flex items-center gap-2 text-xs text-zinc-400">
+            <Spinner size={12} /> Loading catalog…
+          </p>
+        ) : null}
         {status ? <p className="mt-3 text-sm text-brass">{status}</p> : null}
         {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
       </div>
@@ -789,9 +813,15 @@ export default function MasteringConsole({ onOpenHelp }) {
                   type="button"
                   onClick={handleCodecPreview}
                   disabled={codecPreviewLoading}
-                  className="rounded-lg border border-brass/40 bg-brass/[0.18] px-3.5 py-2 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg border border-brass/40 bg-brass/[0.18] px-3.5 py-2 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
                 >
-                  {codecPreviewLoading ? "Encoding…" : "Preview"}
+                  {codecPreviewLoading ? (
+                    <>
+                      <Spinner size={11} /> Encoding…
+                    </>
+                  ) : (
+                    "Preview"
+                  )}
                 </button>
               </div>
 

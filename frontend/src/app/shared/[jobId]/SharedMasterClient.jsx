@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import LogoMark from "@/components/brand/LogoMark";
 import { getSharedJobInfo, downloadFileSafely } from "@/network/http/client";
+import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 
 function timeUntil(iso) {
   if (!iso) return null;
@@ -51,7 +52,7 @@ export default function SharedMasterClient({ jobId, token }) {
           <p className="m-0 max-w-sm text-sm text-zinc-400">{error}</p>
         </>
       ) : !info ? (
-        <p className="text-sm text-zinc-400">Loading…</p>
+        <LoadingBlock />
       ) : (
         <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-black/20 p-6">
           <p className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Shared master</p>
@@ -76,9 +77,15 @@ export default function SharedMasterClient({ jobId, token }) {
               }
             }}
             disabled={downloading}
-            className="mt-5 block w-full rounded-xl bg-ember px-5 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-[#100b08] transition hover:brightness-110 disabled:opacity-50"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-ember px-5 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-[#100b08] transition hover:brightness-110 disabled:opacity-50"
           >
-            {downloading ? "Downloading…" : "Download"}
+            {downloading ? (
+              <>
+                <Spinner size={14} /> Downloading…
+              </>
+            ) : (
+              "Download"
+            )}
           </button>
           {downloadError ? <p className="mt-2 text-xs text-red-300">⚠ {downloadError}</p> : null}
 

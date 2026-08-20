@@ -86,18 +86,32 @@ export default function BillingPanel() {
                       type="button"
                       onClick={openPortal}
                       disabled={Boolean(busyItem)}
-                      className="mt-3 w-full rounded-full border border-brass/50 bg-brass/[0.18] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-brass/50 bg-brass/[0.18] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
                     >
-                      {busyItem === "portal" ? "Redirecting…" : "Manage billing"}
+                      {busyItem === "portal" ? (
+                        <>
+                          <Spinner size={12} /> Redirecting…
+                        </>
+                      ) : (
+                        "Manage billing"
+                      )}
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={() => buy(plan.item, plan.key, plan.price)}
                       disabled={Boolean(busyItem)}
-                      className="mt-3 w-full rounded-full border border-white/15 bg-black/20 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-black/20 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
                     >
-                      {busyItem === plan.item ? "Redirecting…" : isUpgrade ? "Upgrade" : "Switch"}
+                      {busyItem === plan.item ? (
+                        <>
+                          <Spinner size={12} /> Redirecting…
+                        </>
+                      ) : isUpgrade ? (
+                        "Upgrade"
+                      ) : (
+                        "Switch"
+                      )}
                     </button>
                   )}
                 </div>

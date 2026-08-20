@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { postAnalyzeChords } from "@/network/http/client";
 import { useEntitlementsStore, planUnlocksChordsAndShare } from "@/store/entitlementsStore";
+import { Spinner } from "@/components/ui/Spinner";
 
 export default function ChordDetector({ file, previewUrl }) {
   const [analysis, setAnalysis] = useState(null);
@@ -48,9 +49,17 @@ export default function ChordDetector({ file, previewUrl }) {
         type="button"
         onClick={detect}
         disabled={!file || isLoading || !chordsUnlocked}
-        className="w-full rounded-2xl bg-ember px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-[#100b08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-ember px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-[#100b08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isLoading ? "Analyzing..." : chordsUnlocked ? "Detect Chords" : "Detect Chords — All-Access"}
+        {isLoading ? (
+          <>
+            <Spinner size={15} /> Analyzing…
+          </>
+        ) : chordsUnlocked ? (
+          "Detect Chords"
+        ) : (
+          "Detect Chords — All-Access"
+        )}
       </button>
       <p className="mt-1.5 text-[11px] text-zinc-500">
         {chordsUnlocked

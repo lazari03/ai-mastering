@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { getJobs, toAuthedDownloadUrl, deleteJobRecord, postShareJob, downloadFileSafely } from "@/network/http/client";
 import { useEntitlementsStore, planUnlocksChordsAndShare } from "@/store/entitlementsStore";
+import { LoadingBlock } from "@/components/ui/Spinner";
 
 function timeUntil(iso) {
   if (!iso) return null;
@@ -105,7 +106,7 @@ export default function MyMastersPanel() {
       </p>
 
       {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
-      {jobs === null && !error ? <p className="mt-4 text-xs text-zinc-400">Loading…</p> : null}
+      {jobs === null && !error ? <LoadingBlock /> : null}
       {jobs?.length === 0 ? <p className="mt-4 text-xs text-zinc-400">No renders yet — master a track to see it here.</p> : null}
 
       <div className="mt-5 flex flex-col gap-3">

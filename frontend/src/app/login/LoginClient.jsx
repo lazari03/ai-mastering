@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useLanguage } from "@/lib/i18n";
 import { scorePassword } from "@/lib/passwordStrength";
+import { Spinner } from "@/components/ui/Spinner";
 
 export default function LoginClient() {
   const router = useRouter();
@@ -171,9 +172,17 @@ export default function LoginClient() {
             <button
               type="submit"
               disabled={busy || (isSignup && !termsAccepted)}
-              className="w-full rounded-full border border-brass/50 bg-brass/[0.18] px-4 py-3.5 text-[13px] font-bold uppercase tracking-[0.14em] text-brass transition hover:bg-brass/25 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-brass/50 bg-brass/[0.18] px-4 py-3.5 text-[13px] font-bold uppercase tracking-[0.14em] text-brass transition hover:bg-brass/25 disabled:opacity-50"
             >
-              {busy ? t("login.working") : isSignup ? t("login.submitSignup") : t("login.submitSignin")}
+              {busy ? (
+                <>
+                  <Spinner size={13} /> {t("login.working")}
+                </>
+              ) : isSignup ? (
+                t("login.submitSignup")
+              ) : (
+                t("login.submitSignin")
+              )}
             </button>
           </form>
 
