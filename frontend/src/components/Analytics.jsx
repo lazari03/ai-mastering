@@ -28,6 +28,12 @@ function loadGtag(measurementId) {
   // of every page_view (including the first one), so gtag's own automatic
   // page_view on config doesn't fire a duplicate for the initial load.
   window.gtag("config", measurementId, { anonymize_ip: true, send_page_view: false });
+  // Fired here, not left to the pathname effect's initial run — gtag now
+  // loads asynchronously after "load", so by the time this function
+  // returns, window.gtag exists but the pathname effect may already have
+  // run once (and found it missing) before this. This is what guarantees
+  // the very first page_view is never silently dropped.
+  window.gtag("event", "page_view", { page_path: window.location.pathname, page_location: window.location.href });
 
   const script = document.createElement("script");
   script.async = true;
@@ -48,7 +54,20 @@ export default function Analytics() {
   }, []);
 
   useEffect(() => {
-    if (enabled && GA_MEASUREMENT_ID) loadGtag(GA_MEASUREMENT_ID);
+    if (!enabled || !GA_MEASUREMENT_ID) return;
+    // Deferred past "load", not fired the instant consent is confirmed —
+    // for a repeat visitor (consent already stored) that confirmation
+    // happens immediately on mount, which would otherwise pull in GA's
+    // script during the exact window PageSpeed scores. The page_view
+    // effect below only fires once window.gtag actually exists, so
+    // nothing is lost, just delayed a few hundred ms.
+    if (document.readyState === "complete") {
+      loadGtag(GA_MEASUREMENT_ID);
+      return;
+    }
+    const onLoad = () => loadGtag(GA_MEASUREMENT_ID);
+    window.addEventListener("load", onLoad, { once: true });
+    return () => window.removeEventListener("load", onLoad);
   }, [enabled]);
 
   // SPA route changes — most navigation in this app is client-side and

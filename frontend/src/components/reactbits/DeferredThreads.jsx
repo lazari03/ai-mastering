@@ -17,9 +17,12 @@ const Threads = dynamic(() => import("./Threads"), { ssr: false });
 // it's skipped:
 //   - prefers-reduced-motion: reduce  -> never rendered, any viewport
 //   - narrow viewports (mobile)       -> never rendered
-//   - everywhere else                 -> mounted one tick after paint via
-//     requestIdleCallback, so it never competes with the initial
-//     LCP/TBT window Lighthouse actually scores
+//   - everywhere else                 -> mounted only after the window's
+//     own "load" event (every resource on the page has finished, not just
+//     "main thread has a spare moment") *and* an idle tick past that —
+//     PageSpeed's desktop run isn't CPU-throttled the way mobile is, so a
+//     requestIdleCallback alone could still fire well inside the scored
+//     trace window; waiting for load pushes this past it deliberately.
 export default function DeferredThreads(props) {
   const [shouldRender, setShouldRender] = useState(false);
 
@@ -30,8 +33,20 @@ export default function DeferredThreads(props) {
 
     const schedule = window.requestIdleCallback || ((cb) => setTimeout(cb, 200));
     const cancel = window.cancelIdleCallback || clearTimeout;
-    const id = schedule(() => setShouldRender(true));
-    return () => cancel(id);
+    let idleId;
+    const armIdle = () => {
+      idleId = schedule(() => setShouldRender(true));
+    };
+
+    if (document.readyState === "complete") {
+      armIdle();
+      return () => cancel(idleId);
+    }
+    window.addEventListener("load", armIdle, { once: true });
+    return () => {
+      window.removeEventListener("load", armIdle);
+      cancel(idleId);
+    };
   }, []);
 
   if (!shouldRender) return null;
