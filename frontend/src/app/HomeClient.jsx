@@ -207,8 +207,7 @@ export default function HomeClient() {
             </Link>
           ))}
         </div>
-        <p className="mt-3 text-[11px] text-zinc-600">Photos via Pexels.</p>
-      </section>
+s      </section>
 
       <section id="pricing" className="reveal mt-16 scroll-mt-24">
         <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("pricing.eyebrow")}</p>
