@@ -45,6 +45,22 @@ const upload = multer({
   fileFilter: audioFileFilter,
 });
 
+// Preset imports are JSON, not audio — reusing `upload` here would reject
+// every real preset file through the same filter meant for /master and
+// /analyze-chords. Same size cap, no audio-only filter.
+function presetFileFilter(_req, file, cb) {
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  if (ext === ".json" || file.mimetype === "application/json") return cb(null, true);
+  cb(new Error(`Unsupported file type "${ext || file.mimetype || "unknown"}" — upload a preset .json file.`));
+}
+const uploadPresetJson = multer({
+  dest: settings.uploadDir,
+  limits: {
+    fileSize: 1 * 1024 * 1024, // presets are tiny; 1MB is generous
+  },
+  fileFilter: presetFileFilter,
+});
+
 // Every route below this point already requires a signed-in Firebase user
 // (see server.js) — that's "not anonymous", not "is an admin". Managing
 // the built-in preset catalog is a separate, higher privilege: gate it
@@ -254,7 +270,7 @@ router.get("/mix-presets", async (req, res) => {
   res.json(await listMixPresets(req.user?.uid));
 });
 
-router.post("/import-preset", upload.single("file"), async (req, res) => {
+router.post("/import-preset", uploadPresetJson.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ detail: "file is required" });
   }
