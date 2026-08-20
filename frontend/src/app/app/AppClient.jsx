@@ -13,7 +13,9 @@ import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
 import EntitlementsBadge from "@/components/app/EntitlementsBadge";
+import OnboardingTour from "@/components/app/OnboardingTour";
 import { IconMaster, IconChords, IconMyMasters, IconHelp, IconSettings, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
+import { getProfile, postProfile } from "@/network/http/client";
 import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
@@ -24,7 +26,7 @@ const TABS = [
   { key: "chords", labelKey: "app.tab.chords", icon: IconChords, render: () => <ChordsPanel /> },
   { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, render: () => <MyMastersPanel /> },
   { key: "help", labelKey: "app.tab.help", icon: IconHelp, render: () => <HelpSupportPanel /> },
-  { key: "settings", labelKey: "app.tab.settings", icon: IconSettings, render: () => <SettingsPanel /> },
+  { key: "settings", labelKey: "app.tab.settings", icon: IconSettings, render: (ctx) => <SettingsPanel onReplayTutorial={() => ctx.setShowTutorial(true)} /> },
 ];
 
 const SIDEBAR_PREF_KEY = "sidebarOpen";
@@ -68,6 +70,28 @@ export default function AppClient() {
   useEffect(() => {
     if (user) fetchEntitlements();
   }, [user, fetchEntitlements]);
+
+  // First-time-only onboarding tour — gated by profile.tutorialShown
+  // (Firestore, survives reloads/devices, unlike a localStorage flag).
+  // Checked once per sign-in; never re-shown once set.
+  const [showTutorial, setShowTutorial] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    getProfile()
+      .then((profile) => {
+        if (!cancelled && !profile.tutorialShown) setShowTutorial(true);
+      })
+      .catch(() => {}); // non-critical — worst case the tour just doesn't show this load
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const dismissTutorial = () => {
+    setShowTutorial(false);
+    postProfile({ tutorialShown: true }).catch(() => {}); // best-effort; UI already moved on
+  };
 
   // Covers returning from a Polar checkout: the user lands back on /app
   // (any tab) and this re-checks entitlements immediately rather than
@@ -248,10 +272,11 @@ export default function AppClient() {
         )}
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-10 md:py-8">{active.render({ setActiveTab })}</main>
+      <main className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-10 md:py-8">{active.render({ setActiveTab, setShowTutorial })}</main>
 
       <NotificationBanner activeTab={activeTab} onView={() => setActiveTab("master")} />
       <EntitlementsBadge onClick={() => setActiveTab("settings")} />
+      {showTutorial ? <OnboardingTour onDone={dismissTutorial} /> : null}
     </div>
   );
 }

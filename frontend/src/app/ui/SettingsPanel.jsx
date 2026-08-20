@@ -11,7 +11,7 @@ import BillingPanel from "./BillingPanel";
 const fieldStyle =
   "w-full box-border rounded-xl border border-white/15 bg-black/20 px-3.5 py-3 text-sm text-white outline-none focus:border-brass/60";
 
-export default function SettingsPanel() {
+export default function SettingsPanel({ onReplayTutorial }) {
   const router = useRouter();
   const { user, busy, error, changePassword, deleteAccount, signOutEverywhere, clearError } = useAuthStore();
   const [signOutEverywhereStatus, setSignOutEverywhereStatus] = useState("");
@@ -193,6 +193,20 @@ export default function SettingsPanel() {
           {busy ? "Updating…" : "Update password"}
         </button>
       </form>
+
+      {onReplayTutorial ? (
+        <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-5">
+          <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Help</h2>
+          <p className="mt-2 text-sm text-zinc-400">Want a refresher on how the app works?</p>
+          <button
+            type="button"
+            onClick={onReplayTutorial}
+            className="mt-3 rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35"
+          >
+            Replay tutorial
+          </button>
+        </div>
+      ) : null}
 
       <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-5">
         <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Sessions</h2>

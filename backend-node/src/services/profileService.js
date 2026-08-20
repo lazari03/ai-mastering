@@ -28,6 +28,9 @@ export async function saveProfile(uid, profile) {
   if (profile.studioName !== undefined) record.studioName = profile.studioName || "";
   if (profile.termsAcceptedAt !== undefined) record.termsAcceptedAt = new Date(profile.termsAcceptedAt);
   if (profile.termsVersion !== undefined) record.termsVersion = profile.termsVersion;
+  // Set once, right after the first-time onboarding tour finishes (or is
+  // skipped) — never unset, so the tour never comes back for that account.
+  if (profile.tutorialShown !== undefined) record.tutorialShown = Boolean(profile.tutorialShown);
 
   await userDoc(uid).set(record, { merge: true });
   return record;
@@ -44,6 +47,7 @@ export async function getProfile(uid) {
     lastName: data.lastName || "",
     phone: data.phone || "",
     studioName: data.studioName || "",
+    tutorialShown: Boolean(data.tutorialShown),
   };
 }
 
