@@ -202,9 +202,31 @@ const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseIn
     );
     intersectionObserver.observe(container);
 
+    // This was an unbounded, uncapped-framerate loop — every visible frame,
+    // forever, for as long as the tab stays open. Measured cost: ~15ms of
+    // real main-thread work per frame, which is invisible for a couple of
+    // seconds but adds up to 27+ *seconds* of Total Blocking Time under
+    // Lighthouse, whose trace runs long enough to capture a large chunk of
+    // an animation that never stops. Two independent caps, not one:
+    //   - 30fps instead of ~60fps — halves the cost while it's running.
+    //   - freezes after ANIMATION_DURATION_MS — a subtle background
+    //     shifting for a few seconds and then holding still is
+    //     imperceptible to a real visitor, and this is what actually
+    //     bounds total cost regardless of how long any given page view
+    //     (or Lighthouse trace) lasts, which a frame-rate cap alone can't do.
+    const ANIMATION_DURATION_MS = 8000;
+    const FRAME_INTERVAL_MS = 1000 / 30;
+    let startTime = null;
+    let lastFrameTime = 0;
+
     function update(timestamp) {
+      if (startTime === null) startTime = timestamp;
+      if (timestamp - startTime > ANIMATION_DURATION_MS) return; // frozen — no more frames scheduled at all
+
       animationFrameId.current = requestAnimationFrame(update);
       if (!isVisible || document.hidden) return;
+      if (timestamp - lastFrameTime < FRAME_INTERVAL_MS) return;
+      lastFrameTime = timestamp;
 
       const { color: nextColor, amplitude: nextAmplitude, distance: nextDistance, enableMouseInteraction: withMouse } = propsRef.current;
 
