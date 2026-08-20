@@ -207,15 +207,18 @@ const Threads = ({ color = [1, 1, 1], amplitude = 1, distance = 0, enableMouseIn
     // real main-thread work per frame, which is invisible for a couple of
     // seconds but adds up to 27+ *seconds* of Total Blocking Time under
     // Lighthouse, whose trace runs long enough to capture a large chunk of
-    // an animation that never stops. Two independent caps, not one:
-    //   - 30fps instead of ~60fps — halves the cost while it's running.
-    //   - freezes after ANIMATION_DURATION_MS — a subtle background
-    //     shifting for a few seconds and then holding still is
-    //     imperceptible to a real visitor, and this is what actually
-    //     bounds total cost regardless of how long any given page view
-    //     (or Lighthouse trace) lasts, which a frame-rate cap alone can't do.
-    const ANIMATION_DURATION_MS = 8000;
-    const FRAME_INTERVAL_MS = 1000 / 30;
+    // an animation that never stops.
+    //
+    // DeferredThreads starts this right at window "load" — which is also
+    // exactly the moment Lighthouse's trace is scoring. So *when* it starts
+    // doesn't matter; only *how much work happens inside the window* does.
+    // Under PSI desktop's own CPU throttle, 15ms/frame crosses the 50ms
+    // long-task line, so 8s @ 30fps (~240 frames) was still enough to book
+    // several seconds of TBT. Shrunk to a brief settle-in burst instead of
+    // an ambient loop — short enough that even throttled, total cost stays
+    // near the noise floor.
+    const ANIMATION_DURATION_MS = 1200;
+    const FRAME_INTERVAL_MS = 1000 / 15;
     let startTime = null;
     let lastFrameTime = 0;
 
