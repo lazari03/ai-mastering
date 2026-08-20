@@ -30,13 +30,15 @@ export default function MyMastersPanel() {
   useEffect(() => {
     getJobs()
       .then(async (list) => {
+        // Only the mastered file — My Masters is deliberately just that,
+        // not an A/B archive (the Master tab's Review panel is where the
+        // original-vs-mastered comparison lives, right after rendering).
         // Built once per job here (not per-render, and not via a raw
-        // toAbsoluteUrl) — these routes need the ?dl= token to work at all
+        // toAbsoluteUrl) — this route needs the ?dl= token to work at all
         // from a plain <a href>, see toAuthedDownloadUrl's own comment.
         const enriched = await Promise.all(
           list.map(async (job) => ({
             ...job,
-            originalUrl: await toAuthedDownloadUrl(`/original/${job.job_id}`),
             downloadUrl: await toAuthedDownloadUrl(`/download/${job.job_id}.${job.output_format || "wav"}`),
           }))
         );
@@ -135,12 +137,6 @@ export default function MyMastersPanel() {
 
               {!expired ? (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <a
-                    href={job.originalUrl}
-                    className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30"
-                  >
-                    Original
-                  </a>
                   <button
                     type="button"
                     onClick={() => handleDownload(job)}

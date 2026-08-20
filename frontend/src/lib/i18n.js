@@ -143,8 +143,8 @@ const DICT = {
   },
   "faq.q8": { en: "What's actually free?", sq: "Çfarë është vërtet falas?" },
   "faq.a8": {
-    en: "Clean Audio (unlimited), 30-second mastering previews (unlimited, Standard engine), and 3 full-length masters a month, forever, on the Free plan. Studio (€9.99/mo) raises that to 50/month and adds Professional mastering and stem separation. All-Access (€19.99/mo) raises it to 250/month and adds unlimited chord detection.",
-    sq: "Clean Audio (i pakufizuar), parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard), dhe 3 masterë të plotë në muaj, përgjithmonë, në planin Free. Studio (€9.99/muaj) e ngre atë në 50/muaj dhe shton masterizimin Professional e ndarjen e instrumenteve. All-Access (€19.99/muaj) e ngre në 250/muaj dhe shton zbulim të pakufizuar akordesh.",
+    en: "30-second mastering previews (unlimited, Standard engine) and 3 full-length masters a month, forever, on the Free plan. Studio (€9.99/mo) raises that to 50/month and adds Professional mastering and stem separation. All-Access (€19.99/mo) raises it to 250/month and adds unlimited chord detection.",
+    sq: "Parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard) dhe 3 masterë të plotë në muaj, përgjithmonë, në planin Free. Studio (€9.99/muaj) e ngre atë në 50/muaj dhe shton masterizimin Professional e ndarjen e instrumenteve. All-Access (€19.99/muaj) e ngre në 250/muaj dhe shton zbulim të pakufizuar akordesh.",
   },
 
   "contact.eyebrow": { en: "Contact", sq: "Kontakt" },
@@ -200,7 +200,6 @@ const DICT = {
   "pricing.subCta": { en: "Get Started", sq: "Fillo Tani" },
   "pricing.subReassurance": { en: "Cancel anytime, no questions asked.", sq: "Anulo kur të duash, pa pyetje." },
 
-  "app.tab.clean": { en: "Clean Audio", sq: "Pastro Audio" },
   "app.tab.master": { en: "Master Audio", sq: "Masterizo Audio" },
   "app.tab.chords": { en: "Show Chords", sq: "Shfaq Akordet" },
   "app.tab.myMasters": { en: "My Masters", sq: "Masterat e Mia" },

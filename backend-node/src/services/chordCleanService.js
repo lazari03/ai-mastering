@@ -20,11 +20,3 @@ export async function previewCodec(jobId, codec = "mp3_128") {
     fields: { job_id: jobId, codec },
   });
 }
-
-export async function cleanAudio(file, outputFormat = "mp3") {
-  const outExt = outputFormat === "wav" ? "wav" : "mp3";
-  return postMultipartToPython("/clean", {
-    fields: { output_format: outExt },
-    files: { file: { path: file.path, filename: file.originalname || "input.wav" } },
-  });
-}

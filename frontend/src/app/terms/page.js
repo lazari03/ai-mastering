@@ -122,7 +122,7 @@ export default function TermsPage() {
       <section>
         <h2>8. Fees and paid plans</h2>
         <p>
-          Clean Audio is free, unlimited. Mastering previews (30-second, Standard engine) are free, unlimited, and
+          Mastering previews (30-second, Standard engine) are free, unlimited, and
           every account gets 3 free full-length masters per calendar month. The Studio plan raises that monthly
           limit and adds Professional mastering and stem separation; the All-Access plan raises it further and adds
           unlimited chord detection. Chord detection is not available for individual purchase — it&apos;s an

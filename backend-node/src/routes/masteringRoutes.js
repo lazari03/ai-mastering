@@ -8,7 +8,7 @@ import multer from "multer";
 import { GENRES, STYLES, TAGS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
 import { processMastering, execFileAsync, deleteJobFiles } from "../services/masteringService.js";
-import { analyzeChords, cleanAudio, previewCodec } from "../services/chordCleanService.js";
+import { analyzeChords, previewCodec } from "../services/chordCleanService.js";
 import { listMixPresets } from "../services/presetsService.js";
 import { importCustomPreset, deleteCustomPreset } from "../services/customPresetsService.js";
 import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPresetsService.js";
@@ -381,14 +381,20 @@ router.post("/master", masterUpload, async (req, res) => {
 
     if (preview) fs.unlink(masterFile.path, () => {});
 
-    // Only spent now that the render actually succeeded. If this
-    // somehow fails (Firestore hiccup), the user already has their file —
-    // log it rather than fail a response that already succeeded; worst
-    // case is one unbilled render, not a broken purchase.
+    // Only spent now that the render actually succeeded. Awaited (not
+    // fire-and-forget) — the frontend re-checks remaining quota the
+    // instant this response lands (see AppClient.jsx's refreshEntitlements
+    // after a real master), so the Firestore write has to have actually
+    // landed by then or that re-check shows the stale, pre-deduction count.
+    // Still doesn't fail the response on error — the user already has
+    // their file; a Firestore hiccup here is one unbilled render, logged,
+    // not a broken master.
     if (mustConsumeQuota) {
-      consumeMasterQuota(req.user.uid, quotaLimit).catch((error) =>
-        console.error("Failed to consume master quota after successful render:", error.message)
-      );
+      try {
+        await consumeMasterQuota(req.user.uid, quotaLimit);
+      } catch (error) {
+        console.error("Failed to consume master quota after successful render:", error.message);
+      }
     }
 
     // Recorded regardless of preview — ownsJob() needs this to exist for
@@ -449,39 +455,6 @@ router.post("/analyze-chords", upload.single("file"), async (req, res) => {
     return res.json(result);
   } catch (error) {
     const detail = error?.stderr || error?.message || "Chord detection failed";
-    return res.status(500).json({ detail });
-  }
-});
-
-router.post("/clean", upload.single("file"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ detail: "file is required" });
-  }
-  try {
-    const result = await cleanAudio(req.file, req.body.output_format || "mp3");
-
-    // Without this, ownsJob(uid, jobId) never finds a record for a clean
-    // job — every /download/:jobId.:ext for a cleaned file 404'd "File not
-    // found" unconditionally, regardless of anything else being correct.
-    // Awaited (not fire-and-forget) so the record is guaranteed to exist
-    // before the response reaches the frontend, which tries to build a
-    // download URL immediately.
-    try {
-      await recordJob(req.user.uid, {
-        job_id: result.job_id,
-        tier: "clean",
-        output_format: req.body.output_format || "mp3",
-        original_filename: req.file.originalname,
-        before_lufs: result.before_lufs,
-        after_lufs: result.after_lufs,
-      });
-    } catch (error) {
-      console.error("Failed to record clean-audio job history:", error.message);
-    }
-
-    return res.json(result);
-  } catch (error) {
-    const detail = error?.stderr || error?.message || "Cleanup failed";
     return res.status(500).json({ detail });
   }
 });

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMasteringStore } from "@/store/masteringStore";
 
 // Lives in the app shell (not inside MasteringConsole) so it survives
-// switching to Clean Audio/Show Chords/etc while a render is in flight —
+// switching to Show Chords/etc while a render is in flight —
 // masteringStore's isSubmitting/result state is global already, but the
 // detailed progress UI is local to MasteringConsole and disappears the
 // moment that tab unmounts. This is the persistent, tab-agnostic version.

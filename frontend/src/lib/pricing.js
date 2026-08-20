@@ -17,7 +17,7 @@ export const PLANS = {
     period: "",
     masterLimit: 3,
     blurb: "Get a real master before you pay anything.",
-    features: ["3 full-length masters / month", "Unlimited Clean Audio", "Unlimited 30s mastering previews"],
+    features: ["3 full-length masters / month", "Unlimited 30s mastering previews"],
   },
   studio: {
     key: "studio",

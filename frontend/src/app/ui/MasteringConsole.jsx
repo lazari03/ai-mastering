@@ -355,18 +355,28 @@ export default function MasteringConsole() {
                     <button
                       type="button"
                       onClick={() => setMode("quick")}
-                      className={`rounded-2xl border p-4 text-left transition ${mode === "quick" ? "border-ember bg-ember/[0.1]" : "border-white/12 bg-black/20 hover:border-white/25"}`}
+                      aria-pressed={mode === "quick"}
+                      className={`relative rounded-2xl border p-4 text-left transition ${mode === "quick" ? "border-ember bg-ember/[0.1]" : "border-white/12 bg-black/20 hover:border-white/25"}`}
                     >
-                      <p className="m-0 text-sm font-bold uppercase tracking-[0.1em] text-white">Quick Master</p>
-                      <p className="mt-1.5 text-xs text-zinc-400">Automatic. Pick a genre and style, the DSP engine handles everything else. Fastest path.</p>
+                      {mode === "quick" ? (
+                        <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-ember text-[11px] font-bold text-[#100b08]">✓</span>
+                      ) : null}
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/30 text-base">🎚️</span>
+                      <p className="m-0 mt-2.5 text-sm font-bold uppercase tracking-[0.1em] text-white">Quick Master</p>
+                      <p className="mt-1.5 text-xs text-zinc-400">Automatic — pick a genre and style, the DSP engine sets everything else for you. Fastest path, no dials to touch.</p>
                     </button>
                     <button
                       type="button"
                       onClick={() => setMode("pro")}
-                      className={`rounded-2xl border p-4 text-left transition ${mode === "pro" ? "border-brass bg-brass/[0.1]" : "border-white/12 bg-black/20 hover:border-white/25"}`}
+                      aria-pressed={mode === "pro"}
+                      className={`relative rounded-2xl border p-4 text-left transition ${mode === "pro" ? "border-brass bg-brass/[0.1]" : "border-white/12 bg-black/20 hover:border-white/25"}`}
                     >
-                      <p className="m-0 text-sm font-bold uppercase tracking-[0.1em] text-white">Pro Master</p>
-                      <p className="mt-1.5 text-xs text-zinc-400">Manual professional controls — EQ, dynamics, multiband, saturation, stereo, limiter. Same engine, full control.</p>
+                      {mode === "pro" ? (
+                        <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-brass text-[11px] font-bold text-[#100b08]">✓</span>
+                      ) : null}
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/30 text-base">🎛️</span>
+                      <p className="m-0 mt-2.5 text-sm font-bold uppercase tracking-[0.1em] text-white">Pro Master</p>
+                      <p className="mt-1.5 text-xs text-zinc-400">Hands-on knobs for EQ, dynamics, multiband, saturation, stereo, and the limiter. Same engine, full control.</p>
                     </button>
                   </div>
                 </section>

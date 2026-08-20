@@ -1,16 +1,7 @@
 // Small inline stroke icons, one per app tab plus the sidebar toggle — no
-// icon library pulled in for six glyphs; these are hand-drawn to match
+// icon library pulled in for a handful of glyphs; these are hand-drawn to match
 // (24x24 viewBox, 1.6 stroke, round caps/joins, currentColor).
 const base = { width: 17, height: 17, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" };
-
-export function IconClean(props) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M12 3c3 4 5 7.2 5 10a5 5 0 0 1-10 0c0-2.8 2-6 5-10Z" />
-      <path d="M9 15.5c0 1.4 1.3 2.5 3 2.5" />
-    </svg>
-  );
-}
 
 export function IconMaster(props) {
   return (

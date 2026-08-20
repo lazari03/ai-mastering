@@ -14,7 +14,7 @@ export default function RefundPage() {
       <section>
         <h2>1. What's paid</h2>
         <p>
-          Clean Audio, mastering previews, and 3 full-length masters/month are free and never require payment.
+          Mastering previews and 3 full-length masters/month are free and never require payment.
           Everything beyond that — higher monthly mastering limits, Professional mastering, stem separation, and
           chord detection — is unlocked entirely through the Studio or All-Access monthly subscription (see current
           pricing in the app under Settings → Billing). There are no one-time purchases; this policy covers the two

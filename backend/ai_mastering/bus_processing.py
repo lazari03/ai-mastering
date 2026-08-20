@@ -31,8 +31,8 @@ def _true_peak_limiter(
     stereo: np.ndarray, sr: int, ceiling_db: float = -1.0, lookahead_ms: float = 3.0, release_ms: float = 60.0, oversample: int = 4
 ) -> np.ndarray:
     """Gain-only lookahead true-peak limiter. Unlike pedalboard.Limiter (which
-    applies makeup gain toward its threshold — see clean_service.py/
-    preset_dsp_engine.py for where that bit us), this can only ever turn gain
+    applies makeup gain toward its threshold — see preset_dsp_engine.py for
+    where that bit us), this can only ever turn gain
     down, and it works on an oversampled signal so inter-sample peaks are
     actually caught, not just the peak of the sampled points. Professional
     tier only — the free tier's pedalboard.Limiter-based path is untouched."""

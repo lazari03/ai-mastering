@@ -108,13 +108,6 @@ export async function postAnalyzeChords(formData) {
   }, MASTERING_TIMEOUT_MS);
 }
 
-export async function postClean(formData) {
-  return request("/clean", {
-    method: "POST",
-    body: formData,
-  }, MASTERING_TIMEOUT_MS);
-}
-
 export async function postImportPreset(formData) {
   return request("/import-preset", {
     method: "POST",

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import CleanAudioPanel from "@/app/ui/CleanAudioPanel";
 import ChordsPanel from "@/app/ui/ChordsPanel";
 import MasteringConsole from "@/app/ui/MasteringConsole";
 import MyMastersPanel from "@/app/ui/MyMastersPanel";
@@ -14,14 +13,13 @@ import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
 import EntitlementsBadge from "@/components/app/EntitlementsBadge";
-import { IconClean, IconMaster, IconChords, IconMyMasters, IconHelp, IconSettings, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
+import { IconMaster, IconChords, IconMyMasters, IconHelp, IconSettings, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
 import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { useLanguage } from "@/lib/i18n";
 
 const TABS = [
-  { key: "clean", labelKey: "app.tab.clean", icon: IconClean, render: () => <CleanAudioPanel /> },
   { key: "master", labelKey: "app.tab.master", icon: IconMaster, render: () => <MasteringConsole /> },
   { key: "chords", labelKey: "app.tab.chords", icon: IconChords, render: () => <ChordsPanel /> },
   { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, render: () => <MyMastersPanel /> },

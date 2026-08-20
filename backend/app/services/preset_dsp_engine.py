@@ -282,9 +282,8 @@ def _apply_limiter(stereo: np.ndarray, sr: int, cfg: dict) -> np.ndarray:
     # professional tier uses (ai_mastering/bus_processing.py) — a real
     # limiter (anticipates peaks, smooths release) rather than a single
     # scalar trim after the fact. Still never boosts, still not
-    # pedalboard.Limiter (see clean_service.py for why that one's wrong
-    # here — it applies makeup gain toward its ceiling, undoing the LUFS
-    # target just set above).
+    # pedalboard.Limiter — that one applies makeup gain toward its ceiling,
+    # which would undo the LUFS target just set above.
     return np.asarray(_true_peak_limiter(stereo, sr, ceiling_db=ceiling_db), dtype=np.float32)
 
 
