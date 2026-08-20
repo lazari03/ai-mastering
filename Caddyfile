@@ -8,10 +8,36 @@
 # auralithforge.app's DNS A/AAAA record already pointing at this server's
 # IP before you start Caddy, or the ACME challenge fails.
 
+(security_headers) {
+	# Brotli/gzip for text responses — was off entirely, meaning every
+	# HTML/CSS/JS response went out uncompressed. This alone is usually a
+	# large chunk of a bad PageSpeed score (bigger transfer = slower on a
+	# throttled connection, which is exactly what Lighthouse simulates).
+	encode zstd gzip
+	header {
+		# Force HTTPS on repeat visits — 1 year, apex + subdomains.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# Stops a browser from guessing content-type in a way that turns
+		# an upload into executable script.
+		X-Content-Type-Options "nosniff"
+		# No embedding this site in an <iframe> elsewhere (clickjacking).
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# Not a full CSP — this app's Next.js bundle needs inline
+		# hydration scripts, and a naive default-src would break it. A
+		# real CSP needs deliberate per-directive tuning, not a
+		# copy-pasted one; left as a follow-up rather than guessed at.
+		-Server
+	}
+}
+
 auralithforge.app {
+	import security_headers
 	reverse_proxy frontend:3000
 }
 
 api.auralithforge.app {
+	import security_headers
 	reverse_proxy node-api:8000
 }

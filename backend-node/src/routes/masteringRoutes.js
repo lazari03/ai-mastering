@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { Readable } from "node:stream";
 
 import express from "express";
 import multer from "multer";
 
-import { GENRES, STYLES, TAGS } from "../config/constants.js";
+import { GENRES, STYLES, TAGS, AUDIO_DECODE_EXTS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
 import { processMastering, execFileAsync, deleteJobFiles } from "../services/masteringService.js";
 import { analyzeChords, previewCodec } from "../services/chordCleanService.js";
@@ -17,15 +18,31 @@ import { recordJob, listJobs, ownsJob, getJob, deleteJob } from "../services/job
 import { createCheckoutUrl, createPortalUrl, getSubscriptionStatus, getPlan } from "../services/polarService.js";
 import { getMasterQuotaStatus, consumeMasterQuota, PLAN_MASTER_LIMITS } from "../services/entitlementsService.js";
 import { getAuth } from "../config/firebase.js";
+import { expensiveLimiter } from "../middleware/rateLimit.js";
 import { mintDownloadToken, mintShareToken, verifyShareToken } from "../services/downloadTokenService.js";
 
 const router = express.Router();
+
+// Defense in depth, not the real protection — ffmpeg/soundfile already
+// reject anything that isn't actually decodable audio, so a mislabeled
+// file fails harmlessly downstream either way. This just avoids handing
+// something obviously wrong (an executable, an HTML file, an image) into
+// that pipeline at all, rejecting by extension/mimetype before it's even
+// written to disk.
+const ALLOWED_UPLOAD_EXTS = new Set([".wav", ".aiff", ".aif", ".flac", ...AUDIO_DECODE_EXTS]);
+function audioFileFilter(_req, file, cb) {
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  const looksLikeAudio = file.mimetype?.startsWith("audio/") || file.mimetype?.startsWith("video/");
+  if (ALLOWED_UPLOAD_EXTS.has(ext) || looksLikeAudio) return cb(null, true);
+  cb(new Error(`Unsupported file type "${ext || file.mimetype || "unknown"}" — upload an audio file.`));
+}
 
 const upload = multer({
   dest: settings.uploadDir,
   limits: {
     fileSize: settings.maxUploadMb * 1024 * 1024,
   },
+  fileFilter: audioFileFilter,
 });
 
 // Every route below this point already requires a signed-in Firebase user
@@ -38,7 +55,13 @@ function requireAdminKey(req, res, next) {
   if (!settings.adminApiKey) {
     return res.status(501).json({ detail: "Admin preset management isn't configured — set ADMIN_API_KEY." });
   }
-  if (req.headers["x-admin-key"] !== settings.adminApiKey) {
+  const provided = Buffer.from(String(req.headers["x-admin-key"] || ""));
+  const expected = Buffer.from(settings.adminApiKey);
+  // Constant-time compare, same discipline as the download/share tokens
+  // (downloadTokenService.js) — a plain !== leaks timing information about
+  // how many leading characters matched, which matters more here than it
+  // sounds given this key never rotates on its own.
+  if (provided.length !== expected.length || !crypto.timingSafeEqual(provided, expected)) {
     return res.status(403).json({ detail: "Invalid admin key" });
   }
   return next();
@@ -299,7 +322,7 @@ async function truncateToPreview(inputPath, workDir) {
   return outputPath;
 }
 
-router.post("/master", masterUpload, async (req, res) => {
+router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
   const file = req.files?.file?.[0];
   if (!file) {
     return res.status(400).json({ detail: "file is required" });
@@ -354,7 +377,23 @@ router.post("/master", masterUpload, async (req, res) => {
     const tweaks = JSON.parse(req.body.tweaks || "{}");
     // Pro Mastering's manual parameter panel — never on preview, which is
     // always the cheap Standard/adaptive path (see PREVIEW_SECONDS above).
+    // Band-array lengths are capped here: the UI never generates more than
+    // a handful, but nothing stops a direct API call from sending
+    // thousands — each one is a real filter construction in
+    // preset_dsp_engine.py, so an uncapped array is a cheap way to make
+    // one request tie up a lot of DSP compute regardless of the rate limit
+    // on request *count*.
     const processing = !preview && req.body.processing ? JSON.parse(req.body.processing) : null;
+    if (processing) {
+      const MAX_BANDS = 24;
+      const tooMany =
+        (processing.eq?.length || 0) > MAX_BANDS ||
+        (processing.dynamic_eq?.length || 0) > MAX_BANDS ||
+        (processing.stereo?.bands?.length || 0) > MAX_BANDS;
+      if (tooMany) {
+        return res.status(400).json({ detail: `Too many bands in one processing spec — ${MAX_BANDS} max per list.` });
+      }
+    }
 
     let masterFile = file;
     if (preview) {
@@ -436,7 +475,7 @@ router.post("/master", masterUpload, async (req, res) => {
   }
 });
 
-router.post("/analyze-chords", upload.single("file"), async (req, res) => {
+router.post("/analyze-chords", expensiveLimiter, upload.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ detail: "file is required" });
   }
@@ -459,7 +498,7 @@ router.post("/analyze-chords", upload.single("file"), async (req, res) => {
   }
 });
 
-router.post("/codec-preview", async (req, res) => {
+router.post("/codec-preview", expensiveLimiter, async (req, res) => {
   const { job_id: jobId, codec } = req.body || {};
   if (!jobId) {
     return res.status(400).json({ detail: "job_id is required" });

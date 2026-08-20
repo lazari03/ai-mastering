@@ -5,17 +5,26 @@ import { useState } from "react";
 import { postCheckout, postBillingPortal } from "@/network/http/client";
 import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
+import { trackEvent } from "@/lib/analytics";
 
 export default function BillingPanel() {
   const { plan: currentPlan, masterQuota, loaded } = useEntitlementsStore();
   const [busyItem, setBusyItem] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
 
-  const buy = async (item) => {
+  // planKey/price are threaded through the success URL so /thank-you can
+  // fire a real GA4 "purchase" event — Polar doesn't hand the amount back
+  // on redirect, this is what the user actually clicked to buy. It's an
+  // approximation, not a server-confirmed transaction (see analytics
+  // notes) until a GA4 Measurement Protocol API secret is wired up
+  // server-side against the real Polar webhook payload.
+  const buy = async (item, planKey, priceLabel) => {
     setBusyItem(item);
     setCheckoutError("");
+    trackEvent("begin_checkout", { currency: "EUR", value: Number(String(priceLabel).replace(/[^\d.]/g, "")) || 0, items: [{ item_id: item, item_name: planKey }] });
     try {
-      const { url } = await postCheckout(item, `${window.location.origin}/thank-you`);
+      const successUrl = `${window.location.origin}/thank-you?plan=${encodeURIComponent(planKey)}&item=${encodeURIComponent(item)}&price=${encodeURIComponent(priceLabel)}`;
+      const { url } = await postCheckout(item, successUrl);
       window.location.href = url;
     } catch (err) {
       setBusyItem("");
@@ -83,7 +92,7 @@ export default function BillingPanel() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => buy(plan.item)}
+                      onClick={() => buy(plan.item, plan.key, plan.price)}
                       disabled={Boolean(busyItem)}
                       className="mt-3 w-full rounded-full border border-white/15 bg-black/20 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
                     >

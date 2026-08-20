@@ -1,6 +1,14 @@
 import fs from "node:fs";
 
-import admin from "firebase-admin";
+// firebase-admin's default namespace import (admin.credential.cert(),
+// admin.auth(), admin.firestore()) was dropped as of the v12+ modular
+// API — cert/initializeApp live in firebase-admin/app now, auth/firestore
+// each in their own subpath. Verified against the actual installed
+// package's exports (Object.keys), not documentation guesswork, same
+// discipline as every other SDK integration in this project.
+import { initializeApp, cert } from "firebase-admin/app";
+import { getAuth as getAdminAuth } from "firebase-admin/auth";
+import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 
 // Two ways to supply the service account, since deployment targets differ
 // in whether they support arbitrary file uploads: a path to the JSON file
@@ -37,15 +45,15 @@ let app = null;
 export function getFirebaseApp() {
   if (!app) {
     const serviceAccount = loadServiceAccount();
-    app = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    app = initializeApp({ credential: cert(serviceAccount) });
   }
   return app;
 }
 
 export function getAuth() {
-  return admin.auth(getFirebaseApp());
+  return getAdminAuth(getFirebaseApp());
 }
 
 export function getFirestore() {
-  return admin.firestore(getFirebaseApp());
+  return getAdminFirestore(getFirebaseApp());
 }

@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
-import Threads from "@/components/reactbits/Threads";
+import DeferredThreads from "@/components/reactbits/DeferredThreads";
 import { POSTS } from "@/content/posts";
 import { useLanguage } from "@/lib/i18n";
 import { PLANS, PLAN_ORDER } from "@/lib/pricing";
@@ -127,7 +128,7 @@ export default function HomeClient() {
         style={{ background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))", boxShadow: "0 20px 60px rgba(0,0,0,.35)" }}
       >
         <div className="absolute inset-0">
-          <Threads color={[0.9, 0.55, 0.25]} amplitude={1.05} distance={0.1} enableMouseInteraction />
+          <DeferredThreads color={[0.9, 0.55, 0.25]} amplitude={1.05} distance={0.1} enableMouseInteraction />
         </div>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/80" />
 
@@ -186,12 +187,16 @@ export default function HomeClient() {
               href={`/blog/${img.slug}`}
               className="group relative block overflow-hidden rounded-[20px] border border-white/10"
             >
-              <img
-                src={img.src}
-                alt={t(img.captionKey)}
-                loading="lazy"
-                className="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
-              />
+              <div className="relative h-56 w-full overflow-hidden">
+                <Image
+                  src={img.src}
+                  alt={t(img.captionKey)}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 33vw"
+                  loading="lazy"
+                  className="object-cover transition duration-500 group-hover:scale-105"
+                />
+              </div>
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
               <span className="absolute inset-x-0 bottom-0 p-4 text-sm font-medium text-white">
                 {t(img.captionKey)}

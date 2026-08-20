@@ -15,6 +15,7 @@ import {
 
 import { getFirebaseAuth, getGoogleProvider, isFirebaseConfigured } from "@/lib/firebase";
 import { postProfile, deleteAccountData, postSignOutEverywhere } from "@/network/http/client";
+import { trackEvent } from "@/lib/analytics";
 
 const NOT_CONFIGURED_MESSAGE = "Site is under maintenance";
 
@@ -134,6 +135,7 @@ export const useAuthStore = create((set) => ({
         console.error("Failed to save profile details:", profileError);
       }
 
+      trackEvent("sign_up", { method: "password" });
       set({ busy: false });
     } catch (error) {
       set({ busy: false, error: readableAuthError(error) });
@@ -148,6 +150,7 @@ export const useAuthStore = create((set) => ({
     set({ busy: true, error: "" });
     try {
       await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+      trackEvent("login", { method: "password" });
       set({ busy: false });
     } catch (error) {
       set({ busy: false, error: readableAuthError(error) });
@@ -177,6 +180,9 @@ export const useAuthStore = create((set) => ({
         } catch (profileError) {
           console.error("Failed to save profile details:", profileError);
         }
+        trackEvent("sign_up", { method: "google" });
+      } else {
+        trackEvent("login", { method: "google" });
       }
 
       set({ busy: false });

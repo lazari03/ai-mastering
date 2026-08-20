@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { buildMetadata } from "@/lib/seo";
+import ThankYouTracker from "./ThankYouTracker";
 
 export const metadata = buildMetadata({
   title: "Thank you",
@@ -9,9 +10,10 @@ export const metadata = buildMetadata({
   noindex: true,
 });
 
-export default function ThankYouPage() {
+export default function ThankYouPage({ searchParams }) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0b0d10] px-6 text-center text-white">
+      <ThankYouTracker plan={searchParams?.plan} item={searchParams?.item} price={searchParams?.price} />
       <p className="m-0 text-3xl">✓</p>
       <h1 className="m-0 font-[var(--font-title)] text-3xl">Thanks — you&apos;re all set</h1>
       <p className="m-0 max-w-sm text-sm text-zinc-400">

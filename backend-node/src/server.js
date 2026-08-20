@@ -5,6 +5,7 @@ import express from "express";
 
 import { settings } from "./config/settings.js";
 import { requireAuth } from "./middleware/auth.js";
+import { generalLimiter } from "./middleware/rateLimit.js";
 import { verifyDownloadToken } from "./services/downloadTokenService.js";
 import masteringRoutes from "./routes/masteringRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
@@ -75,6 +76,13 @@ app.use("/", webhookRoutes);
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+// Mounted after webhookRoutes on purpose — Polar's webhook calls are never
+// rate-limited (they're signature-verified, not user traffic, and Polar
+// retries on failure). Generous floor under every other route; the real
+// per-route protection for expensive DSP work is expensiveLimiter,
+// applied directly to /master, /analyze-chords, /codec-preview.
+app.use(generalLimiter);
+
 // Every route requires a signed-in Firebase user except /health (load
 // balancers/uptime monitors don't carry a user token), /admin/* (gated
 // instead by requireAdminKey in masteringRoutes.js), /webhooks/* (gated
@@ -104,6 +112,19 @@ app.use((req, res, next) => {
 });
 
 app.use("/", masteringRoutes);
+
+// Without this, anything thrown/passed to next(err) that a route didn't
+// catch itself (a multer file-filter rejection, a body-size overflow, a
+// genuine bug) falls through to Express's own default error handler —
+// an HTML page, not this API's JSON error shape, and in some
+// configurations that page can include a stack trace. One place, JSON
+// always, message only (never error.stack) in the response body.
+app.use((err, req, res, _next) => {
+  console.error(`Unhandled error on ${req.method} ${req.path}:`, err);
+  if (res.headersSent) return;
+  const status = err.status || err.statusCode || (err.name === "MulterError" ? 400 : 500);
+  res.status(status).json({ detail: err.message || "Something went wrong." });
+});
 
 app.listen(settings.port, () => {
   console.log(`${settings.appTitle} listening on http://localhost:${settings.port}`);

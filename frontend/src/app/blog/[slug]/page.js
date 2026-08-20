@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { POSTS, getPostBySlug } from "@/content/posts";
@@ -48,9 +49,11 @@ export default function BlogPostPage({ params }) {
       </p>
       <h1 className="mt-2 font-[var(--font-title)] text-3xl text-white sm:text-4xl">{post.title}</h1>
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-white/10">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={post.image} alt={post.title} className="h-72 w-full object-cover" />
+      <div className="relative mt-6 h-72 w-full overflow-hidden rounded-2xl border border-white/10">
+        {/* This is the article's LCP element — priority preloads it
+            instead of the default lazy behavior, which would otherwise
+            delay it behind everything else on the page. */}
+        <Image src={post.image} alt={post.title} fill sizes="(max-width: 760px) 100vw, 760px" priority className="object-cover" />
       </div>
 
       <div className="legal-prose mt-8 space-y-5 text-[15px] leading-relaxed text-zinc-300">
