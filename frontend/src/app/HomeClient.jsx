@@ -8,9 +8,11 @@ import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import DeferredThreads from "@/components/reactbits/DeferredThreads";
 import { POSTS } from "@/content/posts";
+import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { useLanguage } from "@/lib/i18n";
 import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 import { IconCheck } from "@/components/app/icons";
+import { CTA } from "@/lib/internalLinks";
 
 const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
 const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -73,11 +75,11 @@ export default function HomeClient() {
 
           <div className="hidden items-center gap-3 md:flex">
             <LanguageSwitch lang={lang} setLang={setLang} />
-            <Link href="/login" className="text-[13px] text-zinc-300 hover:text-white">
+            <Link href={CTA.signup} className="text-[13px] text-zinc-300 hover:text-white">
               {t("nav.signin")}
             </Link>
             <Link
-              href="/login"
+              href={CTA.signup}
               className="rounded-full border border-brass/50 bg-brass/[0.15] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass transition hover:bg-brass/25"
             >
               {t("nav.openApp")}
@@ -112,7 +114,7 @@ export default function HomeClient() {
             <div className="mt-3 flex items-center justify-between gap-3">
               <LanguageSwitch lang={lang} setLang={setLang} />
               <Link
-                href="/login"
+                href={CTA.signup}
                 onClick={() => setMenuOpen(false)}
                 className="flex-1 rounded-full border border-brass/50 bg-brass/[0.15] px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-[0.12em] text-brass"
               >
@@ -140,7 +142,7 @@ export default function HomeClient() {
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-zinc-300">{t("hero.body")}</p>
           <div className="mt-9 flex flex-wrap gap-3.5">
-            <Link href="/login" className="rounded-2xl bg-ember px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-[#100b08] transition hover:brightness-110">
+            <Link href={CTA.signup} className="rounded-2xl bg-ember px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-[#100b08] transition hover:brightness-110">
               {t("hero.ctaPrimary")}
             </Link>
             <a href="#features" className="rounded-2xl border border-white/20 bg-black/20 px-8 py-4 text-sm font-semibold uppercase tracking-[0.1em] text-white transition hover:border-white/40">
@@ -257,7 +259,7 @@ s      </section>
                 </ul>
 
                 <Link
-                  href="/login"
+                  href={CTA.signup}
                   className={`mt-6 block rounded-2xl px-6 py-3.5 text-center text-sm font-bold uppercase tracking-[0.1em] transition ${
                     isFeatured
                       ? "bg-brass text-[#100b08] hover:brightness-110"
@@ -291,6 +293,22 @@ s      </section>
               <h3 className="m-0 mt-2 text-[13px] font-semibold text-white">{t(`howTo.${k}.title`)}</h3>
               <p className="mt-1 text-xs leading-snug text-zinc-400">{t(`howTo.${k}.body`)}</p>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="reveal mt-16 scroll-mt-24">
+        <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">By genre</p>
+        <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">Mastering tuned per genre</h2>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {GENRE_KEYS.map((g) => (
+            <Link
+              key={g}
+              href={`/master/${g}`}
+              className="rounded-full border border-white/15 bg-black/20 px-4 py-2 text-xs text-zinc-300 hover:border-brass/50 hover:text-brass"
+            >
+              {GENRE_PAGES[g].label} mastering
+            </Link>
           ))}
         </div>
       </section>

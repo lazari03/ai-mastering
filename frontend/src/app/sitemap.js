@@ -1,4 +1,5 @@
 import { POSTS } from "@/content/posts";
+import { GENRE_KEYS } from "@/content/genrePages";
 import { SITE_URL } from "@/lib/seo";
 
 // Served automatically at /sitemap.xml by the Next.js App Router convention.
@@ -17,5 +18,12 @@ export default function sitemap() {
     priority: 0.5,
   }));
 
-  return [...staticRoutes, ...postRoutes];
+  const genreRoutes = GENRE_KEYS.map((genre) => ({
+    url: `${SITE_URL}/master/${genre}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
+
+  return [...staticRoutes, ...postRoutes, ...genreRoutes];
 }

@@ -3,7 +3,9 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { POSTS, getPostBySlug } from "@/content/posts";
+import { GENRE_PAGES } from "@/content/genrePages";
 import { buildMetadata, articleJsonLd, JsonLd } from "@/lib/seo";
+import { CTA, relatedGenresForPost } from "@/lib/internalLinks";
 
 export function generateStaticParams() {
   return POSTS.map((post) => ({ slug: post.slug }));
@@ -27,6 +29,7 @@ export default function BlogPostPage({ params }) {
   if (!post) notFound();
 
   const otherPosts = POSTS.filter((p) => p.slug !== post.slug);
+  const relatedGenres = relatedGenresForPost(post.slug);
 
   return (
     <main className="mx-auto w-full max-w-[760px] px-4 pb-24 pt-8 sm:px-6">
@@ -64,13 +67,34 @@ export default function BlogPostPage({ params }) {
 
       <div className="mt-10 rounded-2xl border border-brass/30 bg-brass/[0.08] p-5">
         <p className="m-0 text-sm text-zinc-200">Want to hear this applied to your own track?</p>
-        <Link
-          href="/login"
-          className="mt-3 inline-block rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
-        >
-          Master a track free
-        </Link>
+        <div className="mt-3 flex flex-wrap gap-2.5">
+          <Link
+            href={CTA.signup}
+            className="inline-block rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
+          >
+            Master a track free
+          </Link>
+          <Link
+            href={CTA.pricing}
+            className="inline-block rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35"
+          >
+            Studio &amp; All-Access plans →
+          </Link>
+        </div>
       </div>
+
+      {relatedGenres.length ? (
+        <div className="mt-8">
+          <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Related genre guides</p>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
+            {relatedGenres.map((g) => (
+              <Link key={g} href={`/master/${g}`} className="text-sm text-brass hover:text-ember">
+                {GENRE_PAGES[g].label} mastering →
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {otherPosts.length ? (
         <div className="mt-12 border-t border-white/10 pt-8">
