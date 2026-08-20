@@ -27,7 +27,7 @@ function SectionLabel({ children }) {
   return <h2 className="m-0 mb-2.5 text-xs uppercase tracking-[0.14em] text-brass">{children}</h2>;
 }
 
-export default function MasteringConsole() {
+export default function MasteringConsole({ onOpenHelp }) {
   const [activeStep, setActiveStep] = useState(0);
   const [inputPreviewUrl, setInputPreviewUrl] = useState("");
   const [masteringProgress, setMasteringProgress] = useState(0);
@@ -517,6 +517,15 @@ export default function MasteringConsole() {
                         immediately — including full professional presets with an EQ/dynamics/limiter spec, which
                         switch you into Pro mode with those exact values.
                       </span>
+                      {onOpenHelp ? (
+                        <button
+                          type="button"
+                          onClick={onOpenHelp}
+                          className="mt-1 block text-[10px] text-brass hover:text-ember"
+                        >
+                          Don&apos;t have a preset file? Get a template + how-to →
+                        </button>
+                      ) : null}
 
                       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                         <input

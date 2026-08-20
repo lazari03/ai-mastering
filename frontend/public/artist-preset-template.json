@@ -1,0 +1,23 @@
+{
+  "display_name": "My Custom Artist",
+  "genre": "pop",
+  "style": "modern",
+  "tags": [],
+  "output_format": "wav",
+  "processing": {
+    "input": { "auto_gain": true, "headroom_target_db": -6 },
+    "highpass": { "enabled": false, "frequency_hz": 30, "slope_db_oct": 12 },
+    "eq": [
+      { "frequency_hz": 100, "gain_db": 0, "q": 1.0 },
+      { "frequency_hz": 1000, "gain_db": 0, "q": 1.0 },
+      { "frequency_hz": 8000, "gain_db": 0, "q": 1.0 }
+    ],
+    "bus_compressor": { "ratio": 2.0, "attack_ms": 20, "release_ms": 150, "max_gain_reduction_db": 3 },
+    "dynamic_eq": [],
+    "saturation": { "enabled": false, "amount": 0.03, "oversampling": 4 },
+    "stereo": { "low_end_mono_below_hz": 120, "bands": [] },
+    "clipper": { "enabled": false, "ceiling_dbtp": -1, "drive_db": 0, "oversampling": 4 },
+    "limiter": { "target_lufs_i": -10, "ceiling_dbtp": -1 },
+    "output": { "bit_depth": 24, "dither": "triangular" }
+  }
+}

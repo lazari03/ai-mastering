@@ -20,7 +20,7 @@ import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { useLanguage } from "@/lib/i18n";
 
 const TABS = [
-  { key: "master", labelKey: "app.tab.master", icon: IconMaster, render: () => <MasteringConsole /> },
+  { key: "master", labelKey: "app.tab.master", icon: IconMaster, render: (ctx) => <MasteringConsole onOpenHelp={() => ctx.setActiveTab("help")} /> },
   { key: "chords", labelKey: "app.tab.chords", icon: IconChords, render: () => <ChordsPanel /> },
   { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, render: () => <MyMastersPanel /> },
   { key: "help", labelKey: "app.tab.help", icon: IconHelp, render: () => <HelpSupportPanel /> },
@@ -248,7 +248,7 @@ export default function AppClient() {
         )}
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-10 md:py-8">{active.render()}</main>
+      <main className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-10 md:py-8">{active.render({ setActiveTab })}</main>
 
       <NotificationBanner activeTab={activeTab} onView={() => setActiveTab("master")} />
       <EntitlementsBadge onClick={() => setActiveTab("settings")} />
