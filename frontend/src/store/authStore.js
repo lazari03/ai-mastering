@@ -270,6 +270,25 @@ export const useAuthStore = create((set) => ({
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPassword);
+
+      // A changed password is exactly the case "sign out of all devices"
+      // exists for — someone else with the old password (or a stolen
+      // session) should be kicked out now, not left signed in on this
+      // token's remaining 1h lifetime. Reuses the same revokeRefreshTokens
+      // backend call as the manual "Sign out of all devices" button
+      // (masteringRoutes.js /account/sign-out-everywhere), then force-
+      // refreshes this device's own token immediately after — it already
+      // has the new password, so it shouldn't get logged out too.
+      try {
+        await postSignOutEverywhere();
+        await user.getIdToken(true);
+      } catch (revokeError) {
+        // Non-fatal — the password itself did change successfully. Worst
+        // case, other devices stay signed in a little longer than
+        // intended; don't fail the whole operation over this.
+        console.error("Failed to revoke other sessions after password change:", revokeError);
+      }
+
       set({ busy: false });
       return true;
     } catch (error) {

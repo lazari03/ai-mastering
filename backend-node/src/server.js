@@ -9,6 +9,7 @@ import { generalLimiter } from "./middleware/rateLimit.js";
 import { verifyDownloadToken } from "./services/downloadTokenService.js";
 import masteringRoutes from "./routes/masteringRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
+import { reconcileAllSubscriptions } from "./services/polarService.js";
 
 // <a href download>, <audio src>, and direct browser navigation to a
 // download-family route can't attach an Authorization header — a ?dl=
@@ -129,3 +130,25 @@ app.use((err, req, res, _next) => {
 app.listen(settings.port, () => {
   console.log(`${settings.appTitle} listening on http://localhost:${settings.port}`);
 });
+
+// Reconciliation backstop — webhooks are the fast path for keeping
+// Firestore's subscription mirror in sync with Polar, but nothing catches
+// a webhook that never arrives at all (endpoint unreachable during a
+// deploy, wrong URL registered in Polar's dashboard, etc.). This periodic
+// pass asks Polar directly for the truth on every user with a
+// subscription on file and self-heals any drift. No new infra — this
+// server process is already always running, so setInterval is enough;
+// doesn't need a separate cron container. Runs once shortly after boot
+// (catches drift from any downtime just before this deploy), then every
+// 6 hours. Only in production — skips local/dev boots where
+// POLAR_ACCESS_TOKEN often isn't configured at all.
+if (settings.nodeEnv === "production" && settings.polarAccessToken) {
+  const RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+  const runReconciliation = () => {
+    reconcileAllSubscriptions().catch((error) => {
+      console.error("Subscription reconciliation pass failed:", error);
+    });
+  };
+  setTimeout(runReconciliation, 30 * 1000);
+  setInterval(runReconciliation, RECONCILE_INTERVAL_MS);
+}
