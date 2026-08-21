@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 
-import { postCheckout, postBillingPortal } from "@/network/http/client";
+import { postCheckout, postChangePlan, postBillingPortal } from "@/network/http/client";
 import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { trackEvent } from "@/lib/analytics";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 
 export default function BillingPanel() {
-  const { plan: currentPlan, masterQuota, loaded } = useEntitlementsStore();
+  const { plan: currentPlan, masterQuota, loaded, refresh } = useEntitlementsStore();
   const [busyItem, setBusyItem] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
+  const [changeStatus, setChangeStatus] = useState("");
 
   // planKey/price are threaded through the success URL so /thank-you can
   // fire a real GA4 "purchase" event — Polar doesn't hand the amount back
@@ -19,11 +20,31 @@ export default function BillingPanel() {
   // approximation, not a server-confirmed transaction (see analytics
   // notes) until a GA4 Measurement Protocol API secret is wired up
   // server-side against the real Polar webhook payload.
+  //
+  // Already on a paid plan -> change-plan (modifies the existing
+  // subscription in place, Polar handles proration). Currently free ->
+  // checkout (nothing exists yet to modify). Using checkout for an
+  // already-subscribed user used to create a second, independent
+  // subscription instead of replacing the first — see
+  // changeSubscriptionPlan in polarService.js.
   const buy = async (item, planKey, priceLabel) => {
     setBusyItem(item);
     setCheckoutError("");
+    setChangeStatus("");
     trackEvent("begin_checkout", { currency: "EUR", value: Number(String(priceLabel).replace(/[^\d.]/g, "")) || 0, items: [{ item_id: item, item_name: planKey }] });
     try {
+      if (currentPlan && currentPlan !== "free") {
+        const { immediate } = await postChangePlan(item);
+        await refresh();
+        setBusyItem("");
+        const planLabel = planKey === "pro" ? "All-Access" : "Studio";
+        setChangeStatus(
+          immediate
+            ? `Switched to ${planLabel} — charged the prorated difference now.`
+            : `Scheduled: you'll move to ${planLabel} at the start of your next billing period, no charge yet.`
+        );
+        return;
+      }
       const successUrl = `${window.location.origin}/thank-you?plan=${encodeURIComponent(planKey)}&item=${encodeURIComponent(item)}&price=${encodeURIComponent(priceLabel)}`;
       const { url } = await postCheckout(item, successUrl);
       window.location.href = url;
@@ -105,7 +126,7 @@ export default function BillingPanel() {
                     >
                       {busyItem === plan.item ? (
                         <>
-                          <Spinner size={12} /> Redirecting…
+                          <Spinner size={12} /> {currentPlan !== "free" ? "Updating…" : "Redirecting…"}
                         </>
                       ) : isUpgrade ? (
                         "Upgrade"
@@ -129,6 +150,7 @@ export default function BillingPanel() {
           ) : null}
         </>
       )}
+      {changeStatus ? <p className="mt-3 text-sm text-brass">{changeStatus}</p> : null}
       {checkoutError ? <p className="mt-3 text-sm text-red-300">{checkoutError}</p> : null}
     </div>
   );

@@ -15,8 +15,9 @@ import { importCustomPreset, deleteCustomPreset } from "../services/customPreset
 import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPresetsService.js";
 import { saveProfile, getProfile, deleteAllUserData } from "../services/profileService.js";
 import { recordJob, listJobs, ownsJob, getJob, deleteJob } from "../services/jobsService.js";
-import { createCheckoutUrl, createPortalUrl, getSubscriptionStatus, getPlan } from "../services/polarService.js";
+import { createCheckoutUrl, createPortalUrl, getSubscriptionStatus, getPlan, changeSubscriptionPlan } from "../services/polarService.js";
 import { getMasterQuotaStatus, consumeMasterQuota, PLAN_MASTER_LIMITS } from "../services/entitlementsService.js";
+import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { getAuth } from "../config/firebase.js";
 import { expensiveLimiter } from "../middleware/rateLimit.js";
 import { mintDownloadToken, mintShareToken, verifyShareToken } from "../services/downloadTokenService.js";
@@ -85,6 +86,15 @@ function requireAdminKey(req, res, next) {
 
 router.get("/health", (_req, res) => {
   res.json({ status: "ok", version: "1.0.0", runtime: "node" });
+});
+
+// Public, no auth — checked *during* signup, before a Firebase account
+// exists yet (see server.js's auth gate). Catches an undeliverable email
+// (fake domain, typo'd TLD) before an account is even created, rather
+// than only surfacing the problem later at Polar checkout.
+router.post("/validate-email", async (req, res) => {
+  const deliverable = await isEmailDeliverable(req.body?.email);
+  return res.json({ deliverable });
 });
 
 // Mints the short-lived ?dl= token that download/original/codec-preview
@@ -254,6 +264,26 @@ router.post("/billing/checkout", async (req, res) => {
     return res.json({ url });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to start checkout" });
+  }
+});
+
+// Switching plan while already subscribed (Studio <-> All-Access) — the
+// frontend calls this instead of /billing/checkout once someone's already
+// on a paid plan, so a plan change modifies the existing Polar
+// subscription (see changeSubscriptionPlan) instead of starting a second,
+// independent one that could leave the old subscription still billing in
+// parallel. No redirect URL in the response — this takes effect
+// immediately, there's no checkout page to send the user to.
+router.post("/billing/change-plan", async (req, res) => {
+  const productKey = CHECKOUT_ITEM_TO_PRODUCT_KEY[req.body?.item];
+  if (!productKey) {
+    return res.status(400).json({ detail: `Unknown item "${req.body?.item}"` });
+  }
+  try {
+    const result = await changeSubscriptionPlan(req.user.uid, productKey);
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to change plan" });
   }
 });
 

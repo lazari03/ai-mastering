@@ -14,7 +14,7 @@ import {
 } from "firebase/auth";
 
 import { getFirebaseAuth, getGoogleProvider, isFirebaseConfigured } from "@/lib/firebase";
-import { postProfile, deleteAccountData, postSignOutEverywhere } from "@/network/http/client";
+import { postProfile, deleteAccountData, postSignOutEverywhere, checkEmailDeliverable } from "@/network/http/client";
 import { trackEvent } from "@/lib/analytics";
 
 const NOT_CONFIGURED_MESSAGE = "Site is under maintenance";
@@ -112,6 +112,22 @@ export const useAuthStore = create((set) => ({
     }
     set({ busy: true, error: "" });
     try {
+      // Checked before the account is even created — catches an
+      // undeliverable email (fake/typo'd domain) at signup instead of
+      // only surfacing it later at Polar checkout. Best-effort: a lookup
+      // failure (network hiccup hitting our own backend) shouldn't block
+      // signup outright, so this only blocks on an explicit `false`, not
+      // on the check itself failing to run.
+      try {
+        const { deliverable } = await checkEmailDeliverable(email);
+        if (deliverable === false) {
+          set({ busy: false, error: "That email address looks invalid or can't receive mail — double check it." });
+          return;
+        }
+      } catch (checkError) {
+        console.warn("Email deliverability check failed, allowing signup to proceed:", checkError);
+      }
+
       const auth = getFirebaseAuth();
       const credential = await createUserWithEmailAndPassword(auth, email, password);
 

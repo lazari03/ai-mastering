@@ -59,6 +59,22 @@ function userDoc(uid) {
   return getFirestore().collection("users").doc(uid);
 }
 
+// Polar's own validation errors (HTTPValidationError) carry a `detail`
+// array of {loc, msg} pairs — the raw msg is Polar's internal phrasing
+// ("testt@test.com is not a valid email address: The domain name
+// test.com does not accept email.") and the loc is a deeply-nested
+// Pydantic union path, neither fit for showing a user. This maps the one
+// case actually worth distinguishing (email undeliverable) to plain
+// language and falls back to a generic message for everything else,
+// rather than ever surfacing Polar's raw validation JSON.
+function friendlyCheckoutError(error) {
+  const detail = error?.detail;
+  if (Array.isArray(detail) && detail.some((d) => d.loc?.includes("customer_email"))) {
+    return "That email address looks invalid or can't receive mail — double check it and try again.";
+  }
+  return "Couldn't start checkout right now — please try again in a moment.";
+}
+
 // productKey is one of settings.polarProducts' keys ("planStudio",
 // "planPro", "chords") — the route layer resolves the human-facing item
 // name to this, this resolves it to an actual Polar product ID.
@@ -67,13 +83,97 @@ export async function createCheckoutUrl(uid, email, productKey, successUrl) {
   if (!productId) {
     throw new Error(`Billing isn't configured for "${productKey}" — set its Polar product ID.`);
   }
-  const checkout = await client().checkouts.create({
-    products: [productId],
-    externalCustomerId: uid,
-    customerEmail: email || undefined,
-    successUrl,
-  });
-  return checkout.url;
+  try {
+    const checkout = await client().checkouts.create({
+      products: [productId],
+      externalCustomerId: uid,
+      customerEmail: email || undefined,
+      successUrl,
+    });
+    return checkout.url;
+  } catch (error) {
+    console.error("Polar checkout creation failed:", error);
+    throw new Error(friendlyCheckoutError(error));
+  }
+}
+
+// Changing plan while already subscribed (Studio -> All-Access, or the
+// reverse) — modifies the *existing* Polar subscription in place via
+// subscriptions.update() rather than running a second checkouts.create().
+// That distinction matters: checkouts.create() has no concept of "this
+// customer already has a subscription," so it was creating a second,
+// fully independent subscription every time someone hit "Switch" — the
+// old one was never canceled, meaning a user switching plans could end
+// up billed for both at once until they noticed and canceled the old one
+// themselves via the portal. subscriptions.update() instead changes the
+// one real subscription's product, letting Polar apply its own
+// proration rules (organization-level setting — invoice the difference
+// immediately, prorate, apply at next period, etc.) exactly the way a
+// real subscription upgrade/downgrade is supposed to work.
+// Rank by monthly price, not just enum order — this is what decides
+// upgrade vs downgrade below. Free isn't in here; changeSubscriptionPlan
+// is only ever called for an already-paid user switching between paid
+// tiers (see the "no active subscription" guard above).
+const PLAN_RANK = { planStudio: 1, planPro: 2 };
+
+function currentProductKey(sub) {
+  if (sub?.productId === settings.polarProducts.planPro) return "planPro";
+  if (sub?.productId === settings.polarProducts.planStudio) return "planStudio";
+  return null;
+}
+
+export async function changeSubscriptionPlan(uid, productKey) {
+  const productId = settings.polarProducts[productKey];
+  if (!productId) {
+    throw new Error(`Billing isn't configured for "${productKey}" — set its Polar product ID.`);
+  }
+  const doc = await userDoc(uid).get();
+  const sub = doc.data()?.subscription;
+  if (!sub?.polarSubscriptionId || !isEntitled(sub)) {
+    throw new Error("No active subscription to change — start a new checkout instead.");
+  }
+
+  // Deliberately explicit, not left to "whatever the Polar dashboard's
+  // default happens to be" — this is the one line standing between a
+  // normal upgrade and a real exploit: switch to All-Access, switch back
+  // to Studio before the deferred charge ever lands, switch to
+  // All-Access again — repeat forever, never actually pay the
+  // All-Access price. Two rules close it completely:
+  //   - Upgrading (Studio -> All-Access): "invoice" — charge the
+  //     prorated difference RIGHT NOW, atomically with the access grant.
+  //     There is no window where access exists without payment for it.
+  //   - Downgrading (All-Access -> Studio): "next_period" — keeps the
+  //     higher tier's access through the period already paid for (same
+  //     principle as isEntitled()'s grace period), and the actual
+  //     product/price change only takes effect at the real renewal.
+  //     Nothing about this grants extra access for free — it's exactly
+  //     what was already paid for, and switching back to All-Access
+  //     again before that renewal is a no-op: they're still ON
+  //     All-Access (the downgrade hasn't applied yet), so there's
+  //     nothing to re-upgrade into and no new charge to dodge.
+  const fromRank = PLAN_RANK[currentProductKey(sub)] || 0;
+  const toRank = PLAN_RANK[productKey] || 0;
+  const prorationBehavior = toRank > fromRank ? "invoice" : "next_period";
+
+  try {
+    const updated = await client().subscriptions.update({
+      id: sub.polarSubscriptionId,
+      subscriptionUpdate: { productId, prorationBehavior },
+    });
+    // Written immediately, not left to wait for the async webhook — the
+    // update call itself already returns the new subscription state, so
+    // there's no reason to make the user's UI lag behind an event that
+    // will arrive a moment later and just confirm the same thing. Under
+    // "next_period", Polar's own response correctly leaves productId
+    // unchanged (the real change lives in pendingUpdate, applied by
+    // Polar itself at the real renewal) — so this never writes an
+    // early/incorrect plan into Firestore either way.
+    await userDoc(uid).set({ subscription: subscriptionRecord(updated) }, { merge: true });
+    return { productKey, immediate: prorationBehavior === "invoice" };
+  } catch (error) {
+    console.error("Polar subscription update failed:", error);
+    throw new Error(friendlyCheckoutError(error));
+  }
 }
 
 // Customer portal — lets a subscriber manage/cancel their own

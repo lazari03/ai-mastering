@@ -119,6 +119,16 @@ export async function deleteCustomPreset(name) {
   return request(`/custom-presets/${encodeURIComponent(name)}`, { method: "DELETE" });
 }
 
+// Called before account creation — no auth exists yet, and authHeader()
+// above already handles that gracefully (no current user -> no header).
+export async function checkEmailDeliverable(email) {
+  return request("/validate-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+}
+
 export async function postProfile(profile) {
   return request("/profile", {
     method: "POST",
@@ -171,6 +181,17 @@ export async function postCheckout(item, successUrl) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ item, success_url: successUrl }),
+  });
+}
+
+// Used instead of postCheckout when the user already has an active paid
+// subscription (see BillingPanel.jsx) — modifies that subscription in
+// place rather than starting a second, independent checkout.
+export async function postChangePlan(item) {
+  return request("/billing/change-plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ item }),
   });
 }
 
