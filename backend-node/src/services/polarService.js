@@ -8,9 +8,11 @@ import { getFirestore } from "../config/firebase.js";
 // never register in any jurisdiction ourselves. Subscription state is
 // mirrored into Firestore (users/{uid}.subscription) so gating a render
 // is a cheap local read, not a Polar API call on every /master request.
-// Everything is plan-gated now (2 subscription tiers, no one-time
-// purchases — see PRICING.md) — order.paid is handled as a no-op below
-// purely so an unexpected event type never crashes the webhook handler.
+// Two subscription tiers (Studio/All-Access) for recurring users, plus
+// one real one-time product — a single-master purchase, for someone
+// whose actual need is "master this one track," not a recurring plan
+// (see entitlementsService.js's extra-credit functions). order.paid is
+// how that one-time purchase actually grants anything.
 //
 // Customers are matched to our own users purely via externalCustomerId
 // (= Firebase uid) on checkout creation — Polar creates/reuses a Customer
@@ -222,16 +224,18 @@ export function verifyWebhook(rawBody, headers) {
   return validateEvent(rawBody, headers, settings.polarWebhookSecret || "");
 }
 
-// Idempotent: a replayed subscription.* event just overwrites Firestore
-// with the same data again — Polar doesn't guarantee exactly-once
-// delivery, but a harmless re-write is fine. Not worth an idempotency-key
-// table for v1. order.paid isn't handled — there's nothing left to grant
-// (no one-time products, see PRICING.md); every route re-checks getPlan()
-// fresh anyway, so a subscription.* event alone is what actually unlocks
-// anything.
+// subscription.* is naturally idempotent — a replayed event just
+// overwrites Firestore with the same data again, harmless. order.paid is
+// NOT naturally idempotent — granting a credit is an increment, and
+// Polar doesn't guarantee exactly-once delivery, so a redelivered event
+// without a guard would double- (or triple-) grant the same purchase.
+// applyOrderPaidEvent below guards against that explicitly.
 export async function applyWebhookEvent(event) {
   if (event.type.startsWith("subscription.")) {
     return applySubscriptionEvent(event);
+  }
+  if (event.type === "order.paid") {
+    return applyOrderPaidEvent(event);
   }
 }
 
@@ -260,6 +264,38 @@ async function applySubscriptionEvent(event) {
     return;
   }
   await userDoc(uid).set({ subscription: subscriptionRecord(sub) }, { merge: true });
+}
+
+// Only grants a credit for the single-master product specifically —
+// other order.paid events (shouldn't exist today, since every other
+// product is a subscription, but defensive against a future one-time
+// product this function doesn't know about) are silently ignored rather
+// than assumed to mean "grant a master credit."
+//
+// Idempotency guard: processedPolarOrders/{orderId} + the credit
+// increment happen in the SAME transaction, spanning both documents —
+// either both happen or neither does. A redelivered order.paid for an
+// order already recorded here is a no-op, not a second free credit.
+async function applyOrderPaidEvent(event) {
+  const order = event.data;
+  if (order.productId !== settings.polarProducts.singleMaster) return;
+  const uid = order.customer?.externalId;
+  if (!uid) {
+    console.warn(`Polar order.paid: no externalId on customer, skipping`, order.customerId);
+    return;
+  }
+
+  const db = getFirestore();
+  const orderRef = db.collection("processedPolarOrders").doc(order.id);
+  const userRef = userDoc(uid);
+  await db.runTransaction(async (tx) => {
+    const existing = await tx.get(orderRef);
+    if (existing.exists) return; // already processed — Polar redelivered this event
+    const userSnap = await tx.get(userRef);
+    const credits = Number(userSnap.data()?.extraMasterCredits || 0);
+    tx.set(orderRef, { uid, processedAt: new Date() });
+    tx.set(userRef, { extraMasterCredits: credits + 1 }, { merge: true });
+  });
 }
 
 // Reconciliation backstop — webhooks are the fast path, this is what

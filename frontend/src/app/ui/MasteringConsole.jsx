@@ -28,7 +28,7 @@ function SectionLabel({ children }) {
   return <h2 className="m-0 mb-2.5 text-xs uppercase tracking-[0.14em] text-brass">{children}</h2>;
 }
 
-export default function MasteringConsole({ onOpenHelp }) {
+export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
   const [activeStep, setActiveStep] = useState(0);
   const [inputPreviewUrl, setInputPreviewUrl] = useState("");
   const [masteringProgress, setMasteringProgress] = useState(0);
@@ -91,7 +91,7 @@ export default function MasteringConsole({ onOpenHelp }) {
   // Centralized — AppClient fetches this once and refreshes it after every
   // real master and every tab switch, so this component just reads it
   // rather than keeping its own independent (and easily stale) copy.
-  const { plan, masterQuota } = useEntitlementsStore();
+  const { plan, masterQuota, extraCredits } = useEntitlementsStore();
 
   const [importArtistName, setImportArtistName] = useState("");
   const [importFilePending, setImportFilePending] = useState(null);
@@ -205,13 +205,22 @@ export default function MasteringConsole({ onOpenHelp }) {
   // never toggle Professional/stems client-side; the backend enforces the
   // exact same checks independently either way (masteringRoutes.js).
   const planUnlocked = planUnlocksProAndStems(plan);
-  const masterUnlocked = Boolean(masterQuota?.remaining > 0);
+  // Quota exhausted isn't the end of the road — a purchased single-master
+  // credit (see BillingPanel's "Buy one") covers exactly this case, and
+  // the backend already falls back to one automatically (masteringRoutes.js).
+  // The button has to agree with that server-side reality: gating on
+  // masterQuota.remaining alone would block someone who's already paid
+  // for a credit from ever reaching the render that would spend it.
+  const hasCredit = Number(extraCredits || 0) > 0;
+  const masterUnlocked = Boolean(masterQuota?.remaining > 0) || hasCredit;
   const masterButtonLabel = isSubmitting
     ? "Mastering…"
     : masterQuota
-      ? masterUnlocked
+      ? masterQuota.remaining > 0
         ? `Master Track — ${masterQuota.remaining}/${masterQuota.limit} left`
-        : "Master Track — Quota used, upgrade"
+        : hasCredit
+          ? `Master Track — using 1 credit (${extraCredits} left)`
+          : "Master Track — Quota used, upgrade"
       : "Master Track";
 
   const professionalUnlocked = planUnlocked;
@@ -655,10 +664,19 @@ export default function MasteringConsole({ onOpenHelp }) {
             </div>
             <p className="mt-2 text-[11px] text-zinc-500">
               Preview renders the first 30s with the Standard engine, free and unlimited. Master Track renders the
-              full file — 3/month on Free, 50/month on Studio, 250/month on All-Access
+              full file — 3 total as a free trial (one-time, then €2.99/track or subscribe), 50/month on Studio, 250/month on All-Access
               {useStemSeparation ? " (stems need Studio or higher)" : ""}. Full result and A/B comparison appear on
               the right once it&apos;s done.
             </p>
+            {masterQuota && masterQuota.remaining <= 0 && !hasCredit && onOpenBilling ? (
+              <p className="mt-2 text-[11px] text-brass">
+                {masterQuota.resets ? "Out of masters this month?" : "Used up your 3 free masters?"}{" "}
+                <button type="button" onClick={onOpenBilling} className="underline hover:text-ember">
+                  Buy a single master (€2.99, no subscription)
+                </button>{" "}
+                or {masterQuota.resets ? "upgrade" : "subscribe"} in Settings → Billing.
+              </p>
+            ) : null}
           </div>
         ) : null}
 

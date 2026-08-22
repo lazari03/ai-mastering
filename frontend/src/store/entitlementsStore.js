@@ -14,6 +14,7 @@ export const useEntitlementsStore = create((set, get) => ({
   plan: "free",
   subscription: null,
   masterQuota: null,
+  extraCredits: 0,
   loading: true,
   loaded: false,
 
@@ -24,6 +25,7 @@ export const useEntitlementsStore = create((set, get) => ({
         plan: data.plan || "free",
         subscription: data.subscription || null,
         masterQuota: data.masterQuota || null,
+        extraCredits: Number(data.extraCredits || 0),
         loading: false,
         loaded: true,
       });

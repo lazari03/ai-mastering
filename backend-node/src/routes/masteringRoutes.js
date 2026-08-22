@@ -16,7 +16,13 @@ import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPre
 import { saveProfile, getProfile, deleteAllUserData } from "../services/profileService.js";
 import { recordJob, listJobs, ownsJob, getJob, deleteJob } from "../services/jobsService.js";
 import { createCheckoutUrl, createPortalUrl, getSubscriptionStatus, getPlan, changeSubscriptionPlan } from "../services/polarService.js";
-import { getMasterQuotaStatus, consumeMasterQuota, PLAN_MASTER_LIMITS } from "../services/entitlementsService.js";
+import {
+  getMasterQuotaStatus,
+  consumeMasterQuota,
+  PLAN_MASTER_LIMITS,
+  getExtraCreditCount,
+  consumeExtraCredit,
+} from "../services/entitlementsService.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { getAuth } from "../config/firebase.js";
 import { expensiveLimiter } from "../middleware/rateLimit.js";
@@ -237,21 +243,25 @@ router.get("/billing/status", async (req, res) => {
 router.get("/billing/entitlements", async (req, res) => {
   try {
     const plan = await getPlan(req.user.uid);
-    const [subscription, masterQuota] = await Promise.all([
+    const [subscription, masterQuota, extraCredits] = await Promise.all([
       getSubscriptionStatus(req.user.uid),
       getMasterQuotaStatus(req.user.uid, plan),
+      getExtraCreditCount(req.user.uid),
     ]);
-    return res.json({ plan, subscription, masterQuota });
+    return res.json({ plan, subscription, masterQuota, extraCredits });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to load entitlements" });
   }
 });
 
-// body.item is one of: plan_studio | plan_pro — no à la carte items left,
-// see settings.js's polarProducts comment.
+// body.item is one of: plan_studio | plan_pro | single_master. The first
+// two are subscriptions; single_master is the one real one-time
+// purchase — a low-commitment top-up for someone who just needs this one
+// track mastered, not a recurring plan.
 const CHECKOUT_ITEM_TO_PRODUCT_KEY = {
   plan_studio: "planStudio",
   plan_pro: "planPro",
+  single_master: "singleMaster",
 };
 
 router.post("/billing/checkout", async (req, res) => {
@@ -378,22 +388,28 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
   const tier = !preview && req.body.tier === "professional" ? "professional" : "standard";
   const useStemSeparation = !preview && req.body.use_stem_separation === "true";
 
-  // Two plans + Free (see PRICING.md): Free (3 Standard masters/month, no
-  // Professional tier, no stems, no chords), Studio (50 masters/month,
-  // Standard + Professional, stems included, no chords), All-Access (250
-  // masters/month, everything including unlimited chord detection — see
-  // /analyze-chords below). Professional tier and stem separation are
-  // Studio+ only, with no one-time-purchase bypass — every paid feature is
-  // plan-gated, no à la carte items left to buy around a plan's limits.
-  // Every plan (including paid ones) has a monthly master quota now, not
-  // just Free — checked (not consumed) here and only actually spent after
-  // a successful render below, so a render that fails midway never costs
-  // the user a slot.
+  // Two plans + Free (see PRICING.md): Free (3 Standard masters TOTAL —
+  // a one-time trial, not a monthly allowance, no Professional tier, no
+  // stems, no chords), Studio (50 masters/month, resets monthly, Standard
+  // + Professional, stems included, no chords), All-Access (250
+  // masters/month, resets monthly, everything including unlimited chord
+  // detection — see /analyze-chords below). Professional tier and stem
+  // separation stay strictly plan-gated (no credit bypass) — the
+  // one-time "single master" purchase only ever covers the master-count
+  // limit itself. For a Free user past their 3-master trial, buying
+  // single masters IS the standard path forward (no more free resets);
+  // for Studio/All-Access, it's what covers the gap between exhausting
+  // this month's quota and next month's reset, if they don't want to
+  // wait. Checked (not consumed) here and only actually spent after a
+  // successful render below, so a render that fails midway never costs
+  // the user a slot or a credit.
   let mustConsumeQuota = false;
+  let mustConsumeCredit = false;
   let quotaLimit = PLAN_MASTER_LIMITS.free;
+  let plan = "free";
 
   if (!preview) {
-    const plan = await getPlan(req.user.uid).catch(() => "free");
+    plan = await getPlan(req.user.uid).catch(() => "free");
     const planUnlocked = plan === "studio" || plan === "pro";
     quotaLimit = PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free;
 
@@ -409,13 +425,28 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
     }
 
     const quota = await getMasterQuotaStatus(req.user.uid, plan);
-    if (quota.remaining <= 0) {
-      const upsell = plan === "free" ? " Upgrade to Studio (€9.99/mo) for 50/month." : plan === "studio" ? " Upgrade to All-Access (€19.99/mo) for 250/month." : "";
-      return res.status(402).json({
-        detail: `You've used your ${quotaLimit} masters this month — they reset next month.${upsell} Manage in Settings → Billing.`,
-      });
+    if (quota.remaining > 0) {
+      mustConsumeQuota = true;
+    } else {
+      // Quota exhausted — fall back to a purchased single-master credit
+      // before refusing outright. For Free this is the ONLY way forward
+      // besides upgrading (no reset coming); for Studio/All-Access it's
+      // an alternative to waiting for next month.
+      const credits = await getExtraCreditCount(req.user.uid).catch(() => 0);
+      if (credits > 0) {
+        mustConsumeCredit = true;
+      } else if (plan === "free") {
+        return res.status(402).json({
+          detail: `You've used your ${quotaLimit} free masters — that's a one-time trial, it doesn't renew. Buy a single master (€2.99) for just this track, or subscribe to Studio (€9.99/mo, 50/month) or All-Access (€19.99/mo, 250/month) in Settings → Billing.`,
+        });
+      } else {
+        const upsellPlan = plan === "studio" ? "All-Access (€19.99/mo) for 250/month" : null;
+        const upsell = upsellPlan ? ` Upgrade to ${upsellPlan}, or` : " Or";
+        return res.status(402).json({
+          detail: `You've used your ${quotaLimit} masters this month — they reset next month.${upsell} buy a single master (€2.99) if you don't want to wait. Manage in Settings → Billing.`,
+        });
+      }
     }
-    mustConsumeQuota = true;
   }
 
   try {
@@ -476,9 +507,15 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
     // not a broken master.
     if (mustConsumeQuota) {
       try {
-        await consumeMasterQuota(req.user.uid, quotaLimit);
+        await consumeMasterQuota(req.user.uid, quotaLimit, plan);
       } catch (error) {
         console.error("Failed to consume master quota after successful render:", error.message);
+      }
+    } else if (mustConsumeCredit) {
+      try {
+        await consumeExtraCredit(req.user.uid);
+      } catch (error) {
+        console.error("Failed to consume extra master credit after successful render:", error.message);
       }
     }
 

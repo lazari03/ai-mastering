@@ -58,6 +58,13 @@ export function buildMetadata({ title, description, path = "/", keywords = [], n
 // Organization + WebSite JSON-LD, rendered once in the root layout — tells
 // search engines and LLM crawlers what the site is in a machine-readable
 // way, independent of the visual page content.
+//
+// offers is a real AggregateOffer across all 3 plans (Free/Studio/
+// All-Access), not just the free tier — matches lib/pricing.js exactly.
+// Previously said priceCurrency: "USD" while every actual price on the
+// site is in EUR — mismatched structured data is exactly the kind of
+// thing that erodes trust signals (and can trigger a manual review),
+// worth catching regardless of how minor it looks.
 export function organizationJsonLd() {
   return {
     "@context": "https://schema.org",
@@ -68,11 +75,30 @@ export function organizationJsonLd() {
     url: SITE_URL,
     description: DEFAULT_DESCRIPTION,
     offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "USD",
-      category: "Standard tier — free adaptive AI mastering",
+      "@type": "AggregateOffer",
+      lowPrice: "0",
+      highPrice: "19.99",
+      priceCurrency: "EUR",
+      offerCount: "3",
     },
+  };
+}
+
+// FAQPage JSON-LD — real Q&A content (see frontend/src/lib/i18n.js
+// "faq.*" keys, the exact same text rendered on the homepage FAQ
+// section), not written separately/fabricated for SEO. This is what
+// makes the homepage eligible for a rich FAQ snippet in search results —
+// free, no ads, no backlinks required, just structured markup of content
+// that's already there.
+export function faqJsonLd(items) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map(({ question, answer }) => ({
+      "@type": "Question",
+      name: question,
+      acceptedAnswer: { "@type": "Answer", text: answer },
+    })),
   };
 }
 

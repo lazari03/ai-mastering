@@ -83,5 +83,11 @@ export const settings = {
   polarProducts: {
     planStudio: process.env.POLAR_PLAN_STUDIO_PRODUCT_ID || null,
     planPro: process.env.POLAR_PLAN_PRO_PRODUCT_ID || null,
+    // One-time purchase, not a subscription — "master this one track"
+    // for someone who doesn't want a recurring plan. Create this as a
+    // one-time (not recurring) product in Polar's dashboard and set its
+    // ID here; see entitlementsService.js's extra-credit functions and
+    // polarService.js's order.paid webhook handling.
+    singleMaster: process.env.POLAR_SINGLE_MASTER_PRODUCT_ID || null,
   },
 };

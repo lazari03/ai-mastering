@@ -23,7 +23,12 @@ import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { useLanguage } from "@/lib/i18n";
 
 const TABS = [
-  { key: "master", labelKey: "app.tab.master", icon: IconMaster, render: (ctx) => <MasteringConsole onOpenHelp={() => ctx.setActiveTab("help")} /> },
+  {
+    key: "master",
+    labelKey: "app.tab.master",
+    icon: IconMaster,
+    render: (ctx) => <MasteringConsole onOpenHelp={() => ctx.setActiveTab("help")} onOpenBilling={() => ctx.setActiveTab("settings")} />,
+  },
   { key: "chords", labelKey: "app.tab.chords", icon: IconChords, render: () => <ChordsPanel /> },
   { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, render: () => <MyMastersPanel /> },
   { key: "help", labelKey: "app.tab.help", icon: IconHelp, render: () => <HelpSupportPanel /> },

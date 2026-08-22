@@ -1,19 +1,17 @@
-// Creates the 2 Polar subscription products the pricing model needs —
-// no one-time products at all anymore, everything is plan-gated (see
-// PRICING.md). Run once per environment (sandbox, then again for
-// production with POLAR_ENVIRONMENT=production).
+// Creates the Polar products the pricing model needs — 2 recurring
+// subscriptions plus 1 one-time purchase (see PRICING.md). Run once per
+// environment (sandbox, then again for production with
+// POLAR_ENVIRONMENT=production).
 //
 // Usage:
 //   POLAR_ACCESS_TOKEN=... POLAR_ENVIRONMENT=production node scripts/seed-polar-products.js
 //
 // Prints each created product's ID — paste those into .env as
-// POLAR_PLAN_STUDIO_PRODUCT_ID / POLAR_PLAN_PRO_PRODUCT_ID.
+// POLAR_PLAN_STUDIO_PRODUCT_ID / POLAR_PLAN_PRO_PRODUCT_ID /
+// POLAR_SINGLE_MASTER_PRODUCT_ID.
 // Re-running this creates duplicates (Polar has no "upsert by name") —
 // only run it once per environment, or delete the old ones in the
-// dashboard first if you need to redo it. If you're migrating off an
-// older product model (a plain "All-Access" subscription, one-time master/
-// chords/stem credits), archive those in the Polar dashboard — this
-// script doesn't touch them.
+// dashboard first if you need to redo it.
 import "dotenv/config";
 import { Polar } from "@polar-sh/sdk";
 
@@ -49,6 +47,18 @@ const PRODUCTS = [
         "250 full-length masters a month, stem separation, and unlimited chord detection. The full toolkit, 5x Studio's mastering headroom.",
       recurringInterval: "month",
       prices: fixedPrice(19.99),
+    },
+  },
+  {
+    envVar: "POLAR_SINGLE_MASTER_PRODUCT_ID",
+    body: {
+      // No recurringInterval at all — that's what makes this a one-time
+      // purchase instead of a subscription (see ProductCreateOneTime vs
+      // ProductCreateRecurring in the SDK's own types).
+      name: "Single Master",
+      description:
+        "One extra full-length master, no subscription. For a one-off track once your monthly plan quota is used up.",
+      prices: fixedPrice(2.99),
     },
   },
 ];

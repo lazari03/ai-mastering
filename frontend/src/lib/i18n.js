@@ -17,12 +17,12 @@ const DICT = {
   "nav.signin": { en: "Sign in", sq: "Hyrje" },
   "nav.openApp": { en: "Open App", sq: "Hap Aplikacionin" },
 
-  "hero.eyebrow": { en: "Realtime Adaptive Mastering", sq: "Masterizim Adaptiv në Kohë Reale" },
+  "hero.eyebrow": { en: "AI Audio Mastering, Online", sq: "Masterizim Audio me AI, Online" },
   "hero.title1": { en: "Shape Loudness,", sq: "Formëso Volumin," },
   "hero.title2": { en: "Keep Emotion.", sq: "Ruaj Emocionin." },
   "hero.body": {
-    en: "Production-ready mastering with style profiles, intelligent spectral correction, stem-aware options, and one-click export tuned for modern platforms.",
-    sq: "Masterizim gati për prodhim me profile stili, korrigjim spektral inteligjent, opsione me ndarje instrumentesh, dhe eksportim me një klik të përshtatur për platformat moderne.",
+    en: "Master your music online with a production-ready adaptive DSP engine — style profiles, intelligent spectral correction, stem-aware options, and one-click export tuned for modern platforms.",
+    sq: "Masterizo muzikën tënde online me një motor DSP adaptiv gati për prodhim — profile stili, korrigjim spektral inteligjent, opsione me ndarje instrumentesh, dhe eksportim me një klik të përshtatur për platformat moderne.",
   },
   "hero.ctaPrimary": { en: "Get Started", sq: "Fillo Tani" },
   "hero.ctaSecondary": { en: "Explore Features", sq: "Eksploro Veçoritë" },
@@ -143,8 +143,8 @@ const DICT = {
   },
   "faq.q8": { en: "What's actually free?", sq: "Çfarë është vërtet falas?" },
   "faq.a8": {
-    en: "30-second mastering previews (unlimited, Standard engine) and 3 full-length masters a month, forever, on the Free plan. Studio (€9.99/mo) raises that to 50/month and adds Professional mastering and stem separation. All-Access (€19.99/mo) raises it to 250/month and adds unlimited chord detection.",
-    sq: "Parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard) dhe 3 masterë të plotë në muaj, përgjithmonë, në planin Free. Studio (€9.99/muaj) e ngre atë në 50/muaj dhe shton masterizimin Professional e ndarjen e instrumenteve. All-Access (€19.99/muaj) e ngre në 250/muaj dhe shton zbulim të pakufizuar akordesh.",
+    en: "30-second mastering previews (unlimited, Standard engine) and 3 full-length masters total, free — a one-time trial, not renewed monthly. After that, single masters are €2.99 each, or subscribe: Studio (€9.99/mo) gives 50/month (resets monthly) and adds Professional mastering and stem separation. All-Access (€19.99/mo) gives 250/month and adds unlimited chord detection.",
+    sq: "Parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard) dhe 3 masterë të plotë gjithsej, falas — një provë një-herëshe, nuk rinovohet çdo muaj. Pas kësaj, çdo master i vetëm kushton €2.99, ose abonohu: Studio (€9.99/muaj) jep 50/muaj (rinovohet çdo muaj) dhe shton masterizimin Professional e ndarjen e instrumenteve. All-Access (€19.99/muaj) jep 250/muaj dhe shton zbulim të pakufizuar akordesh.",
   },
 
   "contact.eyebrow": { en: "Contact", sq: "Kontakt" },
