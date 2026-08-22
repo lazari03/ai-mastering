@@ -42,3 +42,6 @@ progress.md
 # below) if you actually want them removed from git's index too.
 *.md
 firestore.rules
+
+# --- Marketing assets, not app source ---
+social-media/
