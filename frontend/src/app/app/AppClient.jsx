@@ -139,12 +139,22 @@ export default function AppClient() {
   return (
     // h-screen + overflow-hidden, not min-h-screen — pins the whole shell to
     // exactly the viewport height so the sidebar/top bar never scroll away
-    // with the page. Only <main> below scrolls (overflow-y-auto), and the
-    // sidebar gets its own overflow-y-auto as a safety valve for short
-    // windows with many tabs, not as its normal behavior.
-    <div className="flex h-screen flex-col overflow-hidden md:flex-row">
+    // with the page. The inline style height:100dvh is deliberate on top of
+    // h-screen (100vh), not a replacement for it: mobile Safari's 100vh is
+    // calculated against the LARGEST possible viewport (toolbar hidden),
+    // which is taller than what's actually visible on load — combined with
+    // overflow-hidden here, that used to mean the shell was pinned to a
+    // height taller than the real visible area. 100dvh tracks the real
+    // visible viewport and updates live as the toolbar shows/hides;
+    // browsers that don't understand the dvh unit treat the whole
+    // declaration as invalid and fall back to the h-screen class's 100vh,
+    // so this is additive, never a regression on older browsers. Only
+    // <main> below scrolls (overflow-y-auto), and the sidebar gets its own
+    // overflow-y-auto as a safety valve for short windows with many tabs,
+    // not as its normal behavior.
+    <div className="flex h-screen flex-col overflow-hidden md:flex-row" style={{ height: "100dvh" }}>
       {/* Mobile top bar — the sidebar below is hidden on small screens */}
-      <div className="flex items-center justify-between border-b border-white/10 bg-black/20 p-3.5 md:hidden">
+      <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-black/20 p-3.5 md:hidden">
         <Link href="/" className="flex items-center gap-2.5">
           <LogoMark size={22} />
           <span className="font-[var(--font-title)] text-xs uppercase tracking-[0.18em] text-brass">
@@ -163,9 +173,46 @@ export default function AppClient() {
           <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "-translate-y-[3px] -rotate-45" : ""}`} />
         </button>
       </div>
-      {menuOpen ? (
-        <div className="flex flex-col gap-1 border-b border-white/10 bg-black/30 p-3.5 md:hidden">
-          <nav className="flex flex-col gap-0.5">
+
+      {/* Mobile menu — a real slide-in drawer (fixed overlay + backdrop +
+          translate-x animation), not an inline dropdown that pushes page
+          content down. Rendered unconditionally (not `menuOpen ? ... :
+          null`) so the closing animation can actually play instead of the
+          panel just vanishing; pointer-events and opacity handle whether
+          it's interactive/visible while the transform handles the slide. */}
+      <div
+        className={`fixed inset-0 z-40 md:hidden ${menuOpen ? "pointer-events-auto" : "pointer-events-none"}`}
+        aria-hidden={!menuOpen}
+      >
+        <div
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+            menuOpen ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setMenuOpen(false)}
+        />
+        <div
+          className={`absolute right-0 top-0 flex h-full w-[82%] max-w-[320px] flex-col border-l border-white/10 bg-[#14110f] p-5 shadow-2xl transition-transform duration-300 ease-out ${
+            menuOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="flex items-center justify-between pb-6">
+            <Link href="/" className="flex items-center gap-2.5" onClick={() => setMenuOpen(false)}>
+              <LogoMark size={22} />
+              <span className="font-[var(--font-title)] text-xs uppercase tracking-[0.18em] text-brass">
+                Auralith Forge
+              </span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              aria-label="Close menu"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-black/20 text-lg text-zinc-300"
+            >
+              ✕
+            </button>
+          </div>
+
+          <nav className="flex flex-col gap-1">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.key;
@@ -178,8 +225,8 @@ export default function AppClient() {
                     setMenuOpen(false);
                   }}
                   aria-pressed={isActive}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13px] font-semibold transition ${
-                    isActive ? "bg-ember/[0.12] text-ember" : "text-zinc-300"
+                  className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-semibold transition ${
+                    isActive ? "bg-ember/[0.14] text-ember" : "text-zinc-300 active:bg-white/5"
                   }`}
                 >
                   <Icon />
@@ -188,19 +235,24 @@ export default function AppClient() {
               );
             })}
           </nav>
-          <div className="mt-2 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
-            <p className="min-w-0 flex-1 break-all text-xs text-zinc-500">{user.email}</p>
-            <LanguageSwitch lang={lang} setLang={setLang} />
+
+          <div className="flex-1" />
+
+          <div className="border-t border-white/10 pt-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="min-w-0 flex-1 break-all text-xs text-zinc-500">{user.email}</p>
+              <LanguageSwitch lang={lang} setLang={setLang} />
+            </div>
+            <button
+              type="button"
+              onClick={signOut}
+              className="w-full rounded-lg border border-white/[0.12] bg-black/20 px-3 py-3 text-[11px] uppercase tracking-[0.1em] text-zinc-300 active:bg-white/5"
+            >
+              {t("app.signout")}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={signOut}
-            className="mt-2 w-full rounded-lg border border-white/[0.12] bg-black/20 px-3 py-2.5 text-[11px] uppercase tracking-[0.1em] text-zinc-300"
-          >
-            {t("app.signout")}
-          </button>
         </div>
-      ) : null}
+      </div>
 
       {/* Desktop sidebar — toggleable on/off (persisted), hidden outright on mobile.
           Collapsed state stays as a slim icon-only rail rather than vanishing
@@ -283,7 +335,18 @@ export default function AppClient() {
         )}
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-10 md:py-8">{active.render({ setActiveTab, setShowTutorial })}</main>
+      {/* min-h-0 is not decorative — without it, a flex column child (the
+          mobile layout, since the shell is flex-col below md:) defaults to
+          min-height:auto, which blocks overflow-y-auto from ever actually
+          engaging: <main> just grows past the viewport instead of
+          scrolling, and the shell's overflow-hidden then silently clips
+          whatever doesn't fit (this is exactly what made Settings' Danger
+          Zone section unreachable on mobile — it was rendered, just
+          clipped below the visible screen with no way to scroll to it).
+          min-w-0 is the equivalent fix for the desktop flex-row case. */}
+      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-10 md:py-8">
+        {active.render({ setActiveTab, setShowTutorial })}
+      </main>
 
       <NotificationBanner activeTab={activeTab} onView={() => setActiveTab("master")} />
       <EntitlementsBadge onClick={() => setActiveTab("settings")} />
