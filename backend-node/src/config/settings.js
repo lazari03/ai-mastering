@@ -95,5 +95,14 @@ export const settings = {
     // analysis-only (madmom/essentia), no multi-stage DSP render, no
     // audio file written out, genuinely cheaper to serve per request.
     chordDetection: process.env.POLAR_CHORD_DETECTION_PRODUCT_ID || null,
+    // Recurring, unlimited chord detection on its own — for anyone who'd
+    // rather pay a flat cheap monthly rate than per song (Moises charges
+    // ~$40/year, ~€3/mo, for a broader multi-tool app; this is priced to
+    // undercut that on a monthly basis for a narrower, single-purpose
+    // tool). Independent from the main mastering plan subscription — a
+    // user can hold both at once (see subscriptionFieldForProduct in
+    // polarService.js), tracked in its own Firestore field so
+    // subscribing to one never overwrites the other.
+    chordsMonthly: process.env.POLAR_CHORDS_MONTHLY_PRODUCT_ID || null,
   },
 };

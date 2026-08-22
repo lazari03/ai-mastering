@@ -69,3 +69,18 @@ export const CHORD_DETECTION = {
   freeLimit: 3,
   blurb: "Key, BPM, and chord progression for one song. 3 free, then pay per song — or unlimited on All-Access.",
 };
+
+// Standalone recurring subscription — for anyone who'd rather pay a flat
+// cheap monthly rate than per song. Priced to undercut Moises (~$40/yr,
+// ~€3/mo) on a monthly basis for this narrower, single-purpose tool.
+// Independent from the main mastering plan — a Free or Studio user can
+// subscribe to this without touching their mastering plan at all;
+// All-Access already includes unlimited chords, so this isn't offered
+// there (redundant).
+export const CHORDS_MONTHLY = {
+  item: "chords_monthly",
+  label: "Chords Monthly",
+  price: "€2.99",
+  period: "/mo",
+  blurb: "Unlimited chord detection, no mastering plan needed.",
+};

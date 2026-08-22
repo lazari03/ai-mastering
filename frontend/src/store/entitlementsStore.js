@@ -17,6 +17,7 @@ export const useEntitlementsStore = create((set, get) => ({
   extraCredits: 0,
   chordQuota: null,
   extraChordCredits: 0,
+  chordSubscriptionActive: false,
   loading: true,
   loaded: false,
 
@@ -30,6 +31,7 @@ export const useEntitlementsStore = create((set, get) => ({
         extraCredits: Number(data.extraCredits || 0),
         chordQuota: data.chordQuota || null,
         extraChordCredits: Number(data.extraChordCredits || 0),
+        chordSubscriptionActive: Boolean(data.chordSubscriptionActive),
         loading: false,
         loaded: true,
       });

@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { postAnalyzeChords, postCheckout } from "@/network/http/client";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
-import { CHORD_DETECTION } from "@/lib/pricing";
+import { CHORD_DETECTION, CHORDS_MONTHLY } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -13,16 +13,18 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [buyBusy, setBuyBusy] = useState(false);
+  const [buyBusy, setBuyBusy] = useState("");
   const audioRef = useRef(null);
 
-  const { plan, chordQuota, extraChordCredits, refresh } = useEntitlementsStore();
+  const { plan, chordQuota, extraChordCredits, chordSubscriptionActive, refresh } = useEntitlementsStore();
 
-  // Unlimited on All-Access, same as before. Everyone else: the free
-  // lifetime trial (never resets), then a purchased credit. Not derived
-  // from plan alone anymore — see entitlementsStore's planUnlocksShare
-  // comment for why chords split off from that pattern.
-  const chordsUnlimited = plan === "pro";
+  // Unlimited two ways: bundled on All-Access, or a standalone Chords
+  // Monthly subscription (for anyone who wants unlimited chords without a
+  // mastering plan at all). Everyone else: the free lifetime trial (never
+  // resets), then a purchased credit. Not derived from plan alone — see
+  // entitlementsStore's planUnlocksShare comment for why chords split off
+  // from that pattern.
+  const chordsUnlimited = plan === "pro" || chordSubscriptionActive;
   const hasTrialLeft = Boolean(chordQuota?.remaining > 0);
   const hasCredit = Number(extraChordCredits || 0) > 0;
   const chordsAvailable = chordsUnlimited || hasTrialLeft || hasCredit;
@@ -47,22 +49,24 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
     }
   };
 
-  // Always a real one-time checkout, standalone product — never routed
-  // through a plan-change flow, same reasoning as BillingPanel's
-  // buySingleMaster.
-  const buyOne = async () => {
-    setBuyBusy(true);
+  // Always a real checkout, never routed through the plan-change flow —
+  // true for both the one-time credit and the standalone monthly
+  // subscription, same reasoning as BillingPanel's buyOneTime (chords
+  // subscribing/unsubscribing is independent of the main mastering plan,
+  // never a "switch" between tiers).
+  const buy = async (product, planLabel) => {
+    setBuyBusy(product.item);
     trackEvent("begin_checkout", {
       currency: "EUR",
-      value: Number(String(CHORD_DETECTION.price).replace(/[^\d.]/g, "")) || 0,
-      items: [{ item_id: CHORD_DETECTION.item, item_name: "chord_detection" }],
+      value: Number(String(product.price).replace(/[^\d.]/g, "")) || 0,
+      items: [{ item_id: product.item, item_name: planLabel }],
     });
     try {
-      const successUrl = `${window.location.origin}/thank-you?plan=chord_detection&item=${encodeURIComponent(CHORD_DETECTION.item)}&price=${encodeURIComponent(CHORD_DETECTION.price)}`;
-      const { url } = await postCheckout(CHORD_DETECTION.item, successUrl);
+      const successUrl = `${window.location.origin}/thank-you?plan=${planLabel}&item=${encodeURIComponent(product.item)}&price=${encodeURIComponent(product.price)}`;
+      const { url } = await postCheckout(product.item, successUrl);
       window.location.href = url;
     } catch (err) {
-      setBuyBusy(false);
+      setBuyBusy("");
       setError(err?.message || "Failed to start checkout.");
     }
   };
@@ -114,11 +118,11 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={buyOne}
-            disabled={buyBusy}
+            onClick={() => buy(CHORD_DETECTION, "chord_detection")}
+            disabled={Boolean(buyBusy)}
             className="flex items-center gap-2 rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
           >
-            {buyBusy ? (
+            {buyBusy === CHORD_DETECTION.item ? (
               <>
                 <Spinner size={12} /> Redirecting…
               </>
@@ -126,9 +130,23 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
               `Buy one (${CHORD_DETECTION.price})`
             )}
           </button>
+          <button
+            type="button"
+            onClick={() => buy(CHORDS_MONTHLY, "chords_monthly")}
+            disabled={Boolean(buyBusy)}
+            className="flex items-center gap-2 rounded-full border border-brass/40 bg-brass/[0.1] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-brass hover:bg-brass/20 disabled:opacity-50"
+          >
+            {buyBusy === CHORDS_MONTHLY.item ? (
+              <>
+                <Spinner size={12} /> Redirecting…
+              </>
+            ) : (
+              `Unlimited — ${CHORDS_MONTHLY.price}/mo`
+            )}
+          </button>
           {onOpenBilling ? (
-            <button type="button" onClick={onOpenBilling} className="text-[11px] text-brass underline hover:text-ember">
-              or get unlimited with All-Access
+            <button type="button" onClick={onOpenBilling} className="text-[11px] text-zinc-400 underline hover:text-zinc-200">
+              or see all plans
             </button>
           ) : null}
         </div>

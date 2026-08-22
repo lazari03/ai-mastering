@@ -15,7 +15,14 @@ import { importCustomPreset, deleteCustomPreset } from "../services/customPreset
 import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPresetsService.js";
 import { saveProfile, getProfile, deleteAllUserData } from "../services/profileService.js";
 import { recordJob, listJobs, ownsJob, getJob, deleteJob } from "../services/jobsService.js";
-import { createCheckoutUrl, createPortalUrl, getSubscriptionStatus, getPlan, changeSubscriptionPlan } from "../services/polarService.js";
+import {
+  createCheckoutUrl,
+  createPortalUrl,
+  getSubscriptionStatus,
+  getPlan,
+  changeSubscriptionPlan,
+  getChordSubscriptionActive,
+} from "../services/polarService.js";
 import {
   getMasterQuotaStatus,
   consumeMasterQuota,
@@ -248,26 +255,30 @@ router.get("/billing/status", async (req, res) => {
 router.get("/billing/entitlements", async (req, res) => {
   try {
     const plan = await getPlan(req.user.uid);
-    const [subscription, masterQuota, extraCredits, chordQuota, extraChordCredits] = await Promise.all([
+    const [subscription, masterQuota, extraCredits, chordQuota, extraChordCredits, chordSubscriptionActive] = await Promise.all([
       getSubscriptionStatus(req.user.uid),
       getMasterQuotaStatus(req.user.uid, plan),
       getExtraCreditCount(req.user.uid),
       getChordQuotaStatus(req.user.uid),
       getExtraChordCreditCount(req.user.uid),
+      getChordSubscriptionActive(req.user.uid),
     ]);
-    return res.json({ plan, subscription, masterQuota, extraCredits, chordQuota, extraChordCredits });
+    return res.json({ plan, subscription, masterQuota, extraCredits, chordQuota, extraChordCredits, chordSubscriptionActive });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to load entitlements" });
   }
 });
 
-// body.item is one of: plan_studio | plan_pro | single_master |
-// chord_detection. The first two are subscriptions; the other two are
-// one-time purchases — low-commitment top-ups for someone who just needs
-// this one track mastered/analyzed, not a recurring plan.
+// body.item is one of: plan_studio | plan_pro | chords_monthly |
+// single_master | chord_detection. The first three are subscriptions
+// (chords_monthly is standalone — never routed through changeSubscriptionPlan,
+// see /billing/checkout below); the last two are one-time purchases —
+// low-commitment top-ups for someone who just needs this one track
+// mastered/analyzed, not a recurring plan.
 const CHECKOUT_ITEM_TO_PRODUCT_KEY = {
   plan_studio: "planStudio",
   plan_pro: "planPro",
+  chords_monthly: "chordsMonthly",
   single_master: "singleMaster",
   chord_detection: "chordDetection",
 };
@@ -589,11 +600,18 @@ router.post("/analyze-chords", expensiveLimiter, upload.single("file"), async (r
   }
 
   const plan = await getPlan(req.user.uid).catch(() => "free");
-  const allAccessUnlimited = plan === "pro";
+  // Two independent ways to be unlimited: the All-Access plan (bundled),
+  // or a standalone Chords Monthly subscription (for anyone who wants
+  // unlimited chords without a mastering plan at all).
+  const chordSubscribed = await getChordSubscriptionActive(req.user.uid).catch((error) => {
+    console.error("getChordSubscriptionActive failed, failing closed:", error.message);
+    return false;
+  });
+  const unlimited = plan === "pro" || chordSubscribed;
   let mustConsumeTrial = false;
   let mustConsumeChordCredit = false;
 
-  if (!allAccessUnlimited) {
+  if (!unlimited) {
     // Fails CLOSED, not open — a Firestore hiccup here must never be
     // interpreted as "quota available." { remaining: 0 } forces the same
     // path as a genuinely exhausted trial, which correctly falls through
@@ -612,7 +630,7 @@ router.post("/analyze-chords", expensiveLimiter, upload.single("file"), async (r
         mustConsumeChordCredit = true;
       } else {
         return res.status(402).json({
-          detail: `You've used your ${trial.limit} free chord detections — that's a one-time trial, it doesn't renew. Buy one for €1.49, or get unlimited chord detection with All-Access (€19.99/mo). Manage in Settings → Billing.`,
+          detail: `You've used your ${trial.limit} free chord detections — that's a one-time trial, it doesn't renew. Buy one for €1.49, get unlimited chord detection for €2.99/mo, or it's included with All-Access (€19.99/mo). Manage in Settings → Billing.`,
         });
       }
     }

@@ -3,13 +3,14 @@
 import { useState } from "react";
 
 import { postCheckout, postChangePlan, postBillingPortal } from "@/network/http/client";
-import { PLANS, PLAN_ORDER, SINGLE_MASTER, CHORD_DETECTION } from "@/lib/pricing";
+import { PLANS, PLAN_ORDER, SINGLE_MASTER, CHORD_DETECTION, CHORDS_MONTHLY } from "@/lib/pricing";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { trackEvent } from "@/lib/analytics";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 
 export default function BillingPanel() {
-  const { plan: currentPlan, masterQuota, extraCredits, chordQuota, extraChordCredits, loaded, refresh } = useEntitlementsStore();
+  const { plan: currentPlan, masterQuota, extraCredits, chordQuota, extraChordCredits, chordSubscriptionActive, loaded, refresh } =
+    useEntitlementsStore();
   const [busyItem, setBusyItem] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [changeStatus, setChangeStatus] = useState("");
@@ -54,12 +55,14 @@ export default function BillingPanel() {
     }
   };
 
-  // Always a real one-time checkout, never plan-change — additive on top
-  // of whatever plan someone's already on, not a switch, so it must never
-  // route through postChangePlan (which modifies the existing
-  // subscription's product, not what a one-time purchase means). Shared
-  // by both one-time products (Single Master, Chord Detection) — same
-  // shape, just a different item/price/label.
+  // Always a real checkout, never plan-change — additive on top of
+  // whatever plan someone's already on, not a switch, so it must never
+  // route through postChangePlan (which modifies the *main* mastering
+  // subscription's product — irrelevant here). Shared by the two
+  // one-time products (Single Master, Chord Detection) AND the standalone
+  // Chords Monthly subscription — same shape either way, just a
+  // different item/price/label; Chords Monthly is never a "switch"
+  // between tiers since there's only one tier of it.
   const buyOneTime = async (product, planLabel) => {
     setBusyItem(product.item);
     setCheckoutError("");
@@ -203,18 +206,22 @@ export default function BillingPanel() {
 
           {chordQuota ? (
             <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="m-0 text-sm text-white">{currentPlan === "pro" ? "Chord detection" : "Free trial chord detections"}</p>
+              <p className="m-0 text-sm text-white">
+                {currentPlan === "pro" || chordSubscriptionActive ? "Chord detection" : "Free trial chord detections"}
+              </p>
               <p className="m-0 text-xs text-zinc-500">
                 {currentPlan === "pro"
                   ? "Unlimited on All-Access."
-                  : `${chordQuota.remaining} of ${chordQuota.limit} left · one-time, doesn't renew${
-                      extraChordCredits > 0 ? ` · +${extraChordCredits} credit${extraChordCredits === 1 ? "" : "s"} on top` : ""
-                    }`}
+                  : chordSubscriptionActive
+                    ? "Unlimited on Chords Monthly."
+                    : `${chordQuota.remaining} of ${chordQuota.limit} left · one-time, doesn't renew${
+                        extraChordCredits > 0 ? ` · +${extraChordCredits} credit${extraChordCredits === 1 ? "" : "s"} on top` : ""
+                      }`}
               </p>
             </div>
           ) : null}
 
-          {currentPlan !== "pro" ? (
+          {currentPlan !== "pro" && !chordSubscriptionActive ? (
             <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
               <div>
                 <p className="m-0 text-sm text-white">
@@ -236,6 +243,54 @@ export default function BillingPanel() {
                   "Buy one"
                 )}
               </button>
+            </div>
+          ) : null}
+
+          {currentPlan !== "pro" ? (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-dashed border-brass/30 bg-brass/[0.05] p-3">
+              <div>
+                <p className="m-0 text-sm text-white">
+                  {CHORDS_MONTHLY.label} — {CHORDS_MONTHLY.price}
+                  {CHORDS_MONTHLY.period}
+                  {chordSubscriptionActive ? (
+                    <span className="ml-2 rounded-full border border-brass/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-brass">
+                      Current
+                    </span>
+                  ) : null}
+                </p>
+                <p className="m-0 mt-0.5 text-xs text-zinc-500">{CHORDS_MONTHLY.blurb}</p>
+              </div>
+              {chordSubscriptionActive ? (
+                <button
+                  type="button"
+                  onClick={openPortal}
+                  disabled={Boolean(busyItem)}
+                  className="flex shrink-0 items-center gap-2 rounded-full border border-brass/50 bg-brass/[0.18] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
+                >
+                  {busyItem === "portal" ? (
+                    <>
+                      <Spinner size={12} /> Redirecting…
+                    </>
+                  ) : (
+                    "Manage"
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => buyOneTime(CHORDS_MONTHLY, "chords_monthly")}
+                  disabled={Boolean(busyItem)}
+                  className="flex shrink-0 items-center gap-2 rounded-full border border-brass/50 bg-brass/[0.18] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
+                >
+                  {busyItem === CHORDS_MONTHLY.item ? (
+                    <>
+                      <Spinner size={12} /> Redirecting…
+                    </>
+                  ) : (
+                    "Subscribe"
+                  )}
+                </button>
+              )}
             </div>
           ) : null}
         </>

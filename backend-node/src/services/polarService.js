@@ -6,13 +6,14 @@ import { getFirestore } from "../config/firebase.js";
 
 // Polar is a Merchant of Record — it handles global VAT/sales tax, so we
 // never register in any jurisdiction ourselves. Subscription state is
-// mirrored into Firestore (users/{uid}.subscription) so gating a render
-// is a cheap local read, not a Polar API call on every /master request.
-// Two subscription tiers (Studio/All-Access) for recurring users, plus
-// one real one-time product — a single-master purchase, for someone
-// whose actual need is "master this one track," not a recurring plan
-// (see entitlementsService.js's extra-credit functions). order.paid is
-// how that one-time purchase actually grants anything.
+// mirrored into Firestore (users/{uid}.subscription / .chordSubscription)
+// so gating a render is a cheap local read, not a Polar API call on every
+// /master request. Three subscription products (Studio/All-Access for
+// mastering, Chords Monthly standalone) plus two one-time products
+// (single-master, single chord detection) for whoever's actual need is
+// one track, not a recurring plan (see entitlementsService.js's
+// extra-credit functions). order.paid is how those one-time purchases
+// actually grant anything.
 //
 // Customers are matched to our own users purely via externalCustomerId
 // (= Firebase uid) on checkout creation — Polar creates/reuses a Customer
@@ -217,6 +218,17 @@ export async function getPlan(uid) {
   return "free";
 }
 
+// Independent of the main plan — a Free or Studio user can subscribe to
+// this on its own for unlimited chord detection without touching their
+// mastering plan at all (and All-Access users don't need it, they
+// already have unlimited chords bundled). Lives in its own Firestore
+// field (chordSubscription, not subscription) so the two can never
+// overwrite each other — see subscriptionFieldForProduct below.
+export async function getChordSubscriptionActive(uid) {
+  const doc = await userDoc(uid).get();
+  return isEntitled(doc.data()?.chordSubscription);
+}
+
 // Verifies the signature (throws WebhookVerificationError on failure —
 // the route catches this and returns 403, never processes an
 // unverified body).
@@ -253,6 +265,23 @@ function subscriptionRecord(sub) {
   };
 }
 
+// Maps a recurring product ID to which Firestore field its subscription
+// record belongs in. The main plan (Studio/All-Access) and the standalone
+// Chords Monthly subscription are two independent things a user can hold
+// at the same time — writing them to different fields means subscribing
+// to one can never silently overwrite/clobber the other, unlike the
+// single-field design that worked fine back when there was only ever one
+// possible subscription per customer.
+function subscriptionFieldForProduct(productId) {
+  if (productId === settings.polarProducts.planStudio || productId === settings.polarProducts.planPro) {
+    return "subscription";
+  }
+  if (productId === settings.polarProducts.chordsMonthly) {
+    return "chordSubscription";
+  }
+  return null;
+}
+
 async function applySubscriptionEvent(event) {
   const sub = event.data;
   const uid = sub.customer?.externalId;
@@ -263,7 +292,12 @@ async function applySubscriptionEvent(event) {
     console.warn(`Polar ${event.type}: no externalId on customer, skipping`, sub.customerId);
     return;
   }
-  await userDoc(uid).set({ subscription: subscriptionRecord(sub) }, { merge: true });
+  const field = subscriptionFieldForProduct(sub.productId);
+  if (!field) {
+    console.warn(`Polar ${event.type}: unrecognized product ${sub.productId}, skipping`);
+    return;
+  }
+  await userDoc(uid).set({ [field]: subscriptionRecord(sub) }, { merge: true });
 }
 
 // Maps a one-time product ID to which Firestore credit field it tops up.
@@ -314,39 +348,59 @@ async function applyOrderPaidEvent(event) {
 // subscriptionRecord() shape the webhook path writes, so a reconciled
 // record is indistinguishable from a webhook-updated one.
 //
-// Deliberately conservative: only overwrites when Polar actually returns
-// a subscription. An empty result logs a warning instead of clearing the
-// existing record — a transient Polar API hiccup returning nothing
-// shouldn't be able to falsely downgrade a real subscriber to Free.
+// Deliberately conservative: only overwrites a field when Polar actually
+// returns a subscription that maps to it. Nothing returned at all logs a
+// warning instead of clearing existing records — a transient Polar API
+// hiccup shouldn't be able to falsely downgrade a real subscriber to
+// Free. limit:10 (not 1) because a customer can now hold two concurrent
+// subscriptions (main plan + chords) — sorted newest-first, so the first
+// item seen per field is that field's most current subscription; a
+// second/older item for the same field (e.g. a canceled-then-resubscribed
+// history) is intentionally skipped.
 export async function reconcileUserSubscription(uid) {
-  const page = await client().subscriptions.list({ externalCustomerId: uid, limit: 1, sorting: ["-started_at"] });
-  const [latest] = page.result?.items || [];
-  if (!latest) {
-    console.warn(`Reconciliation: Polar returned no subscriptions for uid ${uid} — leaving existing record untouched`);
+  const page = await client().subscriptions.list({ externalCustomerId: uid, limit: 10, sorting: ["-started_at"] });
+  const items = page.result?.items || [];
+  if (!items.length) {
+    console.warn(`Reconciliation: Polar returned no subscriptions for uid ${uid} — leaving existing records untouched`);
     return false;
   }
-  await userDoc(uid).set({ subscription: subscriptionRecord(latest) }, { merge: true });
-  return true;
+  const seenFields = new Set();
+  let changed = false;
+  for (const sub of items) {
+    const field = subscriptionFieldForProduct(sub.productId);
+    if (!field || seenFields.has(field)) continue;
+    seenFields.add(field);
+    await userDoc(uid).set({ [field]: subscriptionRecord(sub) }, { merge: true });
+    changed = true;
+  }
+  return changed;
 }
 
-// Batch pass over every user with a subscription on file — run
-// periodically (see server.js) rather than on a request path, since it's
-// one Polar API call per user and isn't something a page load should
-// wait on. Per-user failures are caught and logged individually so one
-// bad record can't stop the rest of the batch from reconciling.
+// Batch pass over every user with EITHER kind of subscription on file —
+// run periodically (see server.js) rather than on a request path, since
+// it's one Polar API call per user and isn't something a page load
+// should wait on. Two separate field queries, unioned into one uid set —
+// Firestore can't OR across different field existence checks in a single
+// query. Per-user failures are caught and logged individually so one bad
+// record can't stop the rest of the batch from reconciling.
 export async function reconcileAllSubscriptions() {
-  const snapshot = await getFirestore().collection("users").where("subscription", "!=", null).get();
+  const db = getFirestore();
+  const [planSnapshot, chordSnapshot] = await Promise.all([
+    db.collection("users").where("subscription", "!=", null).get(),
+    db.collection("users").where("chordSubscription", "!=", null).get(),
+  ]);
+  const uids = new Set([...planSnapshot.docs.map((d) => d.id), ...chordSnapshot.docs.map((d) => d.id)]);
   let reconciled = 0;
-  for (const doc of snapshot.docs) {
+  for (const uid of uids) {
     try {
-      const changed = await reconcileUserSubscription(doc.id);
+      const changed = await reconcileUserSubscription(uid);
       if (changed) reconciled += 1;
     } catch (error) {
-      console.error(`Reconciliation failed for uid ${doc.id}:`, error);
+      console.error(`Reconciliation failed for uid ${uid}:`, error);
     }
   }
-  console.log(`Reconciliation pass complete: ${reconciled}/${snapshot.size} subscriptions synced from Polar`);
-  return { checked: snapshot.size, reconciled };
+  console.log(`Reconciliation pass complete: ${reconciled}/${uids.size} accounts synced from Polar`);
+  return { checked: uids.size, reconciled };
 }
 
 export { WebhookVerificationError };
