@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import ChordDetector from "@/components/audio/ChordDetector";
 import FileDropzone from "@/components/ui/FileDropzone";
 
-export default function ChordsPanel() {
+export default function ChordsPanel({ onOpenBilling }) {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
 
@@ -34,7 +34,7 @@ export default function ChordsPanel() {
       </div>
 
       <div className="mt-4">
-        <ChordDetector file={file} previewUrl={previewUrl} />
+        <ChordDetector file={file} previewUrl={previewUrl} onOpenBilling={onOpenBilling} />
       </div>
     </div>
   );

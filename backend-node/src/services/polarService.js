@@ -266,19 +266,26 @@ async function applySubscriptionEvent(event) {
   await userDoc(uid).set({ subscription: subscriptionRecord(sub) }, { merge: true });
 }
 
-// Only grants a credit for the single-master product specifically —
-// other order.paid events (shouldn't exist today, since every other
-// product is a subscription, but defensive against a future one-time
-// product this function doesn't know about) are silently ignored rather
-// than assumed to mean "grant a master credit."
-//
+// Maps a one-time product ID to which Firestore credit field it tops up.
+// Anything else (a future one-time product this function doesn't know
+// about yet, or — shouldn't happen — a subscription product somehow
+// producing an order.paid) is silently ignored rather than assumed to
+// mean "grant a master credit," which is what a single hardcoded check
+// used to do before there were two different one-time products.
+function creditFieldForProduct(productId) {
+  if (productId === settings.polarProducts.singleMaster) return "extraMasterCredits";
+  if (productId === settings.polarProducts.chordDetection) return "extraChordCredits";
+  return null;
+}
+
 // Idempotency guard: processedPolarOrders/{orderId} + the credit
 // increment happen in the SAME transaction, spanning both documents —
 // either both happen or neither does. A redelivered order.paid for an
 // order already recorded here is a no-op, not a second free credit.
 async function applyOrderPaidEvent(event) {
   const order = event.data;
-  if (order.productId !== settings.polarProducts.singleMaster) return;
+  const creditField = creditFieldForProduct(order.productId);
+  if (!creditField) return;
   const uid = order.customer?.externalId;
   if (!uid) {
     console.warn(`Polar order.paid: no externalId on customer, skipping`, order.customerId);
@@ -292,9 +299,9 @@ async function applyOrderPaidEvent(event) {
     const existing = await tx.get(orderRef);
     if (existing.exists) return; // already processed — Polar redelivered this event
     const userSnap = await tx.get(userRef);
-    const credits = Number(userSnap.data()?.extraMasterCredits || 0);
+    const credits = Number(userSnap.data()?.[creditField] || 0);
     tx.set(orderRef, { uid, processedAt: new Date() });
-    tx.set(userRef, { extraMasterCredits: credits + 1 }, { merge: true });
+    tx.set(userRef, { [creditField]: credits + 1 }, { merge: true });
   });
 }
 

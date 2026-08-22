@@ -55,3 +55,17 @@ export const SINGLE_MASTER = {
   price: "€2.99",
   blurb: "One extra master, no subscription. Same Standard/Professional engine as your plan.",
 };
+
+// Standalone product — chord detection for anyone who wants it without a
+// mastering subscription (a guitarist working out one song, say). Priced
+// below Single Master since it's analysis-only, no multi-stage DSP
+// render. 3 free lifetime (never resets, same one-time-trial shape as
+// Free's master quota), then pay per song. Included unlimited on
+// All-Access regardless — this is only relevant to Free/Studio users.
+export const CHORD_DETECTION = {
+  item: "chord_detection",
+  label: "Chord Detection",
+  price: "€1.49",
+  freeLimit: 3,
+  blurb: "Key, BPM, and chord progression for one song. 3 free, then pay per song — or unlimited on All-Access.",
+};

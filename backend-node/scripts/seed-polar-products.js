@@ -1,5 +1,5 @@
 // Creates the Polar products the pricing model needs — 2 recurring
-// subscriptions plus 1 one-time purchase (see PRICING.md). Run once per
+// subscriptions plus 2 one-time purchases (see PRICING.md). Run once per
 // environment (sandbox, then again for production with
 // POLAR_ENVIRONMENT=production).
 //
@@ -8,7 +8,7 @@
 //
 // Prints each created product's ID — paste those into .env as
 // POLAR_PLAN_STUDIO_PRODUCT_ID / POLAR_PLAN_PRO_PRODUCT_ID /
-// POLAR_SINGLE_MASTER_PRODUCT_ID.
+// POLAR_SINGLE_MASTER_PRODUCT_ID / POLAR_CHORD_DETECTION_PRODUCT_ID.
 // Re-running this creates duplicates (Polar has no "upsert by name") —
 // only run it once per environment, or delete the old ones in the
 // dashboard first if you need to redo it.
@@ -59,6 +59,14 @@ const PRODUCTS = [
       description:
         "One extra full-length master, no subscription. For a one-off track once your monthly plan quota is used up.",
       prices: fixedPrice(2.99),
+    },
+  },
+  {
+    envVar: "POLAR_CHORD_DETECTION_PRODUCT_ID",
+    body: {
+      name: "Chord Detection",
+      description: "Key, BPM, and chord progression for one song. Standalone, no mastering subscription needed.",
+      prices: fixedPrice(1.49),
     },
   },
 ];

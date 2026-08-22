@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { getJobs, toAuthedDownloadUrl, deleteJobRecord, postShareJob, downloadFileSafely } from "@/network/http/client";
-import { useEntitlementsStore, planUnlocksChordsAndShare } from "@/store/entitlementsStore";
+import { useEntitlementsStore, planUnlocksShare } from "@/store/entitlementsStore";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
 function timeUntil(iso) {
@@ -26,7 +26,7 @@ export default function MyMastersPanel() {
   const [downloadErrors, setDownloadErrors] = useState({});
 
   const { plan } = useEntitlementsStore();
-  const shareUnlocked = planUnlocksChordsAndShare(plan);
+  const shareUnlocked = planUnlocksShare(plan);
 
   useEffect(() => {
     getJobs()

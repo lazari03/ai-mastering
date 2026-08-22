@@ -89,5 +89,11 @@ export const settings = {
     // ID here; see entitlementsService.js's extra-credit functions and
     // polarService.js's order.paid webhook handling.
     singleMaster: process.env.POLAR_SINGLE_MASTER_PRODUCT_ID || null,
+    // Also one-time, not a subscription — chord detection as its own
+    // standalone product (a guitarist who wants chords for one song has
+    // no reason to buy a mastering plan). Priced below Single Master —
+    // analysis-only (madmom/essentia), no multi-stage DSP render, no
+    // audio file written out, genuinely cheaper to serve per request.
+    chordDetection: process.env.POLAR_CHORD_DETECTION_PRODUCT_ID || null,
   },
 };

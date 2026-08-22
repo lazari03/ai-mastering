@@ -22,6 +22,10 @@ import {
   PLAN_MASTER_LIMITS,
   getExtraCreditCount,
   consumeExtraCredit,
+  getChordQuotaStatus,
+  consumeChordTrial,
+  getExtraChordCreditCount,
+  consumeExtraChordCredit,
 } from "../services/entitlementsService.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { getAuth } from "../config/firebase.js";
@@ -243,25 +247,28 @@ router.get("/billing/status", async (req, res) => {
 router.get("/billing/entitlements", async (req, res) => {
   try {
     const plan = await getPlan(req.user.uid);
-    const [subscription, masterQuota, extraCredits] = await Promise.all([
+    const [subscription, masterQuota, extraCredits, chordQuota, extraChordCredits] = await Promise.all([
       getSubscriptionStatus(req.user.uid),
       getMasterQuotaStatus(req.user.uid, plan),
       getExtraCreditCount(req.user.uid),
+      getChordQuotaStatus(req.user.uid),
+      getExtraChordCreditCount(req.user.uid),
     ]);
-    return res.json({ plan, subscription, masterQuota, extraCredits });
+    return res.json({ plan, subscription, masterQuota, extraCredits, chordQuota, extraChordCredits });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to load entitlements" });
   }
 });
 
-// body.item is one of: plan_studio | plan_pro | single_master. The first
-// two are subscriptions; single_master is the one real one-time
-// purchase — a low-commitment top-up for someone who just needs this one
-// track mastered, not a recurring plan.
+// body.item is one of: plan_studio | plan_pro | single_master |
+// chord_detection. The first two are subscriptions; the other two are
+// one-time purchases — low-commitment top-ups for someone who just needs
+// this one track mastered/analyzed, not a recurring plan.
 const CHECKOUT_ITEM_TO_PRODUCT_KEY = {
   plan_studio: "planStudio",
   plan_pro: "planPro",
   single_master: "singleMaster",
+  chord_detection: "chordDetection",
 };
 
 router.post("/billing/checkout", async (req, res) => {
@@ -558,22 +565,56 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
   }
 });
 
+// Chord detection is BOTH an All-Access plan perk (unlimited, unchanged)
+// AND its own standalone product for anyone else — a guitarist who wants
+// chords for one song has no reason to buy a mastering subscription.
+// Standalone path: FREE_CHORD_LIMIT lifetime free (never resets, same
+// one-time-trial shape as the Free master quota), then pay-per-song
+// credits. Entirely separate counters from mastering — buying/using one
+// product never touches the other's balance. Consumed only after a
+// successful analysis, same "never charge for a failure" discipline as
+// /master.
 router.post("/analyze-chords", expensiveLimiter, upload.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ detail: "file is required" });
   }
-  // Chord detection is an All-Access-only feature now — not purchasable
-  // separately, and not part of Studio (Studio's promise is "master +
-  // stems", never chords). No credit fallback, no "not configured yet"
-  // escape hatch: this is a pure plan check.
+
   const plan = await getPlan(req.user.uid).catch(() => "free");
-  if (plan !== "pro") {
-    return res.status(402).json({
-      detail: "Chord detection is included with the All-Access plan (€19.99/mo). Upgrade in Settings → Billing.",
-    });
+  const allAccessUnlimited = plan === "pro";
+  let mustConsumeTrial = false;
+  let mustConsumeChordCredit = false;
+
+  if (!allAccessUnlimited) {
+    const trial = await getChordQuotaStatus(req.user.uid);
+    if (trial.remaining > 0) {
+      mustConsumeTrial = true;
+    } else {
+      const credits = await getExtraChordCreditCount(req.user.uid).catch(() => 0);
+      if (credits > 0) {
+        mustConsumeChordCredit = true;
+      } else {
+        return res.status(402).json({
+          detail: `You've used your ${trial.limit} free chord detections — that's a one-time trial, it doesn't renew. Buy one for €1.49, or get unlimited chord detection with All-Access (€19.99/mo). Manage in Settings → Billing.`,
+        });
+      }
+    }
   }
+
   try {
     const result = await analyzeChords(req.file);
+    if (mustConsumeTrial) {
+      try {
+        await consumeChordTrial(req.user.uid);
+      } catch (error) {
+        console.error("Failed to consume chord trial after successful analysis:", error.message);
+      }
+    } else if (mustConsumeChordCredit) {
+      try {
+        await consumeExtraChordCredit(req.user.uid);
+      } catch (error) {
+        console.error("Failed to consume chord credit after successful analysis:", error.message);
+      }
+    }
     return res.json(result);
   } catch (error) {
     const detail = error?.stderr || error?.message || "Chord detection failed";

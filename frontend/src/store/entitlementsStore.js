@@ -15,6 +15,8 @@ export const useEntitlementsStore = create((set, get) => ({
   subscription: null,
   masterQuota: null,
   extraCredits: 0,
+  chordQuota: null,
+  extraChordCredits: 0,
   loading: true,
   loaded: false,
 
@@ -26,6 +28,8 @@ export const useEntitlementsStore = create((set, get) => ({
         subscription: data.subscription || null,
         masterQuota: data.masterQuota || null,
         extraCredits: Number(data.extraCredits || 0),
+        chordQuota: data.chordQuota || null,
+        extraChordCredits: Number(data.extraChordCredits || 0),
         loading: false,
         loaded: true,
       });
@@ -50,6 +54,11 @@ export function planUnlocksProAndStems(plan) {
   return plan === "studio" || plan === "pro";
 }
 
-export function planUnlocksChordsAndShare(plan) {
+// Share links stay a pure All-Access plan perk — no standalone purchase
+// path, unlike chords (see ChordDetector.jsx, which computes its own
+// unlock from plan + chordQuota + extraChordCredits, not from plan alone,
+// since chord access can come from a free trial or a purchased credit
+// too now).
+export function planUnlocksShare(plan) {
   return plan === "pro";
 }

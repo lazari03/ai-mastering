@@ -3,13 +3,13 @@
 import { useState } from "react";
 
 import { postCheckout, postChangePlan, postBillingPortal } from "@/network/http/client";
-import { PLANS, PLAN_ORDER, SINGLE_MASTER } from "@/lib/pricing";
+import { PLANS, PLAN_ORDER, SINGLE_MASTER, CHORD_DETECTION } from "@/lib/pricing";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { trackEvent } from "@/lib/analytics";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 
 export default function BillingPanel() {
-  const { plan: currentPlan, masterQuota, extraCredits, loaded, refresh } = useEntitlementsStore();
+  const { plan: currentPlan, masterQuota, extraCredits, chordQuota, extraChordCredits, loaded, refresh } = useEntitlementsStore();
   const [busyItem, setBusyItem] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [changeStatus, setChangeStatus] = useState("");
@@ -54,22 +54,24 @@ export default function BillingPanel() {
     }
   };
 
-  // Always a real one-time checkout, never plan-change — this is
-  // additive on top of whatever plan someone's already on, not a switch,
-  // so it must never route through postChangePlan (which modifies the
-  // existing subscription's product, not what a one-time purchase means).
-  const buySingleMaster = async () => {
-    setBusyItem(SINGLE_MASTER.item);
+  // Always a real one-time checkout, never plan-change — additive on top
+  // of whatever plan someone's already on, not a switch, so it must never
+  // route through postChangePlan (which modifies the existing
+  // subscription's product, not what a one-time purchase means). Shared
+  // by both one-time products (Single Master, Chord Detection) — same
+  // shape, just a different item/price/label.
+  const buyOneTime = async (product, planLabel) => {
+    setBusyItem(product.item);
     setCheckoutError("");
     setChangeStatus("");
     trackEvent("begin_checkout", {
       currency: "EUR",
-      value: Number(String(SINGLE_MASTER.price).replace(/[^\d.]/g, "")) || 0,
-      items: [{ item_id: SINGLE_MASTER.item, item_name: "single_master" }],
+      value: Number(String(product.price).replace(/[^\d.]/g, "")) || 0,
+      items: [{ item_id: product.item, item_name: planLabel }],
     });
     try {
-      const successUrl = `${window.location.origin}/thank-you?plan=single_master&item=${encodeURIComponent(SINGLE_MASTER.item)}&price=${encodeURIComponent(SINGLE_MASTER.price)}`;
-      const { url } = await postCheckout(SINGLE_MASTER.item, successUrl);
+      const successUrl = `${window.location.origin}/thank-you?plan=${planLabel}&item=${encodeURIComponent(product.item)}&price=${encodeURIComponent(product.price)}`;
+      const { url } = await postCheckout(product.item, successUrl);
       window.location.href = url;
     } catch (err) {
       setBusyItem("");
@@ -185,7 +187,7 @@ export default function BillingPanel() {
             </div>
             <button
               type="button"
-              onClick={buySingleMaster}
+              onClick={() => buyOneTime(SINGLE_MASTER, "single_master")}
               disabled={Boolean(busyItem)}
               className="flex shrink-0 items-center gap-2 rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
             >
@@ -198,6 +200,44 @@ export default function BillingPanel() {
               )}
             </button>
           </div>
+
+          {chordQuota ? (
+            <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="m-0 text-sm text-white">{currentPlan === "pro" ? "Chord detection" : "Free trial chord detections"}</p>
+              <p className="m-0 text-xs text-zinc-500">
+                {currentPlan === "pro"
+                  ? "Unlimited on All-Access."
+                  : `${chordQuota.remaining} of ${chordQuota.limit} left · one-time, doesn't renew${
+                      extraChordCredits > 0 ? ` · +${extraChordCredits} credit${extraChordCredits === 1 ? "" : "s"} on top` : ""
+                    }`}
+              </p>
+            </div>
+          ) : null}
+
+          {currentPlan !== "pro" ? (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
+              <div>
+                <p className="m-0 text-sm text-white">
+                  {CHORD_DETECTION.label} — {CHORD_DETECTION.price}
+                </p>
+                <p className="m-0 mt-0.5 text-xs text-zinc-500">{CHORD_DETECTION.blurb}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => buyOneTime(CHORD_DETECTION, "chord_detection")}
+                disabled={Boolean(busyItem)}
+                className="flex shrink-0 items-center gap-2 rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
+              >
+                {busyItem === CHORD_DETECTION.item ? (
+                  <>
+                    <Spinner size={12} /> Redirecting…
+                  </>
+                ) : (
+                  "Buy one"
+                )}
+              </button>
+            </div>
+          ) : null}
         </>
       )}
       {changeStatus ? <p className="mt-3 text-sm text-brass">{changeStatus}</p> : null}

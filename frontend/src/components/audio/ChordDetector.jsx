@@ -2,22 +2,33 @@
 
 import { useMemo, useRef, useState } from "react";
 
-import { postAnalyzeChords } from "@/network/http/client";
-import { useEntitlementsStore, planUnlocksChordsAndShare } from "@/store/entitlementsStore";
+import { postAnalyzeChords, postCheckout } from "@/network/http/client";
+import { useEntitlementsStore } from "@/store/entitlementsStore";
+import { CHORD_DETECTION } from "@/lib/pricing";
+import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
 
-export default function ChordDetector({ file, previewUrl }) {
+export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [buyBusy, setBuyBusy] = useState(false);
   const audioRef = useRef(null);
 
-  const { plan } = useEntitlementsStore();
-  const chordsUnlocked = planUnlocksChordsAndShare(plan);
+  const { plan, chordQuota, extraChordCredits, refresh } = useEntitlementsStore();
+
+  // Unlimited on All-Access, same as before. Everyone else: the free
+  // lifetime trial (never resets), then a purchased credit. Not derived
+  // from plan alone anymore — see entitlementsStore's planUnlocksShare
+  // comment for why chords split off from that pattern.
+  const chordsUnlimited = plan === "pro";
+  const hasTrialLeft = Boolean(chordQuota?.remaining > 0);
+  const hasCredit = Number(extraChordCredits || 0) > 0;
+  const chordsAvailable = chordsUnlimited || hasTrialLeft || hasCredit;
 
   const detect = async () => {
-    if (!file || !chordsUnlocked) return;
+    if (!file || !chordsAvailable) return;
     setIsLoading(true);
     setError("");
     try {
@@ -25,10 +36,34 @@ export default function ChordDetector({ file, previewUrl }) {
       formData.append("file", file);
       const result = await postAnalyzeChords(formData);
       setAnalysis(result);
+      // A trial/credit may have just been spent server-side — refresh so
+      // the balance shown here (and everywhere else) reflects it
+      // immediately, same discipline as a real master completing.
+      if (!chordsUnlimited) refresh();
     } catch (err) {
       setError(err?.message || "Chord detection failed");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Always a real one-time checkout, standalone product — never routed
+  // through a plan-change flow, same reasoning as BillingPanel's
+  // buySingleMaster.
+  const buyOne = async () => {
+    setBuyBusy(true);
+    trackEvent("begin_checkout", {
+      currency: "EUR",
+      value: Number(String(CHORD_DETECTION.price).replace(/[^\d.]/g, "")) || 0,
+      items: [{ item_id: CHORD_DETECTION.item, item_name: "chord_detection" }],
+    });
+    try {
+      const successUrl = `${window.location.origin}/thank-you?plan=chord_detection&item=${encodeURIComponent(CHORD_DETECTION.item)}&price=${encodeURIComponent(CHORD_DETECTION.price)}`;
+      const { url } = await postCheckout(CHORD_DETECTION.item, successUrl);
+      window.location.href = url;
+    } catch (err) {
+      setBuyBusy(false);
+      setError(err?.message || "Failed to start checkout.");
     }
   };
 
@@ -48,24 +83,56 @@ export default function ChordDetector({ file, previewUrl }) {
       <button
         type="button"
         onClick={detect}
-        disabled={!file || isLoading || !chordsUnlocked}
+        disabled={!file || isLoading || !chordsAvailable}
         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-ember px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-[#100b08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isLoading ? (
           <>
             <Spinner size={15} /> Analyzing…
           </>
-        ) : chordsUnlocked ? (
+        ) : chordsUnlimited ? (
           "Detect Chords"
+        ) : hasTrialLeft ? (
+          `Detect Chords — ${chordQuota.remaining}/${chordQuota.limit} free left`
+        ) : hasCredit ? (
+          `Detect Chords — using 1 credit (${extraChordCredits} left)`
         ) : (
-          "Detect Chords — All-Access"
+          "Detect Chords — buy or upgrade"
         )}
       </button>
       <p className="mt-1.5 text-[11px] text-zinc-500">
-        {chordsUnlocked
+        {chordsUnlimited
           ? "Unlimited on your plan."
-          : "Included with All-Access (€19.99/mo) — not available on Free or Studio. Upgrade in Settings → Billing."}
+          : hasTrialLeft
+            ? `Free trial — ${chordQuota.remaining} of ${chordQuota.limit} left, one-time, doesn't renew.`
+            : hasCredit
+              ? `${extraChordCredits} purchased credit${extraChordCredits === 1 ? "" : "s"} left.`
+              : `${CHORD_DETECTION.blurb}`}
       </p>
+
+      {!chordsUnlimited && !hasTrialLeft && !hasCredit ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={buyOne}
+            disabled={buyBusy}
+            className="flex items-center gap-2 rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
+          >
+            {buyBusy ? (
+              <>
+                <Spinner size={12} /> Redirecting…
+              </>
+            ) : (
+              `Buy one (${CHORD_DETECTION.price})`
+            )}
+          </button>
+          {onOpenBilling ? (
+            <button type="button" onClick={onOpenBilling} className="text-[11px] text-brass underline hover:text-ember">
+              or get unlimited with All-Access
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
 
