@@ -27,7 +27,7 @@ export const PLANS = {
     period: "/mo",
     masterLimit: 50,
     blurb: "For anyone mastering regularly.",
-    features: ["50 masters / month", "Standard & Professional engines", "Stem separation included"],
+    features: ["50 masters / month", "Standard & Professional engines"],
   },
   pro: {
     key: "pro",
@@ -37,7 +37,13 @@ export const PLANS = {
     period: "/mo",
     masterLimit: 250,
     blurb: "The full toolkit, 5x Studio's headroom.",
-    features: ["250 masters / month", "Everything in Studio", "Unlimited chord detection", "Shareable download links"],
+    features: [
+      "250 masters / month",
+      "Everything in Studio",
+      "Stem separation, 20/month included",
+      "Unlimited chord detection",
+      "Shareable download links",
+    ],
   },
 };
 
@@ -83,4 +89,16 @@ export const CHORDS_MONTHLY = {
   price: "€2.99",
   period: "/mo",
   blurb: "Unlimited chord detection, no mastering plan needed.",
+};
+
+// One-time — an extra stem-separated master. All-Access includes 20/month
+// (see PLANS.pro.features); once that runs out, or for Free/Studio (who
+// get no bundled stem access at all), this buys one stem-separated render.
+// Priced above Single Master — Demucs source separation plus multiple
+// output stems per job is genuinely heavier server cost than one file.
+export const STEM_SEPARATION = {
+  item: "stem_separation",
+  label: "Stem Separation",
+  price: "€4.99",
+  blurb: "One stem-separated master (vocals, drums, bass, other). Included free on All-Access, 20/month.",
 };

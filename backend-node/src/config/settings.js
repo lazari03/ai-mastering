@@ -104,5 +104,11 @@ export const settings = {
     // polarService.js), tracked in its own Firestore field so
     // subscribing to one never overwrites the other.
     chordsMonthly: process.env.POLAR_CHORDS_MONTHLY_PRODUCT_ID || null,
+    // One-time — an extra stem-separated master beyond All-Access's
+    // monthly stem sub-limit, or a single stem-separated render for
+    // Free/Studio (who get no bundled stem access at all). Priced above
+    // Single Master — genuinely heavier server cost (Demucs source
+    // separation + multiple output files per job, not one).
+    stemSeparation: process.env.POLAR_STEM_SEPARATION_PRODUCT_ID || null,
   },
 };

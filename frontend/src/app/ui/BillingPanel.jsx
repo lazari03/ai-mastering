@@ -3,14 +3,24 @@
 import { useState } from "react";
 
 import { postCheckout, postChangePlan, postBillingPortal } from "@/network/http/client";
-import { PLANS, PLAN_ORDER, SINGLE_MASTER, CHORD_DETECTION, CHORDS_MONTHLY } from "@/lib/pricing";
+import { PLANS, PLAN_ORDER, SINGLE_MASTER, CHORD_DETECTION, CHORDS_MONTHLY, STEM_SEPARATION } from "@/lib/pricing";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { trackEvent } from "@/lib/analytics";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 
 export default function BillingPanel() {
-  const { plan: currentPlan, masterQuota, extraCredits, chordQuota, extraChordCredits, chordSubscriptionActive, loaded, refresh } =
-    useEntitlementsStore();
+  const {
+    plan: currentPlan,
+    masterQuota,
+    extraCredits,
+    chordQuota,
+    extraChordCredits,
+    chordSubscriptionActive,
+    stemQuota,
+    extraStemCredits,
+    loaded,
+    refresh,
+  } = useEntitlementsStore();
   const [busyItem, setBusyItem] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [changeStatus, setChangeStatus] = useState("");
@@ -293,6 +303,43 @@ export default function BillingPanel() {
               )}
             </div>
           ) : null}
+
+          {currentPlan === "pro" && stemQuota ? (
+            <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="m-0 text-sm text-white">Stem separations this month</p>
+              <p className="m-0 text-xs text-zinc-500">
+                {stemQuota.remaining} of {stemQuota.limit} left · resets next month
+                {extraStemCredits > 0 ? ` · +${extraStemCredits} extra credit${extraStemCredits === 1 ? "" : "s"} on top` : ""}
+              </p>
+            </div>
+          ) : null}
+
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
+            <div>
+              <p className="m-0 text-sm text-white">
+                {STEM_SEPARATION.label} — {STEM_SEPARATION.price}
+              </p>
+              <p className="m-0 mt-0.5 text-xs text-zinc-500">
+                {currentPlan === "pro"
+                  ? "For when your monthly 20 run out — no need to wait for reset."
+                  : `${STEM_SEPARATION.blurb} Or get 20/month included on All-Access.`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => buyOneTime(STEM_SEPARATION, "stem_separation")}
+              disabled={Boolean(busyItem)}
+              className="flex shrink-0 items-center gap-2 rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
+            >
+              {busyItem === STEM_SEPARATION.item ? (
+                <>
+                  <Spinner size={12} /> Redirecting…
+                </>
+              ) : (
+                "Buy one"
+              )}
+            </button>
+          </div>
         </>
       )}
       {changeStatus ? <p className="mt-3 text-sm text-brass">{changeStatus}</p> : null}

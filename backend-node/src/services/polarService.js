@@ -309,6 +309,7 @@ async function applySubscriptionEvent(event) {
 function creditFieldForProduct(productId) {
   if (productId === settings.polarProducts.singleMaster) return "extraMasterCredits";
   if (productId === settings.polarProducts.chordDetection) return "extraChordCredits";
+  if (productId === settings.polarProducts.stemSeparation) return "extraStemCredits";
   return null;
 }
 

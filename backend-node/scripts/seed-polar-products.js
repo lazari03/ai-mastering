@@ -1,5 +1,5 @@
 // Creates the Polar products the pricing model needs — 3 recurring
-// subscriptions plus 2 one-time purchases (see PRICING.md). Run once per
+// subscriptions plus 3 one-time purchases (see PRICING.md). Run once per
 // environment (sandbox, then again for production with
 // POLAR_ENVIRONMENT=production).
 //
@@ -9,7 +9,7 @@
 // Prints each created product's ID — paste those into .env as
 // POLAR_PLAN_STUDIO_PRODUCT_ID / POLAR_PLAN_PRO_PRODUCT_ID /
 // POLAR_CHORDS_MONTHLY_PRODUCT_ID / POLAR_SINGLE_MASTER_PRODUCT_ID /
-// POLAR_CHORD_DETECTION_PRODUCT_ID.
+// POLAR_CHORD_DETECTION_PRODUCT_ID / POLAR_STEM_SEPARATION_PRODUCT_ID.
 // Re-running this creates duplicates (Polar has no "upsert by name") —
 // only run it once per environment, or delete the old ones in the
 // dashboard first if you need to redo it.
@@ -35,7 +35,7 @@ const PRODUCTS = [
     body: {
       name: "Studio",
       description:
-        "50 full-length masters a month (Standard & Professional), stem separation included. Everything the Free plan has, plus unlimited-feeling mastering headroom for regular use.",
+        "50 full-length masters a month (Standard & Professional). Everything the Free plan has, plus unlimited-feeling mastering headroom for regular use.",
       recurringInterval: "month",
       prices: fixedPrice(9.99),
     },
@@ -45,7 +45,7 @@ const PRODUCTS = [
     body: {
       name: "All-Access",
       description:
-        "250 full-length masters a month, stem separation, and unlimited chord detection. The full toolkit, 5x Studio's mastering headroom.",
+        "250 full-length masters a month, 20 stem separations a month, and unlimited chord detection. The full toolkit, 5x Studio's mastering headroom.",
       recurringInterval: "month",
       prices: fixedPrice(19.99),
     },
@@ -78,6 +78,15 @@ const PRODUCTS = [
       name: "Chord Detection",
       description: "Key, BPM, and chord progression for one song. Standalone, no mastering subscription needed.",
       prices: fixedPrice(1.49),
+    },
+  },
+  {
+    envVar: "POLAR_STEM_SEPARATION_PRODUCT_ID",
+    body: {
+      name: "Stem Separation",
+      description:
+        "One stem-separated master (vocals, drums, bass, other). Included free on All-Access, 20/month — this is for beyond that, or for any other plan.",
+      prices: fixedPrice(4.99),
     },
   },
 ];

@@ -34,6 +34,11 @@ import {
   getExtraChordCreditCount,
   consumeExtraChordCredit,
   FREE_CHORD_LIMIT,
+  getStemQuotaStatus,
+  consumeStemQuota,
+  getExtraStemCreditCount,
+  consumeExtraStemCredit,
+  STEM_MONTHLY_LIMIT,
 } from "../services/entitlementsService.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { getAuth } from "../config/firebase.js";
@@ -255,32 +260,46 @@ router.get("/billing/status", async (req, res) => {
 router.get("/billing/entitlements", async (req, res) => {
   try {
     const plan = await getPlan(req.user.uid);
-    const [subscription, masterQuota, extraCredits, chordQuota, extraChordCredits, chordSubscriptionActive] = await Promise.all([
-      getSubscriptionStatus(req.user.uid),
-      getMasterQuotaStatus(req.user.uid, plan),
-      getExtraCreditCount(req.user.uid),
-      getChordQuotaStatus(req.user.uid),
-      getExtraChordCreditCount(req.user.uid),
-      getChordSubscriptionActive(req.user.uid),
-    ]);
-    return res.json({ plan, subscription, masterQuota, extraCredits, chordQuota, extraChordCredits, chordSubscriptionActive });
+    const [subscription, masterQuota, extraCredits, chordQuota, extraChordCredits, chordSubscriptionActive, stemQuota, extraStemCredits] =
+      await Promise.all([
+        getSubscriptionStatus(req.user.uid),
+        getMasterQuotaStatus(req.user.uid, plan),
+        getExtraCreditCount(req.user.uid),
+        getChordQuotaStatus(req.user.uid),
+        getExtraChordCreditCount(req.user.uid),
+        getChordSubscriptionActive(req.user.uid),
+        getStemQuotaStatus(req.user.uid),
+        getExtraStemCreditCount(req.user.uid),
+      ]);
+    return res.json({
+      plan,
+      subscription,
+      masterQuota,
+      extraCredits,
+      chordQuota,
+      extraChordCredits,
+      chordSubscriptionActive,
+      stemQuota,
+      extraStemCredits,
+    });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to load entitlements" });
   }
 });
 
 // body.item is one of: plan_studio | plan_pro | chords_monthly |
-// single_master | chord_detection. The first three are subscriptions
-// (chords_monthly is standalone — never routed through changeSubscriptionPlan,
-// see /billing/checkout below); the last two are one-time purchases —
-// low-commitment top-ups for someone who just needs this one track
-// mastered/analyzed, not a recurring plan.
+// single_master | chord_detection | stem_separation. The first three are
+// subscriptions (chords_monthly is standalone — never routed through
+// changeSubscriptionPlan, see /billing/checkout below); the last three
+// are one-time purchases — low-commitment top-ups for someone who just
+// needs this one track mastered/analyzed/separated, not a recurring plan.
 const CHECKOUT_ITEM_TO_PRODUCT_KEY = {
   plan_studio: "planStudio",
   plan_pro: "planPro",
   chords_monthly: "chordsMonthly",
   single_master: "singleMaster",
   chord_detection: "chordDetection",
+  stem_separation: "stemSeparation",
 };
 
 router.post("/billing/checkout", async (req, res) => {
@@ -410,20 +429,26 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
   // Two plans + Free (see PRICING.md): Free (3 Standard masters TOTAL —
   // a one-time trial, not a monthly allowance, no Professional tier, no
   // stems, no chords), Studio (50 masters/month, resets monthly, Standard
-  // + Professional, stems included, no chords), All-Access (250
+  // + Professional, no bundled stems, no chords), All-Access (250
   // masters/month, resets monthly, everything including unlimited chord
-  // detection — see /analyze-chords below). Professional tier and stem
-  // separation stay strictly plan-gated (no credit bypass) — the
-  // one-time "single master" purchase only ever covers the master-count
-  // limit itself. For a Free user past their 3-master trial, buying
-  // single masters IS the standard path forward (no more free resets);
-  // for Studio/All-Access, it's what covers the gap between exhausting
-  // this month's quota and next month's reset, if they don't want to
-  // wait. Checked (not consumed) here and only actually spent after a
+  // detection — see /analyze-chords below). Professional tier stays
+  // strictly plan-gated (Studio+, no credit bypass) — it's compute-cheap,
+  // no reason to meter it separately. Stem separation is NOT part of that
+  // same bucket: it's real, disproportionate server cost (Demucs source
+  // separation + multiple output files per job), so it gets its own
+  // tiered gate below rather than a flat plan check. The one-time
+  // "single master" purchase only ever covers the master-count limit
+  // itself. For a Free user past their 3-master trial, buying single
+  // masters IS the standard path forward (no more free resets); for
+  // Studio/All-Access, it's what covers the gap between exhausting this
+  // month's quota and next month's reset, if they don't want to wait.
+  // Checked (not consumed) here and only actually spent after a
   // successful render below, so a render that fails midway never costs
   // the user a slot or a credit.
   let mustConsumeQuota = false;
   let mustConsumeCredit = false;
+  let mustConsumeStemQuota = false;
+  let mustConsumeStemCredit = false;
   let quotaLimit = PLAN_MASTER_LIMITS.free;
   let plan = "free";
 
@@ -437,10 +462,44 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
         detail: "Professional mastering needs the Studio plan or higher (€9.99/mo). Upgrade in Settings → Billing.",
       });
     }
-    if (useStemSeparation && !planUnlocked) {
-      return res.status(402).json({
-        detail: "Stem separation needs the Studio plan or higher (€9.99/mo). Upgrade in Settings → Billing.",
-      });
+
+    if (useStemSeparation) {
+      if (plan === "pro") {
+        // Bounded monthly sub-limit, not "unlimited within your 250
+        // masters" — see entitlementsService.js's STEM_MONTHLY_LIMIT
+        // comment for why this stays separately metered even on the top
+        // plan. Fails CLOSED, same discipline as the master quota below.
+        const stemQuota = await getStemQuotaStatus(req.user.uid).catch((error) => {
+          console.error("getStemQuotaStatus failed, failing closed:", error.message);
+          return { remaining: 0, limit: STEM_MONTHLY_LIMIT };
+        });
+        if (stemQuota.remaining > 0) {
+          mustConsumeStemQuota = true;
+        } else {
+          const stemCredits = await getExtraStemCreditCount(req.user.uid).catch(() => 0);
+          if (stemCredits > 0) {
+            mustConsumeStemCredit = true;
+          } else {
+            return res.status(402).json({
+              detail: `You've used your ${stemQuota.limit} stem separations this month — they reset next month. Buy an extra one (€4.99) if you don't want to wait. Manage in Settings → Billing.`,
+            });
+          }
+        }
+      } else {
+        // Free/Studio get no bundled stem access at all, not even a
+        // trial — this is the single most expensive operation in the
+        // app. A purchased credit is the only way in, same standalone
+        // pattern as Chord Detection's pay-per-use path.
+        const stemCredits = await getExtraStemCreditCount(req.user.uid).catch(() => 0);
+        if (stemCredits > 0) {
+          mustConsumeStemCredit = true;
+        } else {
+          return res.status(402).json({
+            detail:
+              "Stem separation is an All-Access feature (€19.99/mo, 20/month included), or buy one separately for €4.99. Manage in Settings → Billing.",
+          });
+        }
+      }
     }
 
     // Fails CLOSED — a Firestore hiccup here must never read as "quota
@@ -543,6 +602,24 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
         await consumeExtraCredit(req.user.uid);
       } catch (error) {
         console.error("Failed to consume extra master credit after successful render:", error.message);
+      }
+    }
+
+    // Independent of the master quota/credit consumption above — a
+    // stem-separated render spends from BOTH counters when applicable
+    // (its master-count slot AND its stem sub-limit slot), not one or the
+    // other, since they're two separately-metered resources.
+    if (mustConsumeStemQuota) {
+      try {
+        await consumeStemQuota(req.user.uid);
+      } catch (error) {
+        console.error("Failed to consume stem quota after successful render:", error.message);
+      }
+    } else if (mustConsumeStemCredit) {
+      try {
+        await consumeExtraStemCredit(req.user.uid);
+      } catch (error) {
+        console.error("Failed to consume extra stem credit after successful render:", error.message);
       }
     }
 

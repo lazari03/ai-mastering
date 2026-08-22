@@ -54,6 +54,7 @@ services:
       POLAR_CHORDS_MONTHLY_PRODUCT_ID: ${POLAR_CHORDS_MONTHLY_PRODUCT_ID}
       POLAR_SINGLE_MASTER_PRODUCT_ID: ${POLAR_SINGLE_MASTER_PRODUCT_ID}
       POLAR_CHORD_DETECTION_PRODUCT_ID: ${POLAR_CHORD_DETECTION_PRODUCT_ID}
+      POLAR_STEM_SEPARATION_PRODUCT_ID: ${POLAR_STEM_SEPARATION_PRODUCT_ID}
       # Signs the ?dl= download tokens and public /shared/ links — must
       # stay stable across restarts or every outstanding link breaks the
       # moment this container redeploys (see settings.js:downloadTokenSecret).

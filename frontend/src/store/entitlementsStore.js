@@ -18,6 +18,8 @@ export const useEntitlementsStore = create((set, get) => ({
   chordQuota: null,
   extraChordCredits: 0,
   chordSubscriptionActive: false,
+  stemQuota: null,
+  extraStemCredits: 0,
   loading: true,
   loaded: false,
 
@@ -32,6 +34,8 @@ export const useEntitlementsStore = create((set, get) => ({
         chordQuota: data.chordQuota || null,
         extraChordCredits: Number(data.extraChordCredits || 0),
         chordSubscriptionActive: Boolean(data.chordSubscriptionActive),
+        stemQuota: data.stemQuota || null,
+        extraStemCredits: Number(data.extraStemCredits || 0),
         loading: false,
         loaded: true,
       });
@@ -52,7 +56,14 @@ export const useEntitlementsStore = create((set, get) => ({
 
 // Derived, not stored — always computed fresh from plan so there's no way
 // for these to drift out of sync with the plan value itself.
-export function planUnlocksProAndStems(plan) {
+//
+// Professional tier only — stems used to be bundled into this same check
+// but split off once stem separation got its own tiered gate (All-Access
+// gets a bounded monthly sub-limit, not "unlimited within your plan";
+// Free/Studio get no bundled access at all, credits only). See
+// MasteringConsole.jsx, which computes stem availability from
+// plan + stemQuota + extraStemCredits, not from plan alone.
+export function planUnlocksProfessional(plan) {
   return plan === "studio" || plan === "pro";
 }
 

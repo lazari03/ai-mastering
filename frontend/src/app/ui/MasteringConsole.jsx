@@ -7,9 +7,11 @@ import ProParamsPanel from "@/components/audio/ProParamsPanel";
 import SignalVisualizer from "@/components/audio/SignalVisualizer";
 import FileDropzone from "@/components/ui/FileDropzone";
 import { previewCodec } from "@/domain/mastering/masteringDomain";
-import { downloadFileSafely } from "@/network/http/client";
+import { downloadFileSafely, postCheckout } from "@/network/http/client";
 import { useMasteringStore } from "@/store/masteringStore";
-import { useEntitlementsStore, planUnlocksProAndStems } from "@/store/entitlementsStore";
+import { useEntitlementsStore, planUnlocksProfessional } from "@/store/entitlementsStore";
+import { STEM_SEPARATION } from "@/lib/pricing";
+import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
 
 const CODEC_OPTIONS = [
@@ -91,10 +93,11 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
   // Centralized — AppClient fetches this once and refreshes it after every
   // real master and every tab switch, so this component just reads it
   // rather than keeping its own independent (and easily stale) copy.
-  const { plan, masterQuota, extraCredits } = useEntitlementsStore();
+  const { plan, masterQuota, extraCredits, stemQuota, extraStemCredits } = useEntitlementsStore();
 
   const [importArtistName, setImportArtistName] = useState("");
   const [importFilePending, setImportFilePending] = useState(null);
+  const [stemBuyBusy, setStemBuyBusy] = useState(false);
 
   useEffect(() => {
     bootstrap();
@@ -197,14 +200,14 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
 
   // Reflects real entitlement state so the button/controls don't just
   // discover "you can't do this" via a 402 after the render already ran.
-  // Professional tier and stem separation are Studio+ only, gated by plan
-  // alone. Every plan (including paid ones) also has a monthly master
-  // quota now — Free 3, Studio 50, All-Access 250 (see lib/pricing.js) —
-  // so "unlocked" here just means "not out of masters this month," not
-  // "unlimited." Disabled in the UI (not just hidden) so a Free user can
-  // never toggle Professional/stems client-side; the backend enforces the
-  // exact same checks independently either way (masteringRoutes.js).
-  const planUnlocked = planUnlocksProAndStems(plan);
+  // Professional tier is Studio+ only, gated by plan alone. Every plan
+  // (including paid ones) also has a monthly master quota now — Free 3,
+  // Studio 50, All-Access 250 (see lib/pricing.js) — so "unlocked" here
+  // just means "not out of masters this month," not "unlimited." Disabled
+  // in the UI (not just hidden) so a Free user can never toggle
+  // Professional client-side; the backend enforces the exact same checks
+  // independently either way (masteringRoutes.js).
+  const professionalUnlocked = planUnlocksProfessional(plan);
   // Quota exhausted isn't the end of the road — a purchased single-master
   // credit (see BillingPanel's "Buy one") covers exactly this case, and
   // the backend already falls back to one automatically (masteringRoutes.js).
@@ -223,12 +226,40 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
           : "Master Track — Quota used, upgrade"
       : "Master Track";
 
-  const professionalUnlocked = planUnlocked;
-  const stemUnlocked = planUnlocked;
+  // Stems no longer follow the plan alone — All-Access gets a bounded
+  // monthly sub-limit (not "unlimited within plan"), Free/Studio get no
+  // bundled access at all. Any plan can also hold a purchased stem
+  // credit, which covers this render even with the sub-limit exhausted
+  // (or with no sub-limit to begin with) — same shape as extraCredits
+  // above. See entitlementsService.js's getStemQuotaStatus/
+  // getExtraStemCreditCount and masteringRoutes.js's /master gating,
+  // which this mirrors.
+  const hasStemCredit = Number(extraStemCredits || 0) > 0;
+  const stemUnlocked = (plan === "pro" && Boolean(stemQuota?.remaining > 0)) || hasStemCredit;
+  const stemBuyLabel =
+    plan === "pro" && stemQuota && stemQuota.remaining <= 0
+      ? "Buy one — your 20/month are used up"
+      : `Buy one — ${STEM_SEPARATION.price}`;
   useEffect(() => {
     if (!stemUnlocked && useStemSeparation) setUseStemSeparation(false);
     if (!professionalUnlocked && tier === "professional") setTier("standard");
   }, [stemUnlocked, professionalUnlocked]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const buyStemSeparation = async () => {
+    setStemBuyBusy(true);
+    trackEvent("begin_checkout", {
+      currency: "EUR",
+      value: Number(String(STEM_SEPARATION.price).replace(/[^\d.]/g, "")) || 0,
+      items: [{ item_id: STEM_SEPARATION.item, item_name: "stem_separation" }],
+    });
+    try {
+      const successUrl = `${window.location.origin}/thank-you?plan=stem_separation&item=${encodeURIComponent(STEM_SEPARATION.item)}&price=${encodeURIComponent(STEM_SEPARATION.price)}`;
+      const { url } = await postCheckout(STEM_SEPARATION.item, successUrl);
+      window.location.href = url;
+    } catch {
+      setStemBuyBusy(false);
+    }
+  };
 
   const canGoNextFromAudio = Boolean(file);
   const canGoNextFromMode = referenceMode || mode === "pro" || Boolean(selectedGenre || selectedPreset);
@@ -351,9 +382,19 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                     />
                   </label>
                   {!stemUnlocked ? (
-                    <p className="mt-1.5 text-[11px] text-zinc-500">
-                      Included with the Studio plan or higher — upgrade in Settings → Billing.
-                    </p>
+                    <div className="mt-1.5 flex items-center justify-between gap-3">
+                      <p className="m-0 text-[11px] text-zinc-500">
+                        {plan === "pro" ? "Your 20/month are used up." : "All-Access includes 20/month, or buy one here."}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={buyStemSeparation}
+                        disabled={stemBuyBusy}
+                        className="shrink-0 rounded-full border border-brass/40 bg-brass/[0.1] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-brass hover:bg-brass/20 disabled:opacity-50"
+                      >
+                        {stemBuyBusy ? "Redirecting…" : stemBuyLabel}
+                      </button>
+                    </div>
                   ) : null}
                 </div>
               </section>
@@ -484,9 +525,19 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                       />
                     </label>
                     {!stemUnlocked ? (
-                      <p className="mt-1.5 text-[11px] text-zinc-500">
-                        Included with the Studio plan or higher — upgrade in Settings → Billing.
-                      </p>
+                      <div className="mt-1.5 flex items-center justify-between gap-3">
+                        <p className="m-0 text-[11px] text-zinc-500">
+                          {plan === "pro" ? "Your 20/month are used up." : "All-Access includes 20/month, or buy one here."}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={buyStemSeparation}
+                          disabled={stemBuyBusy}
+                          className="shrink-0 rounded-full border border-brass/40 bg-brass/[0.1] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-brass hover:bg-brass/20 disabled:opacity-50"
+                        >
+                          {stemBuyBusy ? "Redirecting…" : stemBuyLabel}
+                        </button>
+                      </div>
                     ) : null}
                   </div>
 
@@ -664,9 +715,8 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
             </div>
             <p className="mt-2 text-[11px] text-zinc-500">
               Preview renders the first 30s with the Standard engine, free and unlimited. Master Track renders the
-              full file — 3 total as a free trial (one-time, then €2.99/track or subscribe), 50/month on Studio, 250/month on All-Access
-              {useStemSeparation ? " (stems need Studio or higher)" : ""}. Full result and A/B comparison appear on
-              the right once it&apos;s done.
+              full file — 3 total as a free trial (one-time, then €2.99/track or subscribe), 50/month on Studio, 250/month on
+              All-Access. Full result and A/B comparison appear on the right once it&apos;s done.
             </p>
             {masterQuota && masterQuota.remaining <= 0 && !hasCredit && onOpenBilling ? (
               <p className="mt-2 text-[11px] text-brass">

@@ -57,6 +57,31 @@ async function consumeLifetime(uid, field, limit) {
   });
 }
 
+// Same shape as getLifetimeUsed/consumeLifetime but month-keyed instead
+// of forever — used for the stem-separation sub-quota below. The master
+// quota's Studio/All-Access branch has its own near-identical inline
+// transaction (predates this helper) rather than being refactored onto
+// it, deliberately, to avoid touching already-verified code for a
+// same-behavior rename.
+async function getMonthlyUsed(uid, field) {
+  const doc = await userDoc(uid).get();
+  const quota = doc.data()?.[field];
+  return quota?.month === currentMonthKey() ? Number(quota.used || 0) : 0;
+}
+
+async function consumeMonthly(uid, field, limit) {
+  const db = getFirestore();
+  return db.runTransaction(async (tx) => {
+    const ref = userDoc(uid);
+    const doc = await tx.get(ref);
+    const quota = doc.data()?.[field];
+    const used = quota?.month === currentMonthKey() ? Number(quota.used || 0) : 0;
+    if (used >= limit) return false;
+    tx.set(ref, { [field]: { month: currentMonthKey(), used: used + 1 } }, { merge: true });
+    return true;
+  });
+}
+
 async function getCreditBalance(uid, field) {
   const doc = await userDoc(uid).get();
   return Number(doc.data()?.[field] || 0);
@@ -144,3 +169,27 @@ export const consumeChordTrial = (uid) => consumeLifetime(uid, "freeChordUsage",
 export const getExtraChordCreditCount = (uid) => getCreditBalance(uid, "extraChordCredits");
 export const consumeExtraChordCredit = (uid) => consumeCredit(uid, "extraChordCredits");
 export const grantExtraChordCredits = (uid, count = 1) => grantCredit(uid, "extraChordCredits", count);
+
+// ---- Stem separation (All-Access: bounded monthly sub-quota + credits; -
+// ---- Free/Studio: credits only, no bundled access at all) -------------
+// Real, disproportionate server cost compared to a plain master — Demucs
+// source separation is heavy compute, and the job renders multiple output
+// files (one per stem) instead of one. Unlike the master quota,
+// All-Access does NOT get "unlimited within your 250 masters" for
+// stems — it gets its own smaller monthly sub-limit, so a heavy stem
+// user can't quietly consume a disproportionate share of server capacity
+// just because their overall master count hasn't run out. Free/Studio
+// get no bundled stem access at all (no free trial either, deliberately —
+// this is the single most expensive operation in the app) — a purchased
+// credit is the only way in for them. See masteringRoutes.js's /master
+// gating and PRICING.md.
+export const STEM_MONTHLY_LIMIT = 20;
+
+export async function getStemQuotaStatus(uid) {
+  const used = await getMonthlyUsed(uid, "stemQuota");
+  return { used, remaining: Math.max(0, STEM_MONTHLY_LIMIT - used), limit: STEM_MONTHLY_LIMIT, resets: true };
+}
+export const consumeStemQuota = (uid) => consumeMonthly(uid, "stemQuota", STEM_MONTHLY_LIMIT);
+export const getExtraStemCreditCount = (uid) => getCreditBalance(uid, "extraStemCredits");
+export const consumeExtraStemCredit = (uid) => consumeCredit(uid, "extraStemCredits");
+export const grantExtraStemCredits = (uid, count = 1) => grantCredit(uid, "extraStemCredits", count);
