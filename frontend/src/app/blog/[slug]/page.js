@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { POSTS, getPostBySlug } from "@/content/posts";
 import { GENRE_PAGES } from "@/content/genrePages";
 import { buildMetadata, articleJsonLd, JsonLd } from "@/lib/seo";
-import { CTA, relatedGenresForPost } from "@/lib/internalLinks";
+import { CTA, relatedGenresForPost, CHORD_DETECTOR_URL } from "@/lib/internalLinks";
 
 export function generateStaticParams() {
   return POSTS.map((post) => ({ slug: post.slug }));
@@ -95,6 +95,13 @@ export default function BlogPostPage({ params }) {
           </div>
         </div>
       ) : null}
+
+      <div className="mt-8">
+        <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Also useful</p>
+        <Link href={CHORD_DETECTOR_URL} className="mt-2 block text-sm text-brass hover:text-ember">
+          Know the chords before you master — try Chord Detector →
+        </Link>
+      </div>
 
       {otherPosts.length ? (
         <div className="mt-12 border-t border-white/10 pt-8">

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { buildMetadata, JsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
-import { CTA, relatedPostForGenre } from "@/lib/internalLinks";
+import { CTA, relatedPostForGenre, CHORD_DETECTOR_URL } from "@/lib/internalLinks";
 
 export function generateStaticParams() {
   return GENRE_KEYS.map((genre) => ({ genre }));
@@ -64,7 +64,7 @@ export default function GenreMasteringPage({ params }) {
       </ul>
 
       <div className="mt-8 rounded-2xl border border-brass/30 bg-brass/[0.08] p-5">
-        <p className="m-0 text-sm text-zinc-200">Master a {page.label.toLowerCase()} track free — 3 masters/month, no card required.</p>
+        <p className="m-0 text-sm text-zinc-200">Master a {page.label.toLowerCase()} track free — 3 masters, no card required.</p>
         <div className="mt-3 flex flex-wrap gap-2.5">
           <Link
             href={CTA.signup}
@@ -89,6 +89,13 @@ export default function GenreMasteringPage({ params }) {
           </Link>
         </div>
       ) : null}
+
+      <div className="mt-8">
+        <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Also useful</p>
+        <Link href={CHORD_DETECTOR_URL} className="mt-2 block text-sm text-brass hover:text-ember">
+          Know the chords before you master — try Chord Detector →
+        </Link>
+      </div>
 
       <div className="mt-8 border-t border-white/10 pt-8">
         <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Other genres</p>

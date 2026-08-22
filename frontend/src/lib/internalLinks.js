@@ -53,3 +53,18 @@ export function relatedGenresForPost(slug) {
     .filter(([, postSlug]) => postSlug === slug)
     .map(([genre]) => genre);
 }
+
+// ---- Chord Detector cross-links ----------------------------------------
+// Chord detection is genre-agnostic (works on any recording, any
+// instrument) so it's a legitimate "also useful" link from every genre
+// page and every blog post — unlike GENRE_TO_POST, this isn't one
+// declared edge per genre, it's one shared destination every content page
+// reciprocally links to/from, matching how the feature is actually used.
+export const CHORD_DETECTOR_URL = "/chord-detector";
+
+// The reverse direction: which genre pages the chord-detector page itself
+// links back out to. Kept short and specific (not "all 8") — these three
+// are the genres where "know the chords" most obviously matters (bands
+// covering songs, singer-songwriters, acoustic performers), which is a
+// more honest, specific reciprocal link than a generic link-to-everything.
+export const CHORD_DETECTOR_RELATED_GENRES = ["rock", "acoustic", "pop"];

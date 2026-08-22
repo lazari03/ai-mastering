@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+import { PLANS, SINGLE_MASTER } from "./pricing.js";
+
 // Single source of truth for every user-facing string on the site —
 // English + Albanian. Nothing under src/app or src/components should have
 // a literal English sentence in it; it should call t("some.key") and look
@@ -142,9 +144,15 @@ const DICT = {
     sq: "Çdo rrugë përveç faqes publike kërkon një llogari të kyçur, dhe presetet e Saved Artists ruhen për çdo përdorues veç e veç — askush tjetër që përdor aplikacionin nuk sheh ngarkimet a zinxhirët e tu.",
   },
   "faq.q8": { en: "What's actually free?", sq: "Çfarë është vërtet falas?" },
+  // Numbers interpolated from lib/pricing.js (not hand-typed) — this
+  // exact string went stale twice already after pricing changes before
+  // this fix (once missing the free-trial-not-monthly correction, once
+  // missing Chords Monthly entirely on a different page). Deriving from
+  // the same source PLANS/pricing cards read means a price change here
+  // is now structurally impossible to forget.
   "faq.a8": {
-    en: "30-second mastering previews (unlimited, Standard engine) and 3 full-length masters total, free — a one-time trial, not renewed monthly. After that, single masters are €2.99 each, or subscribe: Studio (€9.99/mo) gives 50/month (resets monthly) and adds Professional mastering and stem separation. All-Access (€19.99/mo) gives 250/month and adds unlimited chord detection.",
-    sq: "Parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard) dhe 3 masterë të plotë gjithsej, falas — një provë një-herëshe, nuk rinovohet çdo muaj. Pas kësaj, çdo master i vetëm kushton €2.99, ose abonohu: Studio (€9.99/muaj) jep 50/muaj (rinovohet çdo muaj) dhe shton masterizimin Professional e ndarjen e instrumenteve. All-Access (€19.99/muaj) jep 250/muaj dhe shton zbulim të pakufizuar akordesh.",
+    en: `30-second mastering previews (unlimited, Standard engine) and 3 full-length masters total, free — a one-time trial, not renewed monthly. After that, single masters are ${SINGLE_MASTER.price} each, or subscribe: ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period}) gives ${PLANS.studio.masterLimit}/month (resets monthly) and adds Professional mastering and stem separation. ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period}) gives ${PLANS.pro.masterLimit}/month and adds unlimited chord detection.`,
+    sq: `Parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard) dhe 3 masterë të plotë gjithsej, falas — një provë një-herëshe, nuk rinovohet çdo muaj. Pas kësaj, çdo master i vetëm kushton ${SINGLE_MASTER.price}, ose abonohu: ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period.replace("/mo", "/muaj")}) jep ${PLANS.studio.masterLimit}/muaj (rinovohet çdo muaj) dhe shton masterizimin Professional e ndarjen e instrumenteve. ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period.replace("/mo", "/muaj")}) jep ${PLANS.pro.masterLimit}/muaj dhe shton zbulim të pakufizuar akordesh.`,
   },
 
   "contact.eyebrow": { en: "Contact", sq: "Kontakt" },

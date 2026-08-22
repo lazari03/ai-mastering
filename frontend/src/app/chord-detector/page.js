@@ -1,8 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 
-import { CHORD_DETECTION } from "@/lib/pricing";
-import { CTA } from "@/lib/internalLinks";
+import { CHORD_DETECTION, CHORDS_MONTHLY, PLANS } from "@/lib/pricing";
+import { CTA, CHORD_DETECTOR_RELATED_GENRES } from "@/lib/internalLinks";
+import { GENRE_PAGES } from "@/content/genrePages";
 import { buildMetadata, JsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -124,7 +125,7 @@ export default function ChordDetectorPage() {
 
       <section className="mt-10 rounded-2xl border border-brass/25 bg-brass/[0.06] p-6">
         <h2 className="m-0 font-[var(--font-title)] text-xl text-white">Pricing</h2>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-xl border border-white/10 bg-black/20 p-4">
             <p className="m-0 text-sm font-semibold text-white">Free trial</p>
             <p className="m-0 mt-1 text-2xl font-bold text-brass">3 songs</p>
@@ -136,8 +137,19 @@ export default function ChordDetectorPage() {
             <p className="mt-2 text-xs text-zinc-400">After your 3 free — no subscription, just this one track.</p>
           </div>
           <div className="rounded-xl border border-brass/40 bg-brass/[0.1] p-4">
-            <p className="m-0 text-sm font-semibold text-white">All-Access</p>
-            <p className="m-0 mt-1 text-2xl font-bold text-brass">€19.99/mo</p>
+            <p className="m-0 text-sm font-semibold text-white">Chords Monthly</p>
+            <p className="m-0 mt-1 text-2xl font-bold text-brass">
+              {CHORDS_MONTHLY.price}
+              <span className="text-sm font-normal text-zinc-400">{CHORDS_MONTHLY.period}</span>
+            </p>
+            <p className="mt-2 text-xs text-zinc-400">Unlimited chord detection on its own — no mastering plan needed.</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+            <p className="m-0 text-sm font-semibold text-white">{PLANS.pro.label}</p>
+            <p className="m-0 mt-1 text-2xl font-bold text-brass">
+              {PLANS.pro.price}
+              <span className="text-sm font-normal text-zinc-400">{PLANS.pro.period}</span>
+            </p>
             <p className="mt-2 text-xs text-zinc-400">Unlimited chord detection, plus everything else in the studio.</p>
           </div>
         </div>
@@ -178,10 +190,25 @@ export default function ChordDetectorPage() {
           <div className="rounded-xl border border-white/10 bg-black/20 p-4">
             <p className="m-0 text-sm font-semibold text-white">Is this bundled with a mastering plan?</p>
             <p className="mt-1.5 text-sm text-zinc-400">
-              It's its own standalone product — you don't need to master anything or subscribe to use it. All-Access
-              subscribers get it unlimited as part of their plan; everyone else gets 3 free, then pays per song.
+              It's its own standalone product — you don't need to master anything or subscribe to use it. Everyone
+              gets 3 free, then it's pay per song, a Chords Monthly subscription on its own, or unlimited as part of
+              All-Access if you're already on that plan.
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="mt-10 border-t border-white/10 pt-8">
+        <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Once you know the chords, master the track</p>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+          {CHORD_DETECTOR_RELATED_GENRES.map((g) => (
+            <Link key={g} href={`/master/${g}`} className="text-sm text-brass hover:text-ember">
+              {GENRE_PAGES[g].label} mastering →
+            </Link>
+          ))}
+          <Link href={CTA.blog} className="text-sm text-brass hover:text-ember">
+            Mastering guides →
+          </Link>
         </div>
       </section>
     </main>

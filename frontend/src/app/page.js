@@ -1,5 +1,6 @@
 import HomeClient from "./HomeClient";
 import { buildMetadata, organizationJsonLd, faqJsonLd, JsonLd } from "@/lib/seo";
+import { PLANS, SINGLE_MASTER } from "@/lib/pricing";
 
 export const metadata = buildMetadata({
   title: "Master Your Music Online — AI Audio Mastering with a Real DSP Engine | Auralith Forge",
@@ -60,8 +61,9 @@ const FAQ_ITEMS = [
   },
   {
     question: "What's actually free?",
-    answer:
-      "30-second mastering previews (unlimited, Standard engine) and 3 full-length masters total, free — a one-time trial, not renewed monthly. Single masters are €2.99 each after that.",
+    // Derived from lib/pricing.js, not hand-typed — see the matching
+    // comment on i18n.js's faq.a8, same fix for the same recurring drift.
+    answer: `30-second mastering previews (unlimited, Standard engine) and 3 full-length masters total, free — a one-time trial, not renewed monthly. Single masters are ${SINGLE_MASTER.price} each after that, or subscribe to ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period}) or ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period}) for a monthly plan.`,
   },
 ];
 
