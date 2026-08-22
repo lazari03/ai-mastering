@@ -26,6 +26,7 @@ import {
   consumeChordTrial,
   getExtraChordCreditCount,
   consumeExtraChordCredit,
+  FREE_CHORD_LIMIT,
 } from "../services/entitlementsService.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { getAuth } from "../config/firebase.js";
@@ -431,7 +432,15 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
       });
     }
 
-    const quota = await getMasterQuotaStatus(req.user.uid, plan);
+    // Fails CLOSED — a Firestore hiccup here must never read as "quota
+    // available." Forces the same path as a genuinely exhausted quota,
+    // which correctly falls through to checking credits and then a clear
+    // error, rather than a raw 500 or silently letting the render through
+    // unverified.
+    const quota = await getMasterQuotaStatus(req.user.uid, plan).catch((error) => {
+      console.error("getMasterQuotaStatus failed, failing closed:", error.message);
+      return { remaining: 0, limit: quotaLimit };
+    });
     if (quota.remaining > 0) {
       mustConsumeQuota = true;
     } else {
@@ -585,7 +594,16 @@ router.post("/analyze-chords", expensiveLimiter, upload.single("file"), async (r
   let mustConsumeChordCredit = false;
 
   if (!allAccessUnlimited) {
-    const trial = await getChordQuotaStatus(req.user.uid);
+    // Fails CLOSED, not open — a Firestore hiccup here must never be
+    // interpreted as "quota available." { remaining: 0 } forces the same
+    // path as a genuinely exhausted trial, which correctly falls through
+    // to checking credits and then the honest "try again" error below,
+    // rather than a raw 500 or (worse) silently letting the request
+    // through unverified.
+    const trial = await getChordQuotaStatus(req.user.uid).catch((error) => {
+      console.error("getChordQuotaStatus failed, failing closed:", error.message);
+      return { remaining: 0, limit: FREE_CHORD_LIMIT };
+    });
     if (trial.remaining > 0) {
       mustConsumeTrial = true;
     } else {

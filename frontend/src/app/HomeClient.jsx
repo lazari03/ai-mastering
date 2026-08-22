@@ -297,6 +297,25 @@ s      </section>
         </div>
       </section>
 
+      <section className="reveal mt-16 scroll-mt-24 rounded-[24px] border border-white/10 p-6 sm:p-8">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">Also available</p>
+            <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">Chord Detector</h2>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-400">
+              Upload any song, get its key, BPM, and full chord progression back. 3 free, then pay per song — no
+              mastering subscription required.
+            </p>
+          </div>
+          <Link
+            href="/chord-detector"
+            className="shrink-0 rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
+          >
+            See how it works →
+          </Link>
+        </div>
+      </section>
+
       <section className="reveal mt-16 scroll-mt-24">
         <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">By genre</p>
         <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">Mastering tuned per genre</h2>
@@ -347,6 +366,7 @@ s      </section>
           </div>
           <nav className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-400">
             <Link href="/blog" className="hover:text-zinc-200">{t("nav.blog")}</Link>
+            <Link href="/chord-detector" className="hover:text-zinc-200">Chord Detector</Link>
             <Link href="/terms" className="hover:text-zinc-200">{t("footer.legal.terms")}</Link>
             <Link href="/privacy" className="hover:text-zinc-200">{t("footer.legal.privacy")}</Link>
             <Link href="/refund" className="hover:text-zinc-200">{t("footer.legal.refund")}</Link>

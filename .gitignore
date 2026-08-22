@@ -32,3 +32,13 @@ graphify-out/
 
 # Local progress notes
 progress.md
+
+# --- Docs & Firestore rules, kept local-only ---
+# *.md was already tracking 7 files (ARCHITECTURE.md, DEPLOYMENT.md,
+# FIREBASE_SETUP.md, MASTERING_ENGINE.md, POLAR_SETUP.md, PRICING.md,
+# README.md) before this — this pattern only stops NEW changes to those
+# and any new .md file from being staged going forward; it does not
+# retroactively untrack them. Run `git rm --cached <file>` per file (see
+# below) if you actually want them removed from git's index too.
+*.md
+firestore.rules
