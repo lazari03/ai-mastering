@@ -1,6 +1,7 @@
 import { POSTS } from "@/content/posts";
 import { GENRE_KEYS } from "@/content/genrePages";
 import { COMPARISON_KEYS } from "@/content/comparisonPages";
+import { TOOL_LANDING_KEYS } from "@/content/toolLandingPages";
 import { SITE_URL } from "@/lib/seo";
 
 // Served automatically at /sitemap.xml by the Next.js App Router convention.
@@ -40,5 +41,12 @@ export default function sitemap() {
     priority: 0.6,
   }));
 
-  return [...staticRoutes, ...postRoutes, ...genreRoutes, ...comparisonRoutes];
+  const toolLandingRoutes = TOOL_LANDING_KEYS.map((slug) => ({
+    url: `${SITE_URL}/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
+
+  return [...staticRoutes, ...postRoutes, ...genreRoutes, ...comparisonRoutes, ...toolLandingRoutes];
 }
