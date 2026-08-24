@@ -2,9 +2,30 @@
 // format, domain, and default keywords stay consistent instead of each
 // page inventing its own.
 //
-// SITE_URL is a placeholder until a real domain is bought — update
-// NEXT_PUBLIC_SITE_URL in .env.local/.env once you have one, sitemap.js,
-// robots.js, and every page's canonical/OG URLs all read from it.
+// The "https://auralithforge.app" fallback below is for LOCAL DEV ONLY —
+// it happens to also be the real production domain, which is exactly what
+// made a missing NEXT_PUBLIC_SITE_URL in production invisible: sitemap.xml,
+// robots.txt, and every page's canonical/OG URLs would silently render
+// correct-looking URLs against a hardcoded string instead of the real env
+// var, with nothing to notice it by. Fails the build instead, server-side
+// only (this module has no client-side importers today, but a throw at
+// import time would crash every page load in the browser rather than fail
+// a build if that ever changed — restricting to the server keeps this a
+// build-time check, not a runtime landmine). Set NEXT_PUBLIC_SITE_URL in
+// the environment the build reads from (frontend/.env.example) — note
+// docker-compose.yml's own `${NEXT_PUBLIC_SITE_URL:-https://auralithforge.app}`
+// default on the frontend build args means this won't fire via that
+// deploy path unless that default is also removed; it's the backstop for
+// building directly with `next build` outside docker-compose (Vercel, a
+// different CI pipeline, etc).
+if (typeof window === "undefined" && process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_SITE_URL) {
+  throw new Error(
+    "NEXT_PUBLIC_SITE_URL is not set in a production build. Set it in the environment this build reads from " +
+      "(see frontend/.env.example) — sitemap.xml, robots.txt, and every page's canonical/OG URLs depend on it " +
+      "being the real domain, not a hardcoded fallback that only happens to match today."
+  );
+}
+
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://auralithforge.app";
 export const SITE_NAME = "Auralith Forge";
 
