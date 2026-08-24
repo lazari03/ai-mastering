@@ -46,7 +46,16 @@ export default function Analytics() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!PLAUSIBLE_DOMAIN && !GA_MEASUREMENT_ID) return;
+    if (!PLAUSIBLE_DOMAIN && !GA_MEASUREMENT_ID) {
+      // Also caught at build time in next.config.mjs (a much louder,
+      // impossible-to-miss warning in the build log) — this one's for
+      // whoever's staring at DevTools on the live site wondering why GA
+      // shows nothing, without having to go dig through build logs first.
+      if (process.env.NODE_ENV === "production") {
+        console.warn("[Analytics] Neither NEXT_PUBLIC_GA_MEASUREMENT_ID nor NEXT_PUBLIC_PLAUSIBLE_DOMAIN is set — no analytics will load on this page.");
+      }
+      return;
+    }
     const sync = () => setEnabled(getStoredConsent() === "accepted");
     sync();
     window.addEventListener("cookie-consent-changed", sync);

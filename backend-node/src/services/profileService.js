@@ -1,4 +1,5 @@
 import { getFirestore } from "../config/firebase.js";
+import { notifyNewRegistration } from "./telegramService.js";
 
 // User profile lives in Firestore at users/{uid} — the same document whose
 // "artists" subcollection holds Saved Artists (see customPresetsService.js)
@@ -11,7 +12,7 @@ function userDoc(uid) {
   return getFirestore().collection("users").doc(uid);
 }
 
-export async function saveProfile(uid, profile) {
+export async function saveProfile(uid, profile, email) {
   if (!uid) {
     throw new Error("Profile requires a signed-in user");
   }
@@ -32,7 +33,29 @@ export async function saveProfile(uid, profile) {
   // skipped) — never unset, so the tour never comes back for that account.
   if (profile.tutorialShown !== undefined) record.tutorialShown = Boolean(profile.tutorialShown);
 
+  // termsAcceptedAt is only ever sent on the one call that happens right
+  // after account creation (authStore.js's signUp/signInWithGoogle) — every
+  // later save from Settings omits it. That makes it the one reliable
+  // signal, from inside this function, that this is a brand-new account:
+  // stamp createdAt (read by the Telegram bot's /stats signup count, see
+  // telegramService.js) and fire the admin notification, both exactly once
+  // per account.
+  const isNewSignup = profile.termsAcceptedAt !== undefined;
+  if (isNewSignup) {
+    record.createdAt = new Date();
+  }
+
   await userDoc(uid).set(record, { merge: true });
+
+  if (isNewSignup) {
+    // Best-effort, fired after the write succeeds — a Telegram hiccup must
+    // never fail signup itself (notifyNewRegistration already swallows its
+    // own errors internally, this catch is just an extra guard).
+    notifyNewRegistration({ uid, email }).catch((error) =>
+      console.error("Signup notification failed (non-fatal):", error)
+    );
+  }
+
   return record;
 }
 

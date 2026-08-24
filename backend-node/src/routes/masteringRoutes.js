@@ -142,7 +142,7 @@ router.get("/styles", (_req, res) => {
 
 router.post("/profile", async (req, res) => {
   try {
-    const saved = await saveProfile(req.user.uid, req.body || {});
+    const saved = await saveProfile(req.user.uid, req.body || {}, req.user.email);
     return res.json(saved);
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to save profile" });

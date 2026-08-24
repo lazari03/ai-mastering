@@ -3,6 +3,7 @@ import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks"
 
 import { settings } from "../config/settings.js";
 import { getFirestore } from "../config/firebase.js";
+import { notifyPurchase } from "./telegramService.js";
 
 // Polar is a Merchant of Record — it handles global VAT/sales tax, so we
 // never register in any jurisdiction ourselves. Subscription state is
@@ -60,6 +61,41 @@ function client() {
 
 function userDoc(uid) {
   return getFirestore().collection("users").doc(uid);
+}
+
+// Reverse-lookup from a Polar product ID back to a human label — the
+// Telegram purchase notification (see announcePurchase below) should read
+// "Studio plan", not a raw Polar product UUID.
+const PRODUCT_LABELS = {
+  planStudio: "Studio plan",
+  planPro: "All-Access plan",
+  singleMaster: "Single Master (one-time)",
+  chordDetection: "Chord Detection (one-time)",
+  chordsMonthly: "Chords Monthly",
+  stemSeparation: "Stem Separation add-on",
+};
+
+function productLabel(productId) {
+  const key = Object.entries(settings.polarProducts).find(([, id]) => id === productId)?.[0];
+  return (key && PRODUCT_LABELS[key]) || productId || "Unknown product";
+}
+
+// Fires the Telegram notification and appends to the purchaseEvents log
+// the bot's /stats command reads (see telegramService.js) — one shared
+// place so both the subscription and one-time-order paths below record a
+// purchase identically. Best-effort end to end: neither the Firestore
+// write nor the Telegram send may ever throw back into a webhook handler,
+// since a notification failing is not a reason to make Polar retry an
+// already-applied event.
+async function announcePurchase({ kind, product, email, amountCents, currency }) {
+  try {
+    await getFirestore()
+      .collection("purchaseEvents")
+      .add({ kind, product, email: email || null, amountCents: amountCents ?? null, currency: currency || null, at: new Date() });
+  } catch (error) {
+    console.error("Failed to record purchase event (non-fatal):", error);
+  }
+  await notifyPurchase({ kind, product, email, amountCents, currency });
 }
 
 // Polar's own validation errors (HTTPValidationError) carry a `detail`
@@ -298,6 +334,21 @@ async function applySubscriptionEvent(event) {
     return;
   }
   await userDoc(uid).set({ [field]: subscriptionRecord(sub) }, { merge: true });
+
+  // subscription.* also fires for renewals, cancellations, and plan
+  // changes — "created" is the one event that actually means "someone
+  // just subscribed," so that's the only one that announces as a
+  // purchase. Fired after the write, best-effort (announcePurchase itself
+  // never throws either).
+  if (event.type === "subscription.created") {
+    await announcePurchase({
+      kind: "New subscription",
+      product: productLabel(sub.productId),
+      email: sub.customer?.email,
+      amountCents: sub.amount,
+      currency: sub.currency,
+    });
+  }
 }
 
 // Maps a one-time product ID to which Firestore credit field it tops up.
@@ -330,14 +381,28 @@ async function applyOrderPaidEvent(event) {
   const db = getFirestore();
   const orderRef = db.collection("processedPolarOrders").doc(order.id);
   const userRef = userDoc(uid);
-  await db.runTransaction(async (tx) => {
+  // Reports back whether this call actually applied the credit, not just
+  // whether the transaction ran — a redelivered event must never trigger
+  // a second "you got paid" notification for the same order.
+  const alreadyProcessed = await db.runTransaction(async (tx) => {
     const existing = await tx.get(orderRef);
-    if (existing.exists) return; // already processed — Polar redelivered this event
+    if (existing.exists) return true; // already processed — Polar redelivered this event
     const userSnap = await tx.get(userRef);
     const credits = Number(userSnap.data()?.[creditField] || 0);
     tx.set(orderRef, { uid, processedAt: new Date() });
     tx.set(userRef, { [creditField]: credits + 1 }, { merge: true });
+    return false;
   });
+
+  if (!alreadyProcessed) {
+    await announcePurchase({
+      kind: "New purchase",
+      product: productLabel(order.productId),
+      email: order.customer?.email,
+      amountCents: order.totalAmount,
+      currency: order.currency,
+    });
+  }
 }
 
 // Reconciliation backstop — webhooks are the fast path, this is what

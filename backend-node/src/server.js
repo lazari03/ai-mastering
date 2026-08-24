@@ -10,6 +10,7 @@ import { verifyDownloadToken } from "./services/downloadTokenService.js";
 import masteringRoutes from "./routes/masteringRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 import { reconcileAllSubscriptions } from "./services/polarService.js";
+import { startBot as startTelegramBot } from "./services/telegramService.js";
 
 // <a href download>, <audio src>, and direct browser navigation to a
 // download-family route can't attach an Authorization header — a ?dl=
@@ -133,6 +134,12 @@ app.use((err, req, res, _next) => {
 app.listen(settings.port, () => {
   console.log(`${settings.appTitle} listening on http://localhost:${settings.port}`);
 });
+
+// No-op when TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID aren't set (logs once and
+// returns) — safe to always call rather than gating on NODE_ENV like the
+// reconciliation loop below, since local dev is exactly where you'd want
+// to test the bot against a sandbox chat before it ever touches production.
+startTelegramBot();
 
 // Reconciliation backstop — webhooks are the fast path for keeping
 // Firestore's subscription mirror in sync with Polar, but nothing catches

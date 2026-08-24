@@ -111,4 +111,27 @@ export const settings = {
     // separation + multiple output files per job, not one).
     stemSeparation: process.env.POLAR_STEM_SEPARATION_PRODUCT_ID || null,
   },
+
+  // Telegram bot — admin notifications (new signup, new purchase) and
+  // on-demand stats commands (/pageviews, /stats). See
+  // services/telegramService.js. Unset token disables the whole feature
+  // silently, same "ungated when unset" pattern as everything else
+  // optional in this file.
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || null,
+  // Only this chat is ever notified or allowed to run a command — a
+  // Telegram bot is discoverable by anyone who finds its @username, so
+  // without this allowlist a stranger could message it and pull real
+  // revenue/traffic numbers. Get your own numeric id from @userinfobot.
+  telegramChatId: process.env.TELEGRAM_CHAT_ID || null,
+
+  // GA4 Data API — backs the /pageviews and /stats bot commands with real
+  // traffic numbers (read-only). Needs a service account added as a
+  // Viewer on the GA4 property itself (Admin > Property Access
+  // Management) — the Firebase project's default service account does
+  // NOT have this by default, it's a separate grant. Same
+  // two-ways-to-supply-credentials pattern as Firebase Admin
+  // (config/firebase.js) — set exactly one of the JSON/path pair.
+  ga4PropertyId: process.env.GA4_PROPERTY_ID || null,
+  ga4ServiceAccountJson: process.env.GA4_SERVICE_ACCOUNT_JSON || null,
+  ga4ServiceAccountPath: process.env.GA4_SERVICE_ACCOUNT_PATH || null,
 };

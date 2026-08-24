@@ -60,6 +60,18 @@ services:
       # moment this container redeploys (see settings.js:downloadTokenSecret).
       DOWNLOAD_TOKEN_SECRET: ${DOWNLOAD_TOKEN_SECRET}
       SESSION_MAX_AGE_DAYS: ${SESSION_MAX_AGE_DAYS:-14}
+      # Telegram admin bot — new-signup/new-purchase alerts plus /pageviews
+      # and /stats commands. Unset either and the whole feature silently
+      # disables itself (see services/telegramService.js and
+      # backend-node/.env.example for how to get both values).
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      # GA4 Data API — backs /pageviews and /stats with real traffic
+      # numbers. Needs a service account with Viewer access on the GA4
+      # property (not the Firebase one). Unset GA4_PROPERTY_ID just means
+      # those commands report "GA4 not configured" instead of failing.
+      GA4_PROPERTY_ID: ${GA4_PROPERTY_ID}
+      GA4_SERVICE_ACCOUNT_JSON: ${GA4_SERVICE_ACCOUNT_JSON}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
       interval: 30s

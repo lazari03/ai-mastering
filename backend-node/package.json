@@ -8,6 +8,7 @@
     "start": "node src/server.js"
   },
   "dependencies": {
+    "@google-analytics/data": "^7.0.0",
     "@polar-sh/sdk": "^0.49.0",
     "cors": "2.8.5",
     "dotenv": "16.4.5",
