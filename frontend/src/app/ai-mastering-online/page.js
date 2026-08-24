@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import Footer from "@/components/Footer";
 import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { COMPARISON_PAGES, COMPARISON_KEYS } from "@/content/comparisonPages";
@@ -67,6 +68,7 @@ const FAQ_ITEMS = [
 
 export default function AiMasteringOnlinePage() {
   return (
+    <>
     <main className="mx-auto w-full max-w-[900px] px-4 pb-24 pt-8 sm:px-6">
       <JsonLd data={organizationJsonLd()} />
       <JsonLd data={faqJsonLd(FAQ_ITEMS)} />
@@ -197,5 +199,7 @@ export default function AiMasteringOnlinePage() {
         </div>
       </section>
     </main>
+    <Footer />
+    </>
   );
 }

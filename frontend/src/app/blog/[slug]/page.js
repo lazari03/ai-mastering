@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
+import Footer from "@/components/Footer";
 import { POSTS, getPostBySlug } from "@/content/posts";
 import { GENRE_PAGES } from "@/content/genrePages";
 import { buildMetadata, articleJsonLd, JsonLd } from "@/lib/seo";
@@ -32,6 +33,7 @@ export default function BlogPostPage({ params }) {
   const relatedGenres = relatedGenresForPost(post.slug);
 
   return (
+    <>
     <main className="mx-auto w-full max-w-[760px] px-4 pb-24 pt-8 sm:px-6">
       <JsonLd
         data={articleJsonLd({
@@ -116,5 +118,7 @@ export default function BlogPostPage({ params }) {
         </div>
       ) : null}
     </main>
+    <Footer />
+    </>
   );
 }

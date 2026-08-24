@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 
+import Footer from "@/components/Footer";
 import { CHORD_DETECTION, CHORDS_MONTHLY, PLANS } from "@/lib/pricing";
 import { CTA, CHORD_DETECTOR_RELATED_GENRES } from "@/lib/internalLinks";
 import { GENRE_PAGES } from "@/content/genrePages";
@@ -50,6 +51,7 @@ const HOW_IT_WORKS = [
 
 export default function ChordDetectorPage() {
   return (
+    <>
     <main className="mx-auto w-full max-w-[900px] px-4 pb-24 pt-8 sm:px-6">
       <JsonLd data={serviceJsonLd()} />
 
@@ -222,5 +224,7 @@ export default function ChordDetectorPage() {
         </div>
       </section>
     </main>
+    <Footer />
+    </>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import Footer from "@/components/Footer";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { buildMetadata, JsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { CTA, relatedPostForGenre, CHORD_DETECTOR_URL } from "@/lib/internalLinks";
@@ -43,6 +44,7 @@ export default function GenreMasteringPage({ params }) {
   const relatedPost = relatedPostForGenre(params.genre);
 
   return (
+    <>
     <main className="mx-auto w-full max-w-[760px] px-4 pb-24 pt-8 sm:px-6">
       <JsonLd data={serviceJsonLd(params.genre, page)} />
 
@@ -108,5 +110,7 @@ export default function GenreMasteringPage({ params }) {
         </div>
       </div>
     </main>
+    <Footer />
+    </>
   );
 }
