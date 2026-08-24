@@ -149,6 +149,7 @@ export default function HomeClient() {
               {t("hero.ctaSecondary")}
             </a>
           </div>
+          <p className="m-0 mt-3 text-xs text-zinc-500">{t("hero.ctaReassurance")}</p>
 
           <div className="mt-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-8 sm:max-w-md">
             {["stat1", "stat2", "stat3"].map((s) => (
