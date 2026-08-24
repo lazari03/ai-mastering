@@ -19,6 +19,16 @@ jobs:
 
       - name: Frontend — install + build
         working-directory: frontend
+        # This build's output is never deployed (the real production build
+        # happens separately, on the VPS via docker-compose.yml, with its
+        # own env) — this job exists purely to catch a compile error before
+        # merge. NEXT_PUBLIC_SITE_URL has to be set here regardless: since
+        # lib/seo.js now throws in a production build when it's unset (to
+        # catch exactly that misconfiguration on the real deploy), this
+        # sanity build would otherwise fail here for a reason that has
+        # nothing to do with whether the code actually compiles.
+        env:
+          NEXT_PUBLIC_SITE_URL: https://auralithforge.app
         run: |
           npm ci
           npm run build
