@@ -207,6 +207,7 @@ const DICT = {
   "pricing.freeCta": { en: "Start Free", sq: "Fillo Falas" },
   "pricing.subCta": { en: "Get Started", sq: "Fillo Tani" },
   "pricing.subReassurance": { en: "Cancel anytime, no questions asked.", sq: "Anulo kur të duash, pa pyetje." },
+  "pricing.compareLink": { en: "Comparing tools? See how this stacks up against LANDR & eMastered →", sq: "Po krahason mjete? Shiko si krahasohet me LANDR & eMastered →" },
 
   "app.tab.master": { en: "Master Audio", sq: "Masterizo Audio" },
   "app.tab.chords": { en: "Show Chords", sq: "Shfaq Akordet" },

@@ -274,6 +274,9 @@ s      </section>
           })}
         </div>
 
+        <Link href="/ai-mastering-online" className="mt-5 inline-block text-sm text-brass hover:text-ember">
+          {t("pricing.compareLink")}
+        </Link>
       </section>
 
       <section id="how-to" className="reveal reveal-delay-2 mt-16 scroll-mt-24">
