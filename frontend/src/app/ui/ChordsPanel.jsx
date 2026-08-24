@@ -4,10 +4,22 @@ import { useEffect, useState } from "react";
 
 import ChordDetector from "@/components/audio/ChordDetector";
 import FileDropzone from "@/components/ui/FileDropzone";
+import { useMasteringStore } from "@/store/masteringStore";
 
-export default function ChordsPanel({ onOpenBilling }) {
+export default function ChordsPanel({ onOpenBilling, onMasterThisSong }) {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
+  // Hands the exact same File object already sitting in memory here over
+  // to the Master tab's store, so "Master This Song" (ChordDetector.jsx)
+  // never makes someone re-select the file they just uploaded — the
+  // Master tab reads `file` from this same store (see MasteringConsole.jsx).
+  const setMasteringFile = useMasteringStore((s) => s.setFile);
+
+  const masterThisSong = () => {
+    if (!file) return;
+    setMasteringFile(file);
+    onMasterThisSong?.();
+  };
 
   useEffect(() => {
     if (!file) {
@@ -34,7 +46,7 @@ export default function ChordsPanel({ onOpenBilling }) {
       </div>
 
       <div className="mt-4">
-        <ChordDetector file={file} previewUrl={previewUrl} onOpenBilling={onOpenBilling} />
+        <ChordDetector file={file} previewUrl={previewUrl} onOpenBilling={onOpenBilling} onMasterThisSong={masterThisSong} />
       </div>
     </div>
   );

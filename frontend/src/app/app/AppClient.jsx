@@ -29,7 +29,12 @@ const TABS = [
     icon: IconMaster,
     render: (ctx) => <MasteringConsole onOpenHelp={() => ctx.setActiveTab("help")} onOpenBilling={() => ctx.setActiveTab("settings")} />,
   },
-  { key: "chords", labelKey: "app.tab.chords", icon: IconChords, render: (ctx) => <ChordsPanel onOpenBilling={() => ctx.setActiveTab("settings")} /> },
+  {
+    key: "chords",
+    labelKey: "app.tab.chords",
+    icon: IconChords,
+    render: (ctx) => <ChordsPanel onOpenBilling={() => ctx.setActiveTab("settings")} onMasterThisSong={() => ctx.setActiveTab("master")} />,
+  },
   { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, render: () => <MyMastersPanel /> },
   { key: "help", labelKey: "app.tab.help", icon: IconHelp, render: () => <HelpSupportPanel /> },
   { key: "settings", labelKey: "app.tab.settings", icon: IconSettings, render: (ctx) => <SettingsPanel onReplayTutorial={() => ctx.setShowTutorial(true)} /> },

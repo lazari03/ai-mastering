@@ -8,7 +8,7 @@ import { CHORD_DETECTION, CHORDS_MONTHLY } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
 
-export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
+export default function ChordDetector({ file, previewUrl, onOpenBilling, onMasterThisSong }) {
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -194,6 +194,26 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
               ))}
             </div>
           </div>
+
+          {onMasterThisSong ? (
+            // The cross-sell moment — right after the answer they came for,
+            // not before it. Reuses the same File object already in memory
+            // (see ChordsPanel.jsx), so this jumps straight into the
+            // Master tab with the track already attached, no re-upload.
+            <div className="rounded-xl border border-brass/30 bg-brass/[0.06] p-4 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  trackEvent("chord_detector_master_cta");
+                  onMasterThisSong();
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brass px-5 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-[#100b08] transition hover:brightness-110"
+              >
+                Master This Song →
+              </button>
+              <p className="mt-2 text-[11px] text-zinc-500">Same file, no re-upload — jumps straight into the mastering console.</p>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="mt-3 text-xs text-zinc-400">
