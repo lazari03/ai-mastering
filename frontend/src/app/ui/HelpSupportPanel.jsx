@@ -19,8 +19,8 @@ Match this exact structure (same keys, same nesting):
 
 {
   "display_name": "<a short name for this preset>",
-  "genre": "<one of: pop, hiphop, rock, edm, acoustic, lofi, podcast, classical>",
-  "style": "<one of: modern, rock_90s, rock_2000s, rock_modern, electronic_modern, stock_mastering_strip>",
+  "genre": "<one of: pop, hiphop, rock, edm, acoustic, lofi, podcast, classical, metal, trap, rnb, reggaeton, latin, house, techno, dnb, afrobeats, singer_songwriter, jazz, cinematic>",
+  "style": "<one of: modern, rock_90s, rock_2000s, rock_modern, electronic_modern, stock_mastering_strip, vintage_analog, cd_loudness_war, vinyl_master, streaming_safe, hiphop_golden_era, hiphop_modern_trap, pop_80s, edm_festival, acoustic_natural, cinematic_score>",
   "tags": [<zero or more of: "better_vocals", "deeper", "brighter", "warmer", "louder", "wider", "punchier_drums", "clearer", "softer">],
   "output_format": "wav",
   "processing": {
