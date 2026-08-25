@@ -253,11 +253,31 @@ def _spectral_balance_only(audio_stereo: np.ndarray, sr: int) -> dict:
     power = np.abs(stft) ** 2
     freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
 
+    # Sum, not mean, over each band's bins — this has to be each band's
+    # *share of total spectral energy* (what every genre's
+    # target_spectral_balance in params.py is authored as: proportions that
+    # sum to ~1.0, weighted toward the mid-range for a typical commercial
+    # mix). np.mean(power[idx, :]) previously computed "average power per
+    # FFT bin" instead: since FFT bins are linearly spaced, a narrow band
+    # like sub_bass_20_60hz (4 bins at n_fft=4096/44.1kHz) gets only a
+    # handful of bins right where real music's natural spectral tilt is
+    # loudest, while brilliance_6000_20000hz (1300+ bins, mostly quiet)
+    # drags its own mean down — so the mean-per-bin metric reported sub-bass
+    # as ~80%+ of "the spectrum" on ordinary program material regardless of
+    # the actual mix, silently defeating every downstream consumer that
+    # assumes a real energy proportion: the per-band EQ correction in
+    # mastering_params.py (comparing this against target_spectral_balance),
+    # vocal_presence_estimate, _tilt_from_band_shares, and the
+    # rock_low_end_protection / upper_mid_energy gates all measured a
+    # near-constant "everything is bass" fingerprint instead of each
+    # track's actual balance. Confirmed against a real source file: this
+    # bug reported 84% sub-bass share where the correct sum-based
+    # computation gives 36%.
     band_energy = {}
     total_energy = 0.0
     for band, (lo, hi) in ANALYSIS_BANDS.items():
         idx = np.where((freqs >= lo) & (freqs < min(hi, sr / 2.0)))[0]
-        energy = float(np.mean(power[idx, :])) if idx.size else 0.0
+        energy = float(np.sum(power[idx, :])) if idx.size else 0.0
         band_energy[band] = energy
         total_energy += energy
 

@@ -217,7 +217,12 @@ def compute_processing_params(
     per_band_gain_changes_db["brilliance_6000_20000hz"] = min(per_band_gain_changes_db["brilliance_6000_20000hz"], hf_cap)
 
     # Guitar-burn guard: if the track already has meaningful upper-mid energy, avoid further push.
-    if upper_mid_energy >= 0.020:
+    # Threshold is a genuine proportion of total spectral energy (see
+    # audio_utils.py:_spectral_balance_only) — every genre's own
+    # target_spectral_balance sums mid+high_mid+presence+brilliance to
+    # roughly 0.55-0.68, so 0.45 means "already within reach of a normal
+    # mix's upper-band share," not an arbitrarily small number.
+    if upper_mid_energy >= 0.45:
         per_band_gain_changes_db["mid_500_2000hz"] = min(per_band_gain_changes_db["mid_500_2000hz"], 0.15)
         per_band_gain_changes_db["high_mid_2000_4000hz"] = min(per_band_gain_changes_db["high_mid_2000_4000hz"], 0.12)
         per_band_gain_changes_db["presence_4000_6000hz"] = min(per_band_gain_changes_db["presence_4000_6000hz"], 0.10)
@@ -234,8 +239,10 @@ def compute_processing_params(
         per_band_gain_changes_db["mid_500_2000hz"] = min(per_band_gain_changes_db["mid_500_2000hz"], 0.35)
         per_band_gain_changes_db["high_mid_2000_4000hz"] = min(per_band_gain_changes_db["high_mid_2000_4000hz"], 0.45)
 
-        # Only allow modest top-end lift when upper bands are genuinely missing.
-        if upper_mid_energy < 0.06:
+        # Only allow modest top-end lift when upper bands are genuinely
+        # missing — well below the ~0.55-0.68 a normal mix's own genre
+        # target sums to (same proportion scale as the guard above).
+        if upper_mid_energy < 0.35:
             per_band_gain_changes_db["presence_4000_6000hz"] = min(per_band_gain_changes_db["presence_4000_6000hz"], 0.6)
             per_band_gain_changes_db["brilliance_6000_20000hz"] = min(per_band_gain_changes_db["brilliance_6000_20000hz"], 0.5)
         else:
