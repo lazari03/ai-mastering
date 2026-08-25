@@ -118,6 +118,9 @@ and tempo-aware compression timing).
 
 ## Loudness targets by genre (LUFS)
 
+Full reference page, with the reasoning per genre and the limiter spec:
+https://auralithforge.app/mastering-loudness-targets
+
 These are the engine's baseline integrated-loudness and dynamic-range
 targets per genre, before the mastering style's delta and any intent tags
 are applied. They are also a reasonable general reference for what each
@@ -352,6 +355,10 @@ affiliated with it.
   it works, FAQ
 - [AI mastering online](https://auralithforge.app/ai-mastering-online) — the
   full explainer for mastering a track online end to end
+- [Mastering loudness targets](https://auralithforge.app/mastering-loudness-targets)
+  — LUFS, dynamic range and true-peak targets by genre, the mastering-style
+  deltas, the limiter spec, and what streaming normalisation does to a
+  master that ignores them
 - [Chord detector](https://auralithforge.app/chord-detector) — chords, key
   and BPM from an upload
 - [Song key finder](https://auralithforge.app/song-key-finder) — key

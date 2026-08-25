@@ -12,9 +12,10 @@ import { SITE_URL } from "@/lib/seo";
 // has nothing to rank for and would only compete with the homepage on
 // brand queries. Everything else is here:
 //
-//   /                          HomeClient
-//   /ai-mastering-online       broad-intent hub
-//   /chord-detector            umbrella tool page
+//   /                            HomeClient
+//   /ai-mastering-online         broad-intent hub
+//   /mastering-loudness-targets  LUFS reference
+//   /chord-detector              umbrella tool page
 //   /song-key-finder           }
 //   /bpm-finder                } TOOL_LANDING_KEYS
 //   /chord-progression-finder  }
@@ -45,6 +46,10 @@ export default function sitemap() {
     { path: "/", priority: 1, changeFrequency: "weekly" },
     { path: "/ai-mastering-online", priority: 0.9, changeFrequency: "monthly" },
     { path: "/chord-detector", priority: 0.8, changeFrequency: "monthly" },
+    // Reference content rather than a landing page — priority matches the
+    // genre pages because informational pages that answer a question
+    // outright are what earn citations and inbound links.
+    { path: "/mastering-loudness-targets", priority: 0.7, changeFrequency: "monthly" },
     // Listed above the legal pages because it gains entries over time;
     // the individual posts follow from POSTS below.
     { path: "/blog", priority: 0.6, changeFrequency: "weekly" },
