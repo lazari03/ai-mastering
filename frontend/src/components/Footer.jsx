@@ -59,6 +59,7 @@ export default function Footer() {
         <div className="flex flex-col gap-2">
           <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{t("footer.col.compare")}</p>
           <Link href="/ai-mastering-online" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.link.aiMasteringOnline")}</Link>
+          <Link href="/mastering-loudness-targets" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.link.loudnessTargets")}</Link>
           <Link href="/vs/landr" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.link.vsLandr")}</Link>
           <Link href="/vs/emastered" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.link.vsEmastered")}</Link>
         </div>

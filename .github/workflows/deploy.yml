@@ -5,6 +5,18 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Manual "Run workflow" button. GitHub only renders that button when a
+  # workflow declares workflow_dispatch, and only reads the declaration
+  # from the file as it exists on the DEFAULT branch — so the button
+  # appears once this is on main, not while it sits on a feature branch.
+  #
+  # The reason to want it: a deploy can fail for reasons that have nothing
+  # to do with the commit — the VPS refusing to recreate a container whose
+  # name a previous run left orphaned, say. Without a manual trigger the
+  # only way to retry is to push another commit, which in practice means
+  # an empty commit on main purely to kick CI. This is the honest version
+  # of that.
+  workflow_dispatch:
 
 jobs:
   build-check:
@@ -52,7 +64,13 @@ jobs:
   deploy:
     name: Deploy to VPS
     needs: build-check
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Still main-only: workflow_dispatch lets the person triggering it pick
+    # a ref, and this github.ref check is what stops someone dispatching
+    # against a feature branch and deploying it to production. Only the
+    # event list widens — a manual run from main deploys exactly as a push
+    # to main does, which is the point: retry a failed deploy without
+    # inventing a commit.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
       - name: SSH and deploy

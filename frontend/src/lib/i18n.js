@@ -186,6 +186,7 @@ const DICT = {
   "footer.link.bpmFinder": { en: "BPM Finder", sq: "Gjetës BPM" },
   "footer.link.chordProgressionFinder": { en: "Chord Progression Finder", sq: "Gjetës Progresioni Akordesh" },
   "footer.link.aiMasteringOnline": { en: "AI Mastering Online", sq: "Masterizim AI Online" },
+  "footer.link.loudnessTargets": { en: "Loudness Targets by Genre", sq: "Objektivat e Zërit sipas Zhanrit" },
   "footer.link.vsLandr": { en: "vs LANDR", sq: "vs LANDR" },
   "footer.link.vsEmastered": { en: "vs eMastered", sq: "vs eMastered" },
 
