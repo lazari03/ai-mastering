@@ -15,6 +15,12 @@ function timeUntil(iso) {
   return `${hours}h left`;
 }
 
+// The backend caps /jobs at 25 records total (jobsService.js's listJobs),
+// so there's never enough data here to justify a second network
+// round-trip or an infinite-scroll — pagination + the active/expired
+// filter both just slice the one already-fetched array client-side.
+const PAGE_SIZE = 8;
+
 export default function MyMastersPanel() {
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState("");
@@ -24,6 +30,8 @@ export default function MyMastersPanel() {
   const [shareErrors, setShareErrors] = useState({});
   const [copiedJobId, setCopiedJobId] = useState("");
   const [downloadErrors, setDownloadErrors] = useState({});
+  const [filter, setFilter] = useState("active"); // "active" | "expired" | "all"
+  const [page, setPage] = useState(1);
 
   const { plan } = useEntitlementsStore();
   const shareUnlocked = planUnlocksShare(plan);
@@ -87,6 +95,21 @@ export default function MyMastersPanel() {
     }
   };
 
+  const filteredJobs =
+    jobs?.filter((job) => {
+      if (filter === "all") return true;
+      const expired = timeUntil(job.expires_at) === "expired";
+      return filter === "expired" ? expired : !expired;
+    }) || [];
+  const pageCount = Math.max(1, Math.ceil(filteredJobs.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageJobs = filteredJobs.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const changeFilter = (next) => {
+    setFilter(next);
+    setPage(1);
+  };
+
   const copyShareLink = async (jobId, url) => {
     try {
       await navigator.clipboard.writeText(url);
@@ -109,8 +132,35 @@ export default function MyMastersPanel() {
       {jobs === null && !error ? <LoadingBlock /> : null}
       {jobs?.length === 0 ? <p className="mt-4 text-xs text-zinc-400">No renders yet — master a track to see it here.</p> : null}
 
+      {jobs?.length > 0 ? (
+        <div className="mt-5 flex gap-2">
+          {[
+            { key: "active", label: "Active" },
+            { key: "expired", label: "Expired" },
+            { key: "all", label: "All" },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => changeFilter(key)}
+              className={`rounded-full border px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] transition ${
+                filter === key ? "border-brass bg-brass/[0.18] text-brass" : "border-white/15 bg-black/20 text-zinc-300 hover:border-white/30"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {jobs?.length > 0 && filteredJobs.length === 0 ? (
+        <p className="mt-4 text-xs text-zinc-400">
+          {filter === "expired" ? "Nothing expired yet." : "Nothing active — everything here has expired."}
+        </p>
+      ) : null}
+
       <div className="mt-5 flex flex-col gap-3">
-        {jobs?.map((job) => {
+        {pageJobs.map((job) => {
           const expiry = timeUntil(job.expires_at);
           const expired = expiry === "expired";
           const share = shareLinks[job.job_id];
@@ -221,6 +271,30 @@ export default function MyMastersPanel() {
           );
         })}
       </div>
+
+      {pageCount > 1 ? (
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={safePage <= 1}
+            className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-40"
+          >
+            Prev
+          </button>
+          <span className="text-[11px] text-zinc-500">
+            Page {safePage} of {pageCount} · {filteredJobs.length} total
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            disabled={safePage >= pageCount}
+            className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
