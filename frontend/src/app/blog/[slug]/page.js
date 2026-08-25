@@ -12,6 +12,26 @@ export function generateStaticParams() {
   return POSTS.map((post) => ({ slug: post.slug }));
 }
 
+// A paragraph in content/posts.js is either a plain string or an array of
+// segments, where a segment is a string or { href, text } for an inline
+// link. Kept to that two-shape minimum on purpose: the alternative is
+// storing markdown or HTML in the content file, which means either
+// shipping a parser or rendering with dangerouslySetInnerHTML, and
+// neither is worth it to get a link inside a sentence.
+function ParagraphBody({ paragraph }) {
+  if (typeof paragraph === "string") return paragraph;
+
+  return paragraph.map((segment, idx) =>
+    typeof segment === "string" ? (
+      segment
+    ) : (
+      <Link key={idx} href={segment.href} className="text-brass underline decoration-brass/40 underline-offset-2 hover:text-ember">
+        {segment.text}
+      </Link>
+    )
+  );
+}
+
 export function generateMetadata({ params }) {
   const post = getPostBySlug(params.slug);
   if (!post) return buildMetadata({ title: "Not found", description: "This post doesn't exist.", path: "/blog", noindex: true });
@@ -63,7 +83,7 @@ export default function BlogPostPage({ params }) {
 
       <div className="legal-prose mt-8 space-y-5 text-[15px] leading-relaxed text-zinc-300">
         {post.paragraphs.map((p, idx) => (
-          <p key={idx} className="m-0">{p}</p>
+          <p key={idx} className="m-0"><ParagraphBody paragraph={p} /></p>
         ))}
       </div>
 

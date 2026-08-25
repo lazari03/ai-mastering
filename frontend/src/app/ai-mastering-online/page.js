@@ -5,7 +5,7 @@ import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { COMPARISON_PAGES, COMPARISON_KEYS } from "@/content/comparisonPages";
 import { TOOL_LANDING_KEYS, TOOL_LANDING_PAGES } from "@/content/toolLandingPages";
-import { CTA, CHORD_DETECTOR_URL } from "@/lib/internalLinks";
+import { CTA, CHORD_DETECTOR_URL, LOUDNESS_TARGETS_URL } from "@/lib/internalLinks";
 import { buildMetadata, JsonLd, faqJsonLd, organizationJsonLd, SITE_NAME } from "@/lib/seo";
 import { IconCheck } from "@/components/app/icons";
 
@@ -133,6 +133,9 @@ export default function AiMasteringOnlinePage() {
             </Link>
           ))}
         </div>
+        <Link href={LOUDNESS_TARGETS_URL} className="mt-4 inline-block text-sm text-brass hover:text-ember">
+          See every genre&apos;s LUFS and dynamic range target in one table →
+        </Link>
       </section>
 
       <section className="mt-12 rounded-2xl border border-brass/25 bg-brass/[0.06] p-6">

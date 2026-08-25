@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import Footer from "@/components/Footer";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { buildMetadata, JsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
-import { CTA, relatedPostForGenre, CHORD_DETECTOR_URL } from "@/lib/internalLinks";
+import { CTA, relatedPostForGenre, CHORD_DETECTOR_URL, LOUDNESS_TARGETS_URL } from "@/lib/internalLinks";
 
 export function generateStaticParams() {
   return GENRE_KEYS.map((genre) => ({ genre }));
@@ -91,6 +91,16 @@ export default function GenreMasteringPage({ params }) {
           </Link>
         </div>
       ) : null}
+
+      {/* Every genre page cites the loudness reference, because that
+          page's table has a row for this exact genre — the most specific
+          reciprocal link available, not a generic "see also". */}
+      <div className="mt-8">
+        <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Reference</p>
+        <Link href={LOUDNESS_TARGETS_URL} className="mt-2 block text-sm text-brass hover:text-ember">
+          How loud should a {page.label.toLowerCase()} master be? See the LUFS targets by genre →
+        </Link>
+      </div>
 
       <div className="mt-8">
         <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Also useful</p>

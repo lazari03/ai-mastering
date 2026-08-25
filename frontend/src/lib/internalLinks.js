@@ -68,3 +68,13 @@ export const CHORD_DETECTOR_URL = "/chord-detector";
 // covering songs, singer-songwriters, acoustic performers), which is a
 // more honest, specific reciprocal link than a generic link-to-everything.
 export const CHORD_DETECTOR_RELATED_GENRES = ["rock", "acoustic", "pop"];
+
+// ---- Loudness targets reference ----------------------------------------
+// /mastering-loudness-targets answers "how loud should I master" with the
+// engine's own numbers. Unlike the genre and comparison pages it's a
+// reference page, not a landing page, which changes how it should be
+// linked: every genre page cites it (each one's target is a row in its
+// table), the guides link to it in-body where loudness comes up, and it's
+// in the footer. A page that answers a question outright earns links and
+// citations, and both need it to be reachable from more than the sitemap.
+export const LOUDNESS_TARGETS_URL = "/mastering-loudness-targets";

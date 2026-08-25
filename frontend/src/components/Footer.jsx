@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useLanguage } from "@/lib/i18n";
 import NewsletterWidget from "@/components/marketing/NewsletterWidget";
 
+// Paths are literals here, not imports from lib/internalLinks — this is a
+// "use client" component, and internalLinks pulls in content/posts.js and
+// content/genrePages.js to build its link graph. Importing it would drag
+// every article's full body text and all eight genres' copy into the
+// client bundle of every page that renders a footer, which is all of
+// them, to save retyping four strings.
+
 // Site-wide footer — one component instead of duplicated per page, used
 // by every public/marketing page (homepage, genre pages, comparison
 // pages, tool-finder pages, blog, legal pages). Deliberately NOT used on
