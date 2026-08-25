@@ -72,6 +72,10 @@ services:
       # those commands report "GA4 not configured" instead of failing.
       GA4_PROPERTY_ID: ${GA4_PROPERTY_ID}
       GA4_SERVICE_ACCOUNT_JSON: ${GA4_SERVICE_ACCOUNT_JSON}
+      # One shared 10%-off Polar discount code shown to every newsletter
+      # subscriber (see services/newsletterService.js). Unset just means
+      # the widget still records the subscriber but shows no code.
+      NEWSLETTER_DISCOUNT_CODE: ${NEWSLETTER_DISCOUNT_CODE}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
       interval: 30s
@@ -100,6 +104,10 @@ services:
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
         NEXT_PUBLIC_GA_MEASUREMENT_ID: ${NEXT_PUBLIC_GA_MEASUREMENT_ID}
         NEXT_PUBLIC_PLAUSIBLE_DOMAIN: ${NEXT_PUBLIC_PLAUSIBLE_DOMAIN}
+        # Ad conversion tracking — same cookie-consent gate as GA/Plausible
+        # (components/Analytics.jsx), same build-time-baked caveat.
+        NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID}
+        NEXT_PUBLIC_TIKTOK_PIXEL_ID: ${NEXT_PUBLIC_TIKTOK_PIXEL_ID}
     restart: unless-stopped
     depends_on:
       - node-api

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import Footer from "@/components/Footer";
 import { POSTS } from "@/content/posts";
 import { buildMetadata } from "@/lib/seo";
 
@@ -12,6 +13,7 @@ export const metadata = buildMetadata({
 
 export default function BlogIndexPage() {
   return (
+    <>
     <main className="mx-auto w-full max-w-[820px] px-4 pb-24 pt-8 sm:px-6">
       <Link href="/" className="text-[13px] text-zinc-400 hover:text-zinc-200">
         ← Back to home
@@ -37,5 +39,7 @@ export default function BlogIndexPage() {
         ))}
       </div>
     </main>
+    <Footer />
+    </>
   );
 }

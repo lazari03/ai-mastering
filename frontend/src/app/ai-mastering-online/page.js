@@ -1,8 +1,10 @@
 import Link from "next/link";
 
+import Footer from "@/components/Footer";
 import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { COMPARISON_PAGES, COMPARISON_KEYS } from "@/content/comparisonPages";
+import { TOOL_LANDING_KEYS, TOOL_LANDING_PAGES } from "@/content/toolLandingPages";
 import { CTA, CHORD_DETECTOR_URL } from "@/lib/internalLinks";
 import { buildMetadata, JsonLd, faqJsonLd, organizationJsonLd, SITE_NAME } from "@/lib/seo";
 import { IconCheck } from "@/components/app/icons";
@@ -66,6 +68,7 @@ const FAQ_ITEMS = [
 
 export default function AiMasteringOnlinePage() {
   return (
+    <>
     <main className="mx-auto w-full max-w-[900px] px-4 pb-24 pt-8 sm:px-6">
       <JsonLd data={organizationJsonLd()} />
       <JsonLd data={faqJsonLd(FAQ_ITEMS)} />
@@ -188,8 +191,15 @@ export default function AiMasteringOnlinePage() {
           <Link href={CHORD_DETECTOR_URL} className="text-sm text-brass hover:text-ember">
             Free chord & key detector →
           </Link>
+          {TOOL_LANDING_KEYS.map((key) => (
+            <Link key={key} href={`/${key}`} className="text-sm text-brass hover:text-ember">
+              {TOOL_LANDING_PAGES[key].label} →
+            </Link>
+          ))}
         </div>
       </section>
     </main>
+    <Footer />
+    </>
   );
 }

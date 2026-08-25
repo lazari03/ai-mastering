@@ -3,32 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 
-const TOPICS = [
-  {
-    q: "My master sounds mono even though I have stereo speakers",
-    a: "If the file you uploaded is itself mono (or near-mono), the output is mathematically mono too — mastering can't invent stereo information that was never in the source. The report panel flags this automatically after a render so it's never a silent surprise.",
-  },
-  {
-    q: "Where did my file go? I can't download it anymore.",
-    a: "Uploaded files, masters, and codec previews are automatically deleted 48 hours after you create them (see the Refund/Privacy policy) — this app doesn't offer long-term audio storage. Check My Masters for what's still inside the window, and download what you need before it expires.",
-  },
-  {
-    q: "What's the difference between Standard and Professional?",
-    a: "Standard is the free, default engine. Professional adds oversampled true-peak limiting, finer dynamic EQ, and tempo-aware compression timing — pick it from the Engine dropdown when mastering.",
-  },
-  {
-    q: "How do I reuse the same mastering chain for an artist's next release?",
-    a: "Import a full preset JSON under Saved Artists (in the Master Audio tab) once, then pick that artist from the dropdown on every future track — it's applied exactly as saved, and it's private to your account.",
-  },
-  {
-    q: "A render has been stuck on \"Mastering…\" for a while",
-    a: "Renders with stem separation enabled can take a minute or two — that's expected. If it's been much longer than that, refresh the page; the notification banner and My Masters tab will still show the result once it lands.",
-  },
-  {
-    q: "Can I get my old mastered file back after it expired?",
-    a: "No — once a file passes the 48-hour retention window it's permanently gone from our servers, by design (see Privacy Policy). Re-upload the original and master it again.",
-  },
-];
+import { useLanguage } from "@/lib/i18n";
+
+const TOPIC_KEYS = ["topic1", "topic2", "topic3", "topic4", "topic5", "topic6"];
 
 // Fed verbatim to ChatGPT (or any LLM) along with the template JSON and the
 // user's own description of the sound they want — asks for output shaped
@@ -86,7 +63,7 @@ function Item({ q, a }) {
   );
 }
 
-function CopyButton({ text }) {
+function CopyButton({ text, label, copiedLabel }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -98,71 +75,70 @@ function CopyButton({ text }) {
       }}
       className="rounded-lg border border-brass/40 bg-brass/[0.12] px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/20"
     >
-      {copied ? "Copied!" : "Copy prompt"}
+      {copied ? copiedLabel : label}
     </button>
   );
 }
 
 export default function HelpSupportPanel() {
+  const { t } = useLanguage();
+
   return (
     <div id="help-import-preset" className="mx-auto w-full max-w-[720px]">
-      <h1 className="m-0 font-[var(--font-title)] text-[26px]">Help &amp; Support</h1>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-        Answers to the things people actually get stuck on while using the app.
-      </p>
+      <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("help.title")}</h1>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-300">{t("help.subtitle")}</p>
 
       <div className="mt-6 rounded-2xl border border-brass/25 bg-brass/[0.06] p-5">
-        <h2 className="m-0 text-sm font-semibold text-white">Create a custom artist preset with ChatGPT</h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-zinc-300">
-          You don&apos;t have to set every knob by hand — describe the sound you want to an AI chat assistant and
-          import what it gives you back.
-        </p>
+        <h2 className="m-0 text-sm font-semibold text-white">{t("help.chatgptTitle")}</h2>
+        <p className="mt-1.5 text-sm leading-relaxed text-zinc-300">{t("help.chatgptBody")}</p>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-zinc-300">
           <li>
             <a href="/artist-preset-template.json" download className="text-brass hover:text-ember">
-              Download the template JSON
+              {t("help.step1")}
             </a>{" "}
-            — this shows the exact shape the app expects.
+            {t("help.step1tail")}
+          </li>
+          <li>{t("help.step2")}</li>
+          <li>
+            {t("help.step3")} <code className="text-zinc-200">.json</code> {t("help.step3tail")}
           </li>
           <li>
-            Copy the master prompt below into ChatGPT (or any AI chat), and replace the last line with your own
-            description of the sound you want (an artist reference, genre, how loud/warm/wide, etc).
-          </li>
-          <li>Save what it gives you back as a <code className="text-zinc-200">.json</code> file.</li>
-          <li>
-            In <span className="text-zinc-200">Master Audio → Saved Artists → Import Preset JSON</span>, give it an
-            artist name and upload that file. It&apos;s saved to your account and ready to reuse on every future track.
+            {t("help.step4pre")} <span className="text-zinc-200">{t("help.step4path")}</span>
+            {t("help.step4tail")}
           </li>
         </ol>
         <div className="mt-3 flex items-center justify-between gap-2">
-          <span className="text-[11px] uppercase tracking-[0.14em] text-zinc-400">Master prompt</span>
-          <CopyButton text={MASTER_PROMPT} />
+          <span className="text-[11px] uppercase tracking-[0.14em] text-zinc-400">{t("help.masterPrompt")}</span>
+          <CopyButton text={MASTER_PROMPT} label={t("help.copyPrompt")} copiedLabel={t("help.copied")} />
         </div>
+        {/* MASTER_PROMPT stays English-only — it's fed verbatim to an LLM
+            and must match the app's real JSON schema/enum values exactly;
+            translating it would break the thing it's for. */}
         <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-3 text-[11px] leading-relaxed text-zinc-300">
           {MASTER_PROMPT}
         </pre>
       </div>
 
       <div className="mt-5 flex flex-col gap-2.5">
-        {TOPICS.map((topic) => (
-          <Item key={topic.q} q={topic.q} a={topic.a} />
+        {TOPIC_KEYS.map((key) => (
+          <Item key={key} q={t(`help.${key}.q`)} a={t(`help.${key}.a`)} />
         ))}
       </div>
 
       <div className="mt-6 rounded-2xl border border-brass/25 bg-brass/[0.06] p-5">
-        <h2 className="m-0 text-sm font-semibold text-white">Still stuck?</h2>
+        <h2 className="m-0 text-sm font-semibold text-white">{t("help.stillStuck")}</h2>
         <p className="mt-1.5 text-sm text-zinc-300">
-          Email{" "}
+          {t("help.emailIntro")}{" "}
           <a href="mailto:studio@auralithforge.app" className="text-brass hover:text-ember">
             studio@auralithforge.app
           </a>{" "}
-          — include your account email and, if it's about a specific render, roughly when you ran it.
+          {t("help.emailTail")}
         </p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-zinc-400">
-          <Link href="/blog" target="_blank" className="hover:text-zinc-200">Mastering guides →</Link>
-          <Link href="/terms" target="_blank" className="hover:text-zinc-200">Terms & Conditions →</Link>
-          <Link href="/privacy" target="_blank" className="hover:text-zinc-200">Privacy Policy →</Link>
-          <Link href="/refund" target="_blank" className="hover:text-zinc-200">Refund Policy →</Link>
+          <Link href="/blog" target="_blank" className="hover:text-zinc-200">{t("help.guides")}</Link>
+          <Link href="/terms" target="_blank" className="hover:text-zinc-200">{t("help.terms")}</Link>
+          <Link href="/privacy" target="_blank" className="hover:text-zinc-200">{t("help.privacy")}</Link>
+          <Link href="/refund" target="_blank" className="hover:text-zinc-200">{t("help.refund")}</Link>
         </div>
       </div>
     </div>

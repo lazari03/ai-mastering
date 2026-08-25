@@ -7,12 +7,15 @@ import Image from "next/image";
 import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import DeferredThreads from "@/components/reactbits/DeferredThreads";
+import Footer from "@/components/Footer";
 import { POSTS } from "@/content/posts";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { useLanguage } from "@/lib/i18n";
 import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 import { IconCheck } from "@/components/app/icons";
 import { CTA } from "@/lib/internalLinks";
+import { BEFORE_AFTER_DEMOS } from "@/lib/beforeAfterDemos";
+import BeforeAfterPlayer from "@/components/marketing/BeforeAfterPlayer";
 
 const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
 const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -55,6 +58,7 @@ export default function HomeClient() {
   ];
 
   return (
+    <>
     <main className="mx-auto w-full max-w-[1200px] px-4 pb-20 pt-5 sm:px-6">
       <header className="sticky top-0 z-40 -mx-4 mb-2 border-b border-white/10 bg-[#0b0d10]/80 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6">
         <div className="flex items-center justify-between">
@@ -149,6 +153,7 @@ export default function HomeClient() {
               {t("hero.ctaSecondary")}
             </a>
           </div>
+          <p className="m-0 mt-3 text-xs text-zinc-500">{t("hero.ctaReassurance")}</p>
 
           <div className="mt-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-8 sm:max-w-md">
             {["stat1", "stat2", "stat3"].map((s) => (
@@ -158,6 +163,17 @@ export default function HomeClient() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section id="demo" className="reveal mt-16 scroll-mt-24">
+        <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("demo.eyebrow")}</p>
+        <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("demo.title")}</h2>
+        <p className="mt-2 max-w-xl text-sm text-zinc-400">{t("demo.body")}</p>
+        <div className={`mt-6 grid gap-4 ${BEFORE_AFTER_DEMOS.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : "max-w-md"}`}>
+          {BEFORE_AFTER_DEMOS.map((demo) => (
+            <BeforeAfterPlayer key={demo.label} {...demo} />
+          ))}
         </div>
       </section>
 
@@ -209,7 +225,7 @@ export default function HomeClient() {
             </Link>
           ))}
         </div>
-s      </section>
+      </section>
 
       <section id="pricing" className="reveal mt-16 scroll-mt-24">
         <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("pricing.eyebrow")}</p>
@@ -361,22 +377,8 @@ s      </section>
         </p>
       </section>
 
-      <footer className="mt-16 flex flex-col gap-6 border-t border-white/10 pt-8">
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <p className="m-0 text-xs uppercase tracking-[0.22em] text-brass">Auralith Forge</p>
-            <p className="mt-1 text-xs text-zinc-400">{t("footer.tagline")}</p>
-          </div>
-          <nav className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-400">
-            <Link href="/blog" className="hover:text-zinc-200">{t("nav.blog")}</Link>
-            <Link href="/chord-detector" className="hover:text-zinc-200">Chord Detector</Link>
-            <Link href="/terms" className="hover:text-zinc-200">{t("footer.legal.terms")}</Link>
-            <Link href="/privacy" className="hover:text-zinc-200">{t("footer.legal.privacy")}</Link>
-            <Link href="/refund" className="hover:text-zinc-200">{t("footer.legal.refund")}</Link>
-          </nav>
-        </div>
-        <p className="text-xs text-zinc-500">© {new Date().getFullYear()} Auralith Forge. {t("footer.rights")}</p>
-      </footer>
     </main>
+    <Footer />
+    </>
   );
 }

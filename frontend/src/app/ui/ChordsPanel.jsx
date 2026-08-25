@@ -4,10 +4,24 @@ import { useEffect, useState } from "react";
 
 import ChordDetector from "@/components/audio/ChordDetector";
 import FileDropzone from "@/components/ui/FileDropzone";
+import { useMasteringStore } from "@/store/masteringStore";
+import { useLanguage } from "@/lib/i18n";
 
-export default function ChordsPanel({ onOpenBilling }) {
+export default function ChordsPanel({ onOpenBilling, onMasterThisSong }) {
+  const { t } = useLanguage();
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
+  // Hands the exact same File object already sitting in memory here over
+  // to the Master tab's store, so "Master This Song" (ChordDetector.jsx)
+  // never makes someone re-select the file they just uploaded — the
+  // Master tab reads `file` from this same store (see MasteringConsole.jsx).
+  const setMasteringFile = useMasteringStore((s) => s.setFile);
+
+  const masterThisSong = () => {
+    if (!file) return;
+    setMasteringFile(file);
+    onMasterThisSong?.();
+  };
 
   useEffect(() => {
     if (!file) {
@@ -21,8 +35,8 @@ export default function ChordsPanel({ onOpenBilling }) {
 
   return (
     <div className="mx-auto w-full max-w-[760px]">
-      <h1 className="m-0 font-[var(--font-title)] text-[26px]">Show Chords</h1>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-300">Detect BPM, key, and chords, then play along in sync.</p>
+      <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("chordsPanel.title")}</h1>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-300">{t("chordsPanel.subtitle")}</p>
 
       <div className="mt-6">
         <FileDropzone
@@ -34,7 +48,7 @@ export default function ChordsPanel({ onOpenBilling }) {
       </div>
 
       <div className="mt-4">
-        <ChordDetector file={file} previewUrl={previewUrl} onOpenBilling={onOpenBilling} />
+        <ChordDetector file={file} previewUrl={previewUrl} onOpenBilling={onOpenBilling} onMasterThisSong={masterThisSong} />
       </div>
     </div>
   );

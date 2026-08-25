@@ -2,6 +2,7 @@
 
 import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { PLANS } from "@/lib/pricing";
+import { useLanguage } from "@/lib/i18n";
 
 // Persistent, always-visible plan/quota indicator — top-right corner on
 // every screen size, deliberately not tucked inside a button's label
@@ -10,6 +11,7 @@ import { PLANS } from "@/lib/pricing";
 // every entitlement-gated button reads from, so this badge and every
 // button always agree.
 export default function EntitlementsBadge({ onClick }) {
+  const { t } = useLanguage();
   const { plan, masterQuota, loaded } = useEntitlementsStore();
   if (!loaded) return null;
 
@@ -24,7 +26,7 @@ export default function EntitlementsBadge({ onClick }) {
       <span className={plan === "free" ? "text-zinc-400" : "text-brass"}>{label}</span>
       {masterQuota ? (
         <span className="text-zinc-500">
-          · {masterQuota.remaining}/{masterQuota.limit} masters
+          · {masterQuota.remaining}/{masterQuota.limit} {t("badge.masters")}
         </span>
       ) : null}
     </button>

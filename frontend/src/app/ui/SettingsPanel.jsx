@@ -8,11 +8,13 @@ import { useAuthStore } from "@/store/authStore";
 import { scorePassword } from "@/lib/passwordStrength";
 import BillingPanel from "./BillingPanel";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
+import { useLanguage } from "@/lib/i18n";
 
 const fieldStyle =
   "w-full box-border rounded-xl border border-white/15 bg-black/20 px-3.5 py-3 text-sm text-white outline-none focus:border-brass/60";
 
 export default function SettingsPanel({ onReplayTutorial }) {
+  const { t } = useLanguage();
   const router = useRouter();
   const { user, busy, error, changePassword, deleteAccount, signOutEverywhere, clearError } = useAuthStore();
   const [signOutEverywhereStatus, setSignOutEverywhereStatus] = useState("");
@@ -41,12 +43,12 @@ export default function SettingsPanel({ onReplayTutorial }) {
 
   const saveProfile = async (event) => {
     event.preventDefault();
-    setSaveStatus("Saving…");
+    setSaveStatus(t("settings.saving"));
     try {
       await postProfile(profile);
-      setSaveStatus("Saved.");
+      setSaveStatus(t("settings.saved"));
     } catch (err) {
-      setSaveStatus(err?.message || "Failed to save.");
+      setSaveStatus(err?.message || t("settings.saveFailed"));
     }
   };
 
@@ -58,7 +60,7 @@ export default function SettingsPanel({ onReplayTutorial }) {
     if (ok) {
       setCurrentPassword("");
       setNewPassword("");
-      setPasswordStatus("Password updated.");
+      setPasswordStatus(t("settings.passwordUpdated"));
     }
   };
 
@@ -77,18 +79,18 @@ export default function SettingsPanel({ onReplayTutorial }) {
 
   return (
     <div className="mx-auto w-full max-w-[560px]">
-      <h1 className="m-0 font-[var(--font-title)] text-[26px]">Settings</h1>
+      <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("settings.title")}</h1>
       <p className="mt-2 text-sm text-zinc-300">{user?.email}</p>
 
       {!loaded ? (
         <LoadingBlock />
       ) : (
         <form onSubmit={saveProfile} className="mt-6 flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/20 p-5">
-          <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Profile</h2>
+          <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("settings.profile")}</h2>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">First name</span>
+              <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.firstName")}</span>
               <input
                 type="text"
                 value={profile.firstName}
@@ -97,7 +99,7 @@ export default function SettingsPanel({ onReplayTutorial }) {
               />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">Last name</span>
+              <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.lastName")}</span>
               <input
                 type="text"
                 value={profile.lastName}
@@ -108,10 +110,10 @@ export default function SettingsPanel({ onReplayTutorial }) {
           </div>
 
           <label className="block">
-            <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">Studio name</span>
+            <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.studioName")}</span>
             <input
               type="text"
-              placeholder="Optional"
+              placeholder={t("settings.optional")}
               value={profile.studioName}
               onChange={(e) => setProfile((p) => ({ ...p, studioName: e.target.value }))}
               className={fieldStyle}
@@ -119,7 +121,7 @@ export default function SettingsPanel({ onReplayTutorial }) {
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">Phone number</span>
+            <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.phone")}</span>
             <input
               type="tel"
               value={profile.phone}
@@ -132,7 +134,7 @@ export default function SettingsPanel({ onReplayTutorial }) {
             type="submit"
             className="self-start rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
           >
-            Save profile
+            {t("settings.saveProfile")}
           </button>
           {saveStatus ? <p className="m-0 text-xs text-zinc-400">{saveStatus}</p> : null}
         </form>
@@ -143,10 +145,10 @@ export default function SettingsPanel({ onReplayTutorial }) {
       </div>
 
       <form onSubmit={submitPasswordChange} className="mt-5 flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/20 p-5">
-        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Change password</h2>
+        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("settings.changePassword")}</h2>
 
         <label className="block">
-          <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">Current password</span>
+          <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.currentPassword")}</span>
           <input
             type="password"
             required
@@ -158,7 +160,7 @@ export default function SettingsPanel({ onReplayTutorial }) {
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">New password</span>
+          <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.newPassword")}</span>
           <input
             type="password"
             required
@@ -193,34 +195,31 @@ export default function SettingsPanel({ onReplayTutorial }) {
         >
           {busy ? (
             <>
-              <Spinner size={12} /> Updating…
+              <Spinner size={12} /> {t("settings.updating")}
             </>
           ) : (
-            "Update password"
+            t("settings.updatePassword")
           )}
         </button>
       </form>
 
       {onReplayTutorial ? (
         <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-5">
-          <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Help</h2>
-          <p className="mt-2 text-sm text-zinc-400">Want a refresher on how the app works?</p>
+          <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("settings.help")}</h2>
+          <p className="mt-2 text-sm text-zinc-400">{t("settings.wantRefresher")}</p>
           <button
             type="button"
             onClick={onReplayTutorial}
             className="mt-3 rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35"
           >
-            Replay tutorial
+            {t("settings.replayTutorial")}
           </button>
         </div>
       ) : null}
 
       <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-5">
-        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Sessions</h2>
-        <p className="mt-2 text-sm text-zinc-400">
-          Signed-in sessions expire automatically after 14 days. If you signed in on a device you don&apos;t
-          recognize, or just want to be sure, you can end every other signed-in session right now.
-        </p>
+        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("settings.sessions")}</h2>
+        <p className="mt-2 text-sm text-zinc-400">{t("settings.sessionsBody")}</p>
         {signOutEverywhereStatus ? <p className="mt-2 text-sm text-brass">{signOutEverywhereStatus}</p> : null}
         <button
           type="button"
@@ -229,7 +228,7 @@ export default function SettingsPanel({ onReplayTutorial }) {
             setSignOutEverywhereStatus("");
             const ok = await signOutEverywhere();
             if (ok) {
-              setSignOutEverywhereStatus("Signed out everywhere. Redirecting…");
+              setSignOutEverywhereStatus(t("settings.signedOutRedirecting"));
               router.push("/login");
             }
           }}
@@ -237,19 +236,17 @@ export default function SettingsPanel({ onReplayTutorial }) {
         >
           {busy ? (
             <>
-              <Spinner size={12} /> Working…
+              <Spinner size={12} /> {t("settings.working")}
             </>
           ) : (
-            "Sign out of all devices"
+            t("settings.signOutAllDevices")
           )}
         </button>
       </div>
 
       <div className="mt-5 rounded-2xl border border-red-500/25 bg-red-500/[0.04] p-5">
-        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-red-300">Danger zone</h2>
-        <p className="mt-2 text-sm text-zinc-400">
-          Permanently deletes your account, profile, Saved Artists, and render history. This can&apos;t be undone.
-        </p>
+        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-red-300">{t("settings.dangerZone")}</h2>
+        <p className="mt-2 text-sm text-zinc-400">{t("settings.dangerBody")}</p>
 
         {!deleteOpen ? (
           <button
@@ -260,13 +257,13 @@ export default function SettingsPanel({ onReplayTutorial }) {
             }}
             className="mt-3 rounded-full border border-red-500/40 bg-red-500/10 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-red-300 hover:bg-red-500/20"
           >
-            Delete account
+            {t("settings.deleteAccount")}
           </button>
         ) : (
           <form onSubmit={submitDeleteAccount} className="mt-3 flex flex-col gap-3">
             {isPasswordAccount ? (
               <label className="block">
-                <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">Current password</span>
+                <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.currentPassword")}</span>
                 <input
                   type="password"
                   required
@@ -277,12 +274,12 @@ export default function SettingsPanel({ onReplayTutorial }) {
                 />
               </label>
             ) : (
-              <p className="m-0 text-xs text-zinc-500">You&apos;ll be asked to confirm with Google before this completes.</p>
+              <p className="m-0 text-xs text-zinc-500">{t("settings.googleConfirm")}</p>
             )}
 
             <label className="block">
               <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">
-                Type DELETE to confirm
+                {t("settings.typeDelete")}
               </span>
               <input
                 type="text"
@@ -303,10 +300,10 @@ export default function SettingsPanel({ onReplayTutorial }) {
               >
                 {busy ? (
                   <>
-                    <Spinner size={12} /> Deleting…
+                    <Spinner size={12} /> {t("settings.deleting")}
                   </>
                 ) : (
-                  "Permanently delete my account"
+                  t("settings.permanentlyDelete")
                 )}
               </button>
               <button
@@ -319,7 +316,7 @@ export default function SettingsPanel({ onReplayTutorial }) {
                 }}
                 className="rounded-full border border-white/15 bg-black/20 px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30"
               >
-                Cancel
+                {t("settings.cancel")}
               </button>
             </div>
           </form>

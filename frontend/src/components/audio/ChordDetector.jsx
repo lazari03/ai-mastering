@@ -7,8 +7,10 @@ import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { CHORD_DETECTION, CHORDS_MONTHLY } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
+import { useLanguage } from "@/lib/i18n";
 
-export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
+export default function ChordDetector({ file, previewUrl, onOpenBilling, onMasterThisSong }) {
+  const { t } = useLanguage();
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -43,7 +45,7 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
       // immediately, same discipline as a real master completing.
       if (!chordsUnlimited) refresh();
     } catch (err) {
-      setError(err?.message || "Chord detection failed");
+      setError(err?.message || t("chordDetector.failed"));
     } finally {
       setIsLoading(false);
     }
@@ -67,16 +69,16 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
       window.location.href = url;
     } catch (err) {
       setBuyBusy("");
-      setError(err?.message || "Failed to start checkout.");
+      setError(err?.message || t("chordDetector.checkoutFailed"));
     }
   };
 
   const onTimeUpdate = () => {
     const chords = analysis?.chords;
-    const t = audioRef.current?.currentTime;
-    if (!chords || t == null) return;
+    const currentTime = audioRef.current?.currentTime;
+    if (!chords || currentTime == null) return;
     // ponytail: linear scan over beat-length list, fine at this size. Binary search if tracks get much longer.
-    const idx = chords.findIndex((c) => t >= c.start && t < c.end);
+    const idx = chords.findIndex((c) => currentTime >= c.start && currentTime < c.end);
     if (idx !== activeIndex) setActiveIndex(idx);
   };
 
@@ -92,26 +94,26 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
       >
         {isLoading ? (
           <>
-            <Spinner size={15} /> Analyzing…
+            <Spinner size={15} /> {t("chordDetector.analyzing")}
           </>
         ) : chordsUnlimited ? (
-          "Detect Chords"
+          t("chordDetector.detect")
         ) : hasTrialLeft ? (
-          `Detect Chords — ${chordQuota.remaining}/${chordQuota.limit} free left`
+          t("chordDetector.detectFreeLeft", { remaining: chordQuota.remaining, limit: chordQuota.limit })
         ) : hasCredit ? (
-          `Detect Chords — using 1 credit (${extraChordCredits} left)`
+          t("chordDetector.detectCredit", { n: extraChordCredits })
         ) : (
-          "Detect Chords — buy or upgrade"
+          t("chordDetector.detectBuyUpgrade")
         )}
       </button>
       <p className="mt-1.5 text-[11px] text-zinc-500">
         {chordsUnlimited
-          ? "Unlimited on your plan."
+          ? t("chordDetector.unlimitedPlan")
           : hasTrialLeft
-            ? `Free trial — ${chordQuota.remaining} of ${chordQuota.limit} left, one-time, doesn't renew.`
+            ? t("chordDetector.freeTrialLeft", { remaining: chordQuota.remaining, limit: chordQuota.limit })
             : hasCredit
-              ? `${extraChordCredits} purchased credit${extraChordCredits === 1 ? "" : "s"} left.`
-              : `${CHORD_DETECTION.blurb}`}
+              ? t("chordDetector.creditsLeft", { n: extraChordCredits, s: extraChordCredits === 1 ? "" : "s" })
+              : CHORD_DETECTION.blurb}
       </p>
 
       {!chordsUnlimited && !hasTrialLeft && !hasCredit ? (
@@ -124,10 +126,10 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
           >
             {buyBusy === CHORD_DETECTION.item ? (
               <>
-                <Spinner size={12} /> Redirecting…
+                <Spinner size={12} /> {t("chordDetector.redirecting")}
               </>
             ) : (
-              `Buy one (${CHORD_DETECTION.price})`
+              t("chordDetector.buyOne", { price: CHORD_DETECTION.price })
             )}
           </button>
           <button
@@ -138,15 +140,15 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
           >
             {buyBusy === CHORDS_MONTHLY.item ? (
               <>
-                <Spinner size={12} /> Redirecting…
+                <Spinner size={12} /> {t("chordDetector.redirecting")}
               </>
             ) : (
-              `Unlimited — ${CHORDS_MONTHLY.price}/mo`
+              t("chordDetector.unlimitedPrice", { price: CHORDS_MONTHLY.price })
             )}
           </button>
           {onOpenBilling ? (
             <button type="button" onClick={onOpenBilling} className="text-[11px] text-zinc-400 underline hover:text-zinc-200">
-              or see all plans
+              {t("chordDetector.seeAllPlans")}
             </button>
           ) : null}
         </div>
@@ -158,27 +160,25 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
         <div className="mt-5 space-y-3">
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-center">
-              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">Key</p>
+              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.key")}</p>
               <p className="mt-1.5 text-xl font-bold">{analysis.key}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-center">
-              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">BPM</p>
+              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.bpm")}</p>
               <p className="mt-1.5 text-xl font-bold">{analysis.bpm}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-center">
-              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">Time Sig.</p>
+              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.timeSig")}</p>
               <p className="mt-1.5 text-xl font-bold">4/4</p>
             </div>
           </div>
 
-          <p className="text-[11px] text-zinc-500">
-            Estimated from the audio, not ground truth — a starting point for the key and chords, not a guaranteed-accurate transcription.
-          </p>
+          <p className="text-[11px] text-zinc-500">{t("chordDetector.estimatedNote")}</p>
 
           <audio ref={audioRef} src={previewUrl} controls onTimeUpdate={onTimeUpdate} className="w-full" />
 
           <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-            <p className="m-0 mb-2.5 text-[11px] uppercase tracking-[0.12em] text-zinc-400">Chord Progression</p>
+            <p className="m-0 mb-2.5 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.chordProgression")}</p>
             <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">
               {chordChips.map((c, idx) => (
                 <span
@@ -194,10 +194,30 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling }) {
               ))}
             </div>
           </div>
+
+          {onMasterThisSong ? (
+            // The cross-sell moment — right after the answer they came for,
+            // not before it. Reuses the same File object already in memory
+            // (see ChordsPanel.jsx), so this jumps straight into the
+            // Master tab with the track already attached, no re-upload.
+            <div className="rounded-xl border border-brass/30 bg-brass/[0.06] p-4 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  trackEvent("chord_detector_master_cta");
+                  onMasterThisSong();
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brass px-5 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-[#100b08] transition hover:brightness-110"
+              >
+                {t("chordDetector.masterThisSong")}
+              </button>
+              <p className="mt-2 text-[11px] text-zinc-500">{t("chordDetector.sameFileNote")}</p>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="mt-3 text-xs text-zinc-400">
-          {file ? "Detect BPM, key, and chords, then play along." : "Choose an audio file first."}
+          {file ? t("chordDetector.emptyWithFile") : t("chordDetector.emptyNoFile")}
         </p>
       )}
     </div>

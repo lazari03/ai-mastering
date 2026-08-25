@@ -1,9 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 
+import Footer from "@/components/Footer";
 import { CHORD_DETECTION, CHORDS_MONTHLY, PLANS } from "@/lib/pricing";
 import { CTA, CHORD_DETECTOR_RELATED_GENRES } from "@/lib/internalLinks";
 import { GENRE_PAGES } from "@/content/genrePages";
+import { TOOL_LANDING_KEYS, TOOL_LANDING_PAGES } from "@/content/toolLandingPages";
 import { buildMetadata, JsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -49,6 +51,7 @@ const HOW_IT_WORKS = [
 
 export default function ChordDetectorPage() {
   return (
+    <>
     <main className="mx-auto w-full max-w-[900px] px-4 pb-24 pt-8 sm:px-6">
       <JsonLd data={serviceJsonLd()} />
 
@@ -199,7 +202,16 @@ export default function ChordDetectorPage() {
       </section>
 
       <section className="mt-10 border-t border-white/10 pt-8">
-        <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Once you know the chords, master the track</p>
+        <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Looking for just one thing?</p>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+          {TOOL_LANDING_KEYS.map((key) => (
+            <Link key={key} href={`/${key}`} className="text-sm text-brass hover:text-ember">
+              {TOOL_LANDING_PAGES[key].label} →
+            </Link>
+          ))}
+        </div>
+
+        <p className="m-0 mt-6 text-xs uppercase tracking-[0.12em] text-zinc-500">Once you know the chords, master the track</p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
           {CHORD_DETECTOR_RELATED_GENRES.map((g) => (
             <Link key={g} href={`/master/${g}`} className="text-sm text-brass hover:text-ember">
@@ -212,5 +224,7 @@ export default function ChordDetectorPage() {
         </div>
       </section>
     </main>
+    <Footer />
+    </>
   );
 }

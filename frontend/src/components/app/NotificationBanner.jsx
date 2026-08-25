@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useMasteringStore } from "@/store/masteringStore";
+import { useLanguage } from "@/lib/i18n";
 
 // Lives in the app shell (not inside MasteringConsole) so it survives
 // switching to Show Chords/etc while a render is in flight —
@@ -17,6 +18,7 @@ import { useMasteringStore } from "@/store/masteringStore";
 // kills it client-side. Real closed-tab notification needs a job queue +
 // Web Push (service worker, VAPID keys) — a separate, bigger piece of work.
 export default function NotificationBanner({ activeTab, onView }) {
+  const { t } = useLanguage();
   const { isSubmitting, result, error } = useMasteringStore();
   const [dismissed, setDismissed] = useState(false);
   const wasSubmitting = useRef(false);
@@ -35,11 +37,12 @@ export default function NotificationBanner({ activeTab, onView }) {
     setDismissed(false);
 
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-      new Notification("Your master is ready", {
+      new Notification(t("notif.masterReady"), {
         body: `${result.before_lufs} LUFS → ${result.after_lufs} LUFS`,
         tag: result.job_id,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
 
   if (activeTab === "master" || dismissed) return null;
@@ -52,15 +55,15 @@ export default function NotificationBanner({ activeTab, onView }) {
           <>
             <span className="mt-0.5 h-2 w-2 shrink-0 animate-pulse rounded-full bg-brass" />
             <div className="min-w-0 flex-1">
-              <p className="m-0 text-sm font-semibold text-white">Mastering in progress…</p>
-              <p className="mt-0.5 text-xs text-zinc-400">This can take a minute or two.</p>
+              <p className="m-0 text-sm font-semibold text-white">{t("notif.inProgress")}</p>
+              <p className="mt-0.5 text-xs text-zinc-400">{t("notif.takesAWhile")}</p>
             </div>
           </>
         ) : error ? (
           <>
             <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />
             <div className="min-w-0 flex-1">
-              <p className="m-0 text-sm font-semibold text-white">Mastering failed</p>
+              <p className="m-0 text-sm font-semibold text-white">{t("notif.failed")}</p>
               <p className="mt-0.5 truncate text-xs text-zinc-400">{error}</p>
             </div>
           </>
@@ -68,7 +71,7 @@ export default function NotificationBanner({ activeTab, onView }) {
           <>
             <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-ember" />
             <div className="min-w-0 flex-1">
-              <p className="m-0 text-sm font-semibold text-white">Your master is ready</p>
+              <p className="m-0 text-sm font-semibold text-white">{t("notif.masterReady")}</p>
               <button
                 type="button"
                 onClick={() => {
@@ -77,7 +80,7 @@ export default function NotificationBanner({ activeTab, onView }) {
                 }}
                 className="mt-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-brass hover:text-ember"
               >
-                View result →
+                {t("notif.viewResult")}
               </button>
             </div>
           </>
@@ -85,7 +88,7 @@ export default function NotificationBanner({ activeTab, onView }) {
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          aria-label="Dismiss"
+          aria-label={t("notif.dismiss")}
           className="shrink-0 text-zinc-500 hover:text-zinc-300"
         >
           ✕

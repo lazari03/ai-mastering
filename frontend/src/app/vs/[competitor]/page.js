@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import Footer from "@/components/Footer";
 import { COMPARISON_PAGES, COMPARISON_KEYS } from "@/content/comparisonPages";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { buildMetadata, JsonLd, faqJsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
@@ -29,6 +30,7 @@ export default function ComparisonPage({ params }) {
   const otherComparisons = COMPARISON_KEYS.filter((k) => k !== params.competitor);
 
   return (
+    <>
     <main className="mx-auto w-full max-w-[840px] px-4 pb-24 pt-8 sm:px-6">
       <JsonLd data={faqJsonLd(page.faq)} />
 
@@ -123,5 +125,7 @@ export default function ComparisonPage({ params }) {
         </div>
       </section>
     </main>
+    <Footer />
+    </>
   );
 }

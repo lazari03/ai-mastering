@@ -134,4 +134,12 @@ export const settings = {
   ga4PropertyId: process.env.GA4_PROPERTY_ID || null,
   ga4ServiceAccountJson: process.env.GA4_SERVICE_ACCOUNT_JSON || null,
   ga4ServiceAccountPath: process.env.GA4_SERVICE_ACCOUNT_PATH || null,
+
+  // Newsletter signup — one shared 10%-off Polar discount code (not a
+  // unique per-subscriber code; there's no transactional-email sending in
+  // this app to deliver a unique one, and a single reusable "welcome"
+  // code is the standard shape for this kind of signup incentive anyway).
+  // See services/newsletterService.js. Unset just means the widget still
+  // records the subscriber but shows no code.
+  newsletterDiscountCode: process.env.NEWSLETTER_DISCOUNT_CODE || null,
 };

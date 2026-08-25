@@ -41,6 +41,7 @@ import {
   STEM_MONTHLY_LIMIT,
 } from "../services/entitlementsService.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
+import { subscribeToNewsletter } from "../services/newsletterService.js";
 import { getAuth } from "../config/firebase.js";
 import { expensiveLimiter } from "../middleware/rateLimit.js";
 import { mintDownloadToken, mintShareToken, verifyShareToken } from "../services/downloadTokenService.js";
@@ -118,6 +119,27 @@ router.get("/health", (_req, res) => {
 router.post("/validate-email", async (req, res) => {
   const deliverable = await isEmailDeliverable(req.body?.email);
   return res.json({ deliverable });
+});
+
+// Public, no auth — the newsletter widget/page (frontend) is meant to
+// work for an anonymous visitor, not just a signed-in user. Same
+// deliverability check as signup so the subscriber list doesn't fill up
+// with typo'd/fake addresses. `source` is just a free-text tag (e.g.
+// "footer", "newsletter-page") for telling signup channels apart later,
+// never trusted for anything security-sensitive.
+router.post("/newsletter/subscribe", async (req, res) => {
+  const email = req.body?.email;
+  const deliverable = await isEmailDeliverable(email).catch(() => false);
+  if (!deliverable) {
+    return res.status(400).json({ detail: "That email address doesn't look deliverable — double check it." });
+  }
+  try {
+    const { discountCode, alreadySubscribed } = await subscribeToNewsletter(email, req.body?.source);
+    return res.json({ discountCode, alreadySubscribed });
+  } catch (error) {
+    console.error("Newsletter subscribe failed:", error.message);
+    return res.status(500).json({ detail: "Couldn't save your subscription — try again in a moment." });
+  }
 });
 
 // Mints the short-lived ?dl= token that download/original/codec-preview

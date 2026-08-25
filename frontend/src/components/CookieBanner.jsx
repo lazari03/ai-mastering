@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+import { useLanguage } from "@/lib/i18n";
+
 export const CONSENT_KEY = "cookie_consent"; // "accepted" | "declined"
 
 // Actually gates something real — Analytics.jsx below only loads the
@@ -18,6 +20,7 @@ export function getStoredConsent() {
 }
 
 export default function CookieBanner() {
+  const { t } = useLanguage();
   const [consent, setConsent] = useState(null);
 
   useEffect(() => {
@@ -43,10 +46,9 @@ export default function CookieBanner() {
     <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0b0d10]/95 px-4 py-4 backdrop-blur-md sm:px-6">
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-3 sm:flex-row sm:justify-between">
         <p className="m-0 text-xs text-zinc-300 sm:text-sm">
-          We use local storage to keep you signed in and, if you allow it, privacy-friendly analytics with no
-          tracking cookies. See our{" "}
+          {t("cookie.body")}{" "}
           <Link href="/privacy" className="text-brass hover:text-ember">
-            Privacy Policy
+            {t("cookie.privacyLink")}
           </Link>
           .
         </p>
@@ -56,14 +58,14 @@ export default function CookieBanner() {
             onClick={() => choose("declined")}
             className="rounded-full border border-white/20 bg-black/20 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/35"
           >
-            Decline
+            {t("cookie.decline")}
           </button>
           <button
             type="button"
             onClick={() => choose("accepted")}
             className="rounded-full bg-ember px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#100b08] hover:brightness-110"
           >
-            Accept
+            {t("cookie.accept")}
           </button>
         </div>
       </div>
