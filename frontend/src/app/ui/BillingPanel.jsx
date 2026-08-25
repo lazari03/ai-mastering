@@ -7,8 +7,10 @@ import { PLANS, PLAN_ORDER, SINGLE_MASTER, CHORD_DETECTION, CHORDS_MONTHLY, STEM
 import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { trackEvent } from "@/lib/analytics";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
+import { useLanguage } from "@/lib/i18n";
 
 export default function BillingPanel() {
+  const { t } = useLanguage();
   const {
     plan: currentPlan,
     masterQuota,
@@ -49,11 +51,7 @@ export default function BillingPanel() {
         await refresh();
         setBusyItem("");
         const planLabel = planKey === "pro" ? "All-Access" : "Studio";
-        setChangeStatus(
-          immediate
-            ? `Switched to ${planLabel} — charged the prorated difference now.`
-            : `Scheduled: you'll move to ${planLabel} at the start of your next billing period, no charge yet.`
-        );
+        setChangeStatus(immediate ? t("billing.switchedTo", { plan: planLabel }) : t("billing.scheduledTo", { plan: planLabel }));
         return;
       }
       const successUrl = `${window.location.origin}/thank-you?plan=${encodeURIComponent(planKey)}&item=${encodeURIComponent(item)}&price=${encodeURIComponent(priceLabel)}`;
@@ -61,7 +59,7 @@ export default function BillingPanel() {
       window.location.href = url;
     } catch (err) {
       setBusyItem("");
-      setCheckoutError(err?.message || "Failed to start checkout.");
+      setCheckoutError(err?.message || t("billing.checkoutFailed"));
     }
   };
 
@@ -88,7 +86,7 @@ export default function BillingPanel() {
       window.location.href = url;
     } catch (err) {
       setBusyItem("");
-      setCheckoutError(err?.message || "Failed to start checkout.");
+      setCheckoutError(err?.message || t("billing.checkoutFailed"));
     }
   };
 
@@ -100,13 +98,13 @@ export default function BillingPanel() {
       window.location.href = url;
     } catch (err) {
       setBusyItem("");
-      setCheckoutError(err?.message || "Failed to open billing portal.");
+      setCheckoutError(err?.message || t("billing.portalFailed"));
     }
   };
 
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-      <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">Billing</h2>
+      <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("billing.title")}</h2>
 
       {!loaded ? (
         <LoadingBlock />
@@ -126,7 +124,7 @@ export default function BillingPanel() {
                     <p className="m-0 text-sm font-semibold text-white">{plan.label}</p>
                     {isCurrent ? (
                       <span className="shrink-0 rounded-full border border-brass/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-brass">
-                        Current
+                        {t("billing.current")}
                       </span>
                     ) : null}
                   </div>
@@ -149,10 +147,10 @@ export default function BillingPanel() {
                     >
                       {busyItem === "portal" ? (
                         <>
-                          <Spinner size={12} /> Redirecting…
+                          <Spinner size={12} /> {t("billing.redirecting")}
                         </>
                       ) : (
-                        "Manage billing"
+                        t("billing.manage")
                       )}
                     </button>
                   ) : (
@@ -164,12 +162,12 @@ export default function BillingPanel() {
                     >
                       {busyItem === plan.item ? (
                         <>
-                          <Spinner size={12} /> {currentPlan !== "free" ? "Updating…" : "Redirecting…"}
+                          <Spinner size={12} /> {currentPlan !== "free" ? t("billing.updating") : t("billing.redirecting")}
                         </>
                       ) : isUpgrade ? (
-                        "Upgrade"
+                        t("billing.upgrade")
                       ) : (
-                        "Switch"
+                        t("billing.switch")
                       )}
                     </button>
                   )}
@@ -180,11 +178,12 @@ export default function BillingPanel() {
 
           {masterQuota ? (
             <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="m-0 text-sm text-white">{masterQuota.resets ? "Masters this month" : "Free trial masters"}</p>
+              <p className="m-0 text-sm text-white">{masterQuota.resets ? t("billing.mastersThisMonth") : t("billing.freeTrialMasters")}</p>
               <p className="m-0 text-xs text-zinc-500">
-                {masterQuota.remaining} of {masterQuota.limit} left
-                {masterQuota.resets ? " · resets next month" : " · one-time, doesn't renew"}
-                {extraCredits > 0 ? ` · +${extraCredits} single-master credit${extraCredits === 1 ? "" : "s"} on top` : ""}
+                {t("billing.leftOf", { remaining: masterQuota.remaining, limit: masterQuota.limit })}
+                {" · "}
+                {masterQuota.resets ? t("billing.resetsNextMonth") : t("billing.oneTimeNoRenew")}
+                {extraCredits > 0 ? ` · ${t("billing.plusCreditsMaster", { n: extraCredits, s: extraCredits === 1 ? "" : "s" })}` : ""}
               </p>
             </div>
           ) : null}
@@ -195,7 +194,7 @@ export default function BillingPanel() {
                 {SINGLE_MASTER.label} — {SINGLE_MASTER.price}
               </p>
               <p className="m-0 mt-0.5 text-xs text-zinc-500">
-                {SINGLE_MASTER.blurb} No subscription — just this one track.
+                {SINGLE_MASTER.blurb} {t("billing.noSubNote")}
               </p>
             </div>
             <button
@@ -206,10 +205,10 @@ export default function BillingPanel() {
             >
               {busyItem === SINGLE_MASTER.item ? (
                 <>
-                  <Spinner size={12} /> Redirecting…
+                  <Spinner size={12} /> {t("billing.redirecting")}
                 </>
               ) : (
-                "Buy one"
+                t("billing.buyOne")
               )}
             </button>
           </div>
@@ -217,15 +216,15 @@ export default function BillingPanel() {
           {chordQuota ? (
             <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
               <p className="m-0 text-sm text-white">
-                {currentPlan === "pro" || chordSubscriptionActive ? "Chord detection" : "Free trial chord detections"}
+                {currentPlan === "pro" || chordSubscriptionActive ? t("billing.chordDetection") : t("billing.freeTrialChords")}
               </p>
               <p className="m-0 text-xs text-zinc-500">
                 {currentPlan === "pro"
-                  ? "Unlimited on All-Access."
+                  ? t("billing.unlimitedAllAccess")
                   : chordSubscriptionActive
-                    ? "Unlimited on Chords Monthly."
-                    : `${chordQuota.remaining} of ${chordQuota.limit} left · one-time, doesn't renew${
-                        extraChordCredits > 0 ? ` · +${extraChordCredits} credit${extraChordCredits === 1 ? "" : "s"} on top` : ""
+                    ? t("billing.unlimitedChordsMonthly")
+                    : `${t("billing.leftOf", { remaining: chordQuota.remaining, limit: chordQuota.limit })} · ${t("billing.oneTimeNoRenew")}${
+                        extraChordCredits > 0 ? ` · ${t("billing.plusCreditsChord", { n: extraChordCredits, s: extraChordCredits === 1 ? "" : "s" })}` : ""
                       }`}
               </p>
             </div>
@@ -247,10 +246,10 @@ export default function BillingPanel() {
               >
                 {busyItem === CHORD_DETECTION.item ? (
                   <>
-                    <Spinner size={12} /> Redirecting…
+                    <Spinner size={12} /> {t("billing.redirecting")}
                   </>
                 ) : (
-                  "Buy one"
+                  t("billing.buyOne")
                 )}
               </button>
             </div>
@@ -264,7 +263,7 @@ export default function BillingPanel() {
                   {CHORDS_MONTHLY.period}
                   {chordSubscriptionActive ? (
                     <span className="ml-2 rounded-full border border-brass/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-brass">
-                      Current
+                      {t("billing.current")}
                     </span>
                   ) : null}
                 </p>
@@ -279,10 +278,10 @@ export default function BillingPanel() {
                 >
                   {busyItem === "portal" ? (
                     <>
-                      <Spinner size={12} /> Redirecting…
+                      <Spinner size={12} /> {t("billing.redirecting")}
                     </>
                   ) : (
-                    "Manage"
+                    t("billing.manageShort")
                   )}
                 </button>
               ) : (
@@ -294,10 +293,10 @@ export default function BillingPanel() {
                 >
                   {busyItem === CHORDS_MONTHLY.item ? (
                     <>
-                      <Spinner size={12} /> Redirecting…
+                      <Spinner size={12} /> {t("billing.redirecting")}
                     </>
                   ) : (
-                    "Subscribe"
+                    t("billing.subscribe")
                   )}
                 </button>
               )}
@@ -306,10 +305,10 @@ export default function BillingPanel() {
 
           {currentPlan === "pro" && stemQuota ? (
             <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="m-0 text-sm text-white">Stem separations this month</p>
+              <p className="m-0 text-sm text-white">{t("billing.stemsThisMonth")}</p>
               <p className="m-0 text-xs text-zinc-500">
-                {stemQuota.remaining} of {stemQuota.limit} left · resets next month
-                {extraStemCredits > 0 ? ` · +${extraStemCredits} extra credit${extraStemCredits === 1 ? "" : "s"} on top` : ""}
+                {t("billing.leftOf", { remaining: stemQuota.remaining, limit: stemQuota.limit })} · {t("billing.resetsNextMonth")}
+                {extraStemCredits > 0 ? ` · ${t("billing.plusCreditsStem", { n: extraStemCredits, s: extraStemCredits === 1 ? "" : "s" })}` : ""}
               </p>
             </div>
           ) : null}
@@ -320,9 +319,7 @@ export default function BillingPanel() {
                 {STEM_SEPARATION.label} — {STEM_SEPARATION.price}
               </p>
               <p className="m-0 mt-0.5 text-xs text-zinc-500">
-                {currentPlan === "pro"
-                  ? "For when your monthly 20 run out — no need to wait for reset."
-                  : `${STEM_SEPARATION.blurb} Or get 20/month included on All-Access.`}
+                {currentPlan === "pro" ? t("billing.stemNoteAllAccess") : `${STEM_SEPARATION.blurb} ${t("billing.stemNoteOther")}`}
               </p>
             </div>
             <button
@@ -333,10 +330,10 @@ export default function BillingPanel() {
             >
               {busyItem === STEM_SEPARATION.item ? (
                 <>
-                  <Spinner size={12} /> Redirecting…
+                  <Spinner size={12} /> {t("billing.redirecting")}
                 </>
               ) : (
-                "Buy one"
+                t("billing.buyOne")
               )}
             </button>
           </div>

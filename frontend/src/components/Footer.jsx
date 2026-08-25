@@ -27,8 +27,8 @@ export default function Footer() {
     <footer className="mx-auto mt-16 flex w-full max-w-[1200px] flex-col gap-8 border-t border-white/10 px-4 pb-10 pt-8 sm:px-6">
       <div className="rounded-2xl border border-white/10 bg-black/20 p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
         <div className="sm:max-w-[320px]">
-          <p className="m-0 text-sm font-semibold text-white">Get 10% off</p>
-          <p className="mt-1 text-xs text-zinc-400">Join the newsletter — occasional updates, no spam, unsubscribe any time.</p>
+          <p className="m-0 text-sm font-semibold text-white">{t("footer.newsletter.title")}</p>
+          <p className="mt-1 text-xs text-zinc-400">{t("footer.newsletter.body")}</p>
         </div>
         <div className="mt-3 sm:mt-0 sm:w-[360px] sm:shrink-0">
           <NewsletterWidget source="footer" />
@@ -42,22 +42,22 @@ export default function Footer() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Free Tools</p>
-          <Link href="/chord-detector" className="text-xs text-zinc-400 hover:text-zinc-200">Chord Detector</Link>
-          <Link href="/song-key-finder" className="text-xs text-zinc-400 hover:text-zinc-200">Song Key Finder</Link>
-          <Link href="/bpm-finder" className="text-xs text-zinc-400 hover:text-zinc-200">BPM Finder</Link>
-          <Link href="/chord-progression-finder" className="text-xs text-zinc-400 hover:text-zinc-200">Chord Progression Finder</Link>
+          <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{t("footer.col.freeTools")}</p>
+          <Link href="/chord-detector" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.link.chordDetector")}</Link>
+          <Link href="/song-key-finder" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.link.songKeyFinder")}</Link>
+          <Link href="/bpm-finder" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.link.bpmFinder")}</Link>
+          <Link href="/chord-progression-finder" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.link.chordProgressionFinder")}</Link>
         </div>
 
         <div className="flex flex-col gap-2">
-          <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Compare</p>
-          <Link href="/ai-mastering-online" className="text-xs text-zinc-400 hover:text-zinc-200">AI Mastering Online</Link>
-          <Link href="/vs/landr" className="text-xs text-zinc-400 hover:text-zinc-200">vs LANDR</Link>
-          <Link href="/vs/emastered" className="text-xs text-zinc-400 hover:text-zinc-200">vs eMastered</Link>
+          <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{t("footer.col.compare")}</p>
+          <Link href="/ai-mastering-online" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.link.aiMasteringOnline")}</Link>
+          <Link href="/vs/landr" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.link.vsLandr")}</Link>
+          <Link href="/vs/emastered" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.link.vsEmastered")}</Link>
         </div>
 
         <div className="flex flex-col gap-2">
-          <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Company</p>
+          <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{t("footer.col.company")}</p>
           <Link href="/blog" className="text-xs text-zinc-400 hover:text-zinc-200">{t("nav.blog")}</Link>
           <Link href="/terms" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.legal.terms")}</Link>
           <Link href="/privacy" className="text-xs text-zinc-400 hover:text-zinc-200">{t("footer.legal.privacy")}</Link>

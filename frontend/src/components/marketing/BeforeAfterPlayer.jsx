@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { useLanguage } from "@/lib/i18n";
+
 function formatTime(seconds) {
   if (!Number.isFinite(seconds)) return "0:00";
   const m = Math.floor(seconds / 60);
@@ -18,6 +20,7 @@ function formatTime(seconds) {
 // toggle. The <audio> element itself stays hidden; every control here
 // drives it programmatically.
 export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc }) {
+  const { t } = useLanguage();
   const audioRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -230,7 +233,7 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc })
             mode === "before" ? "border-white/40 bg-white/10 text-white" : "border-white/15 bg-black/20 text-zinc-400 hover:border-white/30"
           }`}
         >
-          Before
+          {t("demoPlayer.before")}
         </button>
         <button
           type="button"
@@ -240,7 +243,7 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc })
             mode === "after" ? "border-brass bg-brass/[0.18] text-brass" : "border-white/15 bg-black/20 text-zinc-400 hover:border-white/30"
           }`}
         >
-          After — Mastered
+          {t("demoPlayer.after")}
         </button>
       </div>
 

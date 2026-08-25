@@ -13,7 +13,10 @@ import { useEntitlementsStore, planUnlocksProfessional } from "@/store/entitleme
 import { STEM_SEPARATION } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
+import { useLanguage } from "@/lib/i18n";
 
+// Codec names are format labels, not language-dependent text — same on
+// every locale, nothing to localize here.
 const CODEC_OPTIONS = [
   { value: "mp3_128", label: "MP3 128kbps" },
   { value: "mp3_320", label: "MP3 320kbps" },
@@ -31,6 +34,7 @@ function SectionLabel({ children }) {
 }
 
 export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
+  const { t } = useLanguage();
   const [activeStep, setActiveStep] = useState(0);
   const [inputPreviewUrl, setInputPreviewUrl] = useState("");
   const [masteringProgress, setMasteringProgress] = useState(0);
@@ -130,7 +134,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
       const preview = await previewCodec(result.job_id, codecChoice);
       setCodecPreview(preview);
     } catch (err) {
-      setCodecPreviewError(err?.message || "Codec preview failed");
+      setCodecPreviewError(err?.message || t("console.codecPreviewFailed"));
     } finally {
       setCodecPreviewLoading(false);
     }
@@ -138,14 +142,14 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
 
   useEffect(() => {
     const phases = [
-      "Queueing mastering job",
-      "Reading and validating source audio",
-      "Analyzing loudness and dynamics",
-      "Estimating frequency balance",
-      "Applying tone and spatial correction",
-      "Refining dynamics and loudness",
-      "Rendering mastered output",
-      "Preparing preview and download",
+      t("console.phase.queue"),
+      t("console.phase.read"),
+      t("console.phase.analyzeLoudness"),
+      t("console.phase.estimateBalance"),
+      t("console.phase.applyTone"),
+      t("console.phase.refine"),
+      t("console.phase.render"),
+      t("console.phase.prepare"),
     ];
 
     if (isSubmitting) {
@@ -177,12 +181,12 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
 
     if (result) {
       setMasteringProgress(100);
-      setProgressMessage("Mastering complete");
+      setProgressMessage(t("console.masteringComplete"));
       return;
     }
 
     if (error) {
-      setProgressMessage("Mastering stopped");
+      setProgressMessage(t("console.masteringStopped"));
       return;
     }
 
@@ -191,7 +195,10 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
     setProgressLogs([]);
   }, [isSubmitting, result, error]);
 
-  const steps = useMemo(() => ["Audio", "Mode", "Master"], []);
+  const steps = useMemo(
+    () => [t("console.step.audio"), t("console.step.mode"), t("console.step.master")],
+    [t]
+  );
   const wizardProgress = ((activeStep + 1) / steps.length) * 100;
 
   const selectedPresetMeta = useMemo(() => presets.find((preset) => preset.name === selectedPreset) || null, [presets, selectedPreset]);
@@ -217,14 +224,14 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
   const hasCredit = Number(extraCredits || 0) > 0;
   const masterUnlocked = Boolean(masterQuota?.remaining > 0) || hasCredit;
   const masterButtonLabel = isSubmitting
-    ? "Mastering…"
+    ? t("console.masteringEllipsis")
     : masterQuota
       ? masterQuota.remaining > 0
-        ? `Master Track — ${masterQuota.remaining}/${masterQuota.limit} left`
+        ? t("console.masterTrackLeft", { remaining: masterQuota.remaining, limit: masterQuota.limit })
         : hasCredit
-          ? `Master Track — using 1 credit (${extraCredits} left)`
-          : "Master Track — Quota used, upgrade"
-      : "Master Track";
+          ? t("console.masterTrackCredit", { n: extraCredits })
+          : t("console.masterTrackQuotaUsed")
+      : t("console.masterTrackDefault");
 
   // Stems no longer follow the plan alone — All-Access gets a bounded
   // monthly sub-limit (not "unlimited within plan"), Free/Studio get no
@@ -238,8 +245,8 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
   const stemUnlocked = (plan === "pro" && Boolean(stemQuota?.remaining > 0)) || hasStemCredit;
   const stemBuyLabel =
     plan === "pro" && stemQuota && stemQuota.remaining <= 0
-      ? "Buy one — your 20/month are used up"
-      : `Buy one — ${STEM_SEPARATION.price}`;
+      ? t("console.buyStemUsedUp")
+      : t("console.buyStemPrice", { price: STEM_SEPARATION.price });
   useEffect(() => {
     if (!stemUnlocked && useStemSeparation) setUseStemSeparation(false);
     if (!professionalUnlocked && tier === "professional") setTier("standard");
@@ -276,8 +283,8 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
   return (
     <div className="grid w-full max-w-[1280px] items-start gap-6 lg:grid-cols-[1.2fr_0.8fr]">
       <div>
-        <h1 className="m-0 font-[var(--font-title)] text-[26px]">Master Audio</h1>
-        <p className="mt-2 text-sm text-zinc-300">Choose audio → choose mastering mode → master → review.</p>
+        <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("console.title")}</h1>
+        <p className="mt-2 text-sm text-zinc-300">{t("console.subtitle")}</p>
 
         <div className="glass-panel mt-5 rounded-2xl p-4">
           <div className="mb-3.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
@@ -309,12 +316,12 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
         {activeStep === 0 ? (
           <div className="mt-5 flex flex-col gap-5">
             <section>
-              <SectionLabel>Files</SectionLabel>
+              <SectionLabel>{t("console.files")}</SectionLabel>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FileDropzone
                   id="masterFileInput"
                   compact
-                  label="Audio File *"
+                  label={t("console.audioFile")}
                   fileName={file?.name}
                   onChange={(event) => setFile(event.target.files?.[0] || null)}
                   onRemove={() => setFile(null)}
@@ -322,20 +329,16 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 <FileDropzone
                   id="refFileInput"
                   compact
-                  label="Reference Track (optional)"
+                  label={t("console.referenceTrack")}
                   fileName={referenceFile?.name}
                   onChange={(event) => setReferenceFile(event.target.files?.[0] || null)}
                   onRemove={() => setReferenceFile(null)}
                 />
               </div>
               {referenceMode ? (
-                <p className="mt-2 text-[11px] text-brass/90">
-                  Reference Mastering active — your master will be matched to this track&apos;s tonal balance automatically. Set up in the next step.
-                </p>
+                <p className="mt-2 text-[11px] text-brass/90">{t("console.referenceActive")}</p>
               ) : (
-                <p className="mt-2 text-[11px] text-zinc-500">
-                  Add a reference track to switch into Reference Mastering — no manual setup needed, the engine matches its tone automatically.
-                </p>
+                <p className="mt-2 text-[11px] text-zinc-500">{t("console.referenceHint")}</p>
               )}
             </section>
           </div>
@@ -345,31 +348,27 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
           <div className="mt-5 flex flex-col gap-5">
             {referenceMode ? (
               <section className="glass-panel rounded-2xl p-5">
-                <SectionLabel>Reference Mastering</SectionLabel>
+                <SectionLabel>{t("console.referenceMastering")}</SectionLabel>
                 <p className="text-sm text-zinc-300">
-                  <strong className="text-brass">Reference Mastering is active.</strong> We analyze{" "}
-                  <span className="text-white">{referenceFile.name}</span> and automatically shape your master&apos;s
-                  tonal balance to match it — no manual EQ, genre, or style selection needed.
+                  <strong className="text-brass">{t("console.referenceIsActive")}</strong> {t("console.referenceAnalyze")}{" "}
+                  <span className="text-white">{referenceFile.name}</span> {t("console.referenceBody2")}
                 </p>
-                <p className="mt-2 text-xs text-zinc-500">
-                  Loudness and dynamics still use our standard mastering profile; only the tonal balance is matched to
-                  your reference.
-                </p>
+                <p className="mt-2 text-xs text-zinc-500">{t("console.referenceBody3")}</p>
                 <button
                   type="button"
                   onClick={() => setReferenceFile(null)}
                   className="mt-3 rounded-lg border border-white/15 bg-black/20 px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30"
                 >
-                  Switch to manual mastering
+                  {t("console.switchManual")}
                 </button>
 
                 <div className="mt-4">
                   <label className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.12] bg-black/20 p-3.5 text-sm">
                     <span className="flex items-center gap-2">
-                      Stem separation
+                      {t("console.stemSeparation")}
                       {!stemUnlocked ? (
                         <span className="rounded-full border border-brass/40 bg-brass/[0.12] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-brass">
-                          Premium
+                          {t("console.premium")}
                         </span>
                       ) : null}
                     </span>
@@ -384,7 +383,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                   {!stemUnlocked ? (
                     <div className="mt-1.5 flex items-center justify-between gap-3">
                       <p className="m-0 text-[11px] text-zinc-500">
-                        {plan === "pro" ? "Your 20/month are used up." : "All-Access includes 20/month, or buy one here."}
+                        {plan === "pro" ? t("console.stemUsedUp") : t("console.stemIncluded")}
                       </p>
                       <button
                         type="button"
@@ -392,7 +391,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                         disabled={stemBuyBusy}
                         className="shrink-0 rounded-full border border-brass/40 bg-brass/[0.1] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-brass hover:bg-brass/20 disabled:opacity-50"
                       >
-                        {stemBuyBusy ? "Redirecting…" : stemBuyLabel}
+                        {stemBuyBusy ? t("console.redirecting") : stemBuyLabel}
                       </button>
                     </div>
                   ) : null}
@@ -401,7 +400,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
             ) : (
               <>
                 <section>
-                  <SectionLabel>Mastering Mode</SectionLabel>
+                  <SectionLabel>{t("console.masteringMode")}</SectionLabel>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <button
                       type="button"
@@ -413,8 +412,8 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                         <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-ember text-[11px] font-bold text-[#100b08]">✓</span>
                       ) : null}
                       <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/30 text-base">🎚️</span>
-                      <p className="m-0 mt-2.5 text-sm font-bold uppercase tracking-[0.1em] text-white">Quick Master</p>
-                      <p className="mt-1.5 text-xs text-zinc-400">Automatic — pick a genre and style, the DSP engine sets everything else for you. Fastest path, no dials to touch.</p>
+                      <p className="m-0 mt-2.5 text-sm font-bold uppercase tracking-[0.1em] text-white">{t("console.quickMaster")}</p>
+                      <p className="mt-1.5 text-xs text-zinc-400">{t("console.quickMasterBody")}</p>
                     </button>
                     <button
                       type="button"
@@ -426,23 +425,23 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                         <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-brass text-[11px] font-bold text-[#100b08]">✓</span>
                       ) : null}
                       <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/30 text-base">🎛️</span>
-                      <p className="m-0 mt-2.5 text-sm font-bold uppercase tracking-[0.1em] text-white">Pro Master</p>
-                      <p className="mt-1.5 text-xs text-zinc-400">Hands-on knobs for EQ, dynamics, multiband, saturation, stereo, and the limiter. Same engine, full control.</p>
+                      <p className="m-0 mt-2.5 text-sm font-bold uppercase tracking-[0.1em] text-white">{t("console.proMaster")}</p>
+                      <p className="mt-1.5 text-xs text-zinc-400">{t("console.proMasterBody")}</p>
                     </button>
                   </div>
                 </section>
 
                 <section>
-                  <SectionLabel>Profile</SectionLabel>
+                  <SectionLabel>{t("console.profile")}</SectionLabel>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label className="block">
-                      <span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">Preset</span>
+                      <span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.preset")}</span>
                       <select
                         value={builtInPresets.some((p) => p.name === selectedPreset) ? selectedPreset : ""}
                         onChange={(event) => setPreset(event.target.value)}
                         className="w-full rounded-[10px] border border-white/15 bg-black/25 p-2.5 text-[13px] text-white"
                       >
-                        <option value="">Custom</option>
+                        <option value="">{t("console.custom")}</option>
                         {builtInPresets.map((preset) => (
                           <option key={preset.name} value={preset.name}>
                             {preset.display_name || preset.name}
@@ -451,19 +450,19 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                       </select>
                     </label>
                     <label className="block">
-                      <span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">Engine</span>
+                      <span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.engine")}</span>
                       <select
                         value={tier}
                         onChange={(event) => setTier(event.target.value)}
                         className="w-full rounded-[10px] border border-white/15 bg-black/25 p-2.5 text-[13px] text-white"
                       >
-                        <option value="standard">Standard</option>
+                        <option value="standard">{t("console.standard")}</option>
                         <option value="professional" disabled={!professionalUnlocked}>
-                          Professional (true-peak limiting){!professionalUnlocked ? " — Studio plan" : ""}
+                          {t("console.professionalOption")}{!professionalUnlocked ? t("console.studioPlanSuffix") : ""}
                         </option>
                       </select>
                       {!professionalUnlocked ? (
-                        <span className="mt-1 block text-[10px] text-zinc-500">Needs the Studio plan or higher.</span>
+                        <span className="mt-1 block text-[10px] text-zinc-500">{t("console.needsStudio")}</span>
                       ) : null}
                     </label>
                   </div>
@@ -472,7 +471,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                   ) : null}
 
                   <div className="mt-3.5">
-                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">Genre</span>
+                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.genre")}</span>
                     <div className="flex flex-wrap gap-2">
                       {genres.map((genre) => (
                         <button key={genre} type="button" onClick={() => setGenre(genre)} className={chipClass(selectedGenre === genre)}>
@@ -483,7 +482,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                   </div>
 
                   <div className="mt-3.5">
-                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">Mastering Style</span>
+                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.masteringStyle")}</span>
                     <div className="flex flex-wrap gap-2">
                       {styles.map((style) => (
                         <button key={style} type="button" onClick={() => setStyle(style)} className={chipClass(selectedStyle === style)}>
@@ -495,7 +494,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
 
                   {mode === "quick" ? (
                     <div className="mt-3.5">
-                      <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">Tags</span>
+                      <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.tags")}</span>
                       <div className="flex flex-wrap gap-2">
                         {tags.map((tag) => (
                           <button key={tag} type="button" onClick={() => toggleTag(tag)} className={`${chipClass(selectedTags.includes(tag), "brass")} rounded-full lowercase`}>
@@ -509,10 +508,10 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                   <div className="mt-4">
                     <label className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.12] bg-black/20 p-3.5 text-sm">
                       <span className="flex items-center gap-2">
-                        Stem separation
+                        {t("console.stemSeparation")}
                         {!stemUnlocked ? (
                           <span className="rounded-full border border-brass/40 bg-brass/[0.12] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-brass">
-                            Premium
+                            {t("console.premium")}
                           </span>
                         ) : null}
                       </span>
@@ -527,7 +526,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                     {!stemUnlocked ? (
                       <div className="mt-1.5 flex items-center justify-between gap-3">
                         <p className="m-0 text-[11px] text-zinc-500">
-                          {plan === "pro" ? "Your 20/month are used up." : "All-Access includes 20/month, or buy one here."}
+                          {plan === "pro" ? t("console.stemUsedUp") : t("console.stemIncluded")}
                         </p>
                         <button
                           type="button"
@@ -535,17 +534,15 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                           disabled={stemBuyBusy}
                           className="shrink-0 rounded-full border border-brass/40 bg-brass/[0.1] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-brass hover:bg-brass/20 disabled:opacity-50"
                         >
-                          {stemBuyBusy ? "Redirecting…" : stemBuyLabel}
+                          {stemBuyBusy ? t("console.redirecting") : stemBuyLabel}
                         </button>
                       </div>
                     ) : null}
                   </div>
 
                   <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3.5">
-                    <span className="block text-[11px] uppercase tracking-[0.1em] text-zinc-300">Saved Artists</span>
-                    <span className="mt-1 block text-[11px] text-zinc-500">
-                      Pick a previously-imported artist master and it&apos;s applied exactly as saved. Private to your account.
-                    </span>
+                    <span className="block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.savedArtists")}</span>
+                    <span className="mt-1 block text-[11px] text-zinc-500">{t("console.savedArtistsBody")}</span>
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <select
@@ -553,7 +550,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                         onChange={(event) => setPreset(event.target.value)}
                         className="min-w-[10rem] flex-1 rounded-[10px] border border-white/15 bg-black/25 p-2.5 text-[13px] text-white"
                       >
-                        <option value="">{savedArtistPresets.length ? "Choose an artist…" : "No saved artists yet"}</option>
+                        <option value="">{savedArtistPresets.length ? t("console.chooseArtist") : t("console.noSavedArtists")}</option>
                         {savedArtistPresets.map((preset) => (
                           <option key={preset.name} value={preset.name}>
                             {preset.display_name || preset.name}
@@ -566,25 +563,21 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                           onClick={() => deletePreset(selectedPreset)}
                           className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-300 hover:border-red-400/50"
                         >
-                          Remove
+                          {t("console.remove")}
                         </button>
                       ) : null}
                     </div>
 
                     <div className="mt-3 rounded-lg border border-dashed border-white/15 bg-black/10 p-3">
-                      <span className="block text-[10px] uppercase tracking-[0.14em] text-zinc-400">Import Preset JSON</span>
-                      <span className="mt-1 block text-[10px] text-zinc-500">
-                        Pick a JSON file, give it an artist name, and it&apos;s saved to your account and applied
-                        immediately — including full professional presets with an EQ/dynamics/limiter spec, which
-                        switch you into Pro mode with those exact values.
-                      </span>
+                      <span className="block text-[10px] uppercase tracking-[0.14em] text-zinc-400">{t("console.importPresetJson")}</span>
+                      <span className="mt-1 block text-[10px] text-zinc-500">{t("console.importPresetBody")}</span>
                       {onOpenHelp ? (
                         <button
                           type="button"
                           onClick={onOpenHelp}
                           className="mt-1 block text-[10px] text-brass hover:text-ember"
                         >
-                          Don&apos;t have a preset file? Get a template + how-to →
+                          {t("console.getTemplate")}
                         </button>
                       ) : null}
 
@@ -593,7 +586,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                           type="text"
                           value={importArtistName}
                           onChange={(event) => setImportArtistName(event.target.value)}
-                          placeholder="Artist name (e.g. The Weeknd)"
+                          placeholder={t("console.artistNamePlaceholder")}
                           disabled={isImportingPreset}
                           className="flex-1 rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-500"
                         />
@@ -601,7 +594,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                           htmlFor="presetImportInput"
                           className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border border-brass/40 bg-brass/[0.12] px-3 py-2 text-xs text-brass hover:bg-brass/20"
                         >
-                          {importFilePending ? importFilePending.name : "Choose preset JSON file…"}
+                          {importFilePending ? importFilePending.name : t("console.choosePresetFile")}
                         </label>
                         <input
                           id="presetImportInput"
@@ -629,10 +622,10 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                         >
                           {isImportingPreset ? (
                             <>
-                              <Spinner size={11} /> Importing…
+                              <Spinner size={11} /> {t("console.importing")}
                             </>
                           ) : (
-                            "Import & Save Artist Master"
+                            t("console.importSave")
                           )}
                         </button>
                         {importFilePending ? (
@@ -641,7 +634,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                             onClick={() => setImportFilePending(null)}
                             className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30"
                           >
-                            Clear
+                            {t("console.clear")}
                           </button>
                         ) : null}
                       </div>
@@ -652,7 +645,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
 
                 {mode === "pro" ? (
                   <section>
-                    <SectionLabel>Professional Controls</SectionLabel>
+                    <SectionLabel>{t("console.professionalControls")}</SectionLabel>
                     <ProParamsPanel
                       proParams={proParams}
                       setSection={setProSection}
@@ -673,20 +666,20 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
 
         {activeStep === 2 ? (
           <div className="glass-panel mt-5 rounded-2xl p-5">
-            <SectionLabel>Master</SectionLabel>
+            <SectionLabel>{t("console.master")}</SectionLabel>
             <div className="mb-4 flex flex-wrap gap-2">
-              <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">File: {file?.name || "None"}</span>
+              <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">{t("console.fileLabel", { name: file?.name || t("console.none") })}</span>
               {referenceMode ? (
-                <span className="rounded-lg border border-brass/40 bg-brass/[0.1] px-3 py-1.5 text-xs text-brass">Reference: {referenceFile.name}</span>
+                <span className="rounded-lg border border-brass/40 bg-brass/[0.1] px-3 py-1.5 text-xs text-brass">{t("console.referenceLabel", { name: referenceFile.name })}</span>
               ) : (
                 <>
-                  <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">Mode: {mode === "pro" ? "Pro" : "Quick"}</span>
-                  <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">Genre: {selectedGenre || "Not set"}</span>
-                  <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">Style: {selectedStyle || "Not set"}</span>
+                  <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">{t("console.modeLabel", { mode: mode === "pro" ? t("console.pro") : t("console.quick") })}</span>
+                  <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">{t("console.genreLabel", { genre: selectedGenre || t("console.notSet") })}</span>
+                  <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">{t("console.styleLabel", { style: selectedStyle || t("console.notSet") })}</span>
                 </>
               )}
-              <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">Engine: {tier}</span>
-              {useStemSeparation ? <span className="rounded-lg border border-brass/40 bg-brass/[0.1] px-3 py-1.5 text-xs text-brass">Stems on</span> : null}
+              <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">{t("console.engineLabel", { engine: tier })}</span>
+              {useStemSeparation ? <span className="rounded-lg border border-brass/40 bg-brass/[0.1] px-3 py-1.5 text-xs text-brass">{t("console.stemsOn")}</span> : null}
             </div>
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               <button
@@ -697,10 +690,10 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
               >
                 {isSubmitting ? (
                   <>
-                    <Spinner size={13} /> Rendering…
+                    <Spinner size={13} /> {t("console.rendering")}
                   </>
                 ) : (
-                  "Preview — Free"
+                  t("console.previewFree")
                 )}
               </button>
               <button
@@ -713,18 +706,14 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 {masterButtonLabel}
               </button>
             </div>
-            <p className="mt-2 text-[11px] text-zinc-500">
-              Preview renders the first 30s with the Standard engine, free and unlimited. Master Track renders the
-              full file — 3 total as a free trial (one-time, then €2.99/track or subscribe), 50/month on Studio, 250/month on
-              All-Access. Full result and A/B comparison appear on the right once it&apos;s done.
-            </p>
+            <p className="mt-2 text-[11px] text-zinc-500">{t("console.previewNote")}</p>
             {masterQuota && masterQuota.remaining <= 0 && !hasCredit && onOpenBilling ? (
               <p className="mt-2 text-[11px] text-brass">
-                {masterQuota.resets ? "Out of masters this month?" : "Used up your 3 free masters?"}{" "}
+                {masterQuota.resets ? t("console.outOfMastersMonth") : t("console.usedFreeMasters")}{" "}
                 <button type="button" onClick={onOpenBilling} className="underline hover:text-ember">
-                  Buy a single master (€2.99, no subscription)
+                  {t("console.buySingleMaster")}
                 </button>{" "}
-                or {masterQuota.resets ? "upgrade" : "subscribe"} in Settings → Billing.
+                {masterQuota.resets ? t("console.orUpgrade") : t("console.orSubscribe")}
               </p>
             ) : null}
           </div>
@@ -737,7 +726,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
             disabled={activeStep === 0}
             className="rounded-xl border border-white/[0.15] bg-black/20 px-[22px] py-3 text-xs font-bold uppercase tracking-[0.12em] text-zinc-200 disabled:opacity-40"
           >
-            Back
+            {t("console.back")}
           </button>
           {activeStep < steps.length - 1 ? (
             <button
@@ -746,7 +735,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
               disabled={(activeStep === 0 && !canGoNextFromAudio) || (activeStep === 1 && !canGoNextFromMode)}
               className="rounded-xl border border-brass/[0.55] bg-brass/[0.18] px-[22px] py-3 text-xs font-bold uppercase tracking-[0.12em] text-brass disabled:opacity-40"
             >
-              Next
+              {t("console.next")}
             </button>
           ) : null}
         </div>
@@ -760,17 +749,17 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
           >
             {isSubmitting ? (
               <>
-                <Spinner size={12} /> Rendering…
+                <Spinner size={12} /> {t("console.rendering")}
               </>
             ) : (
-              "Quick Preview — Free (Any Step)"
+              t("console.quickPreviewAnyStep")
             )}
           </button>
         ) : null}
 
         {isBootstrapping ? (
           <p className="mt-3 flex items-center gap-2 text-xs text-zinc-400">
-            <Spinner size={12} /> Loading catalog…
+            <Spinner size={12} /> {t("console.loadingCatalog")}
           </p>
         ) : null}
         {status ? <p className="mt-3 text-sm text-brass">{status}</p> : null}
@@ -778,12 +767,12 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
       </div>
 
       <aside className="glass-panel sticky top-6 min-w-0 rounded-[20px] p-[22px]">
-        <h2 className="m-0 font-[var(--font-title)] text-lg">Review / Compare</h2>
+        <h2 className="m-0 font-[var(--font-title)] text-lg">{t("console.reviewCompare")}</h2>
 
         {isSubmitting ? (
           <div className="mt-4">
             <div className="mb-2 flex items-center justify-between text-[11px] uppercase tracking-[0.1em]">
-              <span className="text-brass">Processing</span>
+              <span className="text-brass">{t("console.processing")}</span>
               <span>{masteringProgress}%</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
@@ -813,31 +802,33 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
 
             <div className="grid grid-cols-2 gap-2.5">
               <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-400">Before LUFS</p>
+                <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-400">{t("console.beforeLufs")}</p>
                 <p className="mt-1.5 text-[17px] font-bold">{result.before_lufs}</p>
               </div>
               <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-400">After LUFS</p>
+                <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-400">{t("console.afterLufs")}</p>
                 <p className="mt-1.5 text-[17px] font-bold text-brass">{result.after_lufs}</p>
               </div>
             </div>
 
             {result.ab_gain_match ? (
               <p className="text-[11px] text-zinc-500">
-                Playback levels matched for a fair A/B ({result.ab_gain_match.before_gain_db !== 0
-                  ? `original ${result.ab_gain_match.before_gain_db} dB`
-                  : `mastered ${result.ab_gain_match.after_gain_db} dB`}
-                ) — loudness alone won&apos;t make one side sound better.
+                {t("console.abMatched", {
+                  detail:
+                    result.ab_gain_match.before_gain_db !== 0
+                      ? t("console.abOriginal", { db: result.ab_gain_match.before_gain_db })
+                      : t("console.abMastered", { db: result.ab_gain_match.after_gain_db }),
+                })}
               </p>
             ) : null}
 
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">Original Signal</p>
+              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">{t("console.originalSignal")}</p>
               <SignalVisualizer src={result.originalUrl} gainDb={result.ab_gain_match?.before_gain_db || 0} />
             </div>
 
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">Mastered Signal</p>
+              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">{t("console.masteredSignal")}</p>
               <SignalVisualizer src={result.masteredUrl} barColor="#dfc95a" gainDb={result.ab_gain_match?.after_gain_db || 0} />
               <button
                 type="button"
@@ -847,7 +838,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                   try {
                     await downloadFileSafely(result.masteredUrl, `mastered_${result.job_id}.${result.download_url?.split(".").pop() || "wav"}`);
                   } catch (err) {
-                    setDownloadError(err?.message || "Download failed");
+                    setDownloadError(err?.message || t("console.downloadFailed"));
                   } finally {
                     setDownloading(false);
                   }
@@ -855,16 +846,14 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 disabled={downloading}
                 className="mt-3 inline-flex w-full justify-center rounded-lg border border-brass/40 bg-brass/[0.18] px-3 py-2.5 text-xs uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
               >
-                {downloading ? "Downloading…" : "Download Master"}
+                {downloading ? t("console.downloading") : t("console.downloadMaster")}
               </button>
               {downloadError ? <p className="mt-2 text-xs text-red-300">⚠ {downloadError}</p> : null}
             </div>
 
             <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">Codec Preview</p>
-              <p className="mb-3 text-[11px] text-zinc-500">
-                Hear what actually reaches a listener after streaming compression — real encode/decode round-trip.
-              </p>
+              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">{t("console.codecPreview")}</p>
+              <p className="mb-3 text-[11px] text-zinc-500">{t("console.codecPreviewBody")}</p>
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={codecChoice}
@@ -885,10 +874,10 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 >
                   {codecPreviewLoading ? (
                     <>
-                      <Spinner size={11} /> Encoding…
+                      <Spinner size={11} /> {t("console.encoding")}
                     </>
                   ) : (
-                    "Preview"
+                    t("console.preview")
                   )}
                 </button>
               </div>
@@ -899,15 +888,15 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 <div className="mt-3 space-y-3">
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-lg border border-white/10 bg-black/30 p-2">
-                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-500">True Peak Δ</p>
+                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-500">{t("console.truePeakDelta")}</p>
                       <p className="mt-1 text-sm font-semibold">{codecPreview.true_peak_delta_db > 0 ? "+" : ""}{codecPreview.true_peak_delta_db} dB</p>
                     </div>
                     <div className="rounded-lg border border-white/10 bg-black/30 p-2">
-                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-500">LUFS Δ</p>
+                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-500">{t("console.lufsDelta")}</p>
                       <p className="mt-1 text-sm font-semibold">{codecPreview.lufs_delta_db > 0 ? "+" : ""}{codecPreview.lufs_delta_db} dB</p>
                     </div>
                     <div className="rounded-lg border border-white/10 bg-black/30 p-2">
-                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-500">High-Freq Δ</p>
+                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-500">{t("console.highFreqDelta")}</p>
                       <p className="mt-1 text-sm font-semibold">{codecPreview.high_frequency_change_db > 0 ? "+" : ""}{codecPreview.high_frequency_change_db} dB</p>
                     </div>
                   </div>
@@ -917,7 +906,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
             </div>
 
             <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">Processing Summary</p>
+              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">{t("console.processingSummary")}</p>
               <ProcessingSummary result={result} />
             </div>
           </div>
@@ -925,10 +914,10 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
 
         {!isSubmitting && !result ? (
           <div className="mt-4 space-y-3.5 text-sm text-zinc-300">
-            <p className="m-0">Master a track to see before/after loudness, processing metadata, and instant A/B playback here.</p>
+            <p className="m-0">{t("console.emptyReview")}</p>
             {inputPreviewUrl ? (
               <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                <p className="m-0 mb-2 text-xs uppercase tracking-[0.1em] text-zinc-400">Input Signal Preview</p>
+                <p className="m-0 mb-2 text-xs uppercase tracking-[0.1em] text-zinc-400">{t("console.inputSignalPreview")}</p>
                 <SignalVisualizer src={inputPreviewUrl} />
               </div>
             ) : null}

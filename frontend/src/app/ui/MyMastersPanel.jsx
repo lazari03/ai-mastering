@@ -5,7 +5,12 @@ import { useEffect, useState } from "react";
 import { getJobs, toAuthedDownloadUrl, deleteJobRecord, postShareJob, downloadFileSafely } from "@/network/http/client";
 import { useEntitlementsStore, planUnlocksShare } from "@/store/entitlementsStore";
 import { LoadingBlock } from "@/components/ui/Spinner";
+import { useLanguage } from "@/lib/i18n";
 
+// Internal token, not display text — "expired" is compared against
+// elsewhere in this file (filtering, conditional rendering), so it stays
+// a stable non-localized sentinel. Actual on-screen text is built by
+// formatExpiry() below, which is localized.
 function timeUntil(iso) {
   if (!iso) return null;
   const ms = new Date(iso).getTime() - Date.now();
@@ -15,6 +20,16 @@ function timeUntil(iso) {
   return `${hours}h left`;
 }
 
+function formatExpiry(t, iso) {
+  const raw = timeUntil(iso);
+  if (raw === "expired") return t("myMasters.expired");
+  if (raw == null) return "";
+  const match = /^(\d+)([mh]) left$/.exec(raw);
+  if (!match) return raw;
+  const [, amount, unit] = match;
+  return unit === "m" ? t("myMasters.minutesLeft", { n: amount }) : t("myMasters.hoursLeft", { n: amount });
+}
+
 // The backend caps /jobs at 25 records total (jobsService.js's listJobs),
 // so there's never enough data here to justify a second network
 // round-trip or an infinite-scroll — pagination + the active/expired
@@ -22,6 +37,7 @@ function timeUntil(iso) {
 const PAGE_SIZE = 8;
 
 export default function MyMastersPanel() {
+  const { t } = useLanguage();
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState("");
   const [busyJobId, setBusyJobId] = useState("");
@@ -53,7 +69,7 @@ export default function MyMastersPanel() {
         );
         setJobs(enriched);
       })
-      .catch((err) => setError(err?.message || "Failed to load history"));
+      .catch((err) => setError(err?.message || t("myMasters.loadFailed")));
   }, []);
 
   const handleDelete = async (jobId) => {
@@ -63,7 +79,7 @@ export default function MyMastersPanel() {
       setJobs((prev) => prev.filter((j) => j.job_id !== jobId));
       setConfirmDeleteId("");
     } catch (err) {
-      setError(err?.message || "Failed to delete");
+      setError(err?.message || t("myMasters.deleteFailed"));
     } finally {
       setBusyJobId("");
     }
@@ -77,7 +93,7 @@ export default function MyMastersPanel() {
       const { url, expires_at } = await postShareJob(jobId);
       setShareLinks((prev) => ({ ...prev, [jobId]: { url, expires_at } }));
     } catch (err) {
-      setShareErrors((prev) => ({ ...prev, [jobId]: err?.message || "Failed to create share link" }));
+      setShareErrors((prev) => ({ ...prev, [jobId]: err?.message || t("myMasters.shareFailed") }));
     } finally {
       setBusyJobId("");
     }
@@ -89,7 +105,7 @@ export default function MyMastersPanel() {
     try {
       await downloadFileSafely(job.downloadUrl, `mastered_${job.job_id}.${job.output_format || "wav"}`);
     } catch (err) {
-      setDownloadErrors((prev) => ({ ...prev, [job.job_id]: err?.message || "Download failed" }));
+      setDownloadErrors((prev) => ({ ...prev, [job.job_id]: err?.message || t("myMasters.downloadFailed") }));
     } finally {
       setBusyJobId("");
     }
@@ -123,22 +139,20 @@ export default function MyMastersPanel() {
 
   return (
     <div className="mx-auto w-full max-w-[820px]">
-      <h1 className="m-0 font-[var(--font-title)] text-[26px]">My Masters</h1>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-        Your last 25 renders. Files are removed 48 hours after creation — download what you need before then.
-      </p>
+      <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("myMasters.title")}</h1>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-300">{t("myMasters.subtitle")}</p>
 
       {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
       {jobs === null && !error ? <LoadingBlock /> : null}
-      {jobs?.length === 0 ? <p className="mt-4 text-xs text-zinc-400">No renders yet — master a track to see it here.</p> : null}
+      {jobs?.length === 0 ? <p className="mt-4 text-xs text-zinc-400">{t("myMasters.empty")}</p> : null}
 
       {jobs?.length > 0 ? (
         <div className="mt-5 flex gap-2">
           {[
-            { key: "active", label: "Active" },
-            { key: "expired", label: "Expired" },
-            { key: "all", label: "All" },
-          ].map(({ key, label }) => (
+            { key: "active", labelKey: "myMasters.filter.active" },
+            { key: "expired", labelKey: "myMasters.filter.expired" },
+            { key: "all", labelKey: "myMasters.filter.all" },
+          ].map(({ key, labelKey }) => (
             <button
               key={key}
               type="button"
@@ -147,7 +161,7 @@ export default function MyMastersPanel() {
                 filter === key ? "border-brass bg-brass/[0.18] text-brass" : "border-white/15 bg-black/20 text-zinc-300 hover:border-white/30"
               }`}
             >
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
@@ -155,7 +169,7 @@ export default function MyMastersPanel() {
 
       {jobs?.length > 0 && filteredJobs.length === 0 ? (
         <p className="mt-4 text-xs text-zinc-400">
-          {filter === "expired" ? "Nothing expired yet." : "Nothing active — everything here has expired."}
+          {filter === "expired" ? t("myMasters.emptyExpired") : t("myMasters.emptyActive")}
         </p>
       ) : null}
 
@@ -171,12 +185,12 @@ export default function MyMastersPanel() {
                 <div className="min-w-0">
                   <p className="m-0 truncate text-sm font-semibold text-white">{job.original_filename || job.job_id}</p>
                   <p className="mt-0.5 text-xs text-zinc-500">
-                    {job.genre || "custom"} · {job.tier || "standard"} ·{" "}
+                    {job.genre || t("myMasters.custom")} · {job.tier || t("myMasters.standard")} ·{" "}
                     {job.created_at ? new Date(job.created_at).toLocaleString() : ""}
                   </p>
                 </div>
                 <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${expired ? "border-red-400/30 text-red-300" : "border-white/15 text-zinc-400"}`}>
-                  {expired ? "expired" : expiry}
+                  {formatExpiry(t, job.expires_at)}
                 </span>
               </div>
 
@@ -194,19 +208,19 @@ export default function MyMastersPanel() {
                     disabled={isBusy}
                     className="rounded-lg border border-brass/40 bg-brass/[0.15] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
                   >
-                    {isBusy ? "…" : "Download"}
+                    {isBusy ? "…" : t("myMasters.download")}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleShare(job.job_id)}
                     disabled={isBusy || !shareUnlocked}
-                    title={shareUnlocked ? undefined : "Share links are an All-Access feature"}
+                    title={shareUnlocked ? undefined : t("myMasters.shareTitle")}
                     className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-50"
                   >
-                    {isBusy ? "…" : "Share"}
+                    {isBusy ? "…" : t("myMasters.share")}
                     {!shareUnlocked ? (
                       <span className="rounded-full border border-brass/40 bg-brass/[0.12] px-1.5 py-0.5 text-[9px] normal-case text-brass">
-                        All-Access
+                        {t("myMasters.shareAllAccess")}
                       </span>
                     ) : null}
                   </button>
@@ -218,14 +232,14 @@ export default function MyMastersPanel() {
                         disabled={isBusy}
                         className="rounded-lg border border-red-400/50 bg-red-500/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-200 disabled:opacity-50"
                       >
-                        {isBusy ? "Deleting…" : "Confirm delete"}
+                        {isBusy ? t("myMasters.deleting") : t("myMasters.confirmDelete")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmDeleteId("")}
                         className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300"
                       >
-                        Cancel
+                        {t("myMasters.cancel")}
                       </button>
                     </>
                   ) : (
@@ -234,7 +248,7 @@ export default function MyMastersPanel() {
                       onClick={() => setConfirmDeleteId(job.job_id)}
                       className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-300 hover:border-red-400/50"
                     >
-                      Delete
+                      {t("myMasters.delete")}
                     </button>
                   )}
                 </div>
@@ -245,10 +259,9 @@ export default function MyMastersPanel() {
 
               {share ? (
                 <div className="mt-3 rounded-xl border border-brass/25 bg-brass/[0.06] p-3">
-                  <p className="m-0 text-[11px] uppercase tracking-[0.1em] text-brass">Share link — no sign-in needed</p>
+                  <p className="m-0 text-[11px] uppercase tracking-[0.1em] text-brass">{t("myMasters.shareLinkTitle")}</p>
                   <p className="mt-1 text-[11px] text-zinc-400">
-                    Anyone with this link can play or download just this file. It stops working once the file expires
-                    ({timeUntil(share.expires_at)}) — same as everything else here, nothing is stored longer than that.
+                    {t("myMasters.shareLinkBody")} ({formatExpiry(t, share.expires_at)}) {t("myMasters.shareLinkTail")}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <input
@@ -262,7 +275,7 @@ export default function MyMastersPanel() {
                       onClick={() => copyShareLink(job.job_id, share.url)}
                       className="shrink-0 rounded-lg border border-brass/40 bg-brass/[0.18] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25"
                     >
-                      {copiedJobId === job.job_id ? "Copied" : "Copy"}
+                      {copiedJobId === job.job_id ? t("myMasters.copied") : t("myMasters.copy")}
                     </button>
                   </div>
                 </div>
@@ -280,10 +293,10 @@ export default function MyMastersPanel() {
             disabled={safePage <= 1}
             className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-40"
           >
-            Prev
+            {t("myMasters.pagePrev")}
           </button>
           <span className="text-[11px] text-zinc-500">
-            Page {safePage} of {pageCount} · {filteredJobs.length} total
+            {t("myMasters.pageOf", { page: safePage, count: pageCount, total: filteredJobs.length })}
           </span>
           <button
             type="button"
@@ -291,7 +304,7 @@ export default function MyMastersPanel() {
             disabled={safePage >= pageCount}
             className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-40"
           >
-            Next
+            {t("myMasters.pageNext")}
           </button>
         </div>
       ) : null}

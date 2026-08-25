@@ -5,8 +5,10 @@ import { useEffect, useState } from "react";
 import ChordDetector from "@/components/audio/ChordDetector";
 import FileDropzone from "@/components/ui/FileDropzone";
 import { useMasteringStore } from "@/store/masteringStore";
+import { useLanguage } from "@/lib/i18n";
 
 export default function ChordsPanel({ onOpenBilling, onMasterThisSong }) {
+  const { t } = useLanguage();
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
   // Hands the exact same File object already sitting in memory here over
@@ -33,8 +35,8 @@ export default function ChordsPanel({ onOpenBilling, onMasterThisSong }) {
 
   return (
     <div className="mx-auto w-full max-w-[760px]">
-      <h1 className="m-0 font-[var(--font-title)] text-[26px]">Show Chords</h1>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-300">Detect BPM, key, and chords, then play along in sync.</p>
+      <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("chordsPanel.title")}</h1>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-300">{t("chordsPanel.subtitle")}</p>
 
       <div className="mt-6">
         <FileDropzone

@@ -170,7 +170,7 @@ export default function AppClient() {
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
           aria-expanded={menuOpen}
-          aria-label="Menu"
+          aria-label={t("app.menu")}
           className="flex h-9 w-9 flex-col items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-black/20"
         >
           <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "translate-y-[3px] rotate-45" : ""}`} />
@@ -210,7 +210,7 @@ export default function AppClient() {
             <button
               type="button"
               onClick={() => setMenuOpen(false)}
-              aria-label="Close menu"
+              aria-label={t("app.closeMenu")}
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-black/20 text-lg text-zinc-300"
             >
               ✕
@@ -279,8 +279,8 @@ export default function AppClient() {
           <button
             type="button"
             onClick={toggleSidebar}
-            aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}
-            title={sidebarOpen ? "Collapse menu" : "Expand menu"}
+            aria-label={sidebarOpen ? t("app.collapseMenu") : t("app.expandMenu")}
+            title={sidebarOpen ? t("app.collapseMenu") : t("app.expandMenu")}
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-white/5 hover:text-zinc-200"
           >
             {sidebarOpen ? <IconChevronLeft /> : <IconChevronRight />}
