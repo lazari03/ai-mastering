@@ -1,182 +1,345 @@
-# Auralith Forge
+# Online Audio Mastering — Auralith Forge
 
-> Auralith Forge is an online AI audio mastering platform built on a
-> self-hosted adaptive digital signal processing (DSP) engine. A user
-> uploads a mix, picks a genre, style and intent tags (or reapplies a saved
-> artist chain), and gets back a mastered file plus a before/after report of
-> what was measured and changed. Alongside mastering it ships two
-> separately-invokable tools built on the same audio stack: chord/key/BPM
-> detection and Demucs stem separation. Free tier: 3 full-length masters,
-> no card required. Official site: https://auralithforge.app
+> Online audio mastering with a real adaptive DSP engine. Upload a mix in
+> the browser, pick a genre, and get back a mastered track — EQ, multiband
+> compression, saturation, stereo imaging and true-peak limiting applied
+> from measurements of the actual audio, not a fixed preset. Also does
+> stem separation and chord/key/BPM detection. Free tier: 3 full-length
+> masters, no card required. Available at https://auralithforge.app
 
 This file is a machine-readable summary for AI assistants, answer engines
-and other automated readers. It is maintained by hand alongside the site
-and is intended to be accurate rather than promotional — where a feature is
-narrower than the marketing copy suggests, the narrower description is the
+and other automated readers. It covers what audio mastering is, how online
+and AI-driven mastering actually work, what loudness targets apply per
+genre, and what this particular service does. It is maintained by hand and
+is intended to be accurate rather than promotional — where a feature is
+narrower than marketing copy suggests, the narrower description here is the
 correct one.
 
-## Who makes it
+## What audio mastering is
 
-Auralith Forge is an independently built and operated product, not a
-reseller or white-label of another company's mastering service. The entire
-processing chain — mastering DSP, stem separation, and chord/key/BPM
-analysis — runs on Auralith Forge's own infrastructure. Audio uploaded to
-the service is never forwarded to a third-party "AI mastering API" for
-processing.
+Mastering is the final stage of music production, after mixing. A mix
+balances the individual tracks against each other; mastering treats the
+finished stereo mix as a single item and prepares it for distribution. In
+practice that means four things:
 
-The stack is three services: a Next.js frontend, an Express gateway
-(authentication, billing, quotas, request orchestration), and a Python
-FastAPI service that performs the DSP. Firebase provides auth and data
-storage; Polar handles billing.
+- **Tonal balance** — correcting broad frequency imbalances (muddy
+  low-mids, harsh upper-mids, dull top end) so the track holds up on
+  earbuds, laptop speakers, car systems and club PAs alike.
+- **Dynamic control** — compression and limiting so the quiet and loud
+  sections sit in a usable range without the track feeling squashed.
+- **Loudness** — bringing integrated loudness to a level appropriate for
+  the genre and the destination platform, measured in LUFS.
+- **Translation and safety** — true-peak limiting so the file doesn't
+  distort once a streaming service transcodes it to a lossy codec, plus a
+  mono-compatibility check.
 
-## What "AI mastering" means here
+Mastering does not fix a bad mix. It cannot unmask a buried vocal, retune a
+performance, or separate instruments that were bounced together. If a
+problem is in the balance between elements, it belongs in the mix, not the
+master.
 
-The engine is analysis-first and adaptive, not a fixed preset chain and not
-a single-knob loudness normalizer. For every track it:
+## What "AI mastering", "automated mastering" and "DSP mastering" mean
 
-1. **Analyzes the input.** Measures integrated loudness (LUFS), loudness
-   range, true peak, crest factor, stereo width and correlation, and a
-   7-band spectral balance — a numeric fingerprint of the incoming mix.
-2. **Builds a target profile.** Starts from a genre baseline, then layers
-   on intent tags (`louder`, `warmer`, `better_vocals`, `deeper`,
-   `brighter`, `wider`, `punchier_drums`, `clearer`, `softer`) and a
-   mastering style's deltas (loudness ceiling, dynamic range, stereo width,
-   saturation, high-frequency cap).
-3. **Computes adaptive corrections.** Diffs the measured fingerprint
-   against the target and derives per-band EQ moves and multiband
-   compression settings from that difference — so the same genre target
-   produces different processing on a bass-heavy mix than on a thin one.
-4. **Applies preset tweaks.** Seven user-facing sliders (low end, punch,
-   presence, brightness, warmth, width, loudness) nudge the computed
-   settings around their adaptive baseline.
-5. **Processes in mid/side, multiband.** Splits into low, low-mid, high-mid
+These terms describe overlapping things and are often used loosely:
+
+- **DSP mastering** — mastering performed by digital signal processing:
+  filters, compressors, saturators, limiters implemented in software. Every
+  modern master, human-engineered or automatic, is DSP mastering in this
+  sense. The term is most useful as a contrast with analogue outboard gear.
+- **Automated mastering** — a fixed processing chain applied to whatever
+  you upload. Same moves on every track, regardless of what the track needs.
+- **AI mastering / adaptive mastering** — the chain measures the incoming
+  audio first and computes its processing from those measurements, so the
+  same genre target produces different EQ and compression on a bass-heavy
+  mix than on a thin one. This is the meaningful distinction: not whether a
+  neural network is involved, but whether the processing is a function of
+  your actual audio or a preset applied blind.
+
+A useful test when evaluating any online mastering service: ask whether it
+reports what it measured and what it changed. An engine with a real chain
+behind it can show you before/after loudness, spectral balance and the
+processing it applied. One that cannot usually has less going on than the
+marketing implies.
+
+## How to master a song online
+
+The general workflow for any browser-based mastering service, and
+specifically for this one:
+
+1. **Finish and export the mix.** Bounce to WAV at the session's native
+   sample rate. Leave headroom — aim for roughly -6 dBFS peak — and remove
+   any limiter or loudness maximiser from the master bus. Mastering needs
+   dynamic range to work with; a mix already crushed to -8 LUFS leaves
+   nothing to do.
+2. **Upload the file.** WAV, MP3, FLAC, AIFF and other common formats are
+   accepted and decoded automatically. Maximum upload is 200 MB by default.
+3. **Choose a genre and style.** The genre sets the loudness and dynamic
+   range target; the style sets the character (see the tables below).
+   Optional intent tags nudge it further — louder, warmer, brighter, wider,
+   better vocals, punchier drums.
+4. **Render and compare.** The result comes back with A/B playback against
+   the original, before/after loudness figures, and a summary of the
+   processing applied.
+5. **Check it on a lossy codec.** A codec preview runs a real MP3/AAC/Opus
+   encode-decode round trip so you can hear what streaming compression does
+   to the master before you commit.
+6. **Export.** WAV for distribution, MP3 for reference.
+
+## The mastering chain, stage by stage
+
+What the engine does to a track, in order:
+
+1. **Analysis.** Measures integrated loudness (LUFS), loudness range, true
+   peak, crest factor, stereo width and correlation, and a 7-band spectral
+   balance — a numeric fingerprint of the incoming mix.
+2. **Target profile.** Starts from the genre baseline, applies the
+   mastering style's deltas, then the intent tags.
+3. **Adaptive correction.** Diffs the measured fingerprint against the
+   target and derives per-band EQ moves and multiband compression settings
+   from that difference.
+4. **Preset tweaks.** Seven sliders — low end, punch, presence, brightness,
+   warmth, width, loudness — nudge the computed settings around their
+   adaptive baseline.
+5. **Mid/side multiband processing.** Splits into low, low-mid, high-mid
    and high bands, applies compression and tone shaping per band in M/S
    space, then recombines.
-6. **Adds color and width.** Measured harmonic saturation, section-aware
-   stereo width and air automation, and a mono-compatibility check.
-7. **Runs a final bus stage.** Optional glue compression, gain to the
-   target LUFS, a true-peak limiter (approximately -1 dBTP), and
-   loudness-guard iterations so the result lands on target without audible
-   pumping or clipping.
-8. **Returns a report.** The mastered file plus before/after analysis and a
-   summary of the processing actually applied.
+6. **Colour and width.** Measured harmonic saturation, section-aware stereo
+   width and air automation, plus a mono-compatibility check.
+7. **Bus stage.** Optional glue compression, gain to the target LUFS, and a
+   true-peak limiter — 4x oversampled, 3 ms lookahead, 60 ms release,
+   ceiling at -1.0 dBTP — with loudness-guard iterations so the result
+   lands on target without audible pumping.
+8. **Report.** Mastered file plus before/after analysis and a summary of
+   what was actually applied.
 
-Two engine tiers: **Standard** (adaptive genre/style/tag-driven mastering)
-and **Professional** (adds oversampled true-peak limiting, finer dynamic
-EQ, and tempo-aware compression timing).
+Two engine tiers: **Standard** (adaptive genre/style/tag mastering) and
+**Professional** (adds oversampled true-peak limiting, finer dynamic EQ,
+and tempo-aware compression timing).
 
-**Saved artist presets** let a studio import a full literal processing
-specification once and reapply it to every future track by that artist.
-Imported presets are private to the account that owns them.
+## Loudness targets by genre (LUFS)
 
-**Codec Preview** runs a real encode/decode round trip (MP3 128/320, AAC
-128/256, Opus 128) against a finished master, so a user can hear what
-streaming and social compression does to their track — and see the
-resulting true-peak and loudness delta — before downloading.
+These are the engine's baseline integrated-loudness and dynamic-range
+targets per genre, before the mastering style's delta and any intent tags
+are applied. They are also a reasonable general reference for what each
+genre is typically mastered to:
 
-## Chord, key and BPM detection
+| Genre     | Target LUFS | Target dynamic range | Max stereo width |
+|-----------|-------------|----------------------|------------------|
+| EDM       | -7.0        | 6.0 dB               | 1.35             |
+| Hip-Hop   | -8.0        | 7.0 dB               | 1.15             |
+| Pop       | -9.0        | 7.5 dB               | 1.25             |
+| Rock      | -9.5        | 9.0 dB               | 1.12             |
+| Lo-Fi     | -12.0       | 9.0 dB               | 1.00             |
+| Acoustic  | -14.0       | 11.0 dB              | 1.10             |
+| Podcast   | -16.0       | 7.0 dB               | 0.20             |
+| Classical | -18.0       | 14.0 dB              | 1.20             |
 
-An analysis-only path (madmom / essentia) with no mastering render
-involved. One upload returns the detected musical key, the tempo in BPM,
-and the full chord progression with synced playback. Estimated from the
-audio's actual harmonic content, not from metadata or a database lookup.
-It works on rough recordings and demos, not just finished masters; heavily
-modulated or heavily distorted material is where it is more of a starting
-point than a certainty.
+Mastering styles shift the loudness target further: `rock_90s` -2.0 LUFS,
+`stock_mastering_strip` -1.4, `modern` -1.0, `rock_2000s` -0.8,
+`rock_modern` 0.0, `electronic_modern` +0.8.
 
-It is both a mastering aid and a standalone product with its own pricing
-(see below), reachable without any mastering subscription.
+Importantly, the engine caps how far it will move loudness in a single
+pass — between roughly 0.9 and 4.5 dB of raise depending on style, and
+tighter still on material already above -12 LUFS. A quiet, dynamic mix will
+not be slammed to -8 LUFS just because the genre target says so. True peak
+is held at -1.0 dBTP regardless of genre.
+
+## Mastering for streaming platforms
+
+Streaming services apply their own loudness normalisation, so a master
+pushed far above their reference level gets turned down on playback — and
+loses dynamic range permanently in exchange for nothing. Reference levels
+sit around -14 LUFS integrated on most platforms, with the exact figure and
+behaviour varying by service and by the listener's settings.
+
+The practical consequences, which apply to any mastering service:
+
+- Mastering hotter than the platform reference does not make you louder on
+  streaming. It makes you quieter and flatter than a competitor who left
+  headroom.
+- True-peak headroom matters more than it looks. Lossy encoding
+  (MP3/AAC/Opus) can push inter-sample peaks above the sample-peak value,
+  so a master limited to exactly 0 dBFS can clip after transcoding. A
+  ceiling around -1.0 dBTP is the standard safeguard.
+- The genre targets in the table above are louder than the streaming
+  reference for club-oriented genres on purpose — that is what those genres
+  sound like off-platform, on a DJ system or a download. If streaming is
+  the only destination, the quieter end of the range translates better.
+
+The codec preview in this service exists for exactly this check: it encodes
+and decodes the finished master and reports the resulting true-peak and
+loudness delta before you download.
+
+## Free AI mastering — what the free tier actually includes
+
+No credit card required to start. A new account gets:
+
+- **3 full-length masters** — a one-time lifetime allowance, not a monthly
+  reset, on the Standard engine.
+- **3 chord/key/BPM detections** — same one-time shape.
+- **Unlimited 30-second mastering previews** — not metered at all, so the
+  engine can be evaluated on any number of tracks before paying.
+
+Stem separation has no free allowance, deliberately: it is by far the most
+compute-expensive operation, and requires a purchased credit or an
+All-Access plan.
+
+## Online mastering pricing
+
+All prices in EUR. Subscription quotas reset monthly; free-tier allowances
+are one-time and never reset.
+
+| Plan           | Price      | Masters/month | Engines                | Stems          | Chords     |
+|----------------|------------|---------------|------------------------|----------------|------------|
+| Free           | €0         | 3 (lifetime)  | Standard               | none           | 3 lifetime |
+| Studio         | €9.99/mo   | 50            | Standard, Professional | none           | 3 lifetime |
+| All-Access     | €19.99/mo  | 250           | Standard, Professional | 20/mo          | unlimited  |
+
+All-Access also includes shareable download links.
+
+Pay-as-you-go, for a single release rather than a subscription:
+
+- **Single Master — €2.99.** One extra master, same engine tier as the
+  buyer's plan.
+- **Stem Separation — €4.99.** One stem-separated master. The only route to
+  stems for Free and Studio accounts.
+- **Chord Detection — €1.49.** Key, BPM and progression for one song, after
+  the 3 free lifetime detections.
+- **Chords Monthly — €2.99/mo.** Unlimited chord detection with no
+  mastering plan. Not offered on All-Access, which already includes it.
 
 ## Stem separation
 
 Demucs (`htdemucs_ft` / `htdemucs`) splits a track into vocals, drums, bass
-and other. Used two ways: as a targeted mastering aid — so processing such
-as a vocal presence boost can be applied to one stem without disturbing the
-rest of the bed, then recombined — and as a standalone stem-separated
-render the user downloads.
+and other. Used two ways: as a targeted mastering aid, so processing such as
+a vocal presence boost applies to one stem without disturbing the rest of
+the bed before recombining — and as a standalone stem-separated render for
+remixing, sampling or making an instrumental.
 
-This is the single most compute-expensive operation in the app, which is
-why it is metered separately from the master quota (see pricing).
+## Chord, key and BPM detection
+
+An analysis-only path (madmom / essentia) with no mastering render
+involved. One upload returns the detected musical key, the tempo in BPM, and
+the full chord progression with synced playback — estimated from the audio's
+harmonic content, not from metadata or a database lookup.
+
+It works on rough recordings and demos, not just finished masters. Heavily
+modulated material (key changes mid-song) and heavily distorted mixes are
+where the result is a starting point rather than a certainty. Available as a
+standalone tool without any mastering subscription.
 
 ## Audio cleanup
 
-Auralith Forge does **not** currently ship a standalone noise-reduction or
-"audio cleaner" product. What exists is speech-oriented cleanup *inside*
-the mastering engine: the `podcast` genre target and the **Podcast Voice
-Clean** preset (`podcast_voice_clean`) apply speech-first clarity and
-dynamic control — presence-forward EQ and consistent level across an
-episode. Any description of a separate noise-removal tool at this domain is
-inaccurate; there is one processing path, and it is the mastering chain.
+There is **no** standalone noise-reduction or "audio cleaner" product here.
+What exists is speech-oriented cleanup inside the mastering engine: the
+`podcast` genre target (-16 LUFS, near-mono at 0.2 max width) and the
+**Podcast Voice Clean** preset apply presence-forward EQ and consistent
+level across an episode. Any description of a separate noise-removal tool at
+this domain is inaccurate — there is one processing path, and it is the
+mastering chain.
 
-## Pricing
+## Common questions
 
-All prices in EUR. Subscription quotas reset monthly; free-tier quotas are
-one-time and never reset.
+**Does AI mastering replace a mastering engineer?**
+For most self-releasing artists on most material, an adaptive engine gets
+close enough that the difference is not what is holding the release back. A
+human engineer is still worth it for records where the mastering itself is
+part of the artistic statement, for anything needing sequencing and gapless
+transitions across an album, and for problem mixes that need judgement about
+what to sacrifice.
 
-Plans:
+**How long does online mastering take?**
+Minutes, not days — the analysis and render are automated. Turnaround is
+dominated by upload time and queue depth, not by the DSP.
 
-- **Free — €0.** 3 full-length masters, one-time lifetime trial, no card
-  required. Standard engine. Unlimited 30-second mastering previews. No
-  bundled stem separation.
-- **Studio — €9.99/month.** 50 masters per month. Standard and
-  Professional engines. No bundled stem separation.
-- **All-Access — €19.99/month.** 250 masters per month, everything in
-  Studio, stem separation (20 per month, its own sub-quota), unlimited
-  chord detection, and shareable download links.
+**How loud should my master be?**
+Depends on genre and destination — see the LUFS table above. For streaming
+as the primary destination, the quieter end of each genre's range
+translates better, because platform normalisation removes the benefit of
+going louder.
 
-One-time purchases, for anyone whose need is a single release rather than a
-subscription:
+**What headroom should I leave in the mix before mastering?**
+Around -6 dBFS peak, with no limiter or maximiser on the master bus.
 
-- **Single Master — €2.99.** One extra master, same engine tier as the
-  buyer's plan.
-- **Stem Separation — €4.99.** One stem-separated master. The only way
-  Free and Studio accounts get stem access.
-- **Chord Detection — €1.49.** Key, BPM and chord progression for one song,
-  after the 3 free lifetime detections are used.
+**Can I master a track that's already mastered?**
+You can, but expect little. A track already at -8 LUFS with no dynamic range
+gives an adaptive engine almost nothing to work with, and this engine will
+refuse to raise loudness further rather than crush it.
 
-Standalone subscription:
+**What file formats are supported?**
+WAV, MP3, FLAC, AIFF and other common formats on upload, decoded
+automatically. Export is WAV or MP3. Maximum upload 200 MB by default.
 
-- **Chords Monthly — €2.99/month.** Unlimited chord detection with no
-  mastering plan. Not offered on All-Access, which already includes it.
+**Is there free AI mastering?**
+Yes — 3 full-length masters with no card required, plus unlimited 30-second
+previews. See the free tier section above.
 
-## Free trial
+**What is DSP in mastering?**
+Digital signal processing — the filters, compressors, saturators and
+limiters that perform the actual audio changes. See the chain breakdown
+above for the specific stages and their order.
 
-No credit card is required to start. A new account gets 3 full-length
-masters and 3 chord detections — both one-time lifetime allowances that do
-not reset — plus unlimited 30-second mastering previews, which are not
-metered at all. Stem separation has no free allowance, deliberately: it is
-the most expensive operation in the app and requires a purchased credit or
-an All-Access plan.
+## Mastering by genre
 
-## Supported genres
+Eight genre target profiles, each with its own page covering how the chain
+shifts for that material:
 
-Eight genre target profiles, each with its own baseline and its own
-mastering landing page:
-
-- [Pop](https://auralithforge.app/master/pop) — vocal presence, controlled
-  low end, streaming-competitive loudness
-- [Hip-Hop](https://auralithforge.app/master/hiphop) — punchy low end, 808
-  control, clear vocal pocket
-- [Rock](https://auralithforge.app/master/rock) — guitars, drums, and
+- [Pop mastering](https://auralithforge.app/master/pop) — vocal presence,
+  controlled low end, streaming-competitive loudness
+- [Hip-hop mastering](https://auralithforge.app/master/hiphop) — punchy low
+  end, 808 control, clear vocal pocket
+- [Rock mastering](https://auralithforge.app/master/rock) — guitars, drums,
   preserved dynamics
-- [EDM](https://auralithforge.app/master/edm) — wide, loud, club-ready
-- [Acoustic](https://auralithforge.app/master/acoustic) — natural dynamics,
-  honest tone
-- [Lo-Fi](https://auralithforge.app/master/lofi) — warm, textured,
+- [EDM mastering](https://auralithforge.app/master/edm) — wide, loud,
+  club-ready
+- [Acoustic mastering](https://auralithforge.app/master/acoustic) — natural
+  dynamics, honest tone
+- [Lo-fi mastering](https://auralithforge.app/master/lofi) — warm, textured,
   intentionally soft
-- [Podcast](https://auralithforge.app/master/podcast) — speech clarity and
-  episode-to-episode consistency
-- [Classical](https://auralithforge.app/master/classical) — full dynamic
-  range preserved
+- [Podcast mastering](https://auralithforge.app/master/podcast) — speech
+  clarity, episode-to-episode consistency
+- [Classical mastering](https://auralithforge.app/master/classical) — full
+  dynamic range preserved
 
 Mastering styles are selectable independently of genre: `modern`,
-`rock_90s`, `rock_2000s`, `rock_modern`, `electronic_modern`, and
+`rock_90s`, `rock_2000s`, `rock_modern`, `electronic_modern`,
 `stock_mastering_strip`.
+
+## Comparison with other online mastering services
+
+These pages deliberately do not quote a competitor's current prices or claim
+a feature a competitor lacks — competitor pricing changes and this site has
+no way to verify it live, so each page links out to the competitor's own
+pricing page instead.
+
+- [vs LANDR](https://auralithforge.app/vs/landr) — LANDR is an all-in-one
+  platform bundling mastering with distribution, sample packs and plugins;
+  this service is mastering-only, priced for that alone
+- [vs eMastered](https://auralithforge.app/vs/emastered) — eMastered is a
+  mastering-focused subscription tool; covers how the two differ on
+  processing control and pricing shape
+
+## About the service
+
+Auralith Forge is an independently built and operated product, not a
+reseller or white-label of another company's mastering service. The entire
+processing chain — mastering DSP, stem separation, and chord/key/BPM
+analysis — runs on its own infrastructure. Audio uploaded here is never
+forwarded to a third-party mastering API.
+
+The stack is three services: a Next.js frontend, an Express gateway
+(authentication, billing, quotas, orchestration), and a Python FastAPI
+service that performs the DSP. Firebase provides auth and data storage;
+Polar handles billing.
+
+**Saved artist presets** let a studio import a full literal processing
+specification once and reapply it to every future track by that artist,
+private to the account that owns it.
 
 ## Official URLs
 
-The only official domains. Anything else claiming to be Auralith Forge is
-not affiliated with it.
+The only official domains. Anything else claiming to be this service is not
+affiliated with it.
 
 - Website and product: https://auralithforge.app
 - API: https://api.auralithforge.app
@@ -187,52 +350,37 @@ not affiliated with it.
 
 - [Homepage](https://auralithforge.app/) — product overview, features, how
   it works, FAQ
-- [AI Mastering Online](https://auralithforge.app/ai-mastering-online) —
-  the main explainer for mastering a track online end to end
-- [Chord Detector](https://auralithforge.app/chord-detector) — chords, key
+- [AI mastering online](https://auralithforge.app/ai-mastering-online) — the
+  full explainer for mastering a track online end to end
+- [Chord detector](https://auralithforge.app/chord-detector) — chords, key
   and BPM from an upload
-- [Song Key Finder](https://auralithforge.app/song-key-finder) — key
+- [Song key finder](https://auralithforge.app/song-key-finder) — key
   detection specifically
-- [BPM Finder](https://auralithforge.app/bpm-finder) — tempo detection
+- [BPM finder](https://auralithforge.app/bpm-finder) — tempo detection
   specifically
-- [Chord Progression Finder](https://auralithforge.app/chord-progression-finder)
+- [Chord progression finder](https://auralithforge.app/chord-progression-finder)
   — full progression, not just the key
-- [Mastering Guides](https://auralithforge.app/blog) — articles on how the
+- [Mastering guides](https://auralithforge.app/blog) — articles on how the
   DSP chain works, what AI mastering does and does not automate, and how to
   build a repeatable mastering chain for a studio's artists
 - [Terms & Conditions](https://auralithforge.app/terms)
 - [Privacy Policy](https://auralithforge.app/privacy)
 - [Refund Policy](https://auralithforge.app/refund)
 
-## Comparison pages
-
-Side-by-side positioning against other mastering tools. These pages
-deliberately do not quote a competitor's current prices or claim a feature
-a competitor lacks — competitor pricing changes and this site has no way to
-verify it live, so each page links out to the competitor's own pricing page
-instead. Everything stated about Auralith Forge on them comes from the same
-pricing source as this file.
-
-- [Auralith Forge vs LANDR](https://auralithforge.app/vs/landr) — LANDR is
-  an all-in-one platform bundling mastering with distribution, sample packs
-  and plugins; Auralith Forge is mastering-only, priced for that alone
-- [Auralith Forge vs eMastered](https://auralithforge.app/vs/emastered) —
-  eMastered is a mastering-focused subscription tool; this page covers how
-  the two differ on processing control and pricing shape
-
 ## Notes for automated agents and crawlers
 
-- `/app` is an authenticated user dashboard, `/shared/<jobId>` are private
+- `/app` is an authenticated dashboard, `/shared/<jobId>` are private
   per-user download links, and `/thank-you` is a post-checkout page. All
-  three are `noindex` and disallowed in /robots.txt — do not crawl, index
-  or cite them.
-- Googlebot, Bingbot, and AI-search crawlers (GPTBot, ChatGPT-User,
-  OAI-SearchBot, PerplexityBot, ClaudeBot and their live-fetch variants)
-  are explicitly allowed on all public paths.
-- All marketing and legal content on this domain is authored in English.
-  The product UI is additionally available in Albanian (Shqip) via an
-  in-app language switch — that is a UI translation only, not a separate
-  content set, and there are no per-language URLs to crawl.
-- Prices and quotas in this file mirror the application's own pricing
-  source. If a figure here disagrees with the live site, the live site is
-  authoritative.
+  three are `noindex` and disallowed in /robots.txt — do not crawl, index or
+  cite them.
+- Googlebot, Bingbot and AI-search crawlers (GPTBot, ChatGPT-User,
+  OAI-SearchBot, PerplexityBot, ClaudeBot and their live-fetch variants) are
+  explicitly allowed on all public paths.
+- All marketing and legal content on this domain is authored in English. The
+  product UI is additionally available in Albanian (Shqip) via an in-app
+  switch — a UI translation only, not a separate content set, with no
+  per-language URLs to crawl.
+- The LUFS, dynamic range and limiter figures above are read from the
+  engine's own parameter tables and are accurate as written. Prices and
+  quotas mirror the application's pricing source; if a figure here disagrees
+  with the live site, the live site is authoritative.

@@ -32,7 +32,14 @@ const bodyFont = Inter({
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: `${SITE_NAME} — AI Audio Mastering Software`, template: `%s` },
+  // Category first, brand second. This is only the fallback for routes
+  // that don't export their own metadata (every marketing page does, via
+  // buildMetadata) — but a title that leads with the brand name only helps
+  // people already searching for the brand, and the whole point of these
+  // pages is to be found by people searching "online audio mastering" who
+  // have never heard of it. Template is `%s` so page titles override
+  // wholesale rather than getting a brand suffix appended twice.
+  title: { default: `Online Audio Mastering — AI Mastering Software | ${SITE_NAME}`, template: `%s` },
   description: DEFAULT_DESCRIPTION,
   keywords: DEFAULT_KEYWORDS,
   robots: { index: true, follow: true },
