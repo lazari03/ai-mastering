@@ -8,7 +8,8 @@ from pathlib import Path
 from fastapi import HTTPException, UploadFile
 
 from adaptive_mastering import master_track as run_adaptive_mastering
-from params import list_genres, list_styles, list_tags
+from ai_mastering.quality_control import InvalidAudioError
+from params import list_categories, list_flavours, list_genres, list_styles, list_tags
 
 from app.core.config import settings
 from app.services.preset_dsp_engine import render_preset_master
@@ -67,6 +68,8 @@ def resolve_mastering_config(
     output_format: str,
     mix_preset: str | None,
     tier: str = "standard",
+    category: str | None = None,
+    flavour: str | None = None,
 ) -> dict:
     resolved = {
         "genre": genre,
@@ -76,6 +79,13 @@ def resolve_mastering_config(
         "use_stem_separation": use_stem_separation,
         "output_format": output_format,
         "tier": tier if tier in ALLOWED_TIERS else "standard",
+        # Optional musical-objective layer (Clean, Modern, Club, ...) — a
+        # bias on top of genre/style, only meaningful for the adaptive
+        # engine (see the full_preset guard below, same reasoning as
+        # reference_track_path). None means "no category selected", not
+        # "unknown category" — that's still a 400 further down.
+        "category": category or None,
+        "flavour": flavour or None,
         # Only set when mix_preset resolves to a full preset spec (has a
         # "processing" block) — routes process_mastering_request() to the
         # preset DSP engine instead of the genre-based adaptive one. Mirrors
@@ -125,6 +135,16 @@ def resolve_mastering_config(
         unknown_tags = [tag for tag in resolved["tags"] if tag not in list_tags()]
         if unknown_tags:
             raise HTTPException(400, f"Unknown tag(s) {unknown_tags}. Options: {list_tags()}")
+
+        if resolved["category"] is not None and resolved["category"] not in list_categories():
+            raise HTTPException(400, f"Unknown mastering category '{resolved['category']}'. Options: {list_categories()}")
+
+        if resolved["flavour"] is not None:
+            if resolved["category"] is None:
+                raise HTTPException(400, "flavour requires a category to be set")
+            valid_flavours = list_flavours(resolved["category"])
+            if resolved["flavour"] not in valid_flavours:
+                raise HTTPException(400, f"Unknown flavour '{resolved['flavour']}' for category '{resolved['category']}'. Options: {valid_flavours}")
 
     if resolved["output_format"] not in ALLOWED_OUTPUT_FORMATS:
         raise HTTPException(400, f"output_format must be one of {sorted(ALLOWED_OUTPUT_FORMATS)}")
@@ -207,6 +227,8 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
                 output_wav_path=str(wav_mastered_path),
                 preset=full_preset,
             )
+        except InvalidAudioError as exc:
+            raise HTTPException(400, str(exc)) from exc
         except Exception as exc:  # pragma: no cover
             raise HTTPException(500, f"Preset DSP engine failed: {type(exc).__name__}: {exc}") from exc
     else:
@@ -232,7 +254,14 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
                 enable_stem_separation=config["use_stem_separation"],
                 tier=config.get("tier", "standard"),
                 reference_track_path=reference_input_path,
+                category=config.get("category"),
+                flavour=config.get("flavour"),
             )
+        except InvalidAudioError as exc:
+            # A real signal-integrity problem with the uploaded file (empty,
+            # corrupt/NaN, digital silence) — the caller's fault, not the
+            # engine's, so 400 (bad input) rather than 500 (server failure).
+            raise HTTPException(400, str(exc)) from exc
         except Exception as exc:  # pragma: no cover
             raise HTTPException(500, f"Adaptive mastering failed: {type(exc).__name__}: {exc}") from exc
 
@@ -249,6 +278,7 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
         "analysis_before": mastering_result["analysis_before"],
         "analysis_after": mastering_result["analysis_after"],
         "ab_gain_match": mastering_result.get("ab_gain_match"),
+        "ab_analysis": mastering_result.get("ab_analysis"),
         "source_warnings": mastering_result.get("source_warnings", []),
         "quality_control": mastering_result.get("quality_control"),
         "processing_applied": mastering_result["processing_applied"],

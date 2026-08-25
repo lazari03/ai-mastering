@@ -126,6 +126,9 @@ export default function ProcessingSummary({ result }) {
     ));
 
   const limiter = applied.limiter;
+  const qc = result.quality_control;
+  const ab = result.ab_analysis;
+  const decisions = ab?.processing_decisions;
 
   return (
     <div className="space-y-3 text-xs text-zinc-300">
@@ -138,12 +141,67 @@ export default function ProcessingSummary({ result }) {
             Tier: {applied.tier}
           </span>
         ) : null}
+        {applied.category ? (
+          <span className="rounded-full border border-brass/40 bg-brass/10 px-2.5 py-1 uppercase tracking-[0.1em] text-brass">
+            Objective: {applied.category.replaceAll("_", " ")}
+            {applied.flavour ? ` · ${applied.flavour}` : ""}
+          </span>
+        ) : null}
         {applied.stages ? (
           <span className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] text-zinc-400">
             Stages: {applied.stages.join(", ")}
           </span>
         ) : null}
+        {qc ? (
+          <span
+            className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${
+              qc.passed ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-ember/50 bg-ember/10 text-ember"
+            }`}
+          >
+            QC: {qc.passed ? "Passed" : `${qc.fail_count} failing`}
+          </span>
+        ) : null}
       </div>
+
+      {decisions ? (
+        <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-zinc-400">What the engine actually did</p>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3">
+            {[
+              ["EQ correction", decisions.eq_correction],
+              ["Compression", decisions.compression],
+              ["Saturation", decisions.saturation],
+              ["Stereo width", decisions.stereo_width],
+              ["Limiting", decisions.limiting],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.03] px-2 py-1.5">
+                <span className="text-zinc-500">{label}</span>
+                <span className="capitalize text-zinc-100">{String(value).replaceAll("_", " ")}</span>
+              </div>
+            ))}
+          </div>
+          {ab ? (
+            <p className={`mt-2.5 text-[11px] ${ab.improved ? "text-emerald-300" : "text-ember"}`}>
+              {ab.improved ? "✓ This master measurably improved on the source." : "⚠ "}
+              {!ab.improved && ab.verdict_reasons?.length ? ab.verdict_reasons.join(" ") : null}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {qc && qc.issues?.length ? (
+        <div className="rounded-xl border border-ember/30 bg-ember/[0.06] p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-ember">Quality Control Notes</p>
+          <ul className="ml-4 list-disc space-y-1 text-zinc-300">
+            {qc.issues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+          {qc.corrections_applied?.length ? (
+            <p className="mt-2 text-[10px] text-zinc-500">Auto-corrected: {qc.corrections_applied.join("; ")}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <Table title="Track Analysis" rows={trackRows} />
       <Table title="Frequency Balance (share of total energy)" rows={bandRows} />

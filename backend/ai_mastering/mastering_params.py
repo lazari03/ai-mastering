@@ -4,7 +4,14 @@ import copy
 
 import numpy as np
 
-from params import ADJUSTMENT_TAG_BIASES, GENRE_TARGET_PROFILES, MASTERING_STYLE_PROFILES, SPECTRAL_BAND_KEYS
+from params import (
+    ADJUSTMENT_TAG_BIASES,
+    GENRE_TARGET_PROFILES,
+    MASTERING_CATEGORY_PROFILES,
+    MASTERING_FLAVOURS,
+    MASTERING_STYLE_PROFILES,
+    SPECTRAL_BAND_KEYS,
+)
 
 from .audio_utils import EPS, _tilt_from_band_shares
 
@@ -47,12 +54,51 @@ def _apply_tag_biases(profile: dict, tags: list[str]) -> dict:
     return biased
 
 
+def _resolve_category_bias(category: str | None, flavour: str | None) -> dict:
+    """Combine a mastering category's profile with its (optional) flavour's
+    small additional nudges into one flat delta dict — see
+    params.py:MASTERING_CATEGORY_PROFILES for the field shape. Returns an
+    all-zero/empty bias when no category is selected, so category is a pure
+    opt-in: omitting it leaves genre + style behaving exactly as before this
+    existed."""
+    empty = {
+        "target_lufs_delta": 0.0,
+        "target_dynamic_range_delta": 0.0,
+        "max_stereo_width_delta": 0.0,
+        "saturation_delta": 0.0,
+        "compression_aggression_delta": 0.0,
+        "hf_boost_cap_delta": 0.0,
+        "max_lufs_raise_delta": 0.0,
+        "vocal_presence_delta": 0.0,
+        "tweak_bias": {},
+    }
+    if not category or category not in MASTERING_CATEGORY_PROFILES:
+        return empty
+
+    combined = dict(empty)
+    combined.update({k: v for k, v in MASTERING_CATEGORY_PROFILES[category].items() if k in empty})
+    combined["tweak_bias"] = dict(MASTERING_CATEGORY_PROFILES[category].get("tweak_bias", {}))
+
+    flavour_delta = MASTERING_FLAVOURS.get(category, {}).get(flavour) if flavour else None
+    if flavour_delta:
+        for key, value in flavour_delta.items():
+            if key == "tweak_bias":
+                continue
+            combined[key] = combined.get(key, 0.0) + float(value)
+        for tweak_key, tweak_value in flavour_delta.get("tweak_bias", {}).items():
+            combined["tweak_bias"][tweak_key] = combined["tweak_bias"].get(tweak_key, 0.0) + float(tweak_value)
+
+    return combined
+
+
 def compute_processing_params(
     analysis: dict,
     genre: str,
     tags: list[str],
     style: str = "modern",
     reference_spectral_balance: dict | None = None,
+    category: str | None = None,
+    flavour: str | None = None,
 ) -> dict:
     """
     Compute adaptive mastering parameters from measured track state vs genre target.
@@ -67,18 +113,29 @@ def compute_processing_params(
     reference track actually looks like, not a generic genre curve. Nothing
     else about the profile (target LUFS, dynamic range, width) changes —
     matching the spectral shape isn't the same as cloning the whole master.
+
+    category / flavour: the optional musical-objective layer (Clean, Modern,
+    Club, ...) from params.py:MASTERING_CATEGORY_PROFILES — a bias on top of
+    the genre target, not a second fixed preset. Omit both for the original
+    genre+style-only behavior.
     """
     if genre not in GENRE_TARGET_PROFILES:
         raise ValueError(f"Unknown genre: {genre}")
     if style not in MASTERING_STYLE_PROFILES:
         raise ValueError(f"Unknown style: {style}")
+    if category is not None and category not in MASTERING_CATEGORY_PROFILES:
+        raise ValueError(f"Unknown mastering category: {category}")
 
     profile = _apply_tag_biases(GENRE_TARGET_PROFILES[genre], tags)
     style_profile = MASTERING_STYLE_PROFILES[style]
-    profile["target_lufs"] += float(style_profile["target_lufs_delta"])
-    profile["target_dynamic_range_db"] += float(style_profile["target_dynamic_range_delta"])
-    profile["max_stereo_width"] += float(style_profile["max_stereo_width_delta"])
-    profile["base_saturation"] += float(style_profile["saturation_delta"])
+    category_bias = _resolve_category_bias(category, flavour)
+
+    profile["target_lufs"] += float(style_profile["target_lufs_delta"]) + category_bias["target_lufs_delta"]
+    profile["target_dynamic_range_db"] += float(style_profile["target_dynamic_range_delta"]) + category_bias["target_dynamic_range_delta"]
+    profile["max_stereo_width"] += float(style_profile["max_stereo_width_delta"]) + category_bias["max_stereo_width_delta"]
+    profile["base_saturation"] += float(style_profile["saturation_delta"]) + category_bias["saturation_delta"]
+    profile["compression_aggression_delta"] += category_bias["compression_aggression_delta"]
+    profile["vocal_presence_target_delta"] += category_bias["vocal_presence_delta"]
 
     profile["target_lufs"] = float(np.clip(profile["target_lufs"], -20.0, -6.5))
     profile["target_dynamic_range_db"] = float(np.clip(profile["target_dynamic_range_db"], 5.0, 14.5))
@@ -111,7 +168,7 @@ def compute_processing_params(
     current_lufs = float(analysis["integrated_lufs"])
     clipping_input = bool(analysis["clipping_detected"])
     desired_lufs_gain_db = float(profile["target_lufs"] - current_lufs)
-    max_lufs_raise_db = float(style_profile.get("max_lufs_raise_db", 2.0))
+    max_lufs_raise_db = float(style_profile.get("max_lufs_raise_db", 2.0)) + category_bias["max_lufs_raise_delta"]
     max_lufs_reduce_db = float(style_profile.get("max_lufs_reduce_db", -2.0))
     if clipping_input:
         max_lufs_raise_db = min(max_lufs_raise_db, 1.5)
@@ -154,7 +211,7 @@ def compute_processing_params(
         per_band_gain_changes_db[band_key] = float(np.clip(delta_db, -3.5, boost_limit))
 
     # Keep top-end moves style-aware (prevents brittle modernization when older-era style is selected).
-    hf_cap = float(style_profile["hf_boost_cap_db"])
+    hf_cap = float(style_profile["hf_boost_cap_db"]) + category_bias["hf_boost_cap_delta"]
     per_band_gain_changes_db["high_mid_2000_4000hz"] = min(per_band_gain_changes_db["high_mid_2000_4000hz"], hf_cap)
     per_band_gain_changes_db["presence_4000_6000hz"] = min(per_band_gain_changes_db["presence_4000_6000hz"], hf_cap)
     per_band_gain_changes_db["brilliance_6000_20000hz"] = min(per_band_gain_changes_db["brilliance_6000_20000hz"], hf_cap)
@@ -332,6 +389,9 @@ def compute_processing_params(
         "genre": genre,
         "style": style,
         "tags": tags,
+        "category": category,
+        "flavour": flavour if category else None,
+        "category_tweak_bias": category_bias["tweak_bias"],
         "spectral_match_source": "reference_track" if reference_spectral_balance else "genre_profile",
         "target_spectral_tilt_db_per_octave": round(target_tilt_db_per_octave, 3),
         "measured_spectral_tilt_db_per_octave": round(measured_tilt_db_per_octave, 3),

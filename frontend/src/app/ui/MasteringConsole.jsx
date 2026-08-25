@@ -60,9 +60,13 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
     genres,
     tags,
     styles,
+    categories,
+    flavoursByCategory,
     presets,
     selectedGenre,
     selectedStyle,
+    selectedCategory,
+    selectedFlavour,
     selectedPreset,
     selectedTags,
     useStemSeparation,
@@ -74,6 +78,8 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
     setReferenceFile,
     setGenre,
     setStyle,
+    setCategory,
+    setFlavour,
     setPreset,
     toggleTag,
     setUseStemSeparation,
@@ -494,6 +500,35 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
 
                   {mode === "quick" ? (
                     <div className="mt-3.5">
+                      <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.masteringObjective")}</span>
+                      <p className="mb-2 text-[10px] text-zinc-500">{t("console.masteringObjectiveHint")}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => setCategory("")} className={chipClass(!selectedCategory, "brass")}>
+                          {t("console.objectiveAuto")}
+                        </button>
+                        {categories.map((category) => (
+                          <button key={category} type="button" onClick={() => setCategory(category)} className={chipClass(selectedCategory === category, "brass")}>
+                            {category.replaceAll("_", " ")}
+                          </button>
+                        ))}
+                      </div>
+                      {selectedCategory && (flavoursByCategory[selectedCategory] || []).length ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button type="button" onClick={() => setFlavour("")} className={chipClass(!selectedFlavour)}>
+                            {t("console.objectiveAuto")}
+                          </button>
+                          {flavoursByCategory[selectedCategory].map((flavour) => (
+                            <button key={flavour} type="button" onClick={() => setFlavour(flavour)} className={chipClass(selectedFlavour === flavour)}>
+                              {flavour}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {mode === "quick" ? (
+                    <div className="mt-3.5">
                       <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.tags")}</span>
                       <div className="flex flex-wrap gap-2">
                         {tags.map((tag) => (
@@ -676,6 +711,12 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                   <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">{t("console.modeLabel", { mode: mode === "pro" ? t("console.pro") : t("console.quick") })}</span>
                   <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">{t("console.genreLabel", { genre: selectedGenre || t("console.notSet") })}</span>
                   <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">{t("console.styleLabel", { style: selectedStyle || t("console.notSet") })}</span>
+                  {selectedCategory ? (
+                    <span className="rounded-lg border border-brass/40 bg-brass/10 px-3 py-1.5 text-xs text-brass">
+                      {selectedCategory.replaceAll("_", " ")}
+                      {selectedFlavour ? ` · ${selectedFlavour}` : ""}
+                    </span>
+                  ) : null}
                 </>
               )}
               <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">{t("console.engineLabel", { engine: tier })}</span>

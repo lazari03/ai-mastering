@@ -1,4 +1,5 @@
 import {
+  getCategories,
   getGenres,
   getMixPresets,
   getStyles,
@@ -13,9 +14,42 @@ import {
 const TWEAK_KEYS = ["low_end", "punch", "presence", "brightness", "warmth", "width", "loudness"];
 
 const FALLBACK_CATALOG = {
-  genres: ["pop", "hiphop", "rock", "edm", "acoustic", "lofi", "podcast", "classical"],
+  genres: [
+    "pop",
+    "hiphop",
+    "rock",
+    "edm",
+    "acoustic",
+    "lofi",
+    "podcast",
+    "classical",
+    "metal",
+    "trap",
+    "rnb",
+    "reggaeton",
+    "latin",
+    "house",
+    "techno",
+    "dnb",
+    "afrobeats",
+    "singer_songwriter",
+    "jazz",
+    "cinematic",
+  ],
   tags: ["better_vocals", "deeper", "brighter", "warmer", "louder", "wider", "punchier_drums", "clearer", "softer"],
   styles: ["modern", "rock_90s", "rock_2000s", "rock_modern", "electronic_modern", "stock_mastering_strip"],
+  categories: ["clean", "modern", "dynamic", "punch", "club", "warm", "bright", "vocal_focus", "bass_control"],
+  flavours: {
+    clean: ["transparent", "detailed", "balanced"],
+    modern: ["competitive", "punchy", "dense"],
+    dynamic: ["open", "natural", "wide"],
+    punch: ["transient", "impact", "forward"],
+    club: ["powerful", "deep", "aggressive"],
+    warm: ["analog", "smooth", "saturated"],
+    bright: ["airy", "crisp"],
+    vocal_focus: ["intimate", "present"],
+    bass_control: ["tight", "controlled"],
+  },
   presets: [
     { name: "streaming_pop_glue", display_name: "Streaming Pop Glue", description: "Balanced modern pop polish.", genre: "pop", style: "modern", tags: ["better_vocals", "clearer"] },
     { name: "hiphop_lowend_lock", display_name: "Hip-Hop Low End Lock", description: "Tight 808 and vocal pocket.", genre: "hiphop", style: "modern", tags: ["deeper", "louder"] },
@@ -30,16 +64,19 @@ function withFallback(catalog) {
     genres: catalog.genres?.length ? catalog.genres : FALLBACK_CATALOG.genres,
     tags: catalog.tags?.length ? catalog.tags : FALLBACK_CATALOG.tags,
     styles: catalog.styles?.length ? catalog.styles : FALLBACK_CATALOG.styles,
+    categories: catalog.categories?.length ? catalog.categories : FALLBACK_CATALOG.categories,
+    flavours: catalog.flavours && Object.keys(catalog.flavours).length ? catalog.flavours : FALLBACK_CATALOG.flavours,
     presets: catalog.presets?.length ? catalog.presets : FALLBACK_CATALOG.presets,
   };
 }
 
 export async function fetchCatalog() {
   try {
-    const [genresResponse, tagsResponse, stylesResponse, presetsResponse] = await Promise.all([
+    const [genresResponse, tagsResponse, stylesResponse, categoriesResponse, presetsResponse] = await Promise.all([
       getGenres(),
       getTags(),
       getStyles(),
+      getCategories(),
       getMixPresets(),
     ]);
 
@@ -47,6 +84,8 @@ export async function fetchCatalog() {
       genres: genresResponse.genres || [],
       tags: tagsResponse.tags || [],
       styles: stylesResponse.styles || [],
+      categories: categoriesResponse.categories || [],
+      flavours: categoriesResponse.flavours || {},
       presets: presetsResponse || [],
     });
   } catch {
@@ -103,6 +142,13 @@ export async function runMasteringJob(input) {
 
   if (input.mixPreset) {
     formData.append("mix_preset", input.mixPreset);
+  }
+
+  if (input.category) {
+    formData.append("category", input.category);
+    if (input.flavour) {
+      formData.append("flavour", input.flavour);
+    }
   }
 
   if (input.processing) {

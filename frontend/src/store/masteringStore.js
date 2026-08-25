@@ -59,10 +59,16 @@ export const useMasteringStore = create((set, get) => ({
   genres: [],
   tags: [],
   styles: [],
+  categories: [],
+  flavoursByCategory: {},
   presets: [],
 
   selectedGenre: "",
   selectedStyle: "modern",
+  // Optional musical-objective layer (Clean, Modern, Club, ...) — "" means
+  // "no category selected", genre + style behave exactly as without it.
+  selectedCategory: "",
+  selectedFlavour: "",
   selectedPreset: "",
   selectedTags: [],
   useStemSeparation: false,
@@ -86,6 +92,8 @@ export const useMasteringStore = create((set, get) => ({
         genres: catalog.genres,
         tags: catalog.tags,
         styles: catalog.styles,
+        categories: catalog.categories || [],
+        flavoursByCategory: catalog.flavours || {},
         presets: catalog.presets,
         selectedGenre: catalog.genres[0] || "",
         selectedStyle: catalog.styles[0] || "modern",
@@ -122,6 +130,17 @@ export const useMasteringStore = create((set, get) => ({
 
   setStyle(selectedStyle) {
     set({ selectedStyle, selectedPreset: "" });
+  },
+
+  setCategory(selectedCategory) {
+    // Switching category resets flavour — flavours are scoped to their
+    // parent category (see FLAVOURS_BY_CATEGORY), a stale flavour name from
+    // a different category would silently do nothing server-side.
+    set({ selectedCategory, selectedFlavour: "", selectedPreset: "" });
+  },
+
+  setFlavour(selectedFlavour) {
+    set({ selectedFlavour, selectedPreset: "" });
   },
 
   setPreset(selectedPreset) {
@@ -316,6 +335,11 @@ export const useMasteringStore = create((set, get) => ({
         mixPreset: state.selectedPreset || null,
         processing: useProProcessing ? state.proParams : null,
         tier: state.tier,
+        // Category/flavour only make sense for the adaptive engine — never
+        // sent for a saved preset (a preset is a self-sufficient literal
+        // spec) or a Pro-mode manual processing spec.
+        category: !preview && !usingSavedPreset && !useProProcessing ? state.selectedCategory || null : null,
+        flavour: !preview && !usingSavedPreset && !useProProcessing ? state.selectedFlavour || null : null,
         preview,
       });
 

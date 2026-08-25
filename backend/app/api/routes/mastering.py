@@ -16,7 +16,7 @@ from app.services.mastering_service import (
     resolve_mastering_config,
 )
 from app.services.presets_service import list_mixing_presets
-from params import list_genres, list_styles, list_tags
+from params import list_categories, list_flavours, list_genres, list_styles, list_tags
 
 router = APIRouter(tags=["mastering"])
 
@@ -34,6 +34,11 @@ def get_tags() -> dict:
 @router.get("/styles")
 def get_styles() -> dict:
     return {"styles": list_styles()}
+
+
+@router.get("/categories")
+def get_categories() -> dict:
+    return {"categories": list_categories(), "flavours": list_flavours()}
 
 
 @router.get("/mix-presets", response_model=list[PresetSummary])
@@ -65,6 +70,11 @@ def master_track(
     output_format: str = Form("wav"),
     mix_preset: str | None = Form(None),
     tier: str = Form("standard"),
+    # Optional musical-objective layer (Clean, Modern, Club, ...) — see
+    # params.py:MASTERING_CATEGORY_PROFILES. Omit both for genre+style-only
+    # behavior, unchanged from before this existed.
+    category: str | None = Form(None),
+    flavour: str | None = Form(None),
     # A caller that has already fully resolved a preset itself (Node does,
     # for both its curated and user-imported-custom presets — see
     # backend-node/src/services/presetsService.js) can send the resolved
@@ -88,6 +98,8 @@ def master_track(
         output_format=output_format,
         mix_preset=mix_preset,
         tier=tier,
+        category=category,
+        flavour=flavour,
     )
 
     if full_preset_json:
@@ -105,6 +117,7 @@ def master_track(
         "analysis_before": result["analysis_before"],
         "analysis_after": result["analysis_after"],
         "ab_gain_match": result.get("ab_gain_match"),
+        "ab_analysis": result.get("ab_analysis"),
         "source_warnings": result.get("source_warnings", []),
         "quality_control": result.get("quality_control"),
         "processing_applied": result["processing_applied"],

@@ -7,6 +7,7 @@ import numpy as np
 import soundfile as sf
 from pedalboard import HighShelfFilter, Pedalboard, Reverb
 
+from .ab_analysis import build_ab_report
 from .audio_utils import (
     MASTER_SR,
     _ab_gain_match,
@@ -19,8 +20,11 @@ from .audio_utils import (
 from .bus_processing import _bus_process, _bus_process_pro
 from .dsp_filters import _build_stereo_from_ms, _lr4_highpass, _lr4_lowpass, _oversampled_distortion, _process_band, _split_bands, _split_bands_pro
 from .mastering_params import _apply_user_tweaks, compute_processing_params
+from .quality_control import InvalidAudioError, rebalance_channels, run_quality_control, validate_input_signal
 from .section_detection import _db_to_lin, _detect_song_sections, _section_gain_db_envelope
 from .stem_separation import _is_stem_separation_requested, _process_accompaniment_stem, _process_vocal_stem, _separate_vocal_stems
+
+__all__ = ["master_track", "InvalidAudioError"]
 
 
 def master_track(
@@ -33,6 +37,8 @@ def master_track(
     enable_stem_separation: bool = False,
     tier: str = "standard",
     reference_track_path: str | Path | None = None,
+    category: str | None = None,
+    flavour: str | None = None,
 ) -> dict:
     is_pro = tier == "professional"
     split_fn = _split_bands_pro if is_pro else _split_bands
@@ -40,6 +46,15 @@ def master_track(
     band_names = ("sub", "punch", "low_mid", "high_mid", "high") if is_pro else ("low", "low_mid", "high_mid", "high")
 
     audio_stereo, sr = _load_audio(input_path, sr=MASTER_SR)
+
+    # Input validation — signal integrity before anything else touches the
+    # audio (spec: "Input validation" is the first stage, before analysis).
+    # Raises InvalidAudioError for genuinely unusable input (empty, NaN/Inf,
+    # digital silence); DC offset is corrected here (a real, always-first
+    # signal-integrity fix, not just a reported number) so every downstream
+    # measurement — including analysis_before — reflects the corrected signal.
+    input_validation = validate_input_signal(audio_stereo, sr)
+    audio_stereo = input_validation.pop("_corrected_audio")
 
     analysis_before = _analysis_from_audio(audio_stereo, sr)
 
@@ -57,9 +72,24 @@ def master_track(
         reference_info = {"used": True, "spectral_balance": reference_spectral_balance}
 
     processing_params = compute_processing_params(
-        analysis_before, genre=genre, tags=tags, style=style, reference_spectral_balance=reference_spectral_balance
+        analysis_before,
+        genre=genre,
+        tags=tags,
+        style=style,
+        reference_spectral_balance=reference_spectral_balance,
+        category=category,
+        flavour=flavour,
     )
-    processing_params = _apply_user_tweaks(processing_params, analysis_before, tweaks)
+
+    # A selected category/flavour expresses part of its bias as tweak-slider
+    # deltas (see params.py:MASTERING_CATEGORY_PROFILES's tweak_bias field) —
+    # merged additively with the user's own sliders here so both reuse the
+    # same, already-adaptive _apply_user_tweaks logic instead of a second
+    # per-band implementation. Values still get clamped to [-1, 1] there.
+    merged_tweaks = dict(tweaks or {})
+    for tweak_key, tweak_delta in processing_params.get("category_tweak_bias", {}).items():
+        merged_tweaks[tweak_key] = float(merged_tweaks.get(tweak_key, 0.0)) + float(tweak_delta)
+    processing_params = _apply_user_tweaks(processing_params, analysis_before, merged_tweaks)
 
     section_info = _detect_song_sections(audio_stereo, sr)
     premaster_audio = audio_stereo
@@ -208,8 +238,44 @@ def master_track(
             apply_glue_compression=False,
         )
 
-    sf.write(str(output_path), stereo_processed, sr, subtype="PCM_24")
     analysis_after = _analysis_from_audio(stereo_processed, sr)
+
+    # Final quality control (spec section 18) — checked against the actual
+    # rendered signal, not assumed from the parameters that produced it.
+    # Corrective action here is deliberately narrow and bounded (one pass,
+    # only for issues cheaply and safely fixable with a scalar/array
+    # operation on the already-finished master): a real DC-offset leak or a
+    # gross channel imbalance gets fixed and re-verified; anything else
+    # (over-compression, heavy limiting, phase problems) is reported, not
+    # blindly reprocessed — those need a different processing decision
+    # earlier in the chain, not a bolt-on fix after the fact.
+    quality_control = run_quality_control(
+        analysis_before=analysis_before,
+        analysis_after=analysis_after,
+        mastered_audio=stereo_processed,
+        processing_params=processing_params,
+        limiter_report=limiter_report,
+    )
+    qc_corrections = []
+    non_passing_ids = {c["id"] for c in quality_control["checks"] if c["status"] != "pass"}
+    if "channel_balance" in non_passing_ids:
+        stereo_processed = rebalance_channels(stereo_processed)
+        qc_corrections.append("channel_balance: rebalanced L/R to the quieter channel's level")
+    if "dc_offset" in non_passing_ids:
+        stereo_processed = stereo_processed - np.mean(stereo_processed, axis=0, keepdims=True).astype(np.float32)
+        qc_corrections.append("dc_offset: removed residual DC offset from the final render")
+    if qc_corrections:
+        analysis_after = _analysis_from_audio(stereo_processed, sr)
+        quality_control = run_quality_control(
+            analysis_before=analysis_before,
+            analysis_after=analysis_after,
+            mastered_audio=stereo_processed,
+            processing_params=processing_params,
+            limiter_report=limiter_report,
+        )
+    quality_control["corrections_applied"] = qc_corrections
+
+    sf.write(str(output_path), stereo_processed, sr, subtype="PCM_24")
 
     processing_applied = {
         "spectral_match_source": processing_params.get("spectral_match_source", "genre_profile"),
@@ -248,8 +314,13 @@ def master_track(
         },
         "user_tweaks": processing_params.get("user_tweaks", {}),
         "tweak_summary": processing_params.get("tweak_summary", {}),
+        "category": processing_params.get("category"),
+        "flavour": processing_params.get("flavour"),
+        "category_tweak_bias": processing_params.get("category_tweak_bias", {}),
         "stem_separation": stem_metadata,
         "reference_track": reference_info,
+        "input_validation": input_validation,
+        "quality_control_corrections": quality_control.get("corrections_applied", []),
     }
 
     source_warnings = []
@@ -260,15 +331,34 @@ def master_track(
             "The width/wider controls have nothing to widen here."
         )
 
+    ab_analysis = build_ab_report(
+        analysis_before=analysis_before,
+        analysis_after=analysis_after,
+        processing_params=processing_params,
+        limiter_report=limiter_report,
+        quality_control=quality_control,
+    )
+    if not ab_analysis["improved"]:
+        # Surfaced alongside source_warnings (not just buried in ab_analysis)
+        # so a "louder but not actually better" result is visible wherever
+        # the frontend already renders source_warnings, per "a master that
+        # measures louder but sounds worse is a failure." Additive — never
+        # replaces an existing warning (e.g. near_mono_source) already there.
+        source_warnings = source_warnings + [f"Improvement check: {reason}" for reason in ab_analysis["verdict_reasons"]]
+
     return {
         "analysis_before": analysis_before,
         "analysis_after": analysis_after,
         "processing_applied": processing_applied,
         "ab_gain_match": _ab_gain_match(analysis_before["integrated_lufs"], analysis_after["integrated_lufs"]),
+        "ab_analysis": ab_analysis,
+        "quality_control": quality_control,
         "source_warnings": source_warnings,
         "target_profile_used": {
             "genre": genre,
             "style": style,
+            "category": category,
+            "flavour": flavour if category else None,
             "target_lufs": processing_params["target_lufs"],
             "target_dynamic_range_db": processing_params["target_dynamic_range_db"],
             "target_width": processing_params["target_width"],
