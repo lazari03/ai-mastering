@@ -37,8 +37,28 @@ logs-caddy: ## Follow just Caddy's logs (cert issuance, routing)
 build: ## Rebuild every image, then start (normal deploy — picks up code + .env changes)
 	docker compose up -d --build
 
+# The middle step below clears containers left renamed by a half-finished
+# recreate. Compose's recreate flow renames the outgoing container to
+# <shortid>_<name>, starts the replacement, then removes the renamed one.
+# If a deploy dies between those steps the renamed container survives, and
+# every later recreate of that service fails with "Conflict. The container
+# name ... is already in use" — so the deploy is wedged permanently, not
+# just for the run that died. That is what broke the deploy on the
+# DSP-overhaul merge (Actions run 31): build-check was fully green and the
+# SSH step died on python-service alone.
+#
+# `docker compose up` can't clear these itself. Compose tracks containers
+# by label and a renamed leftover keeps all of its labels, so it reads as a
+# live container of that service rather than an orphan — which is why
+# --remove-orphans is not the fix here either. The <hex>_ name prefix is
+# the one thing that marks them, and no compose-managed container is ever
+# named that way, so matching on it cannot catch a container we still want.
+#
+# Comments live out here rather than inside the recipe because Make echoes
+# every recipe line, comments included, into the deploy log.
 deploy: ## Pull latest git + full rebuild + restart — the one command for "ship it"
 	git pull
+	docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{8,}_' | xargs -r docker rm -f || true
 	docker compose up -d --build
 
 rebuild-python: ## Force a clean rebuild of just the Python service (no cache — use after Dockerfile/requirements changes)
