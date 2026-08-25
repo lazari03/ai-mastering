@@ -177,17 +177,34 @@ def compute_processing_params(
         max_lufs_raise_db = min(max_lufs_raise_db, 0.5)
     if current_lufs > -10.7:
         max_lufs_raise_db = min(max_lufs_raise_db, 0.2)
-    if float(analysis.get("loudness_range_lu", 0.0)) <= 3.5:
+
+    input_lra = float(analysis.get("loudness_range_lu", 0.0))
+    crest_db = float(analysis.get("dynamic_range_db", 12.0))
+    # "Already heavily limited" needs BOTH a narrow loudness_range_lu
+    # (little loudness variation ACROSS the song — macro-dynamics) AND a
+    # collapsed crest factor (peaks already sitting close to RMS — the
+    # actual fingerprint a limiter/heavy compression leaves — micro-
+    # dynamics). These used to be conflated: gating purely on a narrow LRA
+    # meant any dense, consistently-arranged modern production (most pop/
+    # EDM/hip-hop/club material — most of this app's genres) with a
+    # perfectly healthy crest factor got its loudness stage silently
+    # capped to a near-zero change regardless of genre/category/style,
+    # even sitting on 15+dB of real, unused crest-factor headroom. Verified
+    # against a real source file: LRA 2.2 (narrow) + crest factor 16.2dB
+    # (healthy) previously produced a 0.1-0.3dB loudness move on every one
+    # of 8 different genre/category/tier combinations — an inaudible no-op
+    # the loudness targets never actually reached.
+    already_limited = crest_db <= 9.0
+    if input_lra <= 3.5 and already_limited:
         max_lufs_raise_db = min(max_lufs_raise_db, 0.4)
     limited_lufs_gain_db = float(np.clip(desired_lufs_gain_db, max_lufs_reduce_db, max_lufs_raise_db))
     effective_target_lufs = current_lufs + limited_lufs_gain_db
 
-    input_lra = float(analysis.get("loudness_range_lu", 0.0))
-    if input_lra <= 3.5:
+    if input_lra <= 3.5 and already_limited:
         effective_target_lufs = min(effective_target_lufs, current_lufs + 0.1)
-    if input_lra <= 2.5:
+    if input_lra <= 2.5 and already_limited:
         effective_target_lufs = min(effective_target_lufs, current_lufs)
-    if input_lra <= 2.0:
+    if input_lra <= 2.0 and already_limited:
         effective_target_lufs = min(effective_target_lufs, current_lufs - 0.3)
 
     per_band_gain_changes_db = {}
@@ -258,7 +275,14 @@ def compute_processing_params(
     dr_target = float(profile["target_dynamic_range_db"])
     dr_excess = dr_current - dr_target
     compression_drive = max(0.0, dr_excess) + profile["compression_aggression_delta"]
-    if input_lra <= 3.5:
+    # Same already_limited fix as the loudness clamps above: dr_excess
+    # already IS a crest-factor-based signal for how much compression this
+    # track calls for, so damping it further just because LRA is narrow
+    # (common on dense, consistently-arranged modern material — see
+    # already_limited's comment) double-penalized tracks that actually
+    # have real crest-factor headroom to use. Only damp when the source
+    # is genuinely already limited.
+    if already_limited:
         compression_drive *= 0.4
     if clipping_input:
         compression_drive *= 0.7
