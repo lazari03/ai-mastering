@@ -14,6 +14,8 @@ import { useLanguage } from "@/lib/i18n";
 import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 import { IconCheck } from "@/components/app/icons";
 import { CTA } from "@/lib/internalLinks";
+import { BEFORE_AFTER_DEMOS } from "@/lib/beforeAfterDemos";
+import BeforeAfterPlayer from "@/components/marketing/BeforeAfterPlayer";
 
 const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
 const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -164,6 +166,17 @@ export default function HomeClient() {
         </div>
       </section>
 
+      <section id="demo" className="reveal mt-16 scroll-mt-24">
+        <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("demo.eyebrow")}</p>
+        <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("demo.title")}</h2>
+        <p className="mt-2 max-w-xl text-sm text-zinc-400">{t("demo.body")}</p>
+        <div className={`mt-6 grid gap-4 ${BEFORE_AFTER_DEMOS.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : "max-w-md"}`}>
+          {BEFORE_AFTER_DEMOS.map((demo) => (
+            <BeforeAfterPlayer key={demo.label} {...demo} />
+          ))}
+        </div>
+      </section>
+
       <section id="features" className="reveal reveal-delay-1 mt-16 scroll-mt-24">
         <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("features.eyebrow")}</p>
         <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("features.title")}</h2>
@@ -212,7 +225,7 @@ export default function HomeClient() {
             </Link>
           ))}
         </div>
-s      </section>
+      </section>
 
       <section id="pricing" className="reveal mt-16 scroll-mt-24">
         <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("pricing.eyebrow")}</p>

@@ -88,16 +88,18 @@ app.use(generalLimiter);
 // Every route requires a signed-in Firebase user except /health (load
 // balancers/uptime monitors don't carry a user token), /validate-email
 // (checked *before* an account exists — signup itself, so there's no
-// token yet to require), /admin/* (gated instead by requireAdminKey in
-// masteringRoutes.js), /webhooks/* (gated by signature verification,
-// handled above and already responded to by the time a request would
-// reach here), and /shared/* — a share link is explicitly meant for
-// someone with no account at all; it's gated by its own ?token= instead
-// (verifyShareToken, inside the route itself).
+// token yet to require), /newsletter/subscribe (meant for an anonymous
+// homepage visitor, not just a signed-in user), /admin/* (gated instead
+// by requireAdminKey in masteringRoutes.js), /webhooks/* (gated by
+// signature verification, handled above and already responded to by the
+// time a request would reach here), and /shared/* — a share link is
+// explicitly meant for someone with no account at all; it's gated by its
+// own ?token= instead (verifyShareToken, inside the route itself).
 app.use((req, res, next) => {
   if (
     req.path === "/health" ||
     req.path === "/validate-email" ||
+    req.path === "/newsletter/subscribe" ||
     req.path.startsWith("/admin/") ||
     req.path.startsWith("/webhooks/") ||
     req.path.startsWith("/shared/")

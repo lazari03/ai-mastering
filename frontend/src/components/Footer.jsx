@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { useLanguage } from "@/lib/i18n";
+import NewsletterWidget from "@/components/marketing/NewsletterWidget";
 
 // Site-wide footer — one component instead of duplicated per page, used
 // by every public/marketing page (homepage, genre pages, comparison
@@ -24,6 +25,16 @@ export default function Footer() {
 
   return (
     <footer className="mx-auto mt-16 flex w-full max-w-[1200px] flex-col gap-8 border-t border-white/10 px-4 pb-10 pt-8 sm:px-6">
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+        <div className="sm:max-w-[320px]">
+          <p className="m-0 text-sm font-semibold text-white">Get 10% off</p>
+          <p className="mt-1 text-xs text-zinc-400">Join the newsletter — occasional updates, no spam, unsubscribe any time.</p>
+        </div>
+        <div className="mt-3 sm:mt-0 sm:w-[360px] sm:shrink-0">
+          <NewsletterWidget source="footer" />
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
         <div className="col-span-2 sm:col-span-1">
           <p className="m-0 text-xs uppercase tracking-[0.22em] text-brass">Auralith Forge</p>

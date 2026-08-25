@@ -36,6 +36,13 @@ const DICT = {
   "hero.stat3.value": { en: "-1dBTP", sq: "-1dBTP" },
   "hero.stat3.label": { en: "True-peak safe", sq: "I sigurt në true-peak" },
 
+  "demo.eyebrow": { en: "Hear It", sq: "Dëgjoje" },
+  "demo.title": { en: "Before and after, in your own ears", sq: "Para dhe pas, me veshët e tu" },
+  "demo.body": {
+    en: "Real tracks, run through the actual engine — not a marketing clip. Toggle Before/After at the same point in the song and hear exactly what changes.",
+    sq: "Këngë reale, të përpunuara nga vetë motori — jo një klip marketingu. Kalo mes Para/Pas në të njëjtin moment të këngës dhe dëgjo saktësisht çfarë ndryshon.",
+  },
+
   "features.eyebrow": { en: "Features", sq: "Veçoritë" },
   "features.title": { en: "Everything a real release needs", sq: "Gjithçka që i duhet një botimi real" },
   "features.f1.eyebrow": { en: "Precision", sq: "Precizion" },

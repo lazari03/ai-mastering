@@ -199,6 +199,18 @@ export async function postBillingPortal() {
   return request("/billing/portal", { method: "POST" });
 }
 
+// Public — works for a signed-out visitor too (see server.js's auth
+// gate), so this deliberately doesn't rely on authHeader() finding a
+// user. source is just a free-text tag ("footer", "newsletter-page") for
+// telling signup channels apart later.
+export async function postNewsletterSubscribe(email, source) {
+  return request("/newsletter/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, source }),
+  });
+}
+
 export async function postCodecPreview(jobId, codec) {
   return request(
     "/codec-preview",
