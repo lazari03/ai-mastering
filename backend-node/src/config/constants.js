@@ -26,7 +26,25 @@ export const GENRES = [
   "cinematic",
 ];
 
-export const STYLES = ["modern", "rock_90s", "rock_2000s", "rock_modern", "electronic_modern", "stock_mastering_strip"];
+// Mirrors backend/params.py:MASTERING_STYLE_PROFILES keys exactly.
+export const STYLES = [
+  "modern",
+  "rock_90s",
+  "rock_2000s",
+  "rock_modern",
+  "electronic_modern",
+  "stock_mastering_strip",
+  "vintage_analog",
+  "cd_loudness_war",
+  "vinyl_master",
+  "streaming_safe",
+  "hiphop_golden_era",
+  "hiphop_modern_trap",
+  "pop_80s",
+  "edm_festival",
+  "acoustic_natural",
+  "cinematic_score",
+];
 
 export const TAGS = [
   "better_vocals",

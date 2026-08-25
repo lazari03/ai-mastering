@@ -166,26 +166,20 @@ def _to_pedalboard_shape(signal: np.ndarray) -> np.ndarray:
 def _process_band(signal: np.ndarray, sr: int, band_name: str, params: dict, channel: str) -> np.ndarray:
     ratio = params["band_compression_ratio"][band_name]
     threshold = params["band_threshold_db"][band_name]
+    clipping_input = bool(params.get("input_clipping_detected"))
 
-    if band_name == "low":
-        eq_gain = params["per_band_gain_changes_db"]["sub_bass_20_60hz"] * 0.4 + params["per_band_gain_changes_db"]["bass_60_250hz"] * 0.6
-    elif band_name == "sub":
-        eq_gain = params["per_band_gain_changes_db"]["sub_bass_20_60hz"]
-    elif band_name == "punch":
-        eq_gain = params["per_band_gain_changes_db"]["bass_60_250hz"]
-    elif band_name == "low_mid":
-        eq_gain = params["per_band_gain_changes_db"]["low_mid_250_500hz"]
-    elif band_name == "high_mid":
-        eq_gain = params["per_band_gain_changes_db"]["high_mid_2000_4000hz"] + params["vocal_presence_gain_db"]
-    else:
-        eq_gain = params["per_band_gain_changes_db"]["brilliance_6000_20000hz"]
-
-    if channel == "side":
-        eq_gain *= 0.6
-
-    if params.get("input_clipping_detected") and eq_gain > 0:
-        eq_gain *= 0.7
-    eq_gain = float(np.clip(eq_gain, -4.0, 2.5))
+    def shaped_gain(raw_db: float) -> float:
+        # Same side-channel damping / clipped-input caution / safety clip
+        # every eq_gain used to get once, factored out so each analysis
+        # band's own filter point (see the low_mid/high_mid split below)
+        # gets identical treatment instead of one value shared across two
+        # frequencies.
+        gain = float(raw_db)
+        if channel == "side":
+            gain *= 0.6
+        if clipping_input and gain > 0:
+            gain *= 0.7
+        return float(np.clip(gain, -4.0, 2.5))
 
     # Attack/release/max-reduction are per band, not per band-type bucket —
     # each of the (up to) 5 bands gets its own values from mastering_params.py
@@ -211,17 +205,46 @@ def _process_band(signal: np.ndarray, sr: int, band_name: str, params: dict, cha
         mix = float(np.clip((target_ratio * in_rms - in_rms) / (out_rms - in_rms), 0.0, 1.0))
         compressed = (mix * compressed + (1.0 - mix) * signal).astype(np.float32)
 
+    per_band_gains = params["per_band_gain_changes_db"]
     eq_effects = []
-    if band_name in ("low", "sub"):
-        eq_effects.append(LowShelfFilter(cutoff_frequency_hz=80.0 if band_name == "sub" else 120.0, gain_db=float(eq_gain), q=0.707))
+    if band_name == "low":
+        blended = per_band_gains["sub_bass_20_60hz"] * 0.4 + per_band_gains["bass_60_250hz"] * 0.6
+        eq_effects.append(LowShelfFilter(cutoff_frequency_hz=120.0, gain_db=shaped_gain(blended), q=0.707))
+    elif band_name == "sub":
+        eq_effects.append(LowShelfFilter(cutoff_frequency_hz=80.0, gain_db=shaped_gain(per_band_gains["sub_bass_20_60hz"]), q=0.707))
     elif band_name == "punch":
-        eq_effects.append(PeakFilter(cutoff_frequency_hz=150.0, gain_db=float(eq_gain), q=0.9))
+        eq_effects.append(PeakFilter(cutoff_frequency_hz=150.0, gain_db=shaped_gain(per_band_gains["bass_60_250hz"]), q=0.9))
     elif band_name == "high":
-        eq_effects.append(HighShelfFilter(cutoff_frequency_hz=8000.0, gain_db=float(eq_gain), q=0.707))
+        eq_effects.append(HighShelfFilter(cutoff_frequency_hz=8000.0, gain_db=shaped_gain(per_band_gains["brilliance_6000_20000hz"]), q=0.707))
     elif band_name == "low_mid":
-        eq_effects.append(PeakFilter(cutoff_frequency_hz=400.0, gain_db=float(eq_gain), q=0.9))
-    else:
-        eq_effects.append(PeakFilter(cutoff_frequency_hz=2800.0, gain_db=float(eq_gain), q=1.0))
+        # This DSP band spans 250-2000Hz (see PROCESS_BANDS in
+        # audio_utils.py) and covers two distinct analysis corrections:
+        # low_mid_250_500hz (mud/boxiness) and mid_500_2000hz (vocal/
+        # instrument body — the single largest, perceptually most
+        # important analysis band). mid_500_2000hz's computed correction
+        # used to be reported in per_band_gain_changes_db but never
+        # actually applied to the audio at all — real "calculated but
+        # never applied" bug, not a tuning choice. Two separate peak
+        # filters (not one blended average) so each problem area gets
+        # addressed at its own frequency, the way a mastering engineer
+        # would use two EQ points rather than one compromise move.
+        eq_effects.append(PeakFilter(cutoff_frequency_hz=400.0, gain_db=shaped_gain(per_band_gains["low_mid_250_500hz"]), q=1.1))
+        eq_effects.append(PeakFilter(cutoff_frequency_hz=1100.0, gain_db=shaped_gain(per_band_gains["mid_500_2000hz"]), q=0.8))
+    else:  # high_mid
+        # Same fix for presence_4000_6000hz (vocal clarity/consonants/
+        # attack) — also computed and never applied before this fix.
+        # vocal_presence_gain_db keeps its original placement, folded into
+        # the high_mid_2000_4000hz point exactly as before (added to the
+        # raw dB before the shared clip, matching the pre-fix combined-then
+        # -clipped behavior instead of clipping each term separately).
+        eq_effects.append(
+            PeakFilter(
+                cutoff_frequency_hz=2800.0,
+                gain_db=shaped_gain(per_band_gains["high_mid_2000_4000hz"] + params["vocal_presence_gain_db"]),
+                q=1.1,
+            )
+        )
+        eq_effects.append(PeakFilter(cutoff_frequency_hz=5000.0, gain_db=shaped_gain(per_band_gains["presence_4000_6000hz"]), q=1.0))
 
     eq_board = Pedalboard(eq_effects)
     processed = np.asarray(eq_board(_to_pedalboard_shape(compressed), sr)[0], dtype=np.float32)

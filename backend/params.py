@@ -394,6 +394,125 @@ MASTERING_STYLE_PROFILES = {
         "max_lufs_raise_db": 0.9,
         "max_lufs_reduce_db": -1.6,
     },
+    # Below: broader era/production-lineage coverage, same reasoning as the
+    # six above (bias targets, never a fixed preset — the per-track
+    # analysis in mastering_params.py still decides how much correction a
+    # given source actually needs).
+    "vintage_analog": {
+        # 60s-70s tape mastering: quiet by modern standards, wide open
+        # dynamics, narrow/mono-leaning stereo image (pre-wide-stereo-
+        # mastering norms), soft top end, tape warmth from saturation.
+        "target_lufs_delta": -3.0,
+        "target_dynamic_range_delta": 3.0,
+        "max_stereo_width_delta": -0.15,
+        "saturation_delta": 0.10,
+        "hf_boost_cap_db": 0.3,
+        "max_lufs_raise_db": 0.5,
+        "max_lufs_reduce_db": -1.0,
+    },
+    "cd_loudness_war": {
+        # Early/mid-2000s brickwalled CD mastering — the extreme case the
+        # rest of this app deliberately avoids by default. Available as an
+        # explicit, opt-in style rather than baked into "modern."
+        "target_lufs_delta": 1.2,
+        "target_dynamic_range_delta": -3.0,
+        "max_stereo_width_delta": 0.0,
+        "saturation_delta": 0.02,
+        "hf_boost_cap_db": 1.0,
+        "max_lufs_raise_db": 3.2,
+        "max_lufs_reduce_db": -3.0,
+    },
+    "vinyl_master": {
+        # Mastering for a physical vinyl cut: conservative/narrower low-end
+        # width (a vinyl groove can't track hard-panned or wide sub-bass
+        # without skipping), rolled-off extreme highs, dynamics preserved
+        # since a cutting lathe can't be brickwalled the way digital can.
+        "target_lufs_delta": -2.2,
+        "target_dynamic_range_delta": 2.2,
+        "max_stereo_width_delta": -0.25,
+        "saturation_delta": 0.06,
+        "hf_boost_cap_db": 0.4,
+        "max_lufs_raise_db": 0.6,
+        "max_lufs_reduce_db": -1.4,
+    },
+    "streaming_safe": {
+        # Explicitly optimized for loudness-normalizing platforms (Spotify
+        # et al target roughly -14 LUFS and warn about true-peak-driven
+        # encoding distortion above ~-2dBTP) rather than competing on raw
+        # loudness — quieter and more dynamic than "modern" on purpose.
+        "target_lufs_delta": 2.2,
+        "target_dynamic_range_delta": 1.3,
+        "max_stereo_width_delta": 0.0,
+        "saturation_delta": -0.03,
+        "hf_boost_cap_db": 0.7,
+        "max_lufs_raise_db": 0.5,
+        "max_lufs_reduce_db": -2.3,
+    },
+    "hiphop_golden_era": {
+        # 90s boom-bap: warm, punchy, moderate loudness — not brickwalled,
+        # bass-forward without being sub-hi-fi trap-modern.
+        "target_lufs_delta": -1.5,
+        "target_dynamic_range_delta": 1.2,
+        "max_stereo_width_delta": -0.10,
+        "saturation_delta": 0.09,
+        "hf_boost_cap_db": 0.5,
+        "max_lufs_raise_db": 0.8,
+        "max_lufs_reduce_db": -1.3,
+    },
+    "hiphop_modern_trap": {
+        # Current trap/hip-hop mastering norms: loud, tight, sub-forward,
+        # bright hats/top end.
+        "target_lufs_delta": 0.5,
+        "target_dynamic_range_delta": -1.2,
+        "max_stereo_width_delta": 0.05,
+        "saturation_delta": 0.06,
+        "hf_boost_cap_db": 1.1,
+        "max_lufs_raise_db": 2.6,
+        "max_lufs_reduce_db": -2.4,
+    },
+    "pop_80s": {
+        # Bright, wide, gated-drum-era pop mastering — moderate loudness by
+        # today's standards but noticeably brighter/wider than "modern."
+        "target_lufs_delta": -1.8,
+        "target_dynamic_range_delta": 1.0,
+        "max_stereo_width_delta": 0.10,
+        "saturation_delta": 0.03,
+        "hf_boost_cap_db": 1.2,
+        "max_lufs_raise_db": 1.0,
+        "max_lufs_reduce_db": -1.5,
+    },
+    "edm_festival": {
+        # Big-room/festival EDM: very loud, tight, bright, maximally wide.
+        "target_lufs_delta": 1.0,
+        "target_dynamic_range_delta": -1.5,
+        "max_stereo_width_delta": 0.15,
+        "saturation_delta": 0.06,
+        "hf_boost_cap_db": 1.4,
+        "max_lufs_raise_db": 3.2,
+        "max_lufs_reduce_db": -2.6,
+    },
+    "acoustic_natural": {
+        # Audiophile-natural mastering for acoustic/singer-songwriter
+        # material — minimal processing, wide dynamics, almost no push.
+        "target_lufs_delta": 3.0,
+        "target_dynamic_range_delta": 2.5,
+        "max_stereo_width_delta": -0.05,
+        "saturation_delta": -0.04,
+        "hf_boost_cap_db": 0.4,
+        "max_lufs_raise_db": 0.3,
+        "max_lufs_reduce_db": -2.8,
+    },
+    "cinematic_score": {
+        # Film-score mastering philosophy: maximum preserved dynamic
+        # range, spacious width, essentially no loudness push.
+        "target_lufs_delta": 4.0,
+        "target_dynamic_range_delta": 3.5,
+        "max_stereo_width_delta": 0.10,
+        "saturation_delta": -0.04,
+        "hf_boost_cap_db": 0.5,
+        "max_lufs_raise_db": 0.2,
+        "max_lufs_reduce_db": -3.0,
+    },
 }
 
 
