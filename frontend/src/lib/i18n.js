@@ -395,6 +395,12 @@ const DICT = {
   "console.needsStudio": { en: "Needs the Studio plan or higher.", sq: "Kërkon planin Studio ose më lart." },
   "console.genre": { en: "Genre", sq: "Zhanri" },
   "console.masteringStyle": { en: "Mastering Style", sq: "Stili i Masterizimit" },
+  "console.masteringObjective": { en: "Mastering Objective", sq: "Objektivi i Masterizimit" },
+  "console.masteringObjectiveHint": {
+    en: "Optional — biases the mastering strategy toward a musical goal (Clean, Club, Punch, ...). The engine still decides how much correction your track actually needs.",
+    sq: "Opsionale — e orienton strategjinë e masterizimit drejt një qëllimi muzikor (Clean, Club, Punch, ...). Motori vazhdon të vendosë sa korrigjim ka nevojë vërtet gjurma jote.",
+  },
+  "console.objectiveAuto": { en: "Auto", sq: "Auto" },
   "console.tags": { en: "Tags", sq: "Etiketa" },
   "console.savedArtists": { en: "Saved Artists", sq: "Artistë të Ruajtur" },
   "console.savedArtistsBody": {

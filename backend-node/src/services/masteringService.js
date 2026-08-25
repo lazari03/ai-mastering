@@ -4,7 +4,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
 
-import { AUDIO_DECODE_EXTS, GENRES, STYLES, TAGS } from "../config/constants.js";
+import { AUDIO_DECODE_EXTS, CATEGORIES, FLAVOURS_BY_CATEGORY, GENRES, STYLES, TAGS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
 import { getMixPresetByName } from "./presetsService.js";
 
@@ -49,6 +49,8 @@ async function resolveConfig(input, uid) {
     mix_preset = null,
     tier = "standard",
     processing = null,
+    category = null,
+    flavour = null,
   } = input;
 
   const resolved = {
@@ -62,6 +64,11 @@ async function resolveConfig(input, uid) {
     // "professional" splits sub/punch bass bands and true-peak limits
     // instead of pedalboard.Limiter's makeup-gain-prone one.
     tier: tier === "professional" ? "professional" : "standard",
+    // Optional musical-objective layer (Clean, Modern, Club, ...) — see
+    // backend/params.py:MASTERING_CATEGORY_PROFILES. Only meaningful for
+    // the adaptive engine, same guard as genre/style/tags below.
+    category: category || null,
+    flavour: flavour || null,
     // Only ever comes from a preset — a full professional preset (with a
     // "processing" block) routes /master to preset_dsp_engine instead of
     // the genre-based adaptive engine. See resolveConfig's mix_preset branch.
@@ -124,6 +131,18 @@ async function resolveConfig(input, uid) {
     for (const tag of resolved.tags) {
       if (!TAGS.includes(tag)) {
         throw new Error(`Invalid tag '${tag}'.`);
+      }
+    }
+    if (resolved.category && !CATEGORIES.includes(resolved.category)) {
+      throw new Error(`Invalid mastering category '${resolved.category}'. Options: ${CATEGORIES.join(", ")}`);
+    }
+    if (resolved.flavour) {
+      if (!resolved.category) {
+        throw new Error("flavour requires a category to be set");
+      }
+      const validFlavours = FLAVOURS_BY_CATEGORY[resolved.category] || [];
+      if (!validFlavours.includes(resolved.flavour)) {
+        throw new Error(`Invalid flavour '${resolved.flavour}' for category '${resolved.category}'. Options: ${validFlavours.join(", ")}`);
       }
     }
   }
@@ -353,6 +372,15 @@ export async function processMastering({ file, referenceFile = null, fields, uid
     output_format: config.output_format,
     tier: config.tier,
   };
+  // Category/flavour only apply to the adaptive engine — a full preset spec
+  // is a literal instruction set, same reasoning as the reference-file guard
+  // right below.
+  if (config.category && !config.fullPreset) {
+    pythonFields.category = config.category;
+    if (config.flavour) {
+      pythonFields.flavour = config.flavour;
+    }
+  }
   if (config.fullPreset) {
     pythonFields.full_preset_json = JSON.stringify(config.fullPreset);
   }
@@ -380,6 +408,7 @@ export async function processMastering({ file, referenceFile = null, fields, uid
     analysis_before: result.analysis_before,
     analysis_after: result.analysis_after,
     ab_gain_match: result.ab_gain_match || null,
+    ab_analysis: result.ab_analysis || null,
     source_warnings: result.source_warnings || [],
     quality_control: result.quality_control || null,
     processing_applied: {

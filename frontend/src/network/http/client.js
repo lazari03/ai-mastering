@@ -90,6 +90,10 @@ export async function getStyles() {
   return request("/styles");
 }
 
+export async function getCategories() {
+  return request("/categories");
+}
+
 export async function getMixPresets() {
   return request("/mix-presets");
 }

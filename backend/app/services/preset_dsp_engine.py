@@ -8,9 +8,11 @@ from scipy.signal import butter, sosfiltfilt
 
 import numba
 
+from ai_mastering.ab_analysis import build_ab_report
 from ai_mastering.audio_utils import MASTER_SR, _ab_gain_match, _analysis_from_audio, _db, _load_audio, _true_peak_db
 from ai_mastering.bus_processing import _soft_clip, _true_peak_limiter
 from ai_mastering.dsp_filters import _dynamic_eq_narrowband, _lr4_highpass, _oversampled_distortion
+from ai_mastering.quality_control import rebalance_channels, run_quality_control, validate_input_signal
 
 """Interprets the full professional-preset JSON schema used by
 mixing_presets.json (input/highpass/eq/bus_compressor/dynamic_eq/saturation/
@@ -287,22 +289,6 @@ def _apply_limiter(stereo: np.ndarray, sr: int, cfg: dict) -> np.ndarray:
     return np.asarray(_true_peak_limiter(stereo, sr, ceiling_db=ceiling_db), dtype=np.float32)
 
 
-# ---------------------------------------------------------- quality report -
-
-
-def _quality_report(stereo: np.ndarray, sr: int, cfg: dict) -> dict:
-    true_peak_db = _true_peak_db(stereo)
-    correlation = float(np.corrcoef(stereo[:, 0], stereo[:, 1])[0, 1]) if stereo.shape[0] > 1 else 1.0
-    ceiling = float((cfg or {}).get("true_peak_ceiling_dbtp", -1.0))
-    return {
-        "true_peak_dbtp": round(true_peak_db, 2),
-        "true_peak_within_ceiling": bool(true_peak_db <= ceiling + 0.05),
-        "phase_correlation": round(correlation, 3),
-        "mono_compatible": bool(correlation > -0.2),
-        "clipping_detected": bool(np.any(np.abs(stereo) >= 0.999)),
-    }
-
-
 # ------------------------------------------------------------------ main ---
 
 
@@ -312,6 +298,14 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
     object — same shape as an entry in mixing_presets.json."""
     processing = preset.get("processing") or {}
     stereo, sr = _load_audio(input_path, sr=MASTER_SR)
+
+    # Same input-validation/DC-offset-correction stage the adaptive engine
+    # runs (ai_mastering/quality_control.py) — one engineering-integrity
+    # check shared by both engines rather than reimplemented per-engine.
+    # InvalidAudioError propagates up to the caller (app/services/
+    # mastering_service.py maps it to a 400, same as the adaptive path).
+    input_validation = validate_input_signal(stereo, sr)
+    stereo = input_validation.pop("_corrected_audio")
 
     # Full analysis (spectral balance, dynamic range, stereo width/
     # correlation, etc.) — same measurement function the adaptive engine
@@ -326,15 +320,65 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
     stereo = _apply_dynamic_eq(stereo, sr, processing.get("dynamic_eq"))
     stereo = _apply_saturation(stereo, sr, processing.get("saturation"))
     stereo = _apply_stereo(stereo, sr, processing.get("stereo"))
+
+    pre_limiter_true_peak_db = _true_peak_db(stereo) if stereo.size else 0.0
     stereo = _apply_clipper(stereo, processing.get("clipper"))
     stereo = _apply_limiter(stereo, sr, processing.get("limiter"))
+    post_limiter_true_peak_db = _true_peak_db(stereo) if stereo.size else 0.0
 
     peak = float(np.max(np.abs(stereo))) if stereo.size else 0.0
     if peak > 0.999:
         stereo = stereo * (0.999 / peak)
 
+    limiter_report = {
+        "limiter_gain_reduction_db": round(max(0.0, pre_limiter_true_peak_db - post_limiter_true_peak_db), 3),
+        "pre_limiter_peak_db": round(pre_limiter_true_peak_db, 3),
+        "post_limiter_peak_db": round(post_limiter_true_peak_db, 3),
+        "true_peak_aware": bool(processing.get("limiter")),
+    }
+    # Field shape the shared QC/AB modules expect from a processing-params
+    # dict — this engine interprets a literal preset spec rather than
+    # computing per-band deltas from analysis, so eq_correction is reported
+    # as "bypassed" (no single 7-band delta to summarize an arbitrary EQ
+    # band list into) rather than guessed.
+    qc_params = {
+        "saturation_amount": float((processing.get("saturation") or {}).get("amount", 0.0)) if (processing.get("saturation") or {}).get("enabled") else 0.0,
+        "glue_enabled": bool(processing.get("bus_compressor")),
+        "side_gain": 1.0,
+        "per_band_gain_changes_db": {},
+        "category": None,
+        "flavour": None,
+    }
+
+    ceiling_db = float((preset.get("quality_control") or {}).get("true_peak_ceiling_dbtp", -1.0))
     analysis_after = _analysis_from_audio(stereo, sr)
-    quality = _quality_report(stereo, sr, preset.get("quality_control"))
+    quality_control = run_quality_control(
+        analysis_before=analysis_before,
+        analysis_after=analysis_after,
+        mastered_audio=stereo,
+        processing_params=qc_params,
+        limiter_report=limiter_report,
+        true_peak_ceiling_db=ceiling_db,
+    )
+    qc_corrections = []
+    failing_ids = {c["id"] for c in quality_control["checks"] if c["status"] == "fail"}
+    if "channel_balance" in failing_ids:
+        stereo = rebalance_channels(stereo)
+        qc_corrections.append("channel_balance: rebalanced L/R to the quieter channel's level")
+    if "dc_offset" in failing_ids:
+        stereo = stereo - np.mean(stereo, axis=0, keepdims=True).astype(np.float32)
+        qc_corrections.append("dc_offset: removed residual DC offset from the final render")
+    if qc_corrections:
+        analysis_after = _analysis_from_audio(stereo, sr)
+        quality_control = run_quality_control(
+            analysis_before=analysis_before,
+            analysis_after=analysis_after,
+            mastered_audio=stereo,
+            processing_params=qc_params,
+            limiter_report=limiter_report,
+            true_peak_ceiling_db=ceiling_db,
+        )
+    quality_control["corrections_applied"] = qc_corrections
 
     output_cfg = preset.get("output") or {}
     bit_depth = int(output_cfg.get("bit_depth", 24))
@@ -348,6 +392,14 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
 
     sf.write(str(output_wav_path), stereo, sr, subtype=subtype)
 
+    ab_analysis = build_ab_report(
+        analysis_before=analysis_before,
+        analysis_after=analysis_after,
+        processing_params=qc_params,
+        limiter_report=limiter_report,
+        quality_control=quality_control,
+    )
+
     source_warnings = []
     if analysis_before.get("near_mono_source"):
         source_warnings.append(
@@ -355,12 +407,20 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
             "mastering can't create real stereo separation that was never in the recording. "
             "The width/wider controls have nothing to widen here."
         )
+    if not ab_analysis["improved"]:
+        source_warnings.extend(f"Improvement check: {reason}" for reason in ab_analysis["verdict_reasons"])
 
     return {
         "analysis_before": analysis_before,
         "analysis_after": analysis_after,
-        "quality_control": quality,
-        "processing_applied": {"engine": "preset_dsp_engine", "stages": list(processing.keys())},
+        "quality_control": quality_control,
+        "ab_analysis": ab_analysis,
+        "processing_applied": {
+            "engine": "preset_dsp_engine",
+            "stages": list(processing.keys()),
+            "input_validation": input_validation,
+            "quality_control_corrections": qc_corrections,
+        },
         "ab_gain_match": _ab_gain_match(analysis_before["integrated_lufs"], analysis_after["integrated_lufs"]),
         "source_warnings": source_warnings,
         "target_profile_used": {"genre": preset.get("genre"), "style": preset.get("style")},

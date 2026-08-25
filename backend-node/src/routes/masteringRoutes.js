@@ -6,7 +6,7 @@ import { Readable } from "node:stream";
 import express from "express";
 import multer from "multer";
 
-import { GENRES, STYLES, TAGS, AUDIO_DECODE_EXTS } from "../config/constants.js";
+import { GENRES, STYLES, TAGS, CATEGORIES, FLAVOURS_BY_CATEGORY, AUDIO_DECODE_EXTS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
 import { processMastering, execFileAsync, deleteJobFiles } from "../services/masteringService.js";
 import { analyzeChords, previewCodec } from "../services/chordCleanService.js";
@@ -160,6 +160,10 @@ router.get("/tags", (_req, res) => {
 
 router.get("/styles", (_req, res) => {
   res.json({ styles: STYLES });
+});
+
+router.get("/categories", (_req, res) => {
+  res.json({ categories: CATEGORIES, flavours: FLAVOURS_BY_CATEGORY });
 });
 
 router.post("/profile", async (req, res) => {
@@ -600,6 +604,8 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
         mix_preset: preview ? null : req.body.mix_preset || null,
         tier,
         processing,
+        category: preview ? null : req.body.category || null,
+        flavour: preview ? null : req.body.flavour || null,
       },
     });
 

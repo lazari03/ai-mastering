@@ -11,6 +11,7 @@ class MasterResponse(BaseModel):
     analysis_before: dict
     analysis_after: dict
     ab_gain_match: dict | None = None
+    ab_analysis: dict | None = None
     source_warnings: list[str] = []
     quality_control: dict | None = None
     processing_applied: dict
