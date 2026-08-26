@@ -7,6 +7,7 @@ import ProcessingSummary from "@/components/audio/ProcessingSummary";
 import { downloadFileSafely, getJobDetail, toAuthedDownloadUrl } from "@/network/http/client";
 import { useMasteringStore } from "@/store/masteringStore";
 import { useLanguage } from "@/lib/i18n";
+import { shortenFilename } from "@/lib/format";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
 // three.js + its postprocessing passes are real weight (~250KB+) that only
@@ -162,12 +163,20 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
   return (
     <div className="reveal mx-auto w-full max-w-[880px]">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="m-0 text-[11px] uppercase tracking-[0.2em] text-brass">{t("result.eyebrow")}</p>
-          <h1 className="m-0 mt-1 font-[var(--font-title)] text-[26px]">{t("result.title")}</h1>
-          {job.original_filename ? <p className="mt-1 truncate text-sm text-zinc-400">{job.original_filename}</p> : null}
+          <h1 className="m-0 mt-1 font-[var(--font-title)] text-[22px] sm:text-[26px]">{t("result.title")}</h1>
+          {job.original_filename ? (
+            // Shortened at the JS level (not just CSS truncate) so the
+            // extension and trailing part of a long filename stay visible
+            // instead of being clipped off blind — see lib/format.js. Full
+            // name is still one hover/long-press away via title=.
+            <p className="mt-1 truncate text-sm text-zinc-400" title={job.original_filename}>
+              {shortenFilename(job.original_filename)}
+            </p>
+          ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           {target.genre ? <span className="rounded-lg border border-white/15 bg-black/20 px-3 py-1.5 text-xs capitalize">{target.genre}</span> : null}
           {target.category ? (
             <span className="rounded-lg border border-brass/40 bg-brass/10 px-3 py-1.5 text-xs capitalize text-brass">
@@ -179,7 +188,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
         </div>
       </div>
 
-      <div className="glass-panel rounded-[20px] p-[22px]">
+      <div className="glass-panel rounded-[20px] p-4 sm:p-[22px]">
         <div className="mb-4 flex items-center justify-center gap-1 rounded-full border border-white/10 bg-black/30 p-1">
           <button
             type="button"
@@ -203,26 +212,30 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
 
         {previewSrc ? <WebGLMasterPreview src={previewSrc} gainDb={gainDb} /> : null}
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        {/* Full-width stacked on mobile (easier to tap, no cramped
+            3-buttons-squeezed-into-one-row), a flexible row from sm: up —
+            replaces a fixed min-w-[200px] that used to force wrapping at
+            arbitrary widths regardless of the actual viewport. */}
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <button
             type="button"
             onClick={handleDownload}
             disabled={downloading || !urls}
-            className="inline-flex flex-1 min-w-[200px] justify-center rounded-lg border border-brass/40 bg-brass/[0.18] px-4 py-3 text-xs uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
+            className="inline-flex w-full justify-center rounded-lg border border-brass/40 bg-brass/[0.18] px-4 py-3 text-xs uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50 sm:w-auto sm:flex-1 sm:min-w-[180px]"
           >
             {downloading ? t("console.downloading") : t("console.downloadMaster")}
           </button>
           <button
             type="button"
             onClick={handleMasterAnother}
-            className="inline-flex flex-1 min-w-[200px] justify-center rounded-lg border border-white/15 bg-black/20 px-4 py-3 text-xs uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30"
+            className="inline-flex w-full justify-center rounded-lg border border-white/15 bg-black/20 px-4 py-3 text-xs uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
           >
             {t("result.masterAnother")}
           </button>
           <button
             type="button"
             onClick={onViewAllMasters}
-            className="inline-flex flex-1 min-w-[200px] justify-center rounded-lg border border-white/15 bg-black/20 px-4 py-3 text-xs uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30"
+            className="inline-flex w-full justify-center rounded-lg border border-white/15 bg-black/20 px-4 py-3 text-xs uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
           >
             {t("result.viewAllMasters")}
           </button>
@@ -238,7 +251,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
 
       <div className="mt-6">
         <h2 className="m-0 mb-3 font-[var(--font-title)] text-base">{t("result.detailsHeading")}</h2>
-        <div className="glass-panel rounded-[20px] p-[22px]">
+        <div className="glass-panel rounded-[20px] p-4 sm:p-[22px]">
           <ProcessingSummary result={job} />
         </div>
       </div>

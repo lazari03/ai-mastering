@@ -138,7 +138,21 @@ export default function AppClient({ initialJobId } = {}) {
   // reading in-memory Zustand state that a refresh would wipe. recordJob
   // on the backend is awaited before /master's response returns for a
   // real render, so the data is already there by the time this fetch runs.
+  //
+  // The `lastAutoNavJobId` ref below is only a same-mount guard against
+  // double-firing in the tick before the navigation completes — it is NOT
+  // what stops this from re-firing on a later remount (a ref can't do that;
+  // its value dies with the component instance that navigating away
+  // destroys). What actually stops re-firing across remounts is
+  // acknowledgeResult() consuming the store signal right after the push:
+  // with no shared layout between /app and /app/masters/:jobId, browser
+  // back or any nav to /app mounts a brand new AppClient, and without
+  // clearing `result` this effect would find the same finished-job signal
+  // still sitting in the store and immediately push right back — the
+  // "stuck, can't navigate back and forth" bug. See acknowledgeResult's
+  // own comment in masteringStore.js.
   const masteringResult = useMasteringStore((s) => s.result);
+  const acknowledgeResult = useMasteringStore((s) => s.acknowledgeResult);
   const lastAutoNavJobId = useRef(null);
   useEffect(() => {
     if (!masteringResult?.job_id || masteringResult.preview) return;
@@ -146,6 +160,7 @@ export default function AppClient({ initialJobId } = {}) {
     lastAutoNavJobId.current = masteringResult.job_id;
     refreshEntitlements();
     router.push(`/app/masters/${masteringResult.job_id}`);
+    acknowledgeResult();
   }, [masteringResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fullscreen render-status overlay — one shared timeline (see the hook's
