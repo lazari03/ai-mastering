@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import ChordsPanel from "@/app/ui/ChordsPanel";
@@ -45,11 +45,18 @@ const TABS = [
 
 const SIDEBAR_PREF_KEY = "sidebarOpen";
 
-export default function AppClient() {
+export default function AppClient({ initialJobId } = {}) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t, lang, setLang } = useLanguage();
   const { user, loading, signOut } = useAuthStore();
-  const [activeTab, setActiveTab] = useState("master");
+  // ?tab=myMasters (from MasterResultView's "View All My Masters", or any
+  // other future deep link into a specific tab) — read once on mount, not
+  // synced continuously, same as every other tab switch that follows.
+  const [activeTab, setActiveTab] = useState(() => {
+    const requested = searchParams.get("tab");
+    return TABS.some((tab) => tab.key === requested) ? requested : "master";
+  });
   const [menuOpen, setMenuOpen] = useState(false);
   // Desktop sidebar on/off — separate from menuOpen (that's the mobile
   // dropdown). Persisted so the choice sticks across reloads.
@@ -123,6 +130,14 @@ export default function AppClient() {
   // Master tab (the aside there is already the right place to A/B a
   // preview against the original). Also refreshes entitlements — a real
   // master just spent one quota slot.
+  //
+  // A real navigation (router.push to a real URL), not just a tab-state
+  // flip — that's what makes refreshing the result page not lose the
+  // data: the new page mounts fresh with initialJobId from the URL and
+  // fetches GET /jobs/:jobId (see MasterResultView.jsx), rather than
+  // reading in-memory Zustand state that a refresh would wipe. recordJob
+  // on the backend is awaited before /master's response returns for a
+  // real render, so the data is already there by the time this fetch runs.
   const masteringResult = useMasteringStore((s) => s.result);
   const lastAutoNavJobId = useRef(null);
   useEffect(() => {
@@ -130,7 +145,7 @@ export default function AppClient() {
     if (masteringResult.job_id === lastAutoNavJobId.current) return;
     lastAutoNavJobId.current = masteringResult.job_id;
     refreshEntitlements();
-    setActiveTab("result");
+    router.push(`/app/masters/${masteringResult.job_id}`);
   }, [masteringResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fullscreen render-status overlay — one shared timeline (see the hook's
@@ -150,12 +165,13 @@ export default function AppClient() {
     );
   }
 
-  // "result" is a transient destination (reached only via the auto-nav
-  // effect above, or its own nav buttons), not a persistent sidebar tab —
-  // deliberately absent from TABS so it never appears in the nav lists
-  // below. Falls back to the Master tab if reached with nothing to show
-  // (e.g. the result was cleared by "Master Another Track").
-  const showResultView = activeTab === "result" && Boolean(masteringResult) && !masteringResult.preview;
+  // The result view is a real route (/app/masters/:jobId), not a
+  // sidebar tab — deliberately absent from TABS so it never appears in
+  // the nav lists below. initialJobId comes straight from that route's
+  // params (see app/masters/[jobId]/page.js); MasterResultView fetches
+  // its own data by jobId, so this component doesn't need to know
+  // anything about the job itself.
+  const showResultView = Boolean(initialJobId);
   const active = TABS.find((tab) => tab.key === activeTab) || TABS[0];
 
   return (
@@ -377,7 +393,11 @@ export default function AppClient() {
           min-w-0 is the equivalent fix for the desktop flex-row case. */}
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-10 md:py-8">
         {showResultView ? (
-          <MasterResultView onMasterAnother={() => setActiveTab("master")} onViewAllMasters={() => setActiveTab("myMasters")} />
+          <MasterResultView
+            jobId={initialJobId}
+            onMasterAnother={() => router.push("/app")}
+            onViewAllMasters={() => router.push("/app?tab=myMasters")}
+          />
         ) : (
           active.render({ setActiveTab, setShowTutorial })
         )}

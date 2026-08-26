@@ -45,3 +45,6 @@ firestore.rules
 
 # --- Marketing assets, not app source ---
 social-media/
+
+# --- Reference audio, not app source ---
+masters-example/

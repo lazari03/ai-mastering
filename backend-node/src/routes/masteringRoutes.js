@@ -14,7 +14,7 @@ import { listMixPresets } from "../services/presetsService.js";
 import { importCustomPreset, deleteCustomPreset } from "../services/customPresetsService.js";
 import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPresetsService.js";
 import { saveProfile, getProfile, deleteAllUserData } from "../services/profileService.js";
-import { recordJob, listJobs, ownsJob, getJob, deleteJob } from "../services/jobsService.js";
+import { recordJob, listJobs, ownsJob, getJob, getJobDetail, deleteJob } from "../services/jobsService.js";
 import {
   createCheckoutUrl,
   createPortalUrl,
@@ -190,6 +190,34 @@ router.get("/jobs", async (req, res) => {
     return res.json(jobs);
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to load job history" });
+  }
+});
+
+// Backs the dedicated result page (/app/masters/:jobId) — lets a finished
+// master be reloaded on refresh, or opened from My Masters, instead of
+// only ever existing in the in-memory result the moment a render
+// finishes. requireAuth (server.js's global gate) has already confirmed
+// who's asking by the time this runs; getJob() itself is scoped to
+// req.user.uid's own jobs subcollection, so it structurally cannot return
+// another user's job no matter what jobId is guessed — same ownership
+// guarantee ownsJob() gives the download/original/delete routes, just
+// via the lookup path itself rather than a separate check. 404 either
+// way (missing vs. someone else's) so existence isn't leaked.
+router.get("/jobs/:jobId", async (req, res) => {
+  try {
+    const job = await getJobDetail(req.user.uid, req.params.jobId);
+    if (!job) {
+      return res.status(404).json({ detail: "Job not found" });
+    }
+    // Files (not the Firestore record) are swept 48h after creation — a
+    // record can briefly outlive its files (see jobsService.js), so this
+    // tells the frontend not to try building a player/download link for
+    // one that's already past its window, rather than surfacing a raw
+    // download 404 mid-page.
+    const expired = job.expires_at ? new Date(job.expires_at).getTime() <= Date.now() : false;
+    return res.json({ ...job, expired });
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to load job" });
   }
 });
 
@@ -664,6 +692,13 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
       before_lufs: result.before_lufs,
       after_lufs: result.after_lufs,
       preview,
+      analysis_before: result.analysis_before,
+      analysis_after: result.analysis_after,
+      ab_gain_match: result.ab_gain_match,
+      processing_applied: result.processing_applied,
+      target_profile_used: result.target_profile_used,
+      source_warnings: result.source_warnings,
+      quality_control: result.quality_control,
     });
     if (preview) {
       // Best-effort — a Firestore hiccup here shouldn't fail a preview
@@ -672,9 +707,10 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
       recordJobPromise.catch((error) => console.error("Failed to record job history:", error.message));
     } else {
       // Awaited for a real master — the frontend auto-navigates straight
-      // to My Masters on this response (see AppClient.jsx), so the
-      // Firestore write needs to have actually landed by the time that
-      // happens, not still be in flight. Still best-effort in the sense
+      // to /app/masters/:jobId on this response (see AppClient.jsx),
+      // which immediately does a GET /jobs/:jobId, so the Firestore write
+      // needs to have actually landed by the time that happens, not still
+      // be in flight. Still best-effort in the sense
       // that a failure here doesn't fail the response — the render
       // already succeeded and the file already exists — just logged.
       try {

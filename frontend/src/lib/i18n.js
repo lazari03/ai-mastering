@@ -710,6 +710,15 @@ const DICT = {
   "shared.minutes": { en: "{n} minutes", sq: "{n} minuta" },
   "shared.hours": { en: "{n} hour{s}", sq: "{n} orë" },
   "shared.masterYourOwn": { en: "Master your own audio at Auralith Forge →", sq: "Masterizo audion tënde te Auralith Forge →" },
+
+  "result.loadFailed": { en: "Couldn't load this master.", sq: "S'u ngarkua dot ky master." },
+  "result.notFound": { en: "This master doesn't exist, or isn't yours.", sq: "Ky master nuk ekziston, ose nuk është yti." },
+  "result.expiredTitle": { en: "This master has expired", sq: "Ky master ka skaduar" },
+  "result.expiredBody": {
+    en: "Files are removed 48 hours after creation. This one's metadata is still here, but the audio itself is gone — re-upload and master it again if you need it.",
+    sq: "Skedarët fshihen 48 orë pas krijimit. Metadata e këtij ende është këtu, por vetë audio ka shkuar — ngarkoje përsëri dhe masterizoje sërish nëse të duhet.",
+  },
+  "result.backToMasters": { en: "Back to My Masters", sq: "Kthehu te Masterat e Mia" },
 };
 
 const LanguageContext = createContext({ lang: "en", setLang: () => {}, t: (key) => key });
