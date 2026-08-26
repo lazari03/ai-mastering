@@ -107,7 +107,7 @@ export default function HelpSupportPanel() {
             {t("help.step4tail")}
           </li>
         </ol>
-        <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <span className="text-[11px] uppercase tracking-[0.14em] text-zinc-400">{t("help.masterPrompt")}</span>
           <CopyButton text={MASTER_PROMPT} label={t("help.copyPrompt")} copiedLabel={t("help.copied")} />
         </div>

@@ -183,8 +183,8 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc })
       className="rounded-2xl border border-white/10 p-5"
       style={{ background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))" }}
     >
-      <div className="flex items-center justify-between gap-2">
-        <p className="m-0 text-sm font-semibold text-white">{label}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="m-0 min-w-0 text-sm font-semibold text-white">{label}</p>
         {genre ? (
           <span className="rounded-full border border-white/15 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.1em] text-zinc-400">
             {genre}

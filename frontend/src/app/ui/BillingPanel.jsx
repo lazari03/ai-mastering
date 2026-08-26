@@ -188,8 +188,8 @@ export default function BillingPanel() {
             </div>
           ) : null}
 
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
-            <div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
+            <div className="min-w-0">
               <p className="m-0 text-sm text-white">
                 {SINGLE_MASTER.label} — {SINGLE_MASTER.price}
               </p>
@@ -231,8 +231,8 @@ export default function BillingPanel() {
           ) : null}
 
           {currentPlan !== "pro" && !chordSubscriptionActive ? (
-            <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
-              <div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
+              <div className="min-w-0">
                 <p className="m-0 text-sm text-white">
                   {CHORD_DETECTION.label} — {CHORD_DETECTION.price}
                 </p>
@@ -256,8 +256,8 @@ export default function BillingPanel() {
           ) : null}
 
           {currentPlan !== "pro" ? (
-            <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-dashed border-brass/30 bg-brass/[0.05] p-3">
-              <div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-brass/30 bg-brass/[0.05] p-3">
+              <div className="min-w-0">
                 <p className="m-0 text-sm text-white">
                   {CHORDS_MONTHLY.label} — {CHORDS_MONTHLY.price}
                   {CHORDS_MONTHLY.period}
@@ -313,8 +313,8 @@ export default function BillingPanel() {
             </div>
           ) : null}
 
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
-            <div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
+            <div className="min-w-0">
               <p className="m-0 text-sm text-white">
                 {STEM_SEPARATION.label} — {STEM_SEPARATION.price}
               </p>

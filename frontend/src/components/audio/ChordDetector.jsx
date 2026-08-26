@@ -158,18 +158,21 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling, onMaste
 
       {analysis ? (
         <div className="mt-5 space-y-3">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-center">
+          {/* gap/padding/type scale down a notch below sm: — three cells
+              share ~340px there, and "F# minor" at text-xl inside p-4
+              padding was wrapping awkwardly per-word. */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-center sm:p-4">
               <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.key")}</p>
-              <p className="mt-1.5 text-xl font-bold">{analysis.key}</p>
+              <p className="mt-1.5 text-lg font-bold sm:text-xl">{analysis.key}</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-center">
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-center sm:p-4">
               <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.bpm")}</p>
-              <p className="mt-1.5 text-xl font-bold">{analysis.bpm}</p>
+              <p className="mt-1.5 text-lg font-bold sm:text-xl">{analysis.bpm}</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-center">
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-center sm:p-4">
               <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.timeSig")}</p>
-              <p className="mt-1.5 text-xl font-bold">4/4</p>
+              <p className="mt-1.5 text-lg font-bold sm:text-xl">4/4</p>
             </div>
           </div>
 
