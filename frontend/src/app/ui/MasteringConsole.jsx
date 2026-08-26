@@ -456,47 +456,50 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                     </div>
                   </div>
 
-                  {mode === "quick" ? (
-                    <div className="mt-3.5">
-                      <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.masteringObjective")}</span>
-                      <p className="mb-2 text-[10px] text-zinc-500">{t("console.masteringObjectiveHint")}</p>
-                      <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={() => setCategory("")} className={chipClass(!selectedCategory, "brass")}>
+                  {/* Always visible, Quick or Pro — objective/tags are a
+                      real DSP-affecting choice either way now: Quick uses
+                      them to bias the adaptive engine directly, Pro uses
+                      them to seed the manual knobs below with real
+                      computed values (see masteringStore.js's
+                      applyPreviewParamsToProParams / adaptiveToProParams.js)
+                      instead of always starting from flat defaults. */}
+                  <div className="mt-3.5">
+                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.masteringObjective")}</span>
+                    <p className="mb-2 text-[10px] text-zinc-500">{mode === "pro" ? t("console.masteringObjectiveProHint") : t("console.masteringObjectiveHint")}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => setCategory("")} className={chipClass(!selectedCategory, "brass")}>
+                        {t("console.objectiveAuto")}
+                      </button>
+                      {categories.map((category) => (
+                        <button key={category} type="button" onClick={() => setCategory(category)} className={chipClass(selectedCategory === category, "brass")}>
+                          {category.replaceAll("_", " ")}
+                        </button>
+                      ))}
+                    </div>
+                    {selectedCategory && (flavoursByCategory[selectedCategory] || []).length ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button type="button" onClick={() => setFlavour("")} className={chipClass(!selectedFlavour)}>
                           {t("console.objectiveAuto")}
                         </button>
-                        {categories.map((category) => (
-                          <button key={category} type="button" onClick={() => setCategory(category)} className={chipClass(selectedCategory === category, "brass")}>
-                            {category.replaceAll("_", " ")}
+                        {flavoursByCategory[selectedCategory].map((flavour) => (
+                          <button key={flavour} type="button" onClick={() => setFlavour(flavour)} className={chipClass(selectedFlavour === flavour)}>
+                            {flavour}
                           </button>
                         ))}
                       </div>
-                      {selectedCategory && (flavoursByCategory[selectedCategory] || []).length ? (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <button type="button" onClick={() => setFlavour("")} className={chipClass(!selectedFlavour)}>
-                            {t("console.objectiveAuto")}
-                          </button>
-                          {flavoursByCategory[selectedCategory].map((flavour) => (
-                            <button key={flavour} type="button" onClick={() => setFlavour(flavour)} className={chipClass(selectedFlavour === flavour)}>
-                              {flavour}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
+                    ) : null}
+                  </div>
 
-                  {mode === "quick" ? (
-                    <div className="mt-3.5">
-                      <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.tags")}</span>
-                      <div className="flex flex-wrap gap-2">
-                        {tags.map((tag) => (
-                          <button key={tag} type="button" onClick={() => toggleTag(tag)} className={`${chipClass(selectedTags.includes(tag), "brass")} rounded-full lowercase`}>
-                            {tag.replaceAll("_", " ")}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="mt-3.5">
+                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-zinc-300">{t("console.tags")}</span>
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map((tag) => (
+                        <button key={tag} type="button" onClick={() => toggleTag(tag)} className={`${chipClass(selectedTags.includes(tag), "brass")} rounded-full lowercase`}>
+                          {tag.replaceAll("_", " ")}
+                        </button>
+                      ))}
                     </div>
-                  ) : null}
+                  </div>
 
                   {mode === "quick" ? (
                     <AdaptiveControlsPanel

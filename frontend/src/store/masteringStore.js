@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { fetchCatalog, importPreset, deletePreset, runMasteringJob, analyzeAudio, previewParams } from "@/domain/mastering/masteringDomain";
+import { mapAdaptiveParamsToProParams } from "@/domain/mastering/adaptiveToProParams";
 
 const EMPTY_TWEAKS = {
   low_end: 0,
@@ -217,6 +218,11 @@ export const useMasteringStore = create((set, get) => ({
       // via the file-identity check in analyzeCurrentFile).
       if (get().analysis !== analysis) return;
       set({ livePreviewParams: params, isPreviewLoading: false });
+      // In Pro mode, a fresh objective/tag/genre/style selection reseeds
+      // the manual knobs with the newly-computed values — see
+      // applyPreviewParamsToProParams's own comment for why this is a
+      // one-time seed, not a continuous link.
+      if (get().mode === "pro") get().applyPreviewParamsToProParams(params);
     } catch (err) {
       if (get().analysis !== analysis) return;
       const unavailable = err?.status === 501;
@@ -237,7 +243,26 @@ export const useMasteringStore = create((set, get) => ({
   },
 
   setMode(mode) {
-    set({ mode: mode === "pro" ? "pro" : "quick" });
+    const next = mode === "pro" ? "pro" : "quick";
+    set({ mode: next });
+    // Switching into Pro with an objective/tag already selected (and a
+    // live preview already computed for it) seeds the manual knobs with
+    // those real values right away, instead of only the next time the
+    // selection changes — see adaptiveToProParams.js.
+    if (next === "pro" && get().livePreviewParams) {
+      get().applyPreviewParamsToProParams(get().livePreviewParams);
+    }
+  },
+
+  // Applies the adaptive engine's live-computed values (real numbers for
+  // the current track + genre/style/category/flavour/tags selection, not
+  // generic defaults) to Pro Master's manual knobs — a one-time seed, not
+  // a continuous link, so hand-tuning a knob afterward sticks until the
+  // objective/tag selection itself changes again. See
+  // adaptiveToProParams.js for the actual field mapping and why it's not
+  // a clean 1:1 translation.
+  applyPreviewParamsToProParams(params) {
+    set({ proParams: mapAdaptiveParamsToProParams(params, get().proParams) });
   },
 
   setGenre(selectedGenre) {

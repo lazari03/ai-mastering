@@ -402,6 +402,10 @@ const DICT = {
     sq: "Opsionale — e orienton strategjinë e masterizimit drejt një qëllimi muzikor (Clean, Club, Punch, ...). Motori vazhdon të vendosë sa korrigjim ka nevojë vërtet gjurma jote.",
   },
   "console.objectiveAuto": { en: "Auto", sq: "Auto" },
+  "console.masteringObjectiveProHint": {
+    en: "In Pro Master, picking an objective or tag seeds the manual knobs below with real computed values for this track — hand-tune from there. Doesn't re-apply until you change the selection again.",
+    sq: "Në Pro Master, zgjedhja e një objektivi ose etikete i mbush butonat manualë më poshtë me vlera reale të llogaritura për këtë këngë — rregulloji me dorë nga ai pikënisje. Nuk ri-aplikohet derisa të ndryshosh sërish zgjedhjen.",
+  },
   "console.tags": { en: "Tags", sq: "Etiketa" },
   "console.savedArtists": { en: "Saved Artists", sq: "Artistë të Ruajtur" },
   "console.savedArtistsBody": {
