@@ -303,6 +303,14 @@ export const useMasteringStore = create((set, get) => ({
       selectedTags: preset.tags || [],
       tweaks: { ...EMPTY_TWEAKS, ...(preset.tweaks || {}) },
       useStemSeparation: Boolean(preset.use_stem_separation),
+      // A preset without its own literal spec doesn't touch mode/proParams
+      // here (unlike the hasProcessing branch just below) — the
+      // refreshPreviewParams() call after this set() is what seeds Pro
+      // Master's knobs for it instead, same as picking a genre/tag/
+      // objective chip does. Skipped entirely for a full preset (below):
+      // that one already IS a literal spec, re-seeding it from the
+      // adaptive engine's guess would overwrite the exact values the
+      // preset was saved with.
       // A saved preset with a full "processing" spec IS a professional
       // preset — selecting it switches to Pro mode and populates the
       // manual control panel with its actual values, so the UI reflects
@@ -311,6 +319,7 @@ export const useMasteringStore = create((set, get) => ({
         ? { mode: "pro", proParams: { ...cloneProParams(DEFAULT_PRO_PARAMS), ...preset.processing } }
         : {}),
     });
+    if (!hasProcessing) get().refreshPreviewParams();
   },
 
   toggleTag(tag) {
