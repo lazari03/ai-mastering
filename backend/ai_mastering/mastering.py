@@ -17,7 +17,7 @@ from .audio_utils import (
     _spectral_balance_only,
 )
 from .bus_processing import _bus_process, _bus_process_pro
-from .dsp_filters import _build_stereo_from_ms, _lr4_highpass, _lr4_lowpass, _oversampled_distortion, _process_band, _split_bands, _split_bands_pro
+from .dsp_filters import _build_stereo_from_ms, _deess, _lr4_highpass, _lr4_lowpass, _oversampled_distortion, _process_band, _split_bands, _split_bands_pro
 from .mastering_params import _apply_user_tweaks, compute_processing_params
 from .quality_control import InvalidAudioError, rebalance_channels, run_quality_control, validate_input_signal
 from .section_detection import _db_to_lin, _detect_song_sections, _section_gain_db_envelope
@@ -200,6 +200,14 @@ def master_track(
     mid_processed = sum(processed_mid_bands.values())
     side_processed = sum(processed_side_bands.values())
 
+    # Sibilance/harshness control on the full mix's mid channel — before
+    # saturation, so that stage's own harmonic generation doesn't add new
+    # brightness on top of sibilance this hasn't tamed yet. Mid only (not
+    # side): vocals sit centered in virtually every real mix, and running
+    # this on side energy too would risk dulling genuinely wide, non-vocal
+    # high-frequency content (cymbals, synths) that only exists off-center.
+    mid_processed = _deess(mid_processed, sr, float(processing_params.get("deesser_strength", 0.0)))
+
     sat_drive_db = float(np.clip(processing_params["saturation_amount"] * 12.0, 0.0, 7.0))
     if sat_drive_db > 0.1:
         mid_processed = _oversampled_distortion(mid_processed, sr, sat_drive_db)
@@ -351,6 +359,7 @@ def master_track(
             for name in band_names
         },
         "tier": tier,
+        "deesser_strength": round(float(processing_params.get("deesser_strength", 0.0)), 3),
         "saturation_amount": round(float(processing_params["saturation_amount"]), 4),
         "width_adjustment": round(float(side_gain), 4),
         "low_band_stereo_keep": round(float(low_side_keep), 4),

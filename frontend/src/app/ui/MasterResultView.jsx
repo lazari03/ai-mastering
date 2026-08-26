@@ -58,11 +58,16 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
         if (cancelled) return;
         setJob(detail);
         if (!detail.expired) {
-          const [originalUrl, masteredUrl] = await Promise.all([
+          const [originalUrl, masteredUrl, previewUrl] = await Promise.all([
             toAuthedDownloadUrl(`/original/${detail.job_id}`),
             toAuthedDownloadUrl(`/download/${detail.job_id}.${detail.output_format || "wav"}`),
+            // Always 16-bit PCM WAV, purely for the on-page player below —
+            // see backend's /preview route. masteredUrl (the real
+            // deliverable, at its actual bit depth) stays what the
+            // Download button uses.
+            toAuthedDownloadUrl(`/preview/${detail.job_id}`),
           ]);
-          if (!cancelled) setUrls({ originalUrl, masteredUrl });
+          if (!cancelled) setUrls({ originalUrl, masteredUrl, previewUrl });
         }
       })
       .catch((err) => {
@@ -106,7 +111,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
   const target = job.target_profile_used || {};
   const abMatch = job.ab_gain_match || {};
   const gainDb = previewMode === "after" ? abMatch.after_gain_db || 0 : abMatch.before_gain_db || 0;
-  const previewSrc = urls ? (previewMode === "after" ? urls.masteredUrl : urls.originalUrl) : null;
+  const previewSrc = urls ? (previewMode === "after" ? urls.previewUrl || urls.masteredUrl : urls.originalUrl) : null;
 
   const switchPreview = (mode) => {
     if (switchLock.current) return;

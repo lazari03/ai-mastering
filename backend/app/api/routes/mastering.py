@@ -183,7 +183,16 @@ def download(job_id: str, ext: str):
     path = settings.output_dir / f"{job_id}_mastered.{ext}"
     if not path.exists():
         raise HTTPException(404, "File not found")
-    return FileResponse(path, filename=f"mastered_{job_id}.{ext}")
+    # content_disposition_type="inline": passing filename= without this
+    # makes Starlette default to Content-Disposition: attachment, which
+    # tells a browser "save this," not "stream it" — breaking an <audio
+    # src> pointed straight at this route. Node's proxy currently doesn't
+    # forward this header either way (see masteringRoutes.js's
+    # proxyFromPython, which only copies Content-Type/-Length), so this is
+    # defense-in-depth for any direct caller, not the actual production
+    # fix — that's the separate /preview route, which the frontend now
+    # uses for in-browser playback instead of this one.
+    return FileResponse(path, filename=f"mastered_{job_id}.{ext}", content_disposition_type="inline")
 
 
 @router.get("/original/{job_id}")
@@ -192,6 +201,21 @@ def get_original(job_id: str):
     if not matches:
         raise HTTPException(404, "Original not found")
     return FileResponse(matches[0])
+
+
+@router.get("/preview/{job_id}")
+def get_preview(job_id: str):
+    # Always 16-bit PCM WAV (see mastering_service.py:_make_browser_preview)
+    # — the deliverable itself stays at its real bit depth, this exists
+    # purely so an in-browser <audio> player never hits the 24-bit-WAV
+    # compatibility gap that /download's own FileResponse (filename= set,
+    # so Content-Disposition: attachment) would add on top of anyway. No
+    # filename kwarg here — matches /original's already-correct inline
+    # behavior, not /download's attachment one.
+    path = settings.output_dir / f"{job_id}_preview.wav"
+    if not path.exists():
+        raise HTTPException(404, "Preview not found")
+    return FileResponse(path)
 
 
 @router.delete("/files/{job_id}")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 import uuid
 from pathlib import Path
@@ -201,6 +202,41 @@ def _convert_output(wav_mastered_path: Path, output_path: Path, output_ext: str)
         wav_mastered_path.replace(output_path)
 
 
+def _make_browser_preview(wav_mastered_path: Path, preview_path: Path) -> None:
+    # The actual mastered deliverable is written at 24-bit PCM (both DSP
+    # engines — see ai_mastering/mastering.py's sf.write and
+    # preset_dsp_engine.py's own output.bit_depth, which defaults to 24)
+    # — real quality, worth keeping for the download. But that's also
+    # exactly what was breaking in-browser playback: a plain <audio src>
+    # pointed at that file (SignalVisualizer / WebGLMasterPreview, both
+    # showing "MASTERED SIGNAL" with a visible player error while the
+    # original — never 24-bit, whatever format the user actually
+    # uploaded — played fine right next to it) is a well-known compat gap
+    # for 24-bit PCM WAV specifically, unlike 16-bit which every browser's
+    # native audio element handles without exception. This generates a
+    # second, always-16-bit copy purely for that in-browser player —
+    # same "separate file for playback than for download" pattern this
+    # codebase already uses for codec-preview — while the actual
+    # deliverable stays untouched at its original bit depth. Best-effort:
+    # if ffmpeg fails here, playback preview is degraded, not the whole
+    # render — never raises.
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(wav_mastered_path),
+        "-codec:a",
+        "pcm_s16le",
+        str(preview_path),
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        if result.returncode != 0:
+            logging.getLogger(__name__).warning("Browser-preview transcode failed for %s: %s", preview_path.name, result.stderr[-500:])
+    except Exception as exc:  # pragma: no cover — best-effort, never blocks the render
+        logging.getLogger(__name__).warning("Browser-preview transcode raised for %s: %s", preview_path.name, exc)
+
+
 def process_mastering_request(file: UploadFile, config: dict, reference_file: UploadFile | None = None) -> dict:
     if file.size and file.size > settings.max_upload_size_mb * 1024 * 1024:
         raise HTTPException(413, f"Uploaded file exceeds {settings.max_upload_size_mb}MB limit")
@@ -266,6 +302,12 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
             raise HTTPException(500, f"Adaptive mastering failed: {type(exc).__name__}: {exc}") from exc
 
     _convert_output(wav_mastered_path, output_path, output_ext)
+    # wav_mastered_path still exists after _convert_output either way —
+    # untouched for an mp3 output_ext (ffmpeg reads it, writes a separate
+    # output_path), and a same-path no-op rename for the wav case (the
+    # common one: output_ext defaults to "wav", so wav_mastered_path and
+    # output_path are literally the same filename).
+    _make_browser_preview(wav_mastered_path, settings.output_dir / f"{job_id}_preview.wav")
 
     before_lufs = mastering_result["analysis_before"]["integrated_lufs"]
     after_lufs = mastering_result["analysis_after"]["integrated_lufs"]

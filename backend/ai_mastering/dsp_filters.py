@@ -256,6 +256,39 @@ def _process_band(signal: np.ndarray, sr: int, band_name: str, params: dict, cha
     return processed
 
 
+def _deess(signal: np.ndarray, sr: int, strength: float, center_hz: float = 6500.0, q: float = 2.4, release_ms: float = 70.0) -> np.ndarray:
+    """Frequency-selective dynamic gain reduction on the sibilance range
+    (~5-8kHz at the default center_hz/q) — the mastering-stage version of
+    a de-esser, reusing _dynamic_eq_narrowband's own bandpass-isolate /
+    envelope-follow / recombine mechanism rather than a second
+    implementation. With no isolated vocal to sidechain from (that's what
+    stem separation's own, separate de-esser is for — see
+    stem_separation.py), this reacts to whatever energy actually lands in
+    the sibilance range across the whole mix, the same way a mastering-
+    stage de-esser (Weiss, FabFilter Pro-DS in wideband mode, etc.) has to
+    work without a vocal stem to key off.
+
+    strength (0..1, see compute_processing_params's adaptive
+    deesser_strength) scales both how hard it reduces and how readily it
+    engages — a genuinely sibilant source gets caught, a track that's
+    nowhere near the threshold is left untouched (strength <= 0.02 is a
+    no-op, not a wasted filter pass on an already-clean source). q=2.4
+    keeps this narrow enough to leave presence (~3kHz) and true air/
+    cymbals (~10kHz+) alone — this is deliberately tighter than
+    _DYNAMIC_EQ_Q's 1.2, which is tuned for general resonance-taming
+    across a whole DSP band, not a specific narrow problem range.
+    """
+    if strength <= 0.02:
+        return signal
+    max_reduction_db = 5.0 * strength
+    # More sensitive (lower threshold percentile, so it engages on more of
+    # the track) as strength rises — a source that measurably needs more
+    # correction should also get caught more often, not just harder each
+    # time it does trigger.
+    threshold_percentile = 78.0 - 18.0 * strength
+    return _dynamic_eq_narrowband(signal, sr, center_hz, q, max_reduction_db, release_ms, threshold_percentile=threshold_percentile)
+
+
 def _build_stereo_from_ms(mid: np.ndarray, side: np.ndarray) -> np.ndarray:
     left = mid + side
     right = mid - side

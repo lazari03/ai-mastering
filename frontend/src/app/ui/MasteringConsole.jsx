@@ -829,7 +829,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
 
             <div className="rounded-xl border border-white/10 bg-black/20 p-3">
               <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-zinc-400">{t("console.masteredSignal")}</p>
-              <SignalVisualizer src={result.masteredUrl} barColor="#dfc95a" gainDb={result.ab_gain_match?.after_gain_db || 0} />
+              <SignalVisualizer src={result.previewUrl || result.masteredUrl} barColor="#dfc95a" gainDb={result.ab_gain_match?.after_gain_db || 0} />
               <button
                 type="button"
                 onClick={async () => {

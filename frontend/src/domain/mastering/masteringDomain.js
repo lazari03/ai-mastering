@@ -213,15 +213,21 @@ export async function runMasteringJob(input) {
 
   const response = await postMaster(formData);
 
-  const [originalUrl, masteredUrl] = await Promise.all([
+  const [originalUrl, masteredUrl, previewUrl] = await Promise.all([
     toAuthedDownloadUrl(`/original/${response.job_id}`),
     toAuthedDownloadUrl(response.download_url),
+    // Always 16-bit PCM WAV, purely for in-browser <audio> playback — see
+    // backend's /preview route. masteredUrl (the real deliverable, at its
+    // actual bit depth) stays what "Download Master" uses; this is what
+    // any on-page player should point at instead.
+    toAuthedDownloadUrl(`/preview/${response.job_id}`),
   ]);
 
   return {
     ...response,
     originalUrl,
     masteredUrl,
+    previewUrl,
     // Threaded through so the app shell can tell "just finished a real
     // master" from "just finished a preview" and only auto-navigate to My
     // Masters for the former (see AppClient.jsx).

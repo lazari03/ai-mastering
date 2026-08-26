@@ -165,6 +165,21 @@ def compute_processing_params(
     )
     rock_low_end_protection = genre == "rock" and low_energy > 0.55
 
+    # De-esser strength: GENRE_TARGET_PROFILES never sets a baseline for
+    # this (profile["deesser_strength"] is 0 unless the "better_vocals"
+    # tag added +0.5 in _apply_tag_biases), so without this, de-essing
+    # only ever engaged when a user happened to pick that tag — most
+    # renders got none regardless of how sibilant the actual source was.
+    # Adaptive base instead: presence_4000_6000hz + half of
+    # brilliance_6000_20000hz is a proxy for how much of the source's
+    # energy sits in the sibilance-prone range. Healthy sources sit
+    # comfortably under ~10% combined; genuinely harsh/sibilant ones
+    # (bright, vocal-forward, over-excited mixes) exceed it. Purely
+    # additive on top of the tag/style-driven value, never replaces it.
+    sibilance_energy = float(current_balance.get("presence_4000_6000hz", 0.0) + current_balance.get("brilliance_6000_20000hz", 0.0) * 0.5)
+    adaptive_deesser_strength = float(np.clip((sibilance_energy - 0.10) * 6.0, 0.0, 1.0))
+    deesser_strength = float(np.clip(adaptive_deesser_strength + profile["deesser_strength"], 0.0, 1.0))
+
     current_lufs = float(analysis["integrated_lufs"])
     clipping_input = bool(analysis["clipping_detected"])
     desired_lufs_gain_db = float(profile["target_lufs"] - current_lufs)
@@ -509,7 +524,7 @@ def compute_processing_params(
         "band_dynamic_eq_max_reduction_db": band_dynamic_eq_max_reduction_db,
         "limiter_release_ms": round(limiter_release_ms, 1),
         "vocal_presence_gain_db": vocal_presence_gain_db,
-        "deesser_strength": float(profile["deesser_strength"]),
+        "deesser_strength": deesser_strength,
         "input_clipping_detected": clipping_input,
         "style_profile": style_profile,
     }

@@ -945,6 +945,20 @@ router.get("/original/:jobId", async (req, res) => {
   return proxyFromPython(`/original/${req.params.jobId}`, res, "Original not found");
 });
 
+// Always 16-bit PCM WAV (see mastering_service.py:_make_browser_preview) —
+// a separate, browser-safe copy for <audio src> playback (SignalVisualizer,
+// WebGLMasterPreview) distinct from /download's actual deliverable, which
+// stays at its real bit depth. This is what fixed "mastered signal shows a
+// player error while the original plays fine" — the mastered file is
+// always written 24-bit, a real (if narrower) native-<audio> compat gap
+// that 16-bit doesn't have.
+router.get("/preview/:jobId", async (req, res) => {
+  if (!(await ownsJob(req.user.uid, req.params.jobId))) {
+    return res.status(404).json({ detail: "Preview not found" });
+  }
+  return proxyFromPython(`/preview/${req.params.jobId}`, res, "Preview not found");
+});
+
 // Public metadata for the frontend's simple /shared/:jobId page — just
 // enough to render "here's the file, want it?" without exposing anything
 // else about the account that shared it. Same public/token-only auth as
