@@ -60,6 +60,15 @@ deploy: ## Pull latest git + full rebuild + restart — the one command for "shi
 	git pull
 	docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{8,}_' | xargs -r docker rm -f || true
 	docker compose up -d --build
+	# Caddy's config is a bind-mounted file (./Caddyfile), not part of its
+	# image — `docker compose up -d` only recreates a container when the
+	# compose service definition itself changes, so editing just the
+	# Caddyfile's *content* (same mount, same image) leaves Caddy running
+	# on its old in-memory config until something explicitly tells it to
+	# reload. Restart is instant and safe here: certs live in the
+	# caddy_data volume, not in the container, so this never re-triggers
+	# Let's Encrypt issuance.
+	docker compose restart caddy
 
 rebuild-python: ## Force a clean rebuild of just the Python service (no cache — use after Dockerfile/requirements changes)
 	docker compose build --no-cache python-service

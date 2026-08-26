@@ -34,6 +34,20 @@
 
 auralithforge.app {
 	import security_headers
+	# Next.js sets Cache-Control: s-maxage=31536000, stale-while-revalidate
+	# on page HTML/RSC responses by default — tuned for a CDN edge (Vercel)
+	# that can purge/on-demand-revalidate the moment a new deploy lands.
+	# Self-hosted behind a plain reverse proxy with no such CDN, that
+	# header instead tells the browser's own cache (or anything else in
+	# the chain) it's safe to hold onto the old page for up to a year —
+	# exactly the "I deployed, but visitors still see the old site" bug.
+	# Everything under /_next/static/ is deliberately untouched — those
+	# filenames are content-hashed, genuinely safe (and desirable) to
+	# cache for a year, a new deploy just gets new filenames.
+	@html {
+		not path /_next/static/*
+	}
+	header @html Cache-Control "no-cache, must-revalidate"
 	reverse_proxy frontend:3000
 }
 
