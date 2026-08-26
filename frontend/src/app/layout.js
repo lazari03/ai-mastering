@@ -30,6 +30,22 @@ const bodyFont = Inter({
   variable: "--font-body",
 });
 
+// Route-segment config, inherited by every page under this root layout:
+// without it, fully-static pages (the homepage, blog, tools, legal — all
+// the marketing surface) get Next.js's default Cache-Control of
+// s-maxage=31536000 (ONE YEAR), and Cloudflare in front honors s-maxage —
+// measured live as cf-cache-status: HIT on year-cached homepage HTML,
+// meaning a redeploy's changes could take arbitrarily long to reach
+// visitors. Four attempts at overriding the header downstream in Caddy
+// all failed empirically (see the Caddyfile-revert commit); this is the
+// at-the-source fix, same principle as /app's force-dynamic: change what
+// Next itself emits. revalidate=300 turns those pages ISR — Next emits
+// s-maxage=300, stale-while-revalidate instead, so the edge still absorbs
+// traffic bursts but a deploy's changes reach visitors within ~5 minutes.
+// Routes that declare their own config (the /app shell is force-dynamic)
+// are unaffected.
+export const revalidate = 300;
+
 export const metadata = {
   metadataBase: new URL(SITE_URL),
   // Category first, brand second. This is only the fallback for routes
