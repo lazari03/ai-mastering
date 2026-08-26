@@ -35,31 +35,25 @@
 auralithforge.app {
 	import security_headers
 	# Next.js sets Cache-Control: s-maxage=31536000, stale-while-revalidate
-	# on page HTML/RSC responses by default — tuned for a CDN edge (Vercel)
-	# that can purge/on-demand-revalidate the moment a new deploy lands.
-	# Self-hosted behind a plain reverse proxy with no such CDN, that
-	# header instead tells the browser's own cache (or anything else in
-	# the chain) it's safe to hold onto the old page for up to a year —
-	# exactly the "I deployed, but visitors still see the old site" bug.
-	# Everything under /_next/static/ is deliberately untouched — those
-	# filenames are content-hashed, genuinely safe (and desirable) to
-	# cache for a year, a new deploy just gets new filenames.
-	@html {
-		not path /_next/static/*
-	}
-	# Two prior attempts at overriding Next.js's own Cache-Control via the
-	# top-level `header` directive both failed empirically — it runs
-	# before reverse_proxy receives the upstream response, so it was
-	# fighting the ordering rather than actually replacing anything (a
-	# plain set left both values on the wire; a delete+set block deleted
-	# both). header_down, scoped inside reverse_proxy itself, is the
-	# directive actually meant for "modify a header on the response this
-	# proxy just received from its upstream" — it runs at the right point
-	# in the pipeline for this, by construction, not by ordering luck.
-	reverse_proxy frontend:3000 {
-		header_down @html -Cache-Control
-		header_down @html Cache-Control "no-cache, must-revalidate"
-	}
+	# on statically-prerendered page HTML by default — tuned for a CDN
+	# edge (Vercel) that can purge/on-demand-revalidate the moment a new
+	# deploy lands. Self-hosted behind a plain reverse proxy with no such
+	# CDN, that header instead tells the browser's own cache it's safe to
+	# hold onto the old page for up to a year — the "I deployed, but
+	# visitors still see the old site" bug.
+	#
+	# Four attempts at overriding it here in Caddy all failed empirically
+	# (plain `header` runs before reverse_proxy sees the upstream response
+	# so it can't actually replace anything; header_down inside
+	# reverse_proxy — the directive that's actually supposed to do this —
+	# didn't apply either, for reasons not worth more live-production
+	# trial and error to chase). Fixed at the source instead: /app now
+	# has `export const dynamic = "force-dynamic"` (see app/app/page.js),
+	# which changes what Next.js itself emits for that route rather than
+	# fighting it downstream. Static marketing pages (this domain's `/`
+	# and friends) still emit the long-lived header — lower priority
+	# (content changes rarely) and a separate fix if it's ever worth it.
+	reverse_proxy frontend:3000
 }
 
 api.auralithforge.app {

@@ -245,7 +245,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
     `rounded-xl border px-3.5 py-2 text-xs font-semibold capitalize transition ${active ? (tone === "brass" ? CHIP_BRASS : CHIP_EMBER) : `${CHIP_BASE} hover:border-white/30`}`;
 
   return (
-    <div className="grid w-full max-w-[1280px] items-start gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+    <div className="mx-auto grid w-full max-w-[1280px] items-start gap-6 lg:grid-cols-[1.2fr_0.8fr]">
       <div>
         <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("console.title")}</h1>
         <p className="mt-2 text-sm text-zinc-300">{t("console.subtitle")}</p>
