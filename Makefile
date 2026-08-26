@@ -59,6 +59,17 @@ build: ## Rebuild every image, then start (normal deploy — picks up code + .en
 deploy: ## Pull latest git + full rebuild + restart — the one command for "ship it"
 	git pull
 	docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{8,}_' | xargs -r docker rm -f || true
+	# Every deploy rebuilds images, which orphans the previous build's
+	# layers as dangling images and grows BuildKit's cache — left alone,
+	# frequent deploys fill the disk until a build dies mid-COPY with "no
+	# space left on device" (exactly what took down a deploy on
+	# 2026-08-26). Prune BEFORE building: dangling images are by
+	# definition not in use by any container (so this never touches the
+	# currently-running deployment), and --keep-storage retains the most
+	# recent 5GB of build cache so rebuilds stay fast instead of starting
+	# cold every time. Both are no-ops when there's nothing to clean.
+	docker image prune -f || true
+	docker builder prune -f --keep-storage 5GB || true
 	docker compose up -d --build
 	# Caddy's config is a bind-mounted file (./Caddyfile), not part of its
 	# image — `docker compose up -d` only recreates a container when the
