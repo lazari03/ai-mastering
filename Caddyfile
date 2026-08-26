@@ -47,15 +47,18 @@ auralithforge.app {
 	@html {
 		not path /_next/static/*
 	}
-	# Next.js's own Cache-Control on these responses isn't replaced by a
-	# plain `header @html Cache-Control ...` here — both ended up present
-	# on the wire (two Cache-Control lines, undefined behavior across
-	# clients). Explicit delete-then-set removes Next's value first so
-	# only this one is ever sent.
-	header @html {
-		-Cache-Control
-		Cache-Control "no-cache, must-revalidate"
-	}
+	# Next.js's own Cache-Control on these responses needs to actually be
+	# replaced, not just added alongside — two prior attempts both failed
+	# empirically: a plain `header @html Cache-Control ...` left BOTH
+	# values on the wire (two Cache-Control lines, undefined behavior
+	# across clients); combining -Cache-Control and the new value inside
+	# one `header @html { ... }` block deleted BOTH (Caddy applies the
+	# block's deletions after its sets, not in the written order, wiping
+	# out the value this same block had just set). Two separate top-level
+	# `header` directives, in file order, is what actually works: delete
+	# first, set second.
+	header @html -Cache-Control
+	header @html Cache-Control "no-cache, must-revalidate"
 	reverse_proxy frontend:3000
 }
 
