@@ -202,7 +202,7 @@ def _convert_output(wav_mastered_path: Path, output_path: Path, output_ext: str)
         wav_mastered_path.replace(output_path)
 
 
-def _make_browser_preview(wav_mastered_path: Path, preview_path: Path) -> None:
+def make_browser_preview(wav_mastered_path: Path, preview_path: Path) -> None:
     # The actual mastered deliverable is written at 24-bit PCM (both DSP
     # engines — see ai_mastering/mastering.py's sf.write and
     # preset_dsp_engine.py's own output.bit_depth, which defaults to 24)
@@ -307,7 +307,7 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
     # output_path), and a same-path no-op rename for the wav case (the
     # common one: output_ext defaults to "wav", so wav_mastered_path and
     # output_path are literally the same filename).
-    _make_browser_preview(wav_mastered_path, settings.output_dir / f"{job_id}_preview.wav")
+    make_browser_preview(wav_mastered_path, settings.output_dir / f"{job_id}_preview.wav")
 
     before_lufs = mastering_result["analysis_before"]["integrated_lufs"]
     after_lufs = mastering_result["analysis_after"]["integrated_lufs"]

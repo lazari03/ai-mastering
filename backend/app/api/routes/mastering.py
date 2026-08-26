@@ -12,6 +12,7 @@ from app.schemas.mastering import AnalyzeResponse, CodecPreviewResponse, MasterR
 from app.services.codec_preview_service import SUPPORTED_CODECS, simulate_codec
 from app.services.mastering_service import (
     analyze_uploaded_track,
+    make_browser_preview,
     parse_json_array,
     parse_json_object,
     process_mastering_request,
@@ -205,7 +206,7 @@ def get_original(job_id: str):
 
 @router.get("/preview/{job_id}")
 def get_preview(job_id: str):
-    # Always 16-bit PCM WAV (see mastering_service.py:_make_browser_preview)
+    # Always 16-bit PCM WAV (see mastering_service.py:make_browser_preview)
     # — the deliverable itself stays at its real bit depth, this exists
     # purely so an in-browser <audio> player never hits the 24-bit-WAV
     # compatibility gap that /download's own FileResponse (filename= set,
@@ -214,7 +215,28 @@ def get_preview(job_id: str):
     # behavior, not /download's attachment one.
     path = settings.output_dir / f"{job_id}_preview.wav"
     if not path.exists():
-        raise HTTPException(404, "Preview not found")
+        # Two ways to land here with no _preview.wav on disk: a job
+        # rendered before this browser-preview copy existed at all (any
+        # job from before this route/service pair shipped — this is the
+        # "after doesn't play" bug reported against the results page),
+        # or one where the best-effort ffmpeg transcode at render time
+        # failed silently. Either way, the fix isn't "the player is
+        # broken" — it's "regenerate the missing copy" rather than
+        # leaving this route permanently 404ing for that job forever.
+        # Regenerated once, on first request; every request after that
+        # hits the `path.exists()` branch above like normal.
+        wav_mastered_path = settings.output_dir / f"{job_id}_mastered.wav"
+        if wav_mastered_path.exists():
+            make_browser_preview(wav_mastered_path, path)
+        if not path.exists():
+            # Regeneration wasn't possible (no mastered .wav on disk —
+            # e.g. an mp3-only output — or ffmpeg itself failed). Fall
+            # back to serving the actual mastered file so playback still
+            # works rather than hard-failing the player outright.
+            matches = list(settings.output_dir.glob(f"{job_id}_mastered.*"))
+            if not matches:
+                raise HTTPException(404, "Preview not found")
+            return FileResponse(matches[0])
     return FileResponse(path)
 
 

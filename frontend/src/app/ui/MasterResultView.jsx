@@ -112,7 +112,17 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
   const target = job.target_profile_used || {};
   const abMatch = job.ab_gain_match || {};
   const gainDb = previewMode === "after" ? abMatch.after_gain_db || 0 : abMatch.before_gain_db || 0;
+  // toAuthedDownloadUrl always returns a non-empty string (it just signs a
+  // URL, it never checks the resource actually exists), so `urls.previewUrl
+  // || urls.masteredUrl` alone can never catch a previewUrl that 404s —
+  // only a genuinely missing field. The real fallback happens at the
+  // player itself (see WebGLMasterPreview's fallbackSrc/onError): if the
+  // 16-bit preview copy 404s (an older job, or a rare failed transcode —
+  // the backend now regenerates it lazily, but this covers the rest), the
+  // player swaps to masteredUrl automatically instead of the "after" tab
+  // just silently not playing.
   const previewSrc = urls ? (previewMode === "after" ? urls.previewUrl || urls.masteredUrl : urls.originalUrl) : null;
+  const previewFallbackSrc = urls && previewMode === "after" ? urls.masteredUrl : null;
 
   const switchPreview = (mode) => {
     if (switchLock.current) return;
@@ -210,7 +220,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
           </button>
         </div>
 
-        {previewSrc ? <WebGLMasterPreview src={previewSrc} gainDb={gainDb} /> : null}
+        {previewSrc ? <WebGLMasterPreview src={previewSrc} fallbackSrc={previewFallbackSrc} gainDb={gainDb} /> : null}
 
         {/* Full-width stacked on mobile (easier to tap, no cramped
             3-buttons-squeezed-into-one-row), a flexible row from sm: up —

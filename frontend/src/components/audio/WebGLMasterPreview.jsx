@@ -39,15 +39,38 @@ function formatTime(seconds) {
  * effect exists because createMediaElementSource can only ever be called
  * once per <audio> element, across the element's whole lifetime.
  */
-export default function WebGLMasterPreview({ src, gainDb = 0, className = "" }) {
+export default function WebGLMasterPreview({ src, fallbackSrc, gainDb = 0, className = "" }) {
   const mountRef = useRef(null);
   const audioRef = useRef(null);
   const gainNodeRef = useRef(null);
+  // Whether the current <audio src> has already been swapped to
+  // fallbackSrc after `src` itself failed to load (a 16-bit browser-
+  // preview copy that 404s — e.g. an older job rendered before that copy
+  // existed, or a rare failed transcode) — tracked in a ref, not state,
+  // purely to make the onError handler idempotent (never swap twice for
+  // the same failure) without adding a render-triggering state update to
+  // the hot path.
+  const usedFallback = useRef(false);
 
+  const [activeSrc, setActiveSrc] = useState(src);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [webglFailed, setWebglFailed] = useState(false);
+
+  // A new `src` (switching Before/After, or a different job) always means
+  // "try the real preview URL again first" — reset the fallback flag along
+  // with it.
+  useEffect(() => {
+    usedFallback.current = false;
+    setActiveSrc(src);
+  }, [src]);
+
+  const handleAudioError = () => {
+    if (usedFallback.current || !fallbackSrc || fallbackSrc === activeSrc) return;
+    usedFallback.current = true;
+    setActiveSrc(fallbackSrc);
+  };
 
   // Live-updated without touching the audio graph, same reasoning as
   // SignalVisualizer — gainDb typically resolves after mount once
@@ -351,7 +374,7 @@ export default function WebGLMasterPreview({ src, gainDb = 0, className = "" }) 
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio
         ref={audioRef}
-        src={src}
+        src={activeSrc}
         crossOrigin="anonymous"
         className="hidden"
         onPlay={() => setIsPlaying(true)}
@@ -359,6 +382,7 @@ export default function WebGLMasterPreview({ src, gainDb = 0, className = "" }) 
         onEnded={() => setIsPlaying(false)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime || 0)}
+        onError={handleAudioError}
       />
 
       {/* Fully custom Tailwind transport — no native <audio controls>.
