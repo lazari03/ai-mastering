@@ -9,16 +9,6 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 const EMBER = 0xe85d2a;
 const BRASS = 0xdfc95a;
 
-// A short ramp instead of an instant gain jump — avoids an audible click/
-// pop on every Before/After flip, same reasoning a real analog A/B switch
-// on a mastering desk is built to avoid.
-const GAIN_RAMP_S = 0.03;
-// If the two elements' positions drift apart by more than this while both
-// are playing (independent decode timing, not something driven directly),
-// snap the trailing one back in sync — cheap insurance, not expected to
-// fire often since both files are the same length and started together.
-const DRIFT_RESYNC_S = 0.2;
-
 // createMediaElementSource can only ever be called once per <audio>
 // element, for that element's whole lifetime — a second call throws
 // InvalidStateError. React StrictMode (dev only) mounts this effect,
@@ -36,10 +26,6 @@ function formatTime(seconds) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-// Sets up (or reuses, see audioGraphs above) a MediaElementSource -> gain
-// -> analyser -> destination graph for one <audio> element. Both Before
-// and After each get their own of these — see the component doc comment
-// for why that's what makes the Before/After switch instant.
 function setupAudioGraph(audio) {
   let graph = audioGraphs.get(audio);
   if (graph) {
@@ -54,7 +40,7 @@ function setupAudioGraph(audio) {
   analyser.fftSize = 512;
   analyser.smoothingTimeConstant = 0.82;
   const gainNode = audioContext.createGain();
-  gainNode.gain.value = 0;
+  gainNode.gain.value = 1;
   const sourceNode = audioContext.createMediaElementSource(audio);
   sourceNode.connect(gainNode);
   gainNode.connect(analyser);
@@ -66,10 +52,6 @@ function setupAudioGraph(audio) {
 
 function teardownAudioGraph(audio, graph) {
   if (!graph) return;
-  // Deferred: a StrictMode phantom remount within this same tick will
-  // find this pending timer and cancel it (see setupAudioGraph), reusing
-  // the graph instead of losing it. A real unmount lets this fire on the
-  // next tick and actually release the nodes.
   graph.closeTimer = setTimeout(() => {
     graph.sourceNode.disconnect();
     graph.analyser.disconnect();
@@ -80,33 +62,33 @@ function teardownAudioGraph(audio, graph) {
 }
 
 /**
- * The "cooler" replacement for SignalVisualizer's flat canvas bars — a real
- * WebGL scene (three.js) whose geometry reacts to the actual frequency
- * content of whatever's audible, plus fully custom Tailwind transport
- * controls instead of the native <audio controls> UI. Built for the
- * dedicated post-mastering results page.
+ * A real WebGL scene (three.js) whose geometry reacts to the actual
+ * frequency content of whatever's playing, plus fully custom Tailwind
+ * transport controls.
  *
- * Before/After is a real-time switch, not a reload: both files are loaded
- * into their own <audio> element and kept playing in lockstep the whole
- * time (play/pause/seek always apply to both together) — "switching"
- * just ramps one element's gain up and the other's down, so playback
- * position and play/pause state never reset and there's no gap to listen
- * through. That's what makes it possible to actually hear what changed —
- * a reload-based swap (the previous version of this component) restarts
- * from 0 and drops whatever you were mid-comparing.
+ * Before/After used to be two <audio> elements + two AudioContexts kept
+ * playing in lockstep, switched by ramping gain between them. That turned
+ * out to be unreliable in production (two concurrent AudioContexts is
+ * exactly the kind of thing mobile Safari/Chrome throttle or cap, on top
+ * of always downloading and decoding both files even though only one is
+ * ever audible). This version is a single <audio> element / single
+ * AudioContext — "switching" swaps its `src` and restores playback
+ * position + play state, which is a real ~100-200ms gap instead of an
+ * instant crossfade, but it's the same mechanism every normal audio
+ * player uses and it doesn't depend on multiple simultaneous
+ * AudioContexts working. The file not currently loaded is prefetched
+ * with a plain background <audio> (no Web Audio graph) so the swap reads
+ * from the browser's HTTP cache instead of a cold fetch.
  */
 export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackSrc, beforeGainDb = 0, afterGainDb = 0, mode = "after", className = "" }) {
   const mountRef = useRef(null);
-  const beforeAudioRef = useRef(null);
-  const afterAudioRef = useRef(null);
-  const beforeGainNodeRef = useRef(null);
-  const afterGainNodeRef = useRef(null);
+  const audioRef = useRef(null);
+  const graphRef = useRef(null);
   const modeRef = useRef(mode);
-  // Whether `afterSrc` has already been swapped to afterFallbackSrc after
-  // failing to load (a 16-bit browser-preview copy that 404s — e.g. an
-  // older job rendered before that copy existed, or a rare failed
-  // transcode) — a ref, not state, purely to make the onError handler
-  // idempotent without adding a render-triggering update to the hot path.
+  // Which file is actually loaded into the element right now — can lag
+  // `mode` by one swap-in-progress, and independently tracks whether the
+  // after-track fallback URL had to be used.
+  const loadedRef = useRef(null);
   const usedFallback = useRef(false);
 
   const [activeAfterSrc, setActiveAfterSrc] = useState(afterSrc);
@@ -120,38 +102,30 @@ export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackS
     setActiveAfterSrc(afterSrc);
   }, [afterSrc]);
 
-  const handleAfterError = () => {
-    if (usedFallback.current || !afterFallbackSrc || afterFallbackSrc === activeAfterSrc) return;
+  const handleError = () => {
+    if (modeRef.current !== "after" || usedFallback.current || !afterFallbackSrc || afterFallbackSrc === activeAfterSrc) return;
     usedFallback.current = true;
     setActiveAfterSrc(afterFallbackSrc);
   };
 
-  // Ramps both gain nodes toward "mode's target is audible, the other is
-  // silent" — runs on mount (once the graph exists) and every time `mode`
-  // or the loudness-match targets change. This is the actual Before/After
-  // switch; nothing about playback position or play state is touched.
+  // Prefetch whichever file isn't currently loaded so the eventual swap
+  // reads from HTTP cache instead of starting a fetch from zero.
   useEffect(() => {
-    modeRef.current = mode;
-    const beforeGain = beforeGainNodeRef.current;
-    const afterGain = afterGainNodeRef.current;
-    if (!beforeGain || !afterGain) return;
-    const now = beforeGain.context.currentTime;
-    const beforeTarget = mode === "before" ? 10 ** (beforeGainDb / 20) : 0;
-    const afterTarget = mode === "after" ? 10 ** (afterGainDb / 20) : 0;
-    beforeGain.gain.cancelScheduledValues(now);
-    beforeGain.gain.setValueAtTime(beforeGain.gain.value, now);
-    beforeGain.gain.linearRampToValueAtTime(beforeTarget, now + GAIN_RAMP_S);
-    afterGain.gain.cancelScheduledValues(now);
-    afterGain.gain.setValueAtTime(afterGain.gain.value, now);
-    afterGain.gain.linearRampToValueAtTime(afterTarget, now + GAIN_RAMP_S);
-  }, [mode, beforeGainDb, afterGainDb]);
+    const other = mode === "before" ? activeAfterSrc : beforeSrc;
+    if (!other) return undefined;
+    const warmer = new Audio();
+    warmer.preload = "auto";
+    warmer.src = other;
+    return () => {
+      warmer.src = "";
+    };
+  }, [mode, beforeSrc, activeAfterSrc]);
 
-  // ---- Three.js scene setup + dual Web Audio graph (mount-only) ----
+  // ---- Three.js scene setup + single Web Audio graph (mount-only) ----
   useEffect(() => {
     const mountEl = mountRef.current;
-    const beforeAudio = beforeAudioRef.current;
-    const afterAudio = afterAudioRef.current;
-    if (!mountEl || !beforeAudio || !afterAudio) return undefined;
+    const audio = audioRef.current;
+    if (!mountEl || !audio) return undefined;
 
     let renderer;
     let composer;
@@ -160,8 +134,7 @@ export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackS
     let coreMesh;
     let wireMesh;
     let particles;
-    let beforeGraph;
-    let afterGraph;
+    let graph;
     let frameId = 0;
     let resizeObserver;
     let resumeOnPlay;
@@ -184,7 +157,6 @@ export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackS
       renderer.setClearColor(0x000000, 0);
       mountEl.appendChild(renderer.domElement);
 
-      // Core: solid low-opacity icosphere, additive so it glows under bloom.
       const coreMaterial = new THREE.MeshBasicMaterial({
         color: EMBER,
         transparent: true,
@@ -195,9 +167,6 @@ export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackS
       coreMesh = new THREE.Mesh(baseGeometry, coreMaterial);
       scene.add(coreMesh);
 
-      // Wireframe overlay — the part whose vertices actually get displaced
-      // by frequency data each frame, so the "reactive" motion reads as a
-      // structured pulse rather than mush.
       const wireGeometry = new THREE.IcosahedronGeometry(1.4, 4);
       const wireMaterial = new THREE.MeshBasicMaterial({
         color: BRASS,
@@ -208,9 +177,6 @@ export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackS
       wireMesh = new THREE.Mesh(wireGeometry, wireMaterial);
       scene.add(wireMesh);
 
-      // Sparse particle field behind the core — pulses with bass energy,
-      // gives the scene depth without costing much (a single BufferGeometry
-      // draw call).
       const particleCount = 260;
       const particlePositions = new Float32Array(particleCount * 3);
       for (let i = 0; i < particleCount; i += 1) {
@@ -250,32 +216,16 @@ export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackS
       resizeObserver = new ResizeObserver(setCanvasSize);
       resizeObserver.observe(mountEl);
 
-      // ---- Two independent audio graphs, one per element — see this
-      // file's doc comment for why: only this makes the switch instant. ----
-      beforeGraph = setupAudioGraph(beforeAudio);
-      afterGraph = setupAudioGraph(afterAudio);
-      beforeGainNodeRef.current = beforeGraph.gainNode;
-      afterGainNodeRef.current = afterGraph.gainNode;
-      // Whichever is active per the current mode starts audible immediately
-      // (no ramp-in on first mount) — the ramp is for switching later, not
-      // for the initial reveal.
-      beforeGraph.gainNode.gain.value = modeRef.current === "before" ? 10 ** (beforeGainDb / 20) : 0;
-      afterGraph.gainNode.gain.value = modeRef.current === "after" ? 10 ** (afterGainDb / 20) : 0;
+      graph = setupAudioGraph(audio);
+      graphRef.current = graph;
+      graph.gainNode.gain.value = modeRef.current === "before" ? 10 ** (beforeGainDb / 20) : 10 ** (afterGainDb / 20);
 
       resumeOnPlay = () => {
-        if (beforeGraph.audioContext.state === "suspended") beforeGraph.audioContext.resume();
-        if (afterGraph.audioContext.state === "suspended") afterGraph.audioContext.resume();
+        if (graph.audioContext.state === "suspended") graph.audioContext.resume();
       };
-      beforeAudio.addEventListener("play", resumeOnPlay);
-      afterAudio.addEventListener("play", resumeOnPlay);
+      audio.addEventListener("play", resumeOnPlay);
 
-      // Analysed for the visualizer from whichever graph is currently
-      // audible — reading both and taking whichever has real signal is
-      // simpler and more robust than trying to track "which one is
-      // active" independently here, and it's naturally correct mid-ramp
-      // too (both contribute proportionally to their current gain).
-      const beforeFreq = new Uint8Array(beforeGraph.analyser.frequencyBinCount);
-      const afterFreq = new Uint8Array(afterGraph.analyser.frequencyBinCount);
+      const freq = new Uint8Array(graph.analyser.frequencyBinCount);
       const bandAvg = (data, fromFrac, toFrac) => {
         const from = Math.floor(data.length * fromFrac);
         const to = Math.max(from + 1, Math.floor(data.length * toFrac));
@@ -295,26 +245,19 @@ export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackS
         let bass = 0;
         let mid = 0;
         let treble = 0;
-        const playing = (!beforeAudio.paused && !beforeAudio.ended) || (!afterAudio.paused && !afterAudio.ended);
+        const playing = !audio.paused && !audio.ended;
         if (playing) {
-          beforeGraph.analyser.getByteFrequencyData(beforeFreq);
-          afterGraph.analyser.getByteFrequencyData(afterFreq);
-          const source = modeRef.current === "before" ? beforeFreq : afterFreq;
-          bass = bandAvg(source, 0.0, 0.12);
-          mid = bandAvg(source, 0.12, 0.4);
-          treble = bandAvg(source, 0.4, 0.85);
+          graph.analyser.getByteFrequencyData(freq);
+          bass = bandAvg(freq, 0.0, 0.12);
+          mid = bandAvg(freq, 0.12, 0.4);
+          treble = bandAvg(freq, 0.4, 0.85);
         }
 
-        // Idle breathing when paused/stopped so the scene never looks frozen.
         const idlePulse = playing ? 0 : (Math.sin(elapsed * 0.8) + 1) * 0.5 * 0.25;
         const bassLevel = playing ? bass : idlePulse;
         const midLevel = playing ? mid : idlePulse * 0.6;
         const trebleLevel = playing ? treble : idlePulse * 0.4;
 
-        // Displace the wireframe's vertices radially per-vertex, weighted
-        // by a low-frequency 3D noise-ish function of the vertex's own
-        // base position so the pulse looks organic rather than uniformly
-        // inflating like a balloon.
         const posAttr = wireGeometry.attributes.position;
         for (let i = 0; i < posAttr.count; i += 1) {
           const ix = i * 3;
@@ -356,8 +299,6 @@ export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackS
 
       animate();
     } catch {
-      // WebGL unavailable/blocked — fall back to the plain transport
-      // (still rendered below, just without the canvas overlay).
       setWebglFailed(true);
     }
 
@@ -365,14 +306,9 @@ export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackS
       disposed = true;
       if (frameId) cancelAnimationFrame(frameId);
       if (resizeObserver) resizeObserver.disconnect();
-      if (resumeOnPlay) {
-        beforeAudio.removeEventListener("play", resumeOnPlay);
-        afterAudio.removeEventListener("play", resumeOnPlay);
-      }
-      teardownAudioGraph(beforeAudio, beforeGraph);
-      teardownAudioGraph(afterAudio, afterGraph);
-      beforeGainNodeRef.current = null;
-      afterGainNodeRef.current = null;
+      if (resumeOnPlay) audio.removeEventListener("play", resumeOnPlay);
+      teardownAudioGraph(audio, graph);
+      graphRef.current = null;
 
       baseGeometry.dispose();
       if (coreMesh) coreMesh.material.dispose();
@@ -393,51 +329,49 @@ export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackS
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- Transport — always drives both elements together, so whichever
-  // one isn't currently audible keeps pace and is instantly ready the
-  // moment mode flips. ----
-  const togglePlay = () => {
-    const before = beforeAudioRef.current;
-    const after = afterAudioRef.current;
-    if (!before || !after) return;
-    const bothPaused = before.paused && after.paused;
-    if (bothPaused) {
-      before.play().catch(() => {});
-      after.play().catch(() => {});
-    } else {
-      before.pause();
-      after.pause();
+  // ---- The actual Before/After switch: swap `src` on the one element,
+  // preserving position and play state. Runs on mount too (initial load). ----
+  useEffect(() => {
+    modeRef.current = mode;
+    const audio = audioRef.current;
+    const graph = graphRef.current;
+    const targetSrc = mode === "before" ? beforeSrc : activeAfterSrc;
+    if (!audio || !targetSrc || loadedRef.current === targetSrc) {
+      if (graph) graph.gainNode.gain.value = mode === "before" ? 10 ** (beforeGainDb / 20) : 10 ** (afterGainDb / 20);
+      return undefined;
     }
+
+    const wasPlaying = !audio.paused;
+    const savedTime = audio.currentTime || 0;
+    const firstLoad = loadedRef.current === null;
+    loadedRef.current = targetSrc;
+    audio.src = targetSrc;
+
+    const onLoaded = () => {
+      if (!firstLoad && savedTime > 0 && savedTime < (audio.duration || Infinity)) {
+        audio.currentTime = savedTime;
+      }
+      if (graph) graph.gainNode.gain.value = mode === "before" ? 10 ** (beforeGainDb / 20) : 10 ** (afterGainDb / 20);
+      if (wasPlaying) audio.play().catch(() => {});
+    };
+    audio.addEventListener("loadedmetadata", onLoaded, { once: true });
+    return () => audio.removeEventListener("loadedmetadata", onLoaded);
+  }, [mode, beforeSrc, activeAfterSrc, beforeGainDb, afterGainDb]);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) audio.play().catch(() => {});
+    else audio.pause();
   };
 
   const handleSeek = (event) => {
-    const before = beforeAudioRef.current;
-    const after = afterAudioRef.current;
-    if (!before || !after || !duration) return;
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
     const ratio = Number(event.target.value) / 1000;
     const t = ratio * duration;
-    before.currentTime = t;
-    after.currentTime = t;
+    audio.currentTime = t;
     setCurrentTime(t);
-  };
-
-  // Time/duration/play-state are read off whichever element the current
-  // mode is actually listening to — cosmetic during a ramp, but avoids
-  // ever showing a number from the silent side. Both elements are kept in
-  // lockstep by togglePlay/handleSeek above, with a light drift guard on
-  // every tick in case independent decode timing nudges them apart.
-  const handleTimeUpdate = (activeElementName) => (event) => {
-    if (activeElementName !== modeRef.current) return;
-    const t = event.currentTarget.currentTime || 0;
-    setCurrentTime(t);
-    const before = beforeAudioRef.current;
-    const after = afterAudioRef.current;
-    if (!before || !after) return;
-    const drift = Math.abs(before.currentTime - after.currentTime);
-    if (drift > DRIFT_RESYNC_S) {
-      const other = activeElementName === "before" ? after : before;
-      other.currentTime = t;
-    }
   };
 
   const progressRatio = duration > 0 ? currentTime / duration : 0;
@@ -454,28 +388,15 @@ export default function WebGLMasterPreview({ beforeSrc, afterSrc, afterFallbackS
 
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio
-        ref={beforeAudioRef}
-        src={beforeSrc}
+        ref={audioRef}
         crossOrigin="anonymous"
         className="hidden"
         onPlay={() => setIsPlaying(true)}
-        onPause={() => modeRef.current === "before" && setIsPlaying(false)}
-        onEnded={() => modeRef.current === "before" && setIsPlaying(false)}
-        onLoadedMetadata={(e) => modeRef.current === "before" && setDuration(e.currentTarget.duration || 0)}
-        onTimeUpdate={handleTimeUpdate("before")}
-      />
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-      <audio
-        ref={afterAudioRef}
-        src={activeAfterSrc}
-        crossOrigin="anonymous"
-        className="hidden"
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => modeRef.current === "after" && setIsPlaying(false)}
-        onEnded={() => modeRef.current === "after" && setIsPlaying(false)}
-        onLoadedMetadata={(e) => modeRef.current === "after" && setDuration(e.currentTarget.duration || 0)}
-        onTimeUpdate={handleTimeUpdate("after")}
-        onError={handleAfterError}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => setIsPlaying(false)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
+        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime || 0)}
+        onError={handleError}
       />
 
       {/* Fully custom Tailwind transport — no native <audio controls>.
