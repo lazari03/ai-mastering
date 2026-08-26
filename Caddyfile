@@ -47,19 +47,19 @@ auralithforge.app {
 	@html {
 		not path /_next/static/*
 	}
-	# Next.js's own Cache-Control on these responses needs to actually be
-	# replaced, not just added alongside — two prior attempts both failed
-	# empirically: a plain `header @html Cache-Control ...` left BOTH
-	# values on the wire (two Cache-Control lines, undefined behavior
-	# across clients); combining -Cache-Control and the new value inside
-	# one `header @html { ... }` block deleted BOTH (Caddy applies the
-	# block's deletions after its sets, not in the written order, wiping
-	# out the value this same block had just set). Two separate top-level
-	# `header` directives, in file order, is what actually works: delete
-	# first, set second.
-	header @html -Cache-Control
-	header @html Cache-Control "no-cache, must-revalidate"
-	reverse_proxy frontend:3000
+	# Two prior attempts at overriding Next.js's own Cache-Control via the
+	# top-level `header` directive both failed empirically — it runs
+	# before reverse_proxy receives the upstream response, so it was
+	# fighting the ordering rather than actually replacing anything (a
+	# plain set left both values on the wire; a delete+set block deleted
+	# both). header_down, scoped inside reverse_proxy itself, is the
+	# directive actually meant for "modify a header on the response this
+	# proxy just received from its upstream" — it runs at the right point
+	# in the pipeline for this, by construction, not by ordering luck.
+	reverse_proxy frontend:3000 {
+		header_down @html -Cache-Control
+		header_down @html Cache-Control "no-cache, must-revalidate"
+	}
 }
 
 api.auralithforge.app {
