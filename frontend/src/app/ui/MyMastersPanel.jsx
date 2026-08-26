@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { motion } from "motion/react";
 
 import { getJobs, toAuthedDownloadUrl, deleteJobRecord, postShareJob, downloadFileSafely } from "@/network/http/client";
 import { useEntitlementsStore, planUnlocksShare } from "@/store/entitlementsStore";
 import { LoadingBlock } from "@/components/ui/Spinner";
+import { shortenFilename } from "@/lib/format";
 import { useLanguage } from "@/lib/i18n";
 
 // Internal token, not display text — "expired" is compared against
@@ -175,13 +177,22 @@ export default function MyMastersPanel() {
       ) : null}
 
       <div className="mt-5 flex flex-col gap-3">
-        {pageJobs.map((job) => {
+        {pageJobs.map((job, jobIndex) => {
           const expiry = timeUntil(job.expires_at);
           const expired = expiry === "expired";
           const share = shareLinks[job.job_id];
           const isBusy = busyJobId === job.job_id;
           return (
-            <div key={job.job_id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            // Staggered fade-in per card — 30ms apart reads as one smooth
+            // cascade over a PAGE_SIZE (8) list, not a slow one-by-one
+            // reveal. Capped by the page size, so it never gets long.
+            <motion.div
+              key={job.job_id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: jobIndex * 0.03, ease: "easeOut" }}
+              className="rounded-2xl border border-white/10 bg-black/20 p-4"
+            >
               {/* The clickable "cell" — opens the same dedicated preview
                   view a fresh render lands on (WebGL before/after,
                   download, processing summary), for any still-valid or
@@ -195,7 +206,9 @@ export default function MyMastersPanel() {
                   HTML and would double-fire on every click. */}
               <Link href={`/app?job=${job.job_id}`} className="-m-1 flex flex-wrap items-center justify-between gap-2 rounded-xl p-1 transition hover:bg-white/[0.03]">
                 <div className="min-w-0">
-                  <p className="m-0 truncate text-sm font-semibold text-white">{job.original_filename || job.job_id}</p>
+                  <p className="m-0 truncate text-sm font-semibold text-white" title={job.original_filename || undefined}>
+                    {shortenFilename(job.original_filename) || job.job_id}
+                  </p>
                   <p className="mt-0.5 text-xs text-zinc-500">
                     {job.genre || t("myMasters.custom")} · {job.tier || t("myMasters.standard")} ·{" "}
                     {job.created_at ? new Date(job.created_at).toLocaleString() : ""}
@@ -292,7 +305,7 @@ export default function MyMastersPanel() {
                   </div>
                 </div>
               ) : null}
-            </div>
+            </motion.div>
           );
         })}
       </div>

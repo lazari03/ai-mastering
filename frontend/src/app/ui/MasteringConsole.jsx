@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 
 import AdaptiveControlsPanel from "@/components/audio/AdaptiveControlsPanel";
 import ProcessingSummary from "@/components/audio/ProcessingSummary";
@@ -30,6 +31,19 @@ const CODEC_OPTIONS = [
 const CHIP_BASE = "border-white/15 bg-black/20 text-zinc-300";
 const CHIP_EMBER = "border-ember bg-ember/[0.15] text-ember";
 const CHIP_BRASS = "border-brass bg-brass/[0.18] text-brass";
+
+// Shared step-transition motion — a quick, subtle fade/slide rather than
+// an instant swap, so moving through the wizard reads as one continuous
+// flow instead of the content just snapping to something else. Kept fast
+// (180ms) since this fires on every Next/Back/step-tab click and a
+// sluggish transition there would read as lag, not polish.
+const STEP_TRANSITION = { duration: 0.18, ease: "easeOut" };
+const stepMotionProps = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+  transition: STEP_TRANSITION,
+};
 
 function SectionLabel({ children }) {
   return <h2 className="m-0 mb-2.5 text-xs uppercase tracking-[0.14em] text-brass">{children}</h2>;
@@ -277,8 +291,9 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
           </div>
         </div>
 
+        <AnimatePresence mode="wait">
         {activeStep === 0 ? (
-          <div className="mt-5 flex flex-col gap-5">
+          <motion.div key="step-audio" {...stepMotionProps} className="mt-5 flex flex-col gap-5">
             <section>
               <SectionLabel>{t("console.files")}</SectionLabel>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -305,11 +320,11 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 <p className="mt-2 text-[11px] text-zinc-500">{t("console.referenceHint")}</p>
               )}
             </section>
-          </div>
+          </motion.div>
         ) : null}
 
         {activeStep === 1 ? (
-          <div className="mt-5 flex flex-col gap-5">
+          <motion.div key="step-mode" {...stepMotionProps} className="mt-5 flex flex-col gap-5">
             {referenceMode ? (
               <section className="glass-panel rounded-2xl p-5">
                 <SectionLabel>{t("console.referenceMastering")}</SectionLabel>
@@ -670,11 +685,11 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 ) : null}
               </>
             )}
-          </div>
+          </motion.div>
         ) : null}
 
         {activeStep === 2 ? (
-          <div className="glass-panel mt-5 rounded-2xl p-5">
+          <motion.div key="step-master" {...stepMotionProps} className="glass-panel mt-5 rounded-2xl p-5">
             <SectionLabel>{t("console.master")}</SectionLabel>
             <div className="mb-4 flex flex-wrap gap-2">
               <span className="rounded-lg border border-white/15 px-3 py-1.5 text-xs">{t("console.fileLabel", { name: file?.name || t("console.none") })}</span>
@@ -731,8 +746,9 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 {masterQuota.resets ? t("console.orUpgrade") : t("console.orSubscribe")}
               </p>
             ) : null}
-          </div>
+          </motion.div>
         ) : null}
+        </AnimatePresence>
 
         <div className="mt-5 flex items-center justify-between gap-3">
           <button
@@ -781,7 +797,13 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
         {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
       </div>
 
-      <aside className="glass-panel sticky top-6 min-w-0 rounded-[20px] p-[22px]">
+      {/* sticky only from lg: up, where this sits beside the wizard in the
+          2-column grid — below that, `grid` with no column count stacks
+          single-column (wizard, then this), and an unconditionally sticky
+          panel there would cling to the top of the scroll container the
+          moment you scroll past it instead of just flowing like the rest
+          of the page. */}
+      <aside className="glass-panel min-w-0 rounded-[20px] p-[22px] lg:sticky lg:top-6">
         <h2 className="m-0 font-[var(--font-title)] text-lg">{t("console.reviewCompare")}</h2>
 
         {/* The fullscreen loader (rendered from AppClient, above every tab)

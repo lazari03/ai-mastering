@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { AnimatePresence, motion } from "motion/react";
 
 import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
@@ -37,9 +38,24 @@ function FaqItem({ t, qKey }) {
     <div className="break-inside-avoid rounded-xl border border-white/10 bg-black/20 p-3.5">
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center justify-between gap-3 text-left">
         <span className="text-[13px] font-semibold text-white">{t(`faq.${qKey}`)}</span>
-        <span className={`shrink-0 text-brass transition-transform ${open ? "rotate-45" : ""}`}>+</span>
+        <span className={`shrink-0 text-brass transition-transform duration-200 ${open ? "rotate-45" : ""}`}>+</span>
       </button>
-      {open ? <p className="mt-2 text-[13px] leading-relaxed text-zinc-300">{t(`faq.${aKey}`)}</p> : null}
+      {/* Animated height expand/collapse instead of an instant appear/
+          vanish — overflow-hidden on the animating wrapper is what makes
+          a height animation actually clip during the transition. */}
+      <AnimatePresence initial={false}>
+        {open ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <p className="mt-2 text-[13px] leading-relaxed text-zinc-300">{t(`faq.${aKey}`)}</p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { AnimatePresence, motion } from "motion/react";
 
 import ChordsPanel from "@/app/ui/ChordsPanel";
 import MasteringConsole from "@/app/ui/MasteringConsole";
@@ -430,15 +431,30 @@ export default function AppClient() {
           clipped below the visible screen with no way to scroll to it).
           min-w-0 is the equivalent fix for the desktop flex-row case. */}
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-10 md:py-8">
-        {showResultView ? (
-          <MasterResultView
-            jobId={jobIdParam}
-            onMasterAnother={() => goToTab("master")}
-            onViewAllMasters={() => goToTab("myMasters")}
-          />
-        ) : (
-          active.render({ setActiveTab: goToTab, setShowTutorial })
-        )}
+        {/* Keyed fade on tab/view switches — mode="wait" plus a fast
+            (150ms) fade keeps switching feeling instant while still
+            reading as a deliberate transition rather than content
+            teleporting. Keyed by which view is showing (result view vs.
+            tab key), so in-view state changes never re-trigger it. */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={showResultView ? `job-${jobIdParam}` : active.key}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+          >
+            {showResultView ? (
+              <MasterResultView
+                jobId={jobIdParam}
+                onMasterAnother={() => goToTab("master")}
+                onViewAllMasters={() => goToTab("myMasters")}
+              />
+            ) : (
+              active.render({ setActiveTab: goToTab, setShowTutorial })
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       <NotificationBanner activeTab={activeTab} onView={() => goToTab("master")} />

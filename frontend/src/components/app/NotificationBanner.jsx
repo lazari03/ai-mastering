@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { useMasteringStore } from "@/store/masteringStore";
 import { useLanguage } from "@/lib/i18n";
@@ -45,11 +46,18 @@ export default function NotificationBanner({ activeTab, onView }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
 
-  if (activeTab === "master" || dismissed) return null;
-  if (!isSubmitting && !result && !error) return null;
+  const show = activeTab !== "master" && !dismissed && (isSubmitting || result || error);
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-50 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:max-w-sm">
+    <AnimatePresence>
+      {show ? (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 16 }}
+      transition={{ duration: 0.22, ease: "easeOut" }}
+      className="fixed inset-x-3 bottom-3 z-50 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:max-w-sm"
+    >
       <div className="glass-panel flex items-start gap-3 rounded-2xl border border-white/10 p-4">
         {isSubmitting ? (
           <>
@@ -94,6 +102,8 @@ export default function NotificationBanner({ activeTab, onView }) {
           ✕
         </button>
       </div>
-    </div>
+    </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }
