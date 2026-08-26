@@ -45,9 +45,21 @@ const TABS = [
 
 const SIDEBAR_PREF_KEY = "sidebarOpen";
 
-export default function AppClient({ initialJobId } = {}) {
+export default function AppClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // ?job=<jobId> drives the result view — a query param on this same
+  // page, not a separate route (there used to be a /app/masters/:jobId
+  // page; it was a regression, not an improvement: Next.js mounted a
+  // whole fresh page for it — new sidebar, new topbar, every mount-time
+  // effect re-running — instead of the instant in-place switch the old
+  // tab-state version had. A query param on the SAME page fixes both
+  // problems at once: navigating between "My Masters" and a specific
+  // result is a soft navigation (same component stays mounted, only
+  // useSearchParams()'s value changes, confirmed no remount), and it's
+  // still a real URL a refresh can restore (MasterResultView fetches by
+  // jobId regardless of how it got the id).
+  const jobIdParam = searchParams.get("job");
   const { t, lang, setLang } = useLanguage();
   const { user, loading, signOut } = useAuthStore();
   // ?tab=myMasters (from MasterResultView's "View All My Masters", or any
@@ -131,26 +143,25 @@ export default function AppClient({ initialJobId } = {}) {
   // preview against the original). Also refreshes entitlements — a real
   // master just spent one quota slot.
   //
-  // A real navigation (router.push to a real URL), not just a tab-state
-  // flip — that's what makes refreshing the result page not lose the
-  // data: the new page mounts fresh with initialJobId from the URL and
-  // fetches GET /jobs/:jobId (see MasterResultView.jsx), rather than
-  // reading in-memory Zustand state that a refresh would wipe. recordJob
-  // on the backend is awaited before /master's response returns for a
-  // real render, so the data is already there by the time this fetch runs.
+  // router.push to ?job=<id> on this same page (not a separate route —
+  // see the jobIdParam comment above) — that's what makes refreshing the
+  // result view not lose the data: MasterResultView fetches GET
+  // /jobs/:jobId fresh by that id (see its own comment) rather than
+  // reading in-memory Zustand state a refresh would wipe. recordJob on
+  // the backend is awaited before /master's response returns for a real
+  // render, so the data is already there by the time that fetch runs.
   //
-  // The `lastAutoNavJobId` ref below is only a same-mount guard against
-  // double-firing in the tick before the navigation completes — it is NOT
-  // what stops this from re-firing on a later remount (a ref can't do that;
-  // its value dies with the component instance that navigating away
-  // destroys). What actually stops re-firing across remounts is
-  // acknowledgeResult() consuming the store signal right after the push:
-  // with no shared layout between /app and /app/masters/:jobId, browser
-  // back or any nav to /app mounts a brand new AppClient, and without
-  // clearing `result` this effect would find the same finished-job signal
-  // still sitting in the store and immediately push right back — the
-  // "stuck, can't navigate back and forth" bug. See acknowledgeResult's
-  // own comment in masteringStore.js.
+  // `lastAutoNavJobId` guards against re-firing for the same finished job
+  // — without it, a subsequent render with the same `masteringResult`
+  // (e.g. some unrelated state update on this page) would push again and
+  // fight the user navigating elsewhere/back. Since this is a soft
+  // navigation on one persistent page instance now (confirmed no
+  // remount), the ref survives exactly as long as it needs to; unlike the
+  // old separate-route version, nothing here has to also clear the store
+  // to stop a remount from re-triggering it — acknowledgeResult() still
+  // runs, but only as a courtesy (dismisses NotificationBanner's "your
+  // master is ready" toast immediately, since the user's now looking
+  // right at it), not load-bearing for correctness anymore.
   const masteringResult = useMasteringStore((s) => s.result);
   const acknowledgeResult = useMasteringStore((s) => s.acknowledgeResult);
   const lastAutoNavJobId = useRef(null);
@@ -159,7 +170,7 @@ export default function AppClient({ initialJobId } = {}) {
     if (masteringResult.job_id === lastAutoNavJobId.current) return;
     lastAutoNavJobId.current = masteringResult.job_id;
     refreshEntitlements();
-    router.push(`/app/masters/${masteringResult.job_id}`);
+    router.push(`/app?job=${masteringResult.job_id}`);
     acknowledgeResult();
   }, [masteringResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -180,13 +191,11 @@ export default function AppClient({ initialJobId } = {}) {
     );
   }
 
-  // The result view is a real route (/app/masters/:jobId), not a
-  // sidebar tab — deliberately absent from TABS so it never appears in
-  // the nav lists below. initialJobId comes straight from that route's
-  // params (see app/masters/[jobId]/page.js); MasterResultView fetches
-  // its own data by jobId, so this component doesn't need to know
-  // anything about the job itself.
-  const showResultView = Boolean(initialJobId);
+  // Driven by ?job=, not a sidebar tab — deliberately absent from TABS so
+  // it never appears in the nav lists below. MasterResultView fetches its
+  // own data by jobId, so this component doesn't need to know anything
+  // about the job itself beyond the id.
+  const showResultView = Boolean(jobIdParam);
   const active = TABS.find((tab) => tab.key === activeTab) || TABS[0];
 
   return (
@@ -409,7 +418,7 @@ export default function AppClient({ initialJobId } = {}) {
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-10 md:py-8">
         {showResultView ? (
           <MasterResultView
-            jobId={initialJobId}
+            jobId={jobIdParam}
             onMasterAnother={() => router.push("/app")}
             onViewAllMasters={() => router.push("/app?tab=myMasters")}
           />

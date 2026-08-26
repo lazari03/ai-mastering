@@ -172,7 +172,7 @@ export async function getJobs() {
   return request("/jobs");
 }
 
-// Backs the dedicated result page (/app/masters/:jobId) — full detail for
+// Backs the dedicated result view (/app?job=:jobId) — full detail for
 // one job (analysis/processing data, not just the list-view summary
 // getJobs() returns), scoped server-side to the caller's own jobs. Used
 // both right after a fresh render and when reopening an older still-valid

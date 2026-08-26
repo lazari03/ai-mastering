@@ -183,13 +183,17 @@ export default function MyMastersPanel() {
           return (
             <div key={job.job_id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
               {/* The clickable "cell" — opens the same dedicated preview
-                  page a fresh render lands on (WebGL before/after,
+                  view a fresh render lands on (WebGL before/after,
                   download, processing summary), for any still-valid or
-                  expired master, not just the one just rendered. A
-                  sibling of the action buttons below, not a wrapper
+                  expired master, not just the one just rendered. ?job= on
+                  this same /app page, not a separate route — that's what
+                  keeps this an instant in-place switch instead of
+                  Next.js mounting a whole fresh page (new sidebar, new
+                  topbar) for it; see AppClient.jsx's jobIdParam comment.
+                  A sibling of the action buttons below, not a wrapper
                   around them — nesting <button> inside <a> is invalid
                   HTML and would double-fire on every click. */}
-              <Link href={`/app/masters/${job.job_id}`} className="-m-1 flex flex-wrap items-center justify-between gap-2 rounded-xl p-1 transition hover:bg-white/[0.03]">
+              <Link href={`/app?job=${job.job_id}`} className="-m-1 flex flex-wrap items-center justify-between gap-2 rounded-xl p-1 transition hover:bg-white/[0.03]">
                 <div className="min-w-0">
                   <p className="m-0 truncate text-sm font-semibold text-white">{job.original_filename || job.job_id}</p>
                   <p className="mt-0.5 text-xs text-zinc-500">

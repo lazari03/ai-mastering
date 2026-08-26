@@ -21,8 +21,12 @@ const WebGLMasterPreview = dynamic(() => import("@/components/audio/WebGLMasterP
 });
 
 /**
- * The dedicated post-mastering page — reached at /app/masters/:jobId,
- * both right after a fresh render (AppClient routes here automatically)
+ * The dedicated post-mastering view — reached at /app?job=:jobId (a
+ * query param on the app shell's one page, not a separate route — a
+ * separate route was tried first and reverted: Next.js mounted a whole
+ * fresh page for it, new sidebar and all, instead of the instant
+ * in-place switch this needs), both right after a fresh render
+ * (AppClient routes here automatically)
  * and when reopening an older still-valid master from My Masters. Always
  * fetches by job_id rather than reading in-memory store state, on
  * purpose: that's what makes a page refresh not lose the data, and what

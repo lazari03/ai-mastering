@@ -14,7 +14,8 @@ export const metadata = buildMetadata({
 });
 
 // Suspense boundary required by useSearchParams() inside AppClient (reads
-// ?tab=… for deep-linking into a specific tab) — Next.js bails out of
+// ?tab=… for deep-linking into a specific tab, and ?job=… for the result
+// view — see AppClient.jsx's jobIdParam comment) — Next.js bails out of
 // static generation for that hook otherwise.
 export default function AppPage() {
   return (

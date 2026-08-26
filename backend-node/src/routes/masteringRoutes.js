@@ -193,7 +193,7 @@ router.get("/jobs", async (req, res) => {
   }
 });
 
-// Backs the dedicated result page (/app/masters/:jobId) — lets a finished
+// Backs the dedicated result page (/app?job=:jobId) — lets a finished
 // master be reloaded on refresh, or opened from My Masters, instead of
 // only ever existing in the in-memory result the moment a render
 // finishes. requireAuth (server.js's global gate) has already confirmed
@@ -760,7 +760,7 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
       recordJobPromise.catch((error) => console.error("Failed to record job history:", error.message));
     } else {
       // Awaited for a real master — the frontend auto-navigates straight
-      // to /app/masters/:jobId on this response (see AppClient.jsx),
+      // to /app?job=:jobId on this response (see AppClient.jsx),
       // which immediately does a GET /jobs/:jobId, so the Firestore write
       // needs to have actually landed by the time that happens, not still
       // be in flight. Still best-effort in the sense

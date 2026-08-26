@@ -20,8 +20,8 @@ function jobsCollection(uid) {
 // Masters" still only shows real renders, same as before.
 //
 // The analysis/processing fields (added alongside the original metadata
-// set) exist so the dedicated result page (MasterResultView.jsx, reached
-// at /app/masters/:jobId) can be fully rebuilt from a GET by job_id — on
+// set) exist so the dedicated result view (MasterResultView.jsx, reached
+// at /app?job=:jobId) can be fully rebuilt from a GET by job_id — on
 // first load right after rendering, or on a page refresh, or when
 // revisiting an older still-valid master from My Masters. Before this,
 // that page only ever read the just-finished render out of in-memory

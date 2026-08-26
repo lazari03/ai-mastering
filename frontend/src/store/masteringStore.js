@@ -488,16 +488,16 @@ export const useMasteringStore = create((set, get) => ({
   },
 
   // Called by AppClient's auto-navigation effect the moment it has actually
-  // pushed the user to /app/masters/:jobId for a finished real (non-preview)
-  // master — NOT a general-purpose reset like clearResult() above. `result`
-  // is a persistent global signal (this store) driving a "navigate once"
-  // effect that lives on a component instance which does NOT persist across
-  // routes (there's no shared layout between /app and /app/masters/:jobId,
-  // so navigating either way remounts AppClient fresh). Without clearing
-  // the signal here, a stale `result` from a job finished minutes ago would
-  // still be sitting in the store the next time AppClient mounts — e.g. on
-  // browser back — and the effect would see it as "new" and force-navigate
-  // right back to the results page, trapping the user. Deliberately leaves
+  // pushed the user to /app?job=:jobId for a finished real (non-preview)
+  // master — NOT a general-purpose reset like clearResult() above. The
+  // result view is a query param on AppClient's one persistent page
+  // instance now (a separate /app/masters/:jobId route was tried and
+  // reverted — it remounted the whole shell on every visit, a visible
+  // regression), so a `lastAutoNavJobId` ref in that same effect is what
+  // actually stops it from re-firing; this just tidies the store's
+  // "unseen finished result" signal away once it's been acted on, mostly
+  // so NotificationBanner's "your master is ready" toast doesn't linger
+  // for a result the user is already looking at. Deliberately leaves
   // file/genre/tweaks/status alone (unlike clearResult) since the user
   // hasn't chosen to start over — they just got auto-routed to see their
   // finished master.
