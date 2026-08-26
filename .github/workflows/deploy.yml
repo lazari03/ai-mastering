@@ -82,4 +82,19 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           script: |
             cd ${{ secrets.DEPLOY_PATH }}
+            # Disk-space guard BEFORE make deploy, here in the workflow (not
+            # only in the Makefile): this script is delivered fresh from
+            # GitHub on every run, while the Makefile on the VPS is whatever
+            # the last successful `git pull` left there. When the disk fills
+            # up completely (accumulated dangling images + BuildKit cache
+            # from frequent deploys — happened 2026-08-26), even `git pull`
+            # itself fails with "unable to write loose object file", so a
+            # cleanup that lives only in the repo can never arrive to run.
+            # Pruning here breaks that deadlock. Dangling images are never
+            # in use by any container, and --keep-storage retains the most
+            # recent 5GB of build cache so rebuilds stay warm.
+            echo "--- disk before cleanup ---" && df -h / || true
+            docker image prune -f || true
+            docker builder prune -f --keep-storage 5GB || true
+            echo "--- disk after cleanup ---" && df -h / || true
             make deploy
