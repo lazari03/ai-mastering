@@ -8,7 +8,7 @@ import multer from "multer";
 
 import { GENRES, STYLES, TAGS, CATEGORIES, FLAVOURS_BY_CATEGORY, AUDIO_DECODE_EXTS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
-import { processMastering, execFileAsync, deleteJobFiles } from "../services/masteringService.js";
+import { processMastering, execFileAsync, deleteJobFiles, postMultipartToPython } from "../services/masteringService.js";
 import { analyzeChords, previewCodec } from "../services/chordCleanService.js";
 import { listMixPresets } from "../services/presetsService.js";
 import { importCustomPreset, deleteCustomPreset } from "../services/customPresetsService.js";
@@ -444,6 +444,59 @@ router.delete("/admin/presets/:slug", requireAdminKey, async (req, res) => {
     return res.status(404).json({ detail: "Preset not found" });
   }
   return res.json({ ok: true });
+});
+
+// Live "professional controls" preview — lets the Master tab show real,
+// per-track adaptive-engine values (EQ band gains, compression, target
+// loudness) as the user browses genre/style/category/flavour/tweaks,
+// instead of a manual panel that never reflected those choices. Only
+// meaningful with the adaptive Python engine (see /master below for the
+// same guard) — the ffmpeg fallback has no per-genre parameter model to
+// preview at all.
+function requireAdaptiveEngine(req, res, next) {
+  if (settings.masteringEngine !== "adaptive_python") {
+    return res.status(501).json({ detail: "Live parameter preview needs the adaptive mastering engine, which isn't configured on this server." });
+  }
+  return next();
+}
+
+router.post("/analyze", expensiveLimiter, requireAdaptiveEngine, upload.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ detail: "file is required" });
+  }
+  try {
+    const result = await postMultipartToPython("/analyze", {
+      files: { file: { path: req.file.path, filename: req.file.originalname || "input.wav" } },
+    });
+    return res.json(result);
+  } catch (error) {
+    return res.status(502).json({ detail: error?.message || "Analysis failed" });
+  } finally {
+    fs.unlink(req.file.path, () => {});
+  }
+});
+
+router.post("/preview-params", requireAdaptiveEngine, async (req, res) => {
+  const { analysis, genre, style, tags, tweaks, category, flavour } = req.body || {};
+  if (!analysis || !genre) {
+    return res.status(400).json({ detail: "analysis and genre are required" });
+  }
+  try {
+    const result = await postMultipartToPython("/preview-params", {
+      fields: {
+        analysis,
+        genre,
+        style: style || "modern",
+        tags: tags || "[]",
+        tweaks: tweaks || "{}",
+        category: category || null,
+        flavour: flavour || null,
+      },
+    });
+    return res.json(result);
+  } catch (error) {
+    return res.status(502).json({ detail: error?.message || "Preview computation failed" });
+  }
 });
 
 const masterUpload = upload.fields([

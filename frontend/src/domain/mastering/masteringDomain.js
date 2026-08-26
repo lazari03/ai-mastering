@@ -8,6 +8,8 @@ import {
   postImportPreset,
   deleteCustomPreset,
   postCodecPreview,
+  postAnalyzeAudio,
+  postPreviewParams,
   toAuthedDownloadUrl,
 } from "@/network/http/client";
 
@@ -137,6 +139,39 @@ export async function previewCodec(jobId, codec) {
     ...response,
     previewUrl: await toAuthedDownloadUrl(response.preview_download_url),
   };
+}
+
+// One-time, real-audio-decode analysis of the uploaded file — the input
+// preview_params() below needs. 501s cleanly (see the Node route) when the
+// server is running the ffmpeg-fallback engine instead of the adaptive
+// Python one; callers treat that the same as "preview unavailable", not
+// an error to surface.
+export async function analyzeAudio(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await postAnalyzeAudio(formData);
+  return response.analysis;
+}
+
+// Pure computation — real per-band EQ/compression/loudness values for the
+// CURRENT genre/style/category/flavour/tweaks selection against the
+// already-analyzed track, via the exact same compute_processing_params +
+// _apply_user_tweaks calls a real render uses (see backend/ai_mastering/
+// mastering.py:preview_processing_params). Cheap enough to call on every
+// chip click or tweak drag — callers debounce anyway, this doesn't.
+export async function previewParams({ analysis, genre, style, tags, tweaks, category, flavour }) {
+  const formData = new FormData();
+  formData.append("analysis", JSON.stringify(analysis));
+  formData.append("genre", genre);
+  formData.append("style", style || "modern");
+  formData.append("tags", JSON.stringify(tags || []));
+  formData.append("tweaks", JSON.stringify(normalizeTweaks(tweaks || {})));
+  if (category) {
+    formData.append("category", category);
+    if (flavour) formData.append("flavour", flavour);
+  }
+  const response = await postPreviewParams(formData);
+  return response.processing_params;
 }
 
 export async function runMasteringJob(input) {

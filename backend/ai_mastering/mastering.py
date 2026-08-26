@@ -23,7 +23,54 @@ from .quality_control import InvalidAudioError, rebalance_channels, run_quality_
 from .section_detection import _db_to_lin, _detect_song_sections, _section_gain_db_envelope
 from .stem_separation import _is_stem_separation_requested, _process_accompaniment_stem, _process_vocal_stem, _separate_vocal_stems
 
-__all__ = ["master_track", "InvalidAudioError"]
+__all__ = ["master_track", "InvalidAudioError", "analyze_for_preview", "preview_processing_params"]
+
+
+def analyze_for_preview(input_path: str | Path) -> dict:
+    """The cheap half of master_track() — decode, validate (DC-offset
+    correction, NaN/clipping/silence checks), analyze. No DSP, no
+    rendering, no output file. Split out so the frontend can request this
+    once per upload and then call preview_processing_params(...) as many
+    times as the user changes genre/style/category/flavour/tweaks, without
+    paying for a full multiband render (or even a re-decode) on every one
+    of those clicks."""
+    audio_stereo, sr = _load_audio(input_path, sr=MASTER_SR)
+    input_validation = validate_input_signal(audio_stereo, sr)
+    audio_stereo = input_validation.pop("_corrected_audio")
+    analysis = _analysis_from_audio(audio_stereo, sr)
+    return {"analysis": analysis, "input_validation": input_validation}
+
+
+def preview_processing_params(
+    analysis: dict,
+    genre: str,
+    tags: list[str],
+    style: str = "modern",
+    tweaks: dict | None = None,
+    category: str | None = None,
+    flavour: str | None = None,
+) -> dict:
+    """Exactly the parameter-computation half of master_track() — the same
+    compute_processing_params + user-tweak-merge + _apply_user_tweaks calls
+    a real render uses, on an analysis already produced by
+    analyze_for_preview() — so the frontend can show real per-band EQ/
+    compression/loudness numbers as the user browses genre/style/category/
+    flavour/tweaks, guaranteed to match what a real render with the same
+    selection would actually compute (this and master_track() call the
+    exact same functions), not a separate approximation that could drift
+    out of sync with the real engine."""
+    processing_params = compute_processing_params(
+        analysis,
+        genre=genre,
+        tags=tags,
+        style=style,
+        category=category,
+        flavour=flavour,
+    )
+    merged_tweaks = dict(tweaks or {})
+    for tweak_key, tweak_delta in processing_params.get("category_tweak_bias", {}).items():
+        merged_tweaks[tweak_key] = float(merged_tweaks.get(tweak_key, 0.0)) + float(tweak_delta)
+    return _apply_user_tweaks(processing_params, analysis, merged_tweaks)
 
 
 def master_track(

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import AdaptiveControlsPanel from "@/components/audio/AdaptiveControlsPanel";
 import ProcessingSummary from "@/components/audio/ProcessingSummary";
 import ProParamsPanel from "@/components/audio/ProParamsPanel";
 import SignalVisualizer from "@/components/audio/SignalVisualizer";
@@ -77,6 +78,13 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
     tier,
     mode,
     proParams,
+    tweaks,
+    analysis,
+    isAnalyzing,
+    livePreviewParams,
+    isPreviewLoading,
+    previewUnavailable,
+    previewError,
     bootstrap,
     setFile,
     setReferenceFile,
@@ -87,6 +95,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
     setPreset,
     toggleTag,
     setUseStemSeparation,
+    setTweak,
     setTier,
     setMode,
     setProSection,
@@ -487,6 +496,19 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                         ))}
                       </div>
                     </div>
+                  ) : null}
+
+                  {mode === "quick" ? (
+                    <AdaptiveControlsPanel
+                      tweaks={tweaks}
+                      onTweak={setTweak}
+                      analysis={analysis}
+                      livePreviewParams={livePreviewParams}
+                      isAnalyzing={isAnalyzing}
+                      isPreviewLoading={isPreviewLoading}
+                      previewUnavailable={previewUnavailable}
+                      previewError={previewError}
+                    />
                   ) : null}
 
                   <div className="mt-4">

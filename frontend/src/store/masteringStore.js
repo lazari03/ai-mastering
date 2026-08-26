@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { fetchCatalog, importPreset, deletePreset, runMasteringJob } from "@/domain/mastering/masteringDomain";
+import { fetchCatalog, importPreset, deletePreset, runMasteringJob, analyzeAudio, previewParams } from "@/domain/mastering/masteringDomain";
 
 const EMPTY_TWEAKS = {
   low_end: 0,
@@ -45,6 +45,14 @@ function cloneProParams(params) {
   return JSON.parse(JSON.stringify(params));
 }
 
+// Debounce for the live parameter preview — module-level (not store state)
+// since it's pure plumbing, not something any component reads. 350ms: long
+// enough that a fast run across genre chips or a dragged tweak knob only
+// fires the request once it settles, short enough that it still reads as
+// "live" rather than laggy.
+let previewDebounceTimer = null;
+const PREVIEW_DEBOUNCE_MS = 350;
+
 export const useMasteringStore = create((set, get) => ({
   isBootstrapping: true,
   isSubmitting: false,
@@ -83,6 +91,27 @@ export const useMasteringStore = create((set, get) => ({
   mode: "quick",
   proParams: cloneProParams(DEFAULT_PRO_PARAMS),
 
+  // Live "adaptive controls" preview (Quick mode) — analysis is the
+  // one-time real-audio measurement of the current file (see
+  // analyzeAudio()); livePreviewParams is what compute_processing_params
+  // would actually do with the current genre/style/category/flavour/
+  // tweaks selection against THAT analysis, refreshed via
+  // refreshPreviewParams() below every time one of those changes. null
+  // livePreviewParams before the first successful preview, or whenever
+  // analysis itself is stale/missing — components should treat that as
+  // "no live values yet", not an error.
+  analysis: null,
+  isAnalyzing: false,
+  analyzeError: "",
+  livePreviewParams: null,
+  isPreviewLoading: false,
+  previewError: "",
+  // Set true on a 501 from the server (ffmpeg-fallback engine, no
+  // adaptive parameter model to preview) — sticky for the session so
+  // components can just hide the panel instead of retrying a dead feature
+  // on every selection change.
+  previewUnavailable: false,
+
   async bootstrap() {
     set({ isBootstrapping: true, error: "" });
 
@@ -109,7 +138,94 @@ export const useMasteringStore = create((set, get) => ({
   },
 
   setFile(file) {
-    set({ file, result: null, error: "" });
+    // New file invalidates any analysis/preview from the previous one —
+    // clear both immediately (stale numbers for a track that's no longer
+    // selected are worse than no numbers) rather than waiting for the new
+    // analysis to land.
+    set({
+      file,
+      result: null,
+      error: "",
+      analysis: null,
+      livePreviewParams: null,
+      analyzeError: "",
+      previewUnavailable: false,
+    });
+    if (file) get().analyzeCurrentFile();
+  },
+
+  // Fires once per file selection — the one real audio-decode call the
+  // whole live-preview feature needs. Everything after this (every genre/
+  // style/category/flavour/tweak change) is pure math against the result,
+  // via refreshPreviewParams() below.
+  async analyzeCurrentFile() {
+    const file = get().file;
+    if (!file) return;
+    set({ isAnalyzing: true, analyzeError: "" });
+    try {
+      const analysis = await analyzeAudio(file);
+      // The file could have changed again while this was in flight —
+      // don't clobber a newer selection's (possibly still-loading) state
+      // with a stale response.
+      if (get().file !== file) return;
+      set({ analysis, isAnalyzing: false });
+      get().refreshPreviewParams();
+    } catch (err) {
+      if (get().file !== file) return;
+      const unavailable = err?.status === 501;
+      set({
+        isAnalyzing: false,
+        previewUnavailable: unavailable,
+        analyzeError: unavailable ? "" : err.message || "Couldn't analyze this file for live preview.",
+      });
+    }
+  },
+
+  // Debounced live-preview refresh — called after every genre/style/
+  // category/flavour/tweak change (see those actions below). No-ops
+  // silently when there's no analysis yet (nothing uploaded, still
+  // analyzing, or the server doesn't support it) rather than erroring —
+  // this is a bonus preview, never a blocker for actually mastering.
+  refreshPreviewParams() {
+    if (!get().analysis || get().previewUnavailable) return;
+    if (previewDebounceTimer) clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(() => {
+      get()._refreshPreviewParamsNow();
+    }, PREVIEW_DEBOUNCE_MS);
+  },
+
+  async _refreshPreviewParamsNow() {
+    const state = get();
+    const analysis = state.analysis;
+    if (!analysis) return;
+    set({ isPreviewLoading: true, previewError: "" });
+    try {
+      const params = await previewParams({
+        analysis,
+        genre: state.selectedGenre,
+        style: state.selectedStyle,
+        tags: state.selectedTags,
+        tweaks: state.tweaks,
+        category: state.selectedCategory,
+        flavour: state.selectedFlavour,
+      });
+      // The selection could have moved on again while this was in
+      // flight — a stale response would flash outdated numbers for a
+      // moment before the next debounced call lands. Simplest guard:
+      // only apply if analysis is still the same object (set again only
+      // by a fresh upload, which itself invalidates any in-flight call
+      // via the file-identity check in analyzeCurrentFile).
+      if (get().analysis !== analysis) return;
+      set({ livePreviewParams: params, isPreviewLoading: false });
+    } catch (err) {
+      if (get().analysis !== analysis) return;
+      const unavailable = err?.status === 501;
+      set({
+        isPreviewLoading: false,
+        previewUnavailable: unavailable,
+        previewError: unavailable ? "" : err.message || "Couldn't refresh live preview.",
+      });
+    }
   },
 
   // Uploading a reference track is its own workflow (see submit()) — it
@@ -126,10 +242,12 @@ export const useMasteringStore = create((set, get) => ({
 
   setGenre(selectedGenre) {
     set({ selectedGenre, selectedPreset: "" });
+    get().refreshPreviewParams();
   },
 
   setStyle(selectedStyle) {
     set({ selectedStyle, selectedPreset: "" });
+    get().refreshPreviewParams();
   },
 
   setCategory(selectedCategory) {
@@ -137,10 +255,12 @@ export const useMasteringStore = create((set, get) => ({
     // parent category (see FLAVOURS_BY_CATEGORY), a stale flavour name from
     // a different category would silently do nothing server-side.
     set({ selectedCategory, selectedFlavour: "", selectedPreset: "" });
+    get().refreshPreviewParams();
   },
 
   setFlavour(selectedFlavour) {
     set({ selectedFlavour, selectedPreset: "" });
+    get().refreshPreviewParams();
   },
 
   setPreset(selectedPreset) {
@@ -172,10 +292,10 @@ export const useMasteringStore = create((set, get) => ({
     const selectedTags = get().selectedTags;
     if (selectedTags.includes(tag)) {
       set({ selectedTags: selectedTags.filter((item) => item !== tag), selectedPreset: "" });
-      return;
+    } else {
+      set({ selectedTags: [...selectedTags, tag], selectedPreset: "" });
     }
-
-    set({ selectedTags: [...selectedTags, tag], selectedPreset: "" });
+    get().refreshPreviewParams();
   },
 
   setUseStemSeparation(useStemSeparation) {
@@ -191,6 +311,7 @@ export const useMasteringStore = create((set, get) => ({
       },
       selectedPreset: "",
     });
+    get().refreshPreviewParams();
   },
 
   setTier(tier) {

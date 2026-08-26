@@ -1,15 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Real drag-to-adjust rotary knob, not a decorative image — maps min..max
 // onto a 270° sweep (-135°..+135°, like real hardware) and reports back
 // through the same onChange(number) every plain number input in this app
 // already uses. Vertical drag changes the value (standard for on-screen
-// knobs — a true rotary drag is fussier with a mouse); arrow keys work too
-// for accessibility. The knob is the only way to set it — deliberately no
-// separate "click to type a number" input alongside it, so there's one
-// control per parameter, not two competing ones.
+// knobs — a true rotary drag is fussier with a mouse); arrow keys nudge by
+// one step for accessibility; clicking the numeric readout below the knob
+// swaps it for a real text input so an exact value can be typed rather
+// than dragged or nudged one step at a time — Enter/blur commits (clamped
+// to min/max), Escape cancels without changing anything.
 function arcPath(startDeg, endDeg, radius) {
   const cx = 50;
   const cy = 50;
@@ -38,7 +39,23 @@ function formatValue(value, step) {
 
 export default function Knob({ label, unit, value, min, max, step = 1, onChange, size = 40 }) {
   const [dragging, setDragging] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draftText, setDraftText] = useState("");
   const dragState = useRef({ startY: 0, startValue: 0 });
+  const inputRef = useRef(null);
+
+  const beginEdit = () => {
+    setDraftText(String(formatValue(value, step)));
+    setEditing(true);
+  };
+
+  const commitEdit = () => {
+    const parsed = Number(draftText);
+    if (Number.isFinite(parsed)) {
+      onChange(formatValue(clamp(Math.round(parsed / step) * step, min, max), step));
+    }
+    setEditing(false);
+  };
 
   const pct = clamp((value - min) / (max - min), 0, 1);
   const angle = -135 + pct * 270;
@@ -71,8 +88,28 @@ export default function Knob({ label, unit, value, min, max, step = 1, onChange,
     } else if (event.key === "ArrowDown" || event.key === "ArrowLeft") {
       onChange(formatValue(clamp(value - step, min, max), step));
       event.preventDefault();
+    } else if (event.key === "Enter" || event.key === " ") {
+      beginEdit();
+      event.preventDefault();
     }
   };
+
+  const handleEditKeyDown = (event) => {
+    if (event.key === "Enter") {
+      commitEdit();
+      event.preventDefault();
+    } else if (event.key === "Escape") {
+      setEditing(false);
+      event.preventDefault();
+    }
+  };
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
 
   return (
     <div className="flex flex-col items-center gap-0.5 select-none" style={{ width: size + 8 }}>
@@ -125,10 +162,32 @@ export default function Knob({ label, unit, value, min, max, step = 1, onChange,
         />
       </div>
 
-      <span className="whitespace-nowrap text-[10px] font-semibold leading-tight text-white">
-        {formatValue(value, step)}
-        {unit ? <span className="text-zinc-500">{unit}</span> : null}
-      </span>
+      {editing ? (
+        <input
+          ref={inputRef}
+          type="number"
+          inputMode="decimal"
+          value={draftText}
+          min={min}
+          max={max}
+          step={step}
+          onChange={(event) => setDraftText(event.target.value)}
+          onKeyDown={handleEditKeyDown}
+          onBlur={commitEdit}
+          aria-label={`${label} value`}
+          className="w-[52px] rounded border border-brass/50 bg-black/60 px-0.5 py-px text-center text-[10px] font-semibold text-white outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={beginEdit}
+          title="Click to type an exact value"
+          className="whitespace-nowrap rounded text-[10px] font-semibold leading-tight text-white outline-none hover:text-brass focus-visible:text-brass"
+        >
+          {formatValue(value, step)}
+          {unit ? <span className="text-zinc-500">{unit}</span> : null}
+        </button>
+      )}
       <span className="max-w-[56px] truncate text-center text-[8px] uppercase leading-tight tracking-[0.06em] text-zinc-500">{label}</span>
     </div>
   );

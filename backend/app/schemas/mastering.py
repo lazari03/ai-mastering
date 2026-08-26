@@ -52,6 +52,15 @@ class ChordAnalysisResponse(BaseModel):
     chords: list[ChordSegment]
 
 
+class AnalyzeResponse(BaseModel):
+    analysis: dict
+    input_validation: dict
+
+
+class PreviewParamsResponse(BaseModel):
+    processing_params: dict
+
+
 class PresetSummary(BaseModel):
     name: str
     description: str

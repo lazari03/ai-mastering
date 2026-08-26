@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
 
-from adaptive_mastering import master_track as run_adaptive_mastering
+from adaptive_mastering import analyze_for_preview, master_track as run_adaptive_mastering
 from ai_mastering.quality_control import InvalidAudioError
 from params import list_categories, list_flavours, list_genres, list_styles, list_tags
 
@@ -285,3 +285,34 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
         "target_profile_used": mastering_result["target_profile_used"],
         "resolved_config": config,
     }
+
+
+def analyze_uploaded_track(file: UploadFile) -> dict:
+    """Decode + analyze only, for the live genre/style parameter preview
+    (see analyze_for_preview/preview_processing_params) — never saved
+    long-term the way /master's input is (no job_id worth remembering,
+    nothing to re-download later), so every file this creates gets cleaned
+    up before returning rather than left for the 48h sweep."""
+    if file.size and file.size > settings.max_upload_size_mb * 1024 * 1024:
+        raise HTTPException(413, f"Uploaded file exceeds {settings.max_upload_size_mb}MB limit")
+
+    scratch_id = f"preview_{uuid.uuid4().hex[:12]}"
+    input_ext = Path(file.filename or "").suffix or ".wav"
+    input_path = settings.upload_dir / f"{scratch_id}_input{input_ext}"
+
+    with input_path.open("wb") as handle:
+        handle.write(file.file.read())
+
+    processing_input_path = None
+    try:
+        processing_input_path = _decode_input_if_required(scratch_id, input_path, input_ext)
+        try:
+            return analyze_for_preview(str(processing_input_path))
+        except InvalidAudioError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except Exception as exc:  # pragma: no cover
+            raise HTTPException(500, f"Analysis failed: {type(exc).__name__}: {exc}") from exc
+    finally:
+        input_path.unlink(missing_ok=True)
+        if processing_input_path and processing_input_path != input_path:
+            processing_input_path.unlink(missing_ok=True)

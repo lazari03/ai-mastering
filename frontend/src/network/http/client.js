@@ -72,7 +72,9 @@ async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
         });
     }
     const detail = isJson ? payload?.detail || JSON.stringify(payload) : payload;
-    throw new Error(detail || `HTTP ${response.status}`);
+    const requestError = new Error(detail || `HTTP ${response.status}`);
+    requestError.status = response.status;
+    throw requestError;
   }
 
   return payload;
@@ -110,6 +112,27 @@ export async function postAnalyzeChords(formData) {
     method: "POST",
     body: formData,
   }, MASTERING_TIMEOUT_MS);
+}
+
+// Decode + measure only (see backend/app/api/routes/mastering.py:/analyze)
+// — the one-time, real-audio-decode half of the live "professional
+// controls" preview. Uses the same generous timeout as /master since it's
+// a real audio decode, not the cheap math /preview-params below is.
+export async function postAnalyzeAudio(formData) {
+  return request("/analyze", {
+    method: "POST",
+    body: formData,
+  }, MASTERING_TIMEOUT_MS);
+}
+
+// Pure computation on an already-analyzed track — cheap enough to call on
+// every genre/style/tweak change, so this uses the default (short) timeout
+// rather than MASTERING_TIMEOUT_MS.
+export async function postPreviewParams(formData) {
+  return request("/preview-params", {
+    method: "POST",
+    body: formData,
+  });
 }
 
 export async function postImportPreset(formData) {

@@ -119,7 +119,7 @@ export default function ProParamsPanel({ proParams, setSection, addBand, updateB
   return (
     <div className="mt-2.5 flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <p className="m-0 text-[10px] text-zinc-500">Drag a knob up/down, or focus it and use arrow keys.</p>
+        <p className="m-0 text-[10px] text-zinc-500">Drag a knob, use arrow keys, or click the value to type an exact number.</p>
         <button type="button" onClick={onReset} className="shrink-0 rounded-lg border border-white/15 bg-black/20 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30">
           Reset
         </button>

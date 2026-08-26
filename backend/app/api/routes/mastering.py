@@ -6,10 +6,12 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
+from adaptive_mastering import preview_processing_params as compute_preview_params
 from app.core.config import settings
-from app.schemas.mastering import CodecPreviewResponse, MasterResponse, PresetSummary
+from app.schemas.mastering import AnalyzeResponse, CodecPreviewResponse, MasterResponse, PresetSummary, PreviewParamsResponse
 from app.services.codec_preview_service import SUPPORTED_CODECS, simulate_codec
 from app.services.mastering_service import (
+    analyze_uploaded_track,
     parse_json_array,
     parse_json_object,
     process_mastering_request,
@@ -57,6 +59,57 @@ def get_mix_presets() -> list[dict]:
         }
         for name, value in presets.items()
     ]
+
+
+@router.post("/analyze", response_model=AnalyzeResponse)
+def analyze(file: UploadFile = File(...)) -> dict:
+    """Decode + measure a track without mastering it — the frontend calls
+    this once per upload, then /preview-params as many times as the user
+    browses genre/style/category/flavour/tweaks, so the "professional
+    controls" panel can show real, per-track values live instead of a
+    static default that never reflects what's actually selected."""
+    return analyze_uploaded_track(file)
+
+
+@router.post("/preview-params", response_model=PreviewParamsResponse)
+def preview_params(
+    analysis: str = Form(...),
+    genre: str = Form(...),
+    style: str = Form("modern"),
+    tags: str = Form("[]"),
+    tweaks: str = Form("{}"),
+    category: str | None = Form(None),
+    flavour: str | None = Form(None),
+) -> dict:
+    """Pure computation on an analysis already produced by /analyze — no
+    audio touched, so this is cheap enough to call on every chip click or
+    tweak-slider drag. `analysis` is that endpoint's own `analysis` field,
+    round-tripped back by the caller rather than cached server-side (keeps
+    this endpoint stateless — no job_id, nothing to clean up)."""
+    try:
+        analysis_dict = json.loads(analysis)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(400, "analysis must be valid JSON") from exc
+    if genre not in list_genres():
+        raise HTTPException(400, f"Unknown genre: {genre}")
+
+    tag_list = parse_json_array(tags, "tags")
+    tweak_values = parse_json_object(tweaks, "tweaks")
+
+    try:
+        processing_params = compute_preview_params(
+            analysis_dict,
+            genre=genre,
+            tags=tag_list,
+            style=style,
+            tweaks=tweak_values,
+            category=category,
+            flavour=flavour,
+        )
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(400, f"Couldn't compute preview parameters: {exc}") from exc
+
+    return {"processing_params": processing_params}
 
 
 @router.post("/master", response_model=MasterResponse)
