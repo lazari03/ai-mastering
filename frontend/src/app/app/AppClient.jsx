@@ -74,6 +74,20 @@ export default function AppClient() {
   // dropdown). Persisted so the choice sticks across reloads.
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // The one thing every sidebar/menu/badge nav click must go through —
+  // plain setActiveTab(key) alone was a real bug: showResultView is
+  // driven by ?job= in the URL (see jobIdParam above), not by
+  // `activeTab`, so switching tabs while `?job=` was still set changed
+  // nothing on screen — the sidebar looked dead because <main> kept
+  // rendering MasterResultView regardless of activeTab. Pushing a plain
+  // /app?tab=<key> URL (no job=) is what actually leaves the result view;
+  // setActiveTab alongside it keeps the sidebar highlight in sync
+  // immediately rather than waiting on the next render's searchParams read.
+  const goToTab = (tabKey) => {
+    setActiveTab(tabKey);
+    router.push(`/app?tab=${tabKey}`);
+  };
+
   useEffect(() => {
     const stored = window.localStorage.getItem(SIDEBAR_PREF_KEY);
     if (stored !== null) setSidebarOpen(stored === "true");
@@ -224,7 +238,7 @@ export default function AppClient() {
           </span>
         </Link>
         <div className="flex items-center gap-2">
-          <EntitlementsBadge compact onClick={() => setActiveTab("settings")} />
+          <EntitlementsBadge compact onClick={() => goToTab("settings")} />
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
@@ -286,7 +300,7 @@ export default function AppClient() {
                   key={tab.key}
                   type="button"
                   onClick={() => {
-                    setActiveTab(tab.key);
+                    goToTab(tab.key);
                     setMenuOpen(false);
                   }}
                   aria-pressed={isActive}
@@ -349,7 +363,7 @@ export default function AppClient() {
 
         {sidebarOpen ? (
           <div className="px-1.5 pb-4">
-            <EntitlementsBadge onClick={() => setActiveTab("settings")} className="w-full justify-center" />
+            <EntitlementsBadge onClick={() => goToTab("settings")} className="w-full justify-center" />
           </div>
         ) : null}
 
@@ -361,7 +375,7 @@ export default function AppClient() {
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => goToTab(tab.key)}
                 aria-pressed={isActive}
                 title={sidebarOpen ? undefined : t(tab.labelKey)}
                 className={`flex items-center rounded-lg text-[12.5px] font-semibold transition ${
@@ -419,15 +433,15 @@ export default function AppClient() {
         {showResultView ? (
           <MasterResultView
             jobId={jobIdParam}
-            onMasterAnother={() => router.push("/app")}
-            onViewAllMasters={() => router.push("/app?tab=myMasters")}
+            onMasterAnother={() => goToTab("master")}
+            onViewAllMasters={() => goToTab("myMasters")}
           />
         ) : (
-          active.render({ setActiveTab, setShowTutorial })
+          active.render({ setActiveTab: goToTab, setShowTutorial })
         )}
       </main>
 
-      <NotificationBanner activeTab={activeTab} onView={() => setActiveTab("master")} />
+      <NotificationBanner activeTab={activeTab} onView={() => goToTab("master")} />
       {showTutorial ? <OnboardingTour onDone={dismissTutorial} /> : null}
       <MasteringLoaderOverlay visible={isMasteringSubmitting} progress={masteringProgress} phaseMessage={masteringPhaseMessage} />
     </div>

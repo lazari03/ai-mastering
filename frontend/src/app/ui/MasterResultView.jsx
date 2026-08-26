@@ -175,6 +175,19 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
 
   return (
     <div className="reveal mx-auto w-full max-w-[880px]">
+      {/* Always-visible, not buried below the player/download buttons —
+          this is what actually gets someone back to the list from a deep
+          link or an old habit of reaching for a "back" affordance instead
+          of the sidebar (which also works now, see AppClient.jsx's
+          goToTab). */}
+      <button
+        type="button"
+        onClick={onViewAllMasters}
+        className="mb-4 inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200"
+      >
+        ← {t("result.backToMasters")}
+      </button>
+
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="m-0 text-[11px] uppercase tracking-[0.2em] text-brass">{t("result.eyebrow")}</p>
