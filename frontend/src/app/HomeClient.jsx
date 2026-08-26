@@ -94,7 +94,7 @@ export default function HomeClient() {
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             aria-expanded={menuOpen}
-            aria-label="Menu"
+            aria-label={t("app.menu")}
             className="flex h-9 w-9 flex-col items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-black/20 md:hidden"
           >
             <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "translate-y-[3px] rotate-45" : ""}`} />
@@ -102,32 +102,78 @@ export default function HomeClient() {
             <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "-translate-y-[3px] -rotate-45" : ""}`} />
           </button>
         </div>
+      </header>
 
-        {menuOpen ? (
-          <div className="mt-4 flex flex-col gap-1 md:hidden">
+      {/* Mobile menu — a real slide-in drawer (fixed overlay + backdrop +
+          translate-x animation), same pattern /app's own sidebar drawer
+          uses. Replaces the old inline dropdown that just pushed the rest
+          of the page down instead of overlaying it. Rendered
+          unconditionally (not `menuOpen ? ... : null`) so the closing
+          animation can actually play. */}
+      <div
+        className={`fixed inset-0 z-50 md:hidden ${menuOpen ? "pointer-events-auto" : "pointer-events-none"}`}
+        aria-hidden={!menuOpen}
+      >
+        <div
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+            menuOpen ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={() => setMenuOpen(false)}
+        />
+        <div
+          className={`absolute right-0 top-0 flex h-full w-[82%] max-w-[320px] flex-col border-l border-white/10 bg-[#14110f] p-5 shadow-2xl transition-transform duration-300 ease-out ${
+            menuOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="flex items-center justify-between pb-6">
+            <div className="flex items-center gap-2.5">
+              <LogoMark size={22} />
+              <span className="font-[var(--font-title)] text-xs uppercase tracking-[0.18em] text-brass">
+                Auralith Forge
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              aria-label={t("app.closeMenu")}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-black/20 text-lg text-zinc-300"
+            >
+              ✕
+            </button>
+          </div>
+
+          <nav className="flex flex-col gap-1">
             {navLinks.map((link) => (
               <a
                 key={link.key}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className="rounded-lg px-2 py-2.5 text-sm uppercase tracking-[0.1em] text-zinc-300 hover:bg-white/5 hover:text-white"
+                className="rounded-xl px-3.5 py-3 text-left text-sm font-semibold uppercase tracking-[0.1em] text-zinc-300 active:bg-white/5"
               >
                 {t(link.key)}
               </a>
             ))}
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <LanguageSwitch lang={lang} setLang={setLang} />
-              <Link
-                href={CTA.signup}
-                onClick={() => setMenuOpen(false)}
-                className="flex-1 rounded-full border border-brass/50 bg-brass/[0.15] px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-[0.12em] text-brass"
-              >
-                {t("nav.openApp")}
+          </nav>
+
+          <div className="flex-1" />
+
+          <div className="border-t border-white/10 pt-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <Link href={CTA.signup} onClick={() => setMenuOpen(false)} className="text-xs text-zinc-400">
+                {t("nav.signin")}
               </Link>
+              <LanguageSwitch lang={lang} setLang={setLang} />
             </div>
+            <Link
+              href={CTA.signup}
+              onClick={() => setMenuOpen(false)}
+              className="block w-full rounded-full border border-brass/50 bg-brass/[0.15] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em] text-brass"
+            >
+              {t("nav.openApp")}
+            </Link>
           </div>
-        ) : null}
-      </header>
+        </div>
+      </div>
 
       <section
         className="reveal relative mt-6 overflow-hidden rounded-[28px] border border-white/10 p-8 sm:p-12 md:p-16"

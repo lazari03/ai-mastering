@@ -183,17 +183,20 @@ export default function AppClient() {
             Auralith Forge
           </span>
         </Link>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-expanded={menuOpen}
-          aria-label={t("app.menu")}
-          className="flex h-9 w-9 flex-col items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-black/20"
-        >
-          <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "translate-y-[3px] rotate-45" : ""}`} />
-          <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "opacity-0" : ""}`} />
-          <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "-translate-y-[3px] -rotate-45" : ""}`} />
-        </button>
+        <div className="flex items-center gap-2">
+          <EntitlementsBadge compact onClick={() => setActiveTab("settings")} />
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-expanded={menuOpen}
+            aria-label={t("app.menu")}
+            className="flex h-9 w-9 shrink-0 flex-col items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-black/20"
+          >
+            <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "translate-y-[3px] rotate-45" : ""}`} />
+            <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "opacity-0" : ""}`} />
+            <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "-translate-y-[3px] -rotate-45" : ""}`} />
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu — a real slide-in drawer (fixed overlay + backdrop +
@@ -304,6 +307,12 @@ export default function AppClient() {
           </button>
         </div>
 
+        {sidebarOpen ? (
+          <div className="px-1.5 pb-4">
+            <EntitlementsBadge onClick={() => setActiveTab("settings")} className="w-full justify-center" />
+          </div>
+        ) : null}
+
         <nav className={`flex flex-col gap-0.5 ${sidebarOpen ? "" : "items-center"}`}>
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -375,7 +384,6 @@ export default function AppClient() {
       </main>
 
       <NotificationBanner activeTab={activeTab} onView={() => setActiveTab("master")} />
-      <EntitlementsBadge onClick={() => setActiveTab("settings")} />
       {showTutorial ? <OnboardingTour onDone={dismissTutorial} /> : null}
       <MasteringLoaderOverlay visible={isMasteringSubmitting} progress={masteringProgress} phaseMessage={masteringPhaseMessage} />
     </div>
