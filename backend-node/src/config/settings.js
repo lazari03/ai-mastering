@@ -39,6 +39,12 @@ export const settings = {
   // older than this many days, requireAuth rejects the token and the
   // frontend force-signs-out. See requireAuth.js.
   sessionMaxAgeDays: Number(process.env.SESSION_MAX_AGE_DAYS || 14),
+  // Separate from the absolute cap above — this ends a session early if
+  // it just sits idle, regardless of how young it is. "Activity" means
+  // "made an authenticated request"; requireAuth.js reads/writes
+  // users/{uid}.lastActiveAt on every request (throttled — see its own
+  // comment) to enforce this and to know when to reset the clock.
+  sessionInactivityHours: Number(process.env.SESSION_INACTIVITY_HOURS || 24),
   // Signs the short-lived download tokens that let <a href download>/
   // <audio src>/direct navigation reach the auth-gated download routes
   // (see services/downloadTokenService.js) — neither can attach an

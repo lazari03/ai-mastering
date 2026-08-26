@@ -60,6 +60,9 @@ services:
       # moment this container redeploys (see settings.js:downloadTokenSecret).
       DOWNLOAD_TOKEN_SECRET: ${DOWNLOAD_TOKEN_SECRET}
       SESSION_MAX_AGE_DAYS: ${SESSION_MAX_AGE_DAYS:-14}
+      # Idle-session cap, separate from the absolute one above — see
+      # requireAuth.js / settings.js:sessionInactivityHours.
+      SESSION_INACTIVITY_HOURS: ${SESSION_INACTIVITY_HOURS:-24}
       # Telegram admin bot — new-signup/new-purchase alerts plus /pageviews
       # and /stats commands. Unset either and the whole feature silently
       # disables itself (see services/telegramService.js and

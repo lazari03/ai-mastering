@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import LoginClient from "./LoginClient";
 import { buildMetadata } from "@/lib/seo";
 
@@ -8,6 +10,13 @@ export const metadata = buildMetadata({
   keywords: ["AI mastering sign up", "mastering studio login"],
 });
 
+// Suspense boundary required by LoginClient's useSearchParams() (reads
+// ?reason=session_expired) — Next.js bails out of static generation for
+// that hook otherwise.
 export default function LoginPage() {
-  return <LoginClient />;
+  return (
+    <Suspense fallback={null}>
+      <LoginClient />
+    </Suspense>
+  );
 }

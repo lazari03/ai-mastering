@@ -1,5 +1,12 @@
-import { getAuth } from "../config/firebase.js";
+import { getAuth, getFirestore } from "../config/firebase.js";
 import { settings } from "../config/settings.js";
+
+// Only re-written when it's already stale by more than this — writing
+// users/{uid}.lastActiveAt on literally every single request (catalog
+// fetches, entitlement polls, etc.) would be a Firestore write per
+// request for no real benefit; activity only needs minute-level
+// resolution, not per-request precision.
+const LAST_ACTIVE_WRITE_THROTTLE_MS = 2 * 60 * 1000;
 
 // Verifies the Firebase ID token in the Authorization header and attaches
 // { uid, email } to req.user. Applied to every route except /health (see
@@ -44,6 +51,32 @@ export async function requireAuth(req, res, next) {
       return res.status(401).json({
         detail: `Your session has expired after ${settings.sessionMaxAgeDays} days — please sign in again.`,
         code: "SESSION_EXPIRED",
+      });
+    }
+
+    // Idle-session cap, independent of the absolute one above — ends a
+    // session early if it just sits unused, even a young one. "Activity"
+    // is "made an authenticated request" (checked here, on every one);
+    // the actual timestamp write is throttled below so this doesn't cost
+    // a Firestore write per request.
+    const userRef = getFirestore().collection("users").doc(decoded.uid);
+    const userSnap = await userRef.get();
+    const lastActiveAt = userSnap.data()?.lastActiveAt?.toDate?.() || null;
+    if (lastActiveAt) {
+      const idleHours = (Date.now() - lastActiveAt.getTime()) / 3600000;
+      if (idleHours > settings.sessionInactivityHours) {
+        return res.status(401).json({
+          detail: `Your session expired after ${settings.sessionInactivityHours}h of inactivity — please sign in again.`,
+          code: "SESSION_EXPIRED",
+        });
+      }
+    }
+    const staleMs = lastActiveAt ? Date.now() - lastActiveAt.getTime() : Infinity;
+    if (staleMs > LAST_ACTIVE_WRITE_THROTTLE_MS) {
+      // Fire-and-forget — this must never add latency to (or fail) a
+      // real request just because a bookkeeping write hiccupped.
+      userRef.set({ lastActiveAt: new Date() }, { merge: true }).catch((error) => {
+        console.error("Failed to record lastActiveAt:", error.message);
       });
     }
 

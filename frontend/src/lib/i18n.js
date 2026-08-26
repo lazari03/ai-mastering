@@ -210,6 +210,7 @@ const DICT = {
   "login.termsLink": { en: "Terms & Conditions", sq: "Kushtet e Përdorimit" },
   "login.termsAnd": { en: "and", sq: "dhe" },
   "login.privacyLink": { en: "Privacy Policy", sq: "Politikën e Privatësisë" },
+  "login.sessionExpired": { en: "You were signed out after 24 hours of inactivity — sign in again to continue.", sq: "U çkyçe pas 24 orësh pa aktivitet — hyr sërish për të vazhduar." },
 
   "footer.legal.terms": { en: "Terms & Conditions", sq: "Kushtet e Përdorimit" },
   "footer.legal.privacy": { en: "Privacy Policy", sq: "Politika e Privatësisë" },

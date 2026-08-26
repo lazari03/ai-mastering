@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { useAuthStore } from "@/store/authStore";
@@ -11,8 +11,14 @@ import { Spinner } from "@/components/ui/Spinner";
 
 export default function LoginClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useLanguage();
   const { user, loading, busy, error, signIn, signUp, signInWithGoogle, clearError } = useAuthStore();
+  // Set by client.js's SESSION_EXPIRED handling (absolute or inactivity
+  // cap, see requireAuth.js) or by the client-side inactivity timer
+  // (AuthInit.jsx) when it signs someone out proactively without waiting
+  // for a request to 401 first — same query param, same message either way.
+  const sessionExpired = searchParams.get("reason") === "session_expired";
 
   const [mode, setMode] = useState("signin"); // "signin" | "signup"
   const [email, setEmail] = useState("");
@@ -61,6 +67,12 @@ export default function LoginClient() {
           <h1 className="mt-2.5 font-[var(--font-title)] text-2xl">
             {isSignup ? t("login.signup") : t("login.signin")}
           </h1>
+
+          {sessionExpired ? (
+            <p className="mt-3 rounded-lg border border-brass/30 bg-brass/[0.08] px-3 py-2.5 text-sm text-brass">
+              {t("login.sessionExpired")}
+            </p>
+          ) : null}
 
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
             {isSignup ? (
