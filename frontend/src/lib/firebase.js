@@ -1,7 +1,7 @@
 "use client";
 
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { initializeAuth, getAuth, browserSessionPersistence, browserPopupRedirectResolver, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -47,7 +47,38 @@ export function getFirebaseAuth() {
     _app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   }
   if (!_auth) {
-    _auth = getAuth(_app);
+    // Session persistence is a deliberate architecture choice, not the
+    // SDK default. getAuth() defaults to browserLocalPersistence
+    // (IndexedDB): a signed-in session survives browser restarts and
+    // redeploys indefinitely, silently refreshing its token forever —
+    // which made "click Log in" auto-enter the app with no credentials
+    // even days later, undermining the session limits this app
+    // deliberately enforces everywhere else (requireAuth.js's absolute
+    // sessionMaxAgeDays + sessionInactivityHours caps, AuthInit.jsx's
+    // client-side 24h idle logout). browserSessionPersistence scopes the
+    // session to the current tab: close it and the sign-in is gone,
+    // reopen the app and credentials are required again — consistent
+    // with the strict-session posture the rest of the stack already has.
+    //
+    // initializeAuth (not getAuth + setPersistence) on purpose: it makes
+    // this auth instance never even READ the old IndexedDB layer, so
+    // sessions persisted under the previous default are simply not
+    // resumed — the fix applies to existing browsers on their next
+    // visit, not only to sign-ins that happen after it shipped.
+    // popupRedirectResolver must be passed explicitly with initializeAuth
+    // (getAuth bundled it implicitly) or signInWithPopup — the Google
+    // button — throws at call time.
+    try {
+      _auth = initializeAuth(_app, {
+        persistence: browserSessionPersistence,
+        popupRedirectResolver: browserPopupRedirectResolver,
+      });
+    } catch {
+      // initializeAuth throws if some other code path already created an
+      // auth instance for this app (it's create-only) — fall back to
+      // returning that instance rather than crashing sign-in outright.
+      _auth = getAuth(_app);
+    }
   }
   return _auth;
 }
