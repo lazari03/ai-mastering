@@ -361,13 +361,17 @@ export default function WebGLMasterPreview({ src, gainDb = 0, className = "" }) 
         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime || 0)}
       />
 
-      {/* Fully custom Tailwind transport — no native <audio controls>. */}
-      <div className="flex items-center gap-3 border-t border-white/10 bg-black/30 px-4 py-3">
+      {/* Fully custom Tailwind transport — no native <audio controls>.
+          Touch targets sized for mobile (44px play button, ~44px-tall hit
+          area around the thin seek track via the -my-2/py-2 wrapper) since
+          this is the exact control set the results page depends on
+          working by touch, not just by mouse. */}
+      <div className="flex items-center gap-2.5 border-t border-white/10 bg-black/30 px-3 py-3 sm:gap-3 sm:px-4">
         <button
           type="button"
           onClick={togglePlay}
           aria-label={isPlaying ? "Pause" : "Play"}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brass/40 bg-gradient-to-br from-ember to-brass text-black shadow-[0_0_16px_rgba(232,93,42,0.35)] transition hover:brightness-110"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-brass/40 bg-gradient-to-br from-ember to-brass text-black shadow-[0_0_16px_rgba(232,93,42,0.35)] transition hover:brightness-110 active:brightness-95"
         >
           {isPlaying ? (
             <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
@@ -381,22 +385,26 @@ export default function WebGLMasterPreview({ src, gainDb = 0, className = "" }) 
           )}
         </button>
 
-        <span className="w-9 shrink-0 text-right text-[10px] tabular-nums text-zinc-400">{formatTime(currentTime)}</span>
+        <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-zinc-400 sm:w-9">{formatTime(currentTime)}</span>
 
-        <input
-          type="range"
-          min={0}
-          max={1000}
-          value={Math.round(progressRatio * 1000)}
-          onChange={handleSeek}
-          className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-white/10 accent-ember"
-          style={{
-            background: `linear-gradient(to right, var(--ember) ${progressRatio * 100}%, rgba(255,255,255,0.12) ${progressRatio * 100}%)`,
-          }}
-          aria-label="Seek"
-        />
+        {/* -my-2/py-2 enlarges the actual touch hit area well past the
+            visually thin 4px track, without changing how it looks. */}
+        <div className="-my-2 flex-1 py-2">
+          <input
+            type="range"
+            min={0}
+            max={1000}
+            value={Math.round(progressRatio * 1000)}
+            onChange={handleSeek}
+            className="h-1 w-full cursor-pointer touch-pan-x appearance-none rounded-full bg-white/10 accent-ember"
+            style={{
+              background: `linear-gradient(to right, var(--ember) ${progressRatio * 100}%, rgba(255,255,255,0.12) ${progressRatio * 100}%)`,
+            }}
+            aria-label="Seek"
+          />
+        </div>
 
-        <span className="w-9 shrink-0 text-[10px] tabular-nums text-zinc-400">{formatTime(duration)}</span>
+        <span className="w-8 shrink-0 text-[10px] tabular-nums text-zinc-400 sm:w-9">{formatTime(duration)}</span>
       </div>
     </div>
   );
