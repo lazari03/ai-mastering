@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
 import ProcessingSummary from "@/components/audio/ProcessingSummary";
@@ -48,7 +48,6 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
   const [previewMode, setPreviewMode] = useState("after");
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
-  const switchLock = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,27 +114,27 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
   const applied = job.processing_applied || {};
   const target = job.target_profile_used || {};
   const abMatch = job.ab_gain_match || {};
-  const gainDb = previewMode === "after" ? abMatch.after_gain_db || 0 : abMatch.before_gain_db || 0;
+  // Both loudness-match gains are handed to the player at once now, not
+  // just whichever one's currently selected — WebGLMasterPreview keeps
+  // both the original and mastered audio loaded and playing in lockstep,
+  // and Before/After just ramps one's gain up and the other's down
+  // in-place (no reload, no lost position, no dropped play state — that's
+  // what actually makes it possible to hear what changed instead of
+  // restarting from 0 on every toggle).
+  const beforeGainDb = abMatch.before_gain_db || 0;
+  const afterGainDb = abMatch.after_gain_db || 0;
   // toAuthedDownloadUrl always returns a non-empty string (it just signs a
-  // URL, it never checks the resource actually exists), so `urls.previewUrl
-  // || urls.masteredUrl` alone can never catch a previewUrl that 404s —
-  // only a genuinely missing field. The real fallback happens at the
-  // player itself (see WebGLMasterPreview's fallbackSrc/onError): if the
+  // URL, it never checks the resource actually exists), so a plain ||
+  // fallback here could never catch a previewUrl that 404s — only a
+  // genuinely missing field. The real fallback happens at the player
+  // itself (see WebGLMasterPreview's afterFallbackSrc/onError): if the
   // 16-bit preview copy 404s (an older job, or a rare failed transcode —
   // the backend now regenerates it lazily, but this covers the rest), the
-  // player swaps to masteredUrl automatically instead of the "after" tab
-  // just silently not playing.
-  const previewSrc = urls ? (previewMode === "after" ? urls.previewUrl || urls.masteredUrl : urls.originalUrl) : null;
-  const previewFallbackSrc = urls && previewMode === "after" ? urls.masteredUrl : null;
-
-  const switchPreview = (mode) => {
-    if (switchLock.current) return;
-    switchLock.current = true;
-    setPreviewMode(mode);
-    window.setTimeout(() => {
-      switchLock.current = false;
-    }, 150);
-  };
+  // player swaps to masteredUrl automatically instead of "After" just
+  // silently not playing.
+  const afterSrc = urls ? urls.previewUrl || urls.masteredUrl : null;
+  const afterFallbackSrc = urls ? urls.masteredUrl : null;
+  const beforeSrc = urls ? urls.originalUrl : null;
 
   const handleDownload = async () => {
     if (!urls) return;
@@ -206,7 +205,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
         <div className="mb-4 flex items-center justify-center gap-1 rounded-full border border-white/10 bg-black/30 p-1">
           <button
             type="button"
-            onClick={() => switchPreview("before")}
+            onClick={() => setPreviewMode("before")}
             className={`flex-1 rounded-full px-4 py-2 text-xs uppercase tracking-[0.1em] transition ${
               previewMode === "before" ? "bg-white/10 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
             }`}
@@ -215,7 +214,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
           </button>
           <button
             type="button"
-            onClick={() => switchPreview("after")}
+            onClick={() => setPreviewMode("after")}
             className={`flex-1 rounded-full px-4 py-2 text-xs uppercase tracking-[0.1em] transition ${
               previewMode === "after" ? "bg-gradient-to-r from-ember to-brass text-black" : "text-zinc-500 hover:text-zinc-300"
             }`}
@@ -224,7 +223,16 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
           </button>
         </div>
 
-        {previewSrc ? <WebGLMasterPreview src={previewSrc} fallbackSrc={previewFallbackSrc} gainDb={gainDb} /> : null}
+        {beforeSrc && afterSrc ? (
+          <WebGLMasterPreview
+            beforeSrc={beforeSrc}
+            afterSrc={afterSrc}
+            afterFallbackSrc={afterFallbackSrc}
+            beforeGainDb={beforeGainDb}
+            afterGainDb={afterGainDb}
+            mode={previewMode}
+          />
+        ) : null}
 
         {/* Full-width stacked on mobile (easier to tap, no cramped
             3-buttons-squeezed-into-one-row), a flexible row from sm: up —
