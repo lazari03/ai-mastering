@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import ChordsPanel from "@/app/ui/ChordsPanel";
 import MasteringConsole from "@/app/ui/MasteringConsole";
+import MasterResultView from "@/app/ui/MasterResultView";
 import MyMastersPanel from "@/app/ui/MyMastersPanel";
 import HelpSupportPanel from "@/app/ui/HelpSupportPanel";
 import SettingsPanel from "@/app/ui/SettingsPanel";
@@ -14,12 +15,14 @@ import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
 import EntitlementsBadge from "@/components/app/EntitlementsBadge";
 import OnboardingTour from "@/components/app/OnboardingTour";
+import MasteringLoaderOverlay from "@/components/app/MasteringLoaderOverlay";
 import { LoadingBlock } from "@/components/ui/Spinner";
 import { IconMaster, IconChords, IconMyMasters, IconHelp, IconSettings, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
 import { getProfile, postProfile } from "@/network/http/client";
 import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
+import { useMasteringProgress } from "@/lib/useMasteringProgress";
 import { useLanguage } from "@/lib/i18n";
 
 const TABS = [
@@ -113,11 +116,13 @@ export default function AppClient() {
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hitting "Master Track" (a real render, not the free 30s preview) jumps
-  // straight to My Masters once it lands — that's where Download/Share/
-  // Delete live, so there's no reason to make the user go find it
-  // themselves. Previews stay on the Master tab (the aside there is
-  // already the right place to A/B a preview against the original).
-  // Also refreshes entitlements — a real master just spent one quota slot.
+  // to a dedicated result page once it lands, instead of My Masters — the
+  // finished master gets its own reveal (WebGL preview, before/after,
+  // download) rather than dropping the user into the list view. My
+  // Masters is still one click away from there. Previews stay on the
+  // Master tab (the aside there is already the right place to A/B a
+  // preview against the original). Also refreshes entitlements — a real
+  // master just spent one quota slot.
   const masteringResult = useMasteringStore((s) => s.result);
   const lastAutoNavJobId = useRef(null);
   useEffect(() => {
@@ -125,8 +130,14 @@ export default function AppClient() {
     if (masteringResult.job_id === lastAutoNavJobId.current) return;
     lastAutoNavJobId.current = masteringResult.job_id;
     refreshEntitlements();
-    setActiveTab("myMasters");
+    setActiveTab("result");
   }, [masteringResult]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fullscreen render-status overlay — one shared timeline (see the hook's
+  // own comment) drives it regardless of which tab is active underneath,
+  // so it still shows even if the user switches tabs mid-render.
+  const { progress: masteringProgress, phaseMessage: masteringPhaseMessage } = useMasteringProgress();
+  const isMasteringSubmitting = useMasteringStore((s) => s.isSubmitting);
 
   // While Firebase's async session check is still running, or once it's
   // resolved to "not signed in" and the redirect above is about to fire —
@@ -139,6 +150,12 @@ export default function AppClient() {
     );
   }
 
+  // "result" is a transient destination (reached only via the auto-nav
+  // effect above, or its own nav buttons), not a persistent sidebar tab —
+  // deliberately absent from TABS so it never appears in the nav lists
+  // below. Falls back to the Master tab if reached with nothing to show
+  // (e.g. the result was cleared by "Master Another Track").
+  const showResultView = activeTab === "result" && Boolean(masteringResult) && !masteringResult.preview;
   const active = TABS.find((tab) => tab.key === activeTab) || TABS[0];
 
   return (
@@ -350,12 +367,17 @@ export default function AppClient() {
           clipped below the visible screen with no way to scroll to it).
           min-w-0 is the equivalent fix for the desktop flex-row case. */}
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 md:px-10 md:py-8">
-        {active.render({ setActiveTab, setShowTutorial })}
+        {showResultView ? (
+          <MasterResultView onMasterAnother={() => setActiveTab("master")} onViewAllMasters={() => setActiveTab("myMasters")} />
+        ) : (
+          active.render({ setActiveTab, setShowTutorial })
+        )}
       </main>
 
       <NotificationBanner activeTab={activeTab} onView={() => setActiveTab("master")} />
       <EntitlementsBadge onClick={() => setActiveTab("settings")} />
       {showTutorial ? <OnboardingTour onDone={dismissTutorial} /> : null}
+      <MasteringLoaderOverlay visible={isMasteringSubmitting} progress={masteringProgress} phaseMessage={masteringPhaseMessage} />
     </div>
   );
 }

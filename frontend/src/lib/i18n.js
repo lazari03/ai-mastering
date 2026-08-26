@@ -498,6 +498,14 @@ const DICT = {
   "console.masteringComplete": { en: "Mastering complete", sq: "Masterizimi përfundoi" },
   "console.masteringStopped": { en: "Mastering stopped", sq: "Masterizimi u ndal" },
 
+  "result.eyebrow": { en: "Master complete", sq: "Masterizimi përfundoi" },
+  "result.title": { en: "Your master is ready", sq: "Masteri yt është gati" },
+  "result.before": { en: "Before", sq: "Para" },
+  "result.after": { en: "After", sq: "Pas" },
+  "result.masterAnother": { en: "Master Another Track", sq: "Masterizo një Gjurmë Tjetër" },
+  "result.viewAllMasters": { en: "View All My Masters", sq: "Shiko të Gjitha Masterat e Mia" },
+  "result.detailsHeading": { en: "What changed", sq: "Çfarë ndryshoi" },
+
   "help.title": { en: "Help & Support", sq: "Ndihmë & Asistencë" },
   "help.subtitle": { en: "Answers to the things people actually get stuck on while using the app.", sq: "Përgjigje për gjërat ku njerëzit ngecin realisht duke përdorur aplikacionin." },
   "help.chatgptTitle": { en: "Create a custom artist preset with ChatGPT", sq: "Krijo një preset artisti të personalizuar me ChatGPT" },

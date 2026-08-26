@@ -89,3 +89,22 @@ main {
 .legal-prose strong {
   color: #e8ecef;
 }
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+.pulse-ring {
+  animation: pulseRing 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}

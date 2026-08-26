@@ -12,6 +12,7 @@ import { useMasteringStore } from "@/store/masteringStore";
 import { useEntitlementsStore, planUnlocksProfessional } from "@/store/entitlementsStore";
 import { STEM_SEPARATION } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics";
+import { useMasteringProgress } from "@/lib/useMasteringProgress";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
@@ -37,9 +38,12 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
   const { t } = useLanguage();
   const [activeStep, setActiveStep] = useState(0);
   const [inputPreviewUrl, setInputPreviewUrl] = useState("");
-  const [masteringProgress, setMasteringProgress] = useState(0);
-  const [progressMessage, setProgressMessage] = useState("");
-  const [progressLogs, setProgressLogs] = useState([]);
+  // Progress simulation moved to a shared hook (useMasteringProgress) so
+  // the fullscreen loader overlay (rendered from AppClient, above this
+  // component) reads the same live timeline instead of running its own,
+  // independently-drifting copy. This component only keeps the mini log
+  // list for its own detail view below.
+  const { phaseMessage: progressMessage } = useMasteringProgress();
   const [codecChoice, setCodecChoice] = useState("mp3_128");
   const [codecPreview, setCodecPreview] = useState(null);
   const [codecPreviewLoading, setCodecPreviewLoading] = useState(false);
@@ -145,61 +149,6 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
       setCodecPreviewLoading(false);
     }
   };
-
-  useEffect(() => {
-    const phases = [
-      t("console.phase.queue"),
-      t("console.phase.read"),
-      t("console.phase.analyzeLoudness"),
-      t("console.phase.estimateBalance"),
-      t("console.phase.applyTone"),
-      t("console.phase.refine"),
-      t("console.phase.render"),
-      t("console.phase.prepare"),
-    ];
-
-    if (isSubmitting) {
-      let tick = 0;
-      setMasteringProgress(3);
-      setProgressMessage(phases[0]);
-      setProgressLogs([{ ts: Date.now(), text: `${new Date().toLocaleTimeString()}  ${phases[0]}` }]);
-
-      const id = setInterval(() => {
-        tick += 1;
-
-        setMasteringProgress((prev) => {
-          if (prev < 55) return Math.min(55, prev + 6);
-          if (prev < 78) return Math.min(78, prev + 3);
-          return Math.min(94, prev + 1);
-        });
-
-        const phaseIndex = Math.min(phases.length - 1, Math.floor(tick / 2));
-        const text = phases[phaseIndex];
-        setProgressMessage(text);
-
-        if (tick % 2 === 0) {
-          setProgressLogs((prev) => [...prev, { ts: Date.now(), text: `${new Date().toLocaleTimeString()}  ${text}` }].slice(-8));
-        }
-      }, 900);
-
-      return () => clearInterval(id);
-    }
-
-    if (result) {
-      setMasteringProgress(100);
-      setProgressMessage(t("console.masteringComplete"));
-      return;
-    }
-
-    if (error) {
-      setProgressMessage(t("console.masteringStopped"));
-      return;
-    }
-
-    setMasteringProgress(0);
-    setProgressMessage("");
-    setProgressLogs([]);
-  }, [isSubmitting, result, error]);
 
   const steps = useMemo(
     () => [t("console.step.audio"), t("console.step.mode"), t("console.step.master")],
@@ -810,26 +759,14 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
       <aside className="glass-panel sticky top-6 min-w-0 rounded-[20px] p-[22px]">
         <h2 className="m-0 font-[var(--font-title)] text-lg">{t("console.reviewCompare")}</h2>
 
+        {/* The fullscreen loader (rendered from AppClient, above every tab)
+            is the primary render-progress UI now — see
+            MasteringLoaderOverlay + useMasteringProgress. This just holds
+            the space open underneath it so the layout doesn't jump when
+            the overlay unmounts and the result panel below takes over. */}
         {isSubmitting ? (
-          <div className="mt-4">
-            <div className="mb-2 flex items-center justify-between text-[11px] uppercase tracking-[0.1em]">
-              <span className="text-brass">{t("console.processing")}</span>
-              <span>{masteringProgress}%</span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-ember to-brass transition-all duration-500"
-                style={{ width: `${masteringProgress}%` }}
-              />
-            </div>
-            <p className="mt-3 text-[13px] text-zinc-300">{progressMessage}</p>
-            <div className="mt-3 max-h-28 overflow-y-auto rounded-xl border border-white/10 bg-black/25 p-3">
-              {progressLogs.map((log) => (
-                <p key={`${log.ts}-${log.text}`} className="text-xs text-zinc-500">
-                  {log.text}
-                </p>
-              ))}
-            </div>
+          <div className="mt-4 flex items-center gap-2 text-xs text-zinc-500">
+            <Spinner size={12} /> {progressMessage}
           </div>
         ) : null}
 

@@ -356,4 +356,13 @@ export const useMasteringStore = create((set, get) => ({
       });
     }
   },
+
+  // Called from the dedicated result page's "Master Another Track" —
+  // clears the just-finished result (and file) so returning to the Master
+  // tab starts clean rather than showing stale before/after data. Does NOT
+  // touch genre/style/category/tweaks — those stay as the user left them,
+  // same convenience as re-mastering a similar track.
+  clearResult() {
+    set({ result: null, file: null, referenceFile: null, status: "", error: "" });
+  },
 }));
