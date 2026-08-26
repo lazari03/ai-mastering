@@ -2,6 +2,21 @@
 
 import { useEffect, useRef } from "react";
 
+// createMediaElementSource can only ever be called once per <audio>
+// element, for that element's whole lifetime — a second call throws
+// InvalidStateError. React StrictMode (dev only) mounts this effect,
+// cleans it up, then mounts it again synchronously, which would trip
+// that exact constraint — and closing an AudioContext while its own
+// resume() call is still in flight (started by the first mount, not yet
+// settled when the phantom cleanup fires) throws a *second* one:
+// "InvalidStateError: Closed before resume completed". Caching the graph
+// per element and deferring its teardown lets a same-tick remount cancel
+// the close and reuse the graph (resume() keeps running against the
+// still-open context) instead of crashing either way; a real unmount
+// lets the deferred close fire and release the AudioContext. Same
+// pattern as WebGLMasterPreview.jsx.
+const audioGraphs = new WeakMap();
+
 export default function SignalVisualizer({ src, className = "", barColor = "#e85d2a", gainDb = 0 }) {
   const canvasRef = useRef(null);
   const audioRef = useRef(null);
@@ -45,26 +60,43 @@ export default function SignalVisualizer({ src, className = "", barColor = "#e85
     let audioContext;
     let resumeOnPlay;
 
+    let graph;
+
     const setup = async () => {
       try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 2048;
-        analyser.smoothingTimeConstant = 0.85;
+        graph = audioGraphs.get(audio);
+        if (graph) {
+          // Reused from a same-tick StrictMode remount — cancel its
+          // pending deferred close and reuse the existing nodes instead
+          // of calling createMediaElementSource again (which would throw).
+          if (graph.closeTimer) {
+            clearTimeout(graph.closeTimer);
+            graph.closeTimer = null;
+          }
+          ({ audioContext, analyser, gainNode, sourceNode } = graph);
+        } else {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 2048;
+          analyser.smoothingTimeConstant = 0.85;
 
-        // Loudness-matches this player against its A/B counterpart (see
-        // ab_gain_match from the backend) so neither side of a before/after
-        // comparison sounds "better" just because it's louder. Only ever
-        // attenuates (gainDb <= 0) — never boosts, so this can't introduce
-        // clipping on playback.
-        gainNode = audioContext.createGain();
-        gainNode.gain.value = Math.pow(10, gainDb / 20);
+          // Loudness-matches this player against its A/B counterpart (see
+          // ab_gain_match from the backend) so neither side of a before/after
+          // comparison sounds "better" just because it's louder. Only ever
+          // attenuates (gainDb <= 0) — never boosts, so this can't introduce
+          // clipping on playback.
+          gainNode = audioContext.createGain();
+          gainNode.gain.value = Math.pow(10, gainDb / 20);
+
+          sourceNode = audioContext.createMediaElementSource(audio);
+          sourceNode.connect(analyser);
+          analyser.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+
+          graph = { audioContext, analyser, gainNode, sourceNode, closeTimer: null };
+          audioGraphs.set(audio, graph);
+        }
         gainNodeRef.current = gainNode;
-
-        sourceNode = audioContext.createMediaElementSource(audio);
-        sourceNode.connect(analyser);
-        analyser.connect(gainNode);
-        gainNode.connect(audioContext.destination);
 
         // AudioContext starts suspended until resumed from a user gesture.
         // Routing the element through createMediaElementSource means nothing
@@ -165,11 +197,20 @@ export default function SignalVisualizer({ src, className = "", barColor = "#e85
       if (frameId) cancelAnimationFrame(frameId);
       if (resizeObserver) resizeObserver.disconnect();
       if (resumeOnPlay) audio.removeEventListener("play", resumeOnPlay);
-      if (sourceNode) sourceNode.disconnect();
-      if (analyser) analyser.disconnect();
-      if (gainNode) gainNode.disconnect();
-      if (audioContext && audioContext.state !== "closed") {
-        audioContext.close();
+      if (graph) {
+        // Deferred: a StrictMode phantom remount within this same tick
+        // will find this pending timer and cancel it (see setup above),
+        // reusing the graph instead of losing it. A real unmount lets
+        // this fire on the next tick and actually release the nodes —
+        // by then any resume() the first mount kicked off has settled,
+        // so close() can't race it into "Closed before resume completed".
+        graph.closeTimer = setTimeout(() => {
+          sourceNode.disconnect();
+          analyser.disconnect();
+          gainNode.disconnect();
+          if (audioContext.state !== "closed") audioContext.close();
+          audioGraphs.delete(audio);
+        }, 0);
       }
       gainNodeRef.current = null;
     };
