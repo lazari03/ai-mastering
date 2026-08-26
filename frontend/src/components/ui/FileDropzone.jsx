@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 
-export default function FileDropzone({ id, label, fileName, onChange, onRemove, accept = "audio/*", compact = false }) {
+// Explicit extensions alongside the wildcard, not "audio/*" alone — the
+// bare MIME wildcard is exactly what made .mp3 files unselectable
+// (greyed out) in some OS file pickers: the picker filters on the OS's
+// MIME registration for each file, and mp3's (audio/mpeg) is missing or
+// misregistered often enough in the wild (notably on Windows) that the
+// most common audio format failed the "audio picker"'s own filter.
+// Extensions match by name, no MIME lookup involved, so listing them
+// makes every named format selectable everywhere; the wildcard stays for
+// anything audio-typed beyond the list.
+const DEFAULT_ACCEPT = "audio/*,.mp3,.wav,.flac,.aiff,.aif,.m4a,.aac,.ogg,.opus,.wma";
+
+export default function FileDropzone({ id, label, fileName, onChange, onRemove, accept = DEFAULT_ACCEPT, compact = false }) {
   const selected = Boolean(fileName);
   // True while a file is being dragged over the zone — drives the visual
   // "yes, you can drop here" affordance. dragenter/dragleave fire on every
