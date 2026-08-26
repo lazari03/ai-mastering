@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 from pathlib import Path
 
 import numpy as np
@@ -225,16 +224,24 @@ def master_track(
         needed = min(desired_min_lra - post_lra, max(0.0, source_lra - post_lra))
         dynamics_recovery_mix = float(np.clip(needed / max(source_lra, 0.1), 0.08, 0.42))
         stereo_processed = (stereo_processed * (1.0 - dynamics_recovery_mix)) + (premaster_audio * dynamics_recovery_mix)
-        # Re-apply finalization after blend, but avoid forcing loudness up when dynamics are already narrow.
-        recovery_params = copy.deepcopy(processing_params)
-        recovery_params["target_lufs"] = min(
-            float(recovery_params.get("target_lufs", analysis_before["integrated_lufs"])),
-            float(analysis_before["integrated_lufs"]) + 0.2,
-        )
+        # Re-apply finalization after the blend, at the SAME target_lufs as
+        # the first pass — not capped down toward source loudness. That cap
+        # used to live here ("avoid forcing loudness up when dynamics are
+        # already narrow"), but it threw away most of the mastering gain
+        # any time this path triggered, capping the whole render to barely
+        # louder than the raw, unmastered source regardless of how far below
+        # a commercial target that left it. The actual protection this was
+        # reaching for — don't re-crush the dynamics this blend just
+        # restored — now lives in bus_fn itself: its loudness-recovery step
+        # (see _recover_undershot_loudness in bus_processing.py) won't push
+        # gain past this genre/style's own target_dynamic_range_db crest
+        # floor, so the blended-in dynamics can't be limited back down past
+        # what this master is supposed to sound like, without abandoning the
+        # loudness target outright.
         stereo_processed, lufs_gain_db, loudness_guard, limiter_report = bus_fn(
             stereo_processed,
             sr,
-            recovery_params,
+            processing_params,
             apply_glue_compression=False,
         )
 

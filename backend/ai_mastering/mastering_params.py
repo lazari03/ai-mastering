@@ -169,6 +169,32 @@ def compute_processing_params(
     clipping_input = bool(analysis["clipping_detected"])
     desired_lufs_gain_db = float(profile["target_lufs"] - current_lufs)
     max_lufs_raise_db = float(style_profile.get("max_lufs_raise_db", 2.0)) + category_bias["max_lufs_raise_delta"]
+
+    # The style-level cap above is a flat, era-appropriate constant (e.g.
+    # vintage_analog: 0.5dB, deliberately quiet by design) — but for styles
+    # that don't call for that kind of restraint, a flat 1-3dB cap strands a
+    # genuinely dynamic source far below a genre's real commercial target
+    # regardless of how much crest-factor headroom it actually has to
+    # spend: a source sitting on 16dB of crest against a 7-8dB pop target
+    # can absorb a lot more than 1.2dB of gain through the limiter before
+    # sounding pumped or squashed. Widen the ceiling (never narrow it) by
+    # how much headroom the track has above what this genre/style's own
+    # target_dynamic_range_db calls for once mastered — 0.65 is a
+    # deliberately conservative fraction of that headroom, tuned to land
+    # near (not exactly at) the target dynamic range post-limiting rather
+    # than spend the entire budget and leave nothing for the limiter itself.
+    # Self-limiting: a track that's already brickwalled (crest_db below the
+    # target) computes ~0 headroom here and falls back to the flat style
+    # cap untouched, so this only ever helps a track that actually has
+    # room to give. Only ever raises the ceiling — desired_lufs_gain_db
+    # itself is unaffected, so a style whose own (already style-shifted)
+    # target_lufs calls for less than this still gets exactly that, never
+    # more.
+    crest_db_for_headroom = float(analysis.get("dynamic_range_db", 12.0))
+    target_dr_for_headroom = float(profile["target_dynamic_range_db"])
+    headroom_above_target_db = max(0.0, crest_db_for_headroom - target_dr_for_headroom)
+    max_lufs_raise_db = max(max_lufs_raise_db, headroom_above_target_db * 0.65)
+
     max_lufs_reduce_db = float(style_profile.get("max_lufs_reduce_db", -2.0))
     if clipping_input:
         max_lufs_raise_db = min(max_lufs_raise_db, 1.5)
