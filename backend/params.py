@@ -43,7 +43,9 @@ GENRE_TARGET_PROFILES = {
         "base_saturation": 0.16,
     },
     "rock": {
-        "target_lufs": -9.5,
+        # -10.5 rather than -9.5 — commonly-cited professional rock master
+        # ranges run roughly -14 to -10 LUFS; -9.5 sat just outside that.
+        "target_lufs": -10.5,
         "target_dynamic_range_db": 9.0,
         "target_spectral_balance": {
             "sub_bass_20_60hz": 0.09,
@@ -187,7 +189,9 @@ GENRE_TARGET_PROFILES = {
         "base_saturation": 0.10,
     },
     "reggaeton": {
-        "target_lufs": -7.5,
+        # -8.0 rather than -7.5 — commonly-cited professional reggaeton
+        # ranges run roughly -11 to -8 LUFS; -7.5 sat just outside that.
+        "target_lufs": -8.0,
         "target_dynamic_range_db": 6.5,
         "target_spectral_balance": {
             "sub_bass_20_60hz": 0.13,

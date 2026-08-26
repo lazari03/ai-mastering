@@ -336,6 +336,24 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
     spectral_balance = _spectral_balance_only(audio_stereo, sr)
     spectral_tilt_db_per_octave = _tilt_from_band_shares(spectral_balance)
 
+    # PLR (peak-to-loudness ratio) — true peak against *integrated* loudness,
+    # a standard mastering-report metric distinct from crest_factor_db
+    # (which is peak against short-window RMS, a micro-dynamics measure).
+    # A very low PLR (<6dB) is the classic brickwalled-master signature.
+    plr_db = float(round(true_peak_db - integrated_lufs, 3))
+
+    # Spectral centroid — the "center of mass" of the spectrum in Hz, a
+    # standard single-number brightness/darkness summary distinct from
+    # spectral_tilt_db_per_octave (a fitted slope across the 7 fixed
+    # bands): centroid is unbounded and driven by exactly where energy
+    # concentrates, tilt is a broader-strokes shape descriptor.
+    try:
+        spectral_centroid_hz = float(np.mean(librosa.feature.spectral_centroid(y=mono, sr=sr)))
+        if not np.isfinite(spectral_centroid_hz):
+            spectral_centroid_hz = 0.0
+    except Exception:
+        spectral_centroid_hz = 0.0
+
     mid = (left + right) * 0.5
     side = (left - right) * 0.5
     mid_rms = _rms(mid)
@@ -393,6 +411,8 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
         "rms_db": float(round(rms_db, 3)),
         "crest_factor_db": float(round(crest_factor_db, 3)),
         "dynamic_range_db": float(round(dynamic_range_db, 3)),
+        "plr_db": plr_db,
+        "spectral_centroid_hz": float(round(spectral_centroid_hz, 1)),
         "spectral_balance": {k: round(float(v), 6) for k, v in spectral_balance.items()},
         "spectral_tilt_db_per_octave": float(round(spectral_tilt_db_per_octave, 3)),
         "frequency_balance": {k: round(float(v), 6) for k, v in spectral_balance.items()},

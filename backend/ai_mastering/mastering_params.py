@@ -224,11 +224,47 @@ def compute_processing_params(
         if current < 0.008 and delta_db > 0:
             delta_db = min(delta_db, 1.2)
 
+        # Severity-scaled correction ceiling — a flat cap treats a band
+        # that's mildly off target (say 1.2x) identically to one that's
+        # severely off (3-4x+), which systematically under-corrects
+        # exactly the tracks that need correction most: a badly
+        # bass-heavy source still only got the same -3.5dB as a mildly
+        # bass-heavy one, so the imbalance visibly survived mastering.
+        # Real mastering practice allows more correction specifically
+        # when the analysis clearly identifies a real problem, not as a
+        # blanket increase — so the ceiling only widens past the normal
+        # ±3.5dB/+2.5dB range once the *raw* (pre correction_strength)
+        # deviation itself is large (>6dB, roughly 2x off in power terms),
+        # and only up to -6dB/+4dB even then — still a broad, musical
+        # move, not a surgical one. A band within normal range is
+        # completely unaffected by this.
+        excess_db = max(0.0, abs(raw_delta_db) - 6.0)
         boost_limit = 2.0 if clipping_input else 2.5
-        per_band_gain_changes_db[band_key] = float(np.clip(delta_db, -3.5, boost_limit))
+        cut_limit = -3.5
+        if raw_delta_db < 0:
+            cut_limit = float(np.clip(-3.5 - excess_db * 0.4, -6.0, -3.5))
+        else:
+            boost_limit = float(np.clip(boost_limit + excess_db * 0.25, boost_limit, 4.0))
+        per_band_gain_changes_db[band_key] = float(np.clip(delta_db, cut_limit, boost_limit))
 
-    # Keep top-end moves style-aware (prevents brittle modernization when older-era style is selected).
+    # Keep top-end moves style-aware (prevents brittle modernization when
+    # older-era style is selected) — but the cap itself should widen when
+    # the source is genuinely, severely dark relative to what this genre
+    # actually needs, not just "a bit thin." Same severity-scaled
+    # reasoning as the per-band ceiling above: compares the source's
+    # actual upper-mid/presence/brilliance share against the target's own
+    # sum for those same bands (not a fixed threshold), so the widening
+    # is calibrated to how far short THIS track falls of what THIS genre
+    # target actually calls for.
     hf_cap = float(style_profile["hf_boost_cap_db"]) + category_bias["hf_boost_cap_delta"]
+    target_upper_mid_energy = float(
+        target_balance.get("mid_500_2000hz", 0.0)
+        + target_balance.get("high_mid_2000_4000hz", 0.0)
+        + target_balance.get("presence_4000_6000hz", 0.0)
+        + target_balance.get("brilliance_6000_20000hz", 0.0)
+    )
+    upper_mid_deficit = max(0.0, target_upper_mid_energy - upper_mid_energy)
+    hf_cap += float(np.clip(upper_mid_deficit * 5.0, 0.0, 1.5))
     per_band_gain_changes_db["high_mid_2000_4000hz"] = min(per_band_gain_changes_db["high_mid_2000_4000hz"], hf_cap)
     per_band_gain_changes_db["presence_4000_6000hz"] = min(per_band_gain_changes_db["presence_4000_6000hz"], hf_cap)
     per_band_gain_changes_db["brilliance_6000_20000hz"] = min(per_band_gain_changes_db["brilliance_6000_20000hz"], hf_cap)
@@ -476,6 +512,19 @@ def _sanitize_tweaks(tweaks: dict | None) -> dict:
     return sanitized
 
 
+def _clamp_tweaked_band(base_db: float, tweak_delta_db: float, safety_bound_db: float = 7.0) -> float:
+    """Adds a user-tweak nudge on top of the already-computed adaptive
+    per-band correction, with only a wide outer safety clamp — not a tight
+    fixed range. compute_processing_params already bounds the adaptive
+    value (including a severity-scaled ceiling for genuinely problematic
+    bands, up to -6/+4dB); re-clamping the combined result here to a small
+    fixed range (e.g. [-2.5, 2.0]) — as this used to do, unconditionally,
+    even with zero tweaks applied — silently overrode that scaling and
+    made the real effective correction ceiling far smaller than
+    compute_processing_params computed or documented, on every render."""
+    return float(np.clip(base_db + tweak_delta_db, -safety_bound_db, safety_bound_db))
+
+
 def _apply_user_tweaks(params: dict, analysis: dict, tweaks: dict | None) -> dict:
     tuned = copy.deepcopy(params)
     slider = _sanitize_tweaks(tweaks)
@@ -490,27 +539,14 @@ def _apply_user_tweaks(params: dict, analysis: dict, tweaks: dict | None) -> dic
 
     tuned["target_lufs"] = float(np.clip(tuned["target_lufs"] + (loudness * 1.25), -20.0, -7.0))
 
-    tuned["per_band_gain_changes_db"]["sub_bass_20_60hz"] = float(
-        np.clip(tuned["per_band_gain_changes_db"]["sub_bass_20_60hz"] + (low_end * 1.2), -2.5, 2.0)
-    )
-    tuned["per_band_gain_changes_db"]["bass_60_250hz"] = float(
-        np.clip(tuned["per_band_gain_changes_db"]["bass_60_250hz"] + (low_end * 1.0) + (punch * 0.35), -2.0, 2.0)
-    )
-    tuned["per_band_gain_changes_db"]["low_mid_250_500hz"] = float(
-        np.clip(tuned["per_band_gain_changes_db"]["low_mid_250_500hz"] + (warmth * 0.8) - (punch * 0.35), -1.5, 1.5)
-    )
-    tuned["per_band_gain_changes_db"]["mid_500_2000hz"] = float(
-        np.clip(tuned["per_band_gain_changes_db"]["mid_500_2000hz"] - (low_end * 0.2) + (presence * 0.2), -1.0, 1.2)
-    )
-    tuned["per_band_gain_changes_db"]["high_mid_2000_4000hz"] = float(
-        np.clip(tuned["per_band_gain_changes_db"]["high_mid_2000_4000hz"] + (presence * 0.8) + (brightness * 0.35), -1.0, 1.5)
-    )
-    tuned["per_band_gain_changes_db"]["presence_4000_6000hz"] = float(
-        np.clip(tuned["per_band_gain_changes_db"]["presence_4000_6000hz"] + (presence * 0.6) + (brightness * 0.55), -0.8, 1.5)
-    )
-    tuned["per_band_gain_changes_db"]["brilliance_6000_20000hz"] = float(
-        np.clip(tuned["per_band_gain_changes_db"]["brilliance_6000_20000hz"] + (brightness * 0.8) - (warmth * 0.25), -0.8, 1.4)
-    )
+    gains = tuned["per_band_gain_changes_db"]
+    gains["sub_bass_20_60hz"] = _clamp_tweaked_band(gains["sub_bass_20_60hz"], low_end * 1.2)
+    gains["bass_60_250hz"] = _clamp_tweaked_band(gains["bass_60_250hz"], low_end * 1.0 + punch * 0.35)
+    gains["low_mid_250_500hz"] = _clamp_tweaked_band(gains["low_mid_250_500hz"], warmth * 0.8 - punch * 0.35)
+    gains["mid_500_2000hz"] = _clamp_tweaked_band(gains["mid_500_2000hz"], -low_end * 0.2 + presence * 0.2)
+    gains["high_mid_2000_4000hz"] = _clamp_tweaked_band(gains["high_mid_2000_4000hz"], presence * 0.8 + brightness * 0.35)
+    gains["presence_4000_6000hz"] = _clamp_tweaked_band(gains["presence_4000_6000hz"], presence * 0.6 + brightness * 0.55)
+    gains["brilliance_6000_20000hz"] = _clamp_tweaked_band(gains["brilliance_6000_20000hz"], brightness * 0.8 - warmth * 0.25)
 
     tuned["vocal_presence_gain_db"] = float(
         np.clip(tuned["vocal_presence_gain_db"] + (presence * 0.45), -1.5, 1.5)

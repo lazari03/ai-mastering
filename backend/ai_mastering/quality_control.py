@@ -162,6 +162,20 @@ def run_quality_control(
     else:
         _add(checks, "limiter_gain_reduction", "pass", f"Limiter gain reduction of {limiter_gr_db:.1f}dB is light.", limiter_gr_db)
 
+    plr_after_db = float(analysis_after.get("plr_db", 12.0))
+    if plr_after_db < 4.0:
+        _add(
+            checks,
+            "plr",
+            "fail",
+            f"Peak-to-loudness ratio of {plr_after_db:.1f}dB is the classic brickwalled-master signature.",
+            plr_after_db,
+        )
+    elif plr_after_db < 6.0:
+        _add(checks, "plr", "warn", f"Peak-to-loudness ratio of {plr_after_db:.1f}dB is low — check for over-limiting.", plr_after_db)
+    else:
+        _add(checks, "plr", "pass", f"Peak-to-loudness ratio of {plr_after_db:.1f}dB is healthy.", plr_after_db)
+
     dr_before_db = float(analysis_before.get("dynamic_range_db", 0.0))
     dr_after_db = float(analysis_after.get("dynamic_range_db", 0.0))
     dr_collapse_db = dr_before_db - dr_after_db

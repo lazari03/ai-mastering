@@ -149,6 +149,13 @@ def build_ab_report(
             "change_db": dr_change_db,
             "loudness_range_before_lu": analysis_before.get("loudness_range_lu"),
             "loudness_range_after_lu": analysis_after.get("loudness_range_lu"),
+            "plr_before_db": analysis_before.get("plr_db"),
+            "plr_after_db": analysis_after.get("plr_db"),
+        },
+        "spectral_centroid_hz": {
+            "before": analysis_before.get("spectral_centroid_hz"),
+            "after": analysis_after.get("spectral_centroid_hz"),
+            "change_hz": _delta(analysis_after.get("spectral_centroid_hz"), analysis_before.get("spectral_centroid_hz")),
         },
         "frequency_balance_change_db": frequency_balance_change_db,
         "stereo": {
