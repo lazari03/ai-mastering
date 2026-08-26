@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 import { getJobs, toAuthedDownloadUrl, deleteJobRecord, postShareJob, downloadFileSafely } from "@/network/http/client";
 import { useEntitlementsStore, planUnlocksShare } from "@/store/entitlementsStore";
@@ -181,7 +182,14 @@ export default function MyMastersPanel() {
           const isBusy = busyJobId === job.job_id;
           return (
             <div key={job.job_id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              {/* The clickable "cell" — opens the same dedicated preview
+                  page a fresh render lands on (WebGL before/after,
+                  download, processing summary), for any still-valid or
+                  expired master, not just the one just rendered. A
+                  sibling of the action buttons below, not a wrapper
+                  around them — nesting <button> inside <a> is invalid
+                  HTML and would double-fire on every click. */}
+              <Link href={`/app/masters/${job.job_id}`} className="-m-1 flex flex-wrap items-center justify-between gap-2 rounded-xl p-1 transition hover:bg-white/[0.03]">
                 <div className="min-w-0">
                   <p className="m-0 truncate text-sm font-semibold text-white">{job.original_filename || job.job_id}</p>
                   <p className="mt-0.5 text-xs text-zinc-500">
@@ -192,7 +200,7 @@ export default function MyMastersPanel() {
                 <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${expired ? "border-red-400/30 text-red-300" : "border-white/15 text-zinc-400"}`}>
                   {formatExpiry(t, job.expires_at)}
                 </span>
-              </div>
+              </Link>
 
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 <span className="rounded-lg border border-white/10 px-2.5 py-1 text-zinc-300">

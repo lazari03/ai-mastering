@@ -18,6 +18,15 @@ function jobsCollection(uid) {
 // record to exist for a legitimate preview download to pass its
 // ownership check. listJobs() filters preview:true back out so "My
 // Masters" still only shows real renders, same as before.
+//
+// The analysis/processing fields (added alongside the original metadata
+// set) exist so the dedicated result page (MasterResultView.jsx, reached
+// at /app/masters/:jobId) can be fully rebuilt from a GET by job_id — on
+// first load right after rendering, or on a page refresh, or when
+// revisiting an older still-valid master from My Masters. Before this,
+// that page only ever read the just-finished render out of in-memory
+// Zustand state, which a refresh wiped. A few KB of JSON per job, nowhere
+// close to Firestore's 1MiB document limit.
 export async function recordJob(uid, job) {
   if (!uid || !job?.job_id) return;
   const now = new Date();
@@ -34,6 +43,13 @@ export async function recordJob(uid, job) {
     before_lufs: job.before_lufs ?? null,
     after_lufs: job.after_lufs ?? null,
     preview: Boolean(job.preview),
+    analysis_before: job.analysis_before || null,
+    analysis_after: job.analysis_after || null,
+    ab_gain_match: job.ab_gain_match || null,
+    processing_applied: job.processing_applied || null,
+    target_profile_used: job.target_profile_used || null,
+    source_warnings: job.source_warnings || [],
+    quality_control: job.quality_control || null,
   });
 }
 
@@ -49,13 +65,25 @@ export async function ownsJob(uid, jobId) {
   return doc.exists;
 }
 
-// Used by the share-link mint route to read expires_at/output_format
-// without a client-suppliable uid — same ownership scoping as ownsJob(),
-// just returning the doc instead of a boolean.
+// Used by the share-link mint route (raw Firestore Timestamps are fine
+// there, nothing serializes them to JSON) and by GET /jobs/:jobId (which
+// does need created_at/expires_at as ISO strings, same conversion
+// listJobs() already does for the list view) — same ownership scoping as
+// ownsJob() either way, just returning the doc instead of a boolean.
 export async function getJob(uid, jobId) {
   if (!uid || !jobId) return null;
   const doc = await jobsCollection(uid).doc(jobId).get();
   return doc.exists ? doc.data() : null;
+}
+
+export async function getJobDetail(uid, jobId) {
+  const data = await getJob(uid, jobId);
+  if (!data) return null;
+  return {
+    ...data,
+    created_at: data.created_at?.toDate?.().toISOString() || null,
+    expires_at: data.expires_at?.toDate?.().toISOString() || null,
+  };
 }
 
 export async function deleteJob(uid, jobId) {
