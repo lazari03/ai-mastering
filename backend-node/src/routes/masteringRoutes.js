@@ -476,7 +476,19 @@ router.post("/analyze", expensiveLimiter, requireAdaptiveEngine, upload.single("
   }
 });
 
-router.post("/preview-params", requireAdaptiveEngine, async (req, res) => {
+// upload.none(): the frontend sends this as multipart/form-data (see
+// masteringDomain.js's previewParams(), which builds a FormData — same as
+// every other call in that file), but this route had no multipart-parsing
+// middleware at all. express.json()/urlencoded() (server.js's global body
+// parsers) only understand application/json and
+// application/x-www-form-urlencoded — neither parses multipart bodies, so
+// req.body was always {} here and every single call 400'd with "analysis
+// and genre are required", regardless of what was actually selected. This
+// is why Pro Master's knobs never updated from genre/style/objective/tag
+// chips: refreshPreviewParams() always failed silently upstream in the
+// store. upload.none() parses the multipart fields into req.body without
+// expecting any file part (there isn't one here).
+router.post("/preview-params", requireAdaptiveEngine, upload.none(), async (req, res) => {
   const { analysis, genre, style, tags, tweaks, category, flavour } = req.body || {};
   if (!analysis || !genre) {
     return res.status(400).json({ detail: "analysis and genre are required" });
