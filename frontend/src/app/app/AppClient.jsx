@@ -14,6 +14,7 @@ import SettingsPanel from "@/app/ui/SettingsPanel";
 import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
+import TopBanner from "@/components/app/TopBanner";
 import EntitlementsBadge from "@/components/app/EntitlementsBadge";
 import OnboardingTour from "@/components/app/OnboardingTour";
 import MasteringLoaderOverlay from "@/components/app/MasteringLoaderOverlay";
@@ -229,7 +230,9 @@ export default function AppClient() {
     // <main> below scrolls (overflow-y-auto), and the sidebar gets its own
     // overflow-y-auto as a safety valve for short windows with many tabs,
     // not as its normal behavior.
-    <div className="flex h-screen flex-col overflow-hidden md:flex-row" style={{ height: "100dvh" }}>
+    <div className="flex h-screen flex-col overflow-hidden" style={{ height: "100dvh" }}>
+      <TopBanner />
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
       {/* Mobile top bar — the sidebar below is hidden on small screens */}
       <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-black/20 p-3.5 md:hidden">
         <Link href="/" className="flex items-center gap-2.5">
@@ -460,6 +463,7 @@ export default function AppClient() {
       <NotificationBanner activeTab={activeTab} onView={() => goToTab("master")} />
       {showTutorial ? <OnboardingTour onDone={dismissTutorial} /> : null}
       <MasteringLoaderOverlay visible={isMasteringSubmitting} progress={masteringProgress} phaseMessage={masteringPhaseMessage} logs={masteringLogs} />
+      </div>
     </div>
   );
 }

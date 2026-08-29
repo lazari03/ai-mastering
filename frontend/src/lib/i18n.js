@@ -253,6 +253,12 @@ const DICT = {
   "newsletter.submit": { en: "Get 10% Off", sq: "Merr 10% Zbritje" },
   "newsletter.submitting": { en: "…", sq: "…" },
   "newsletter.error": { en: "Couldn't subscribe — try again.", sq: "Regjistrimi dështoi — provo përsëri." },
+  "newsletter.dismiss": { en: "Dismiss", sq: "Mbyll" },
+  "newsletter.popup.title": { en: "Wait — get 10% off", sq: "Prit — merr 10% zbritje" },
+  "newsletter.popup.body": {
+    en: "Join the list for mastering tips and a 10% off code for your first track.",
+    sq: "Bashkohu për këshilla mastering dhe një kod 10% zbritje për këngën e parë.",
+  },
 
   "newsletterPage.title": { en: "Get 10% off your first master", sq: "Merr 10% zbritje në masterin e parë" },
   "newsletterPage.body": {

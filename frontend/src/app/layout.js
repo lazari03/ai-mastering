@@ -3,6 +3,7 @@ import dynamic from "next/dynamic";
 
 import Analytics from "@/components/Analytics";
 import CookieBanner from "@/components/CookieBanner";
+import PromoPopup from "@/components/marketing/PromoPopup";
 import { LanguageProvider } from "@/lib/i18n";
 import { SITE_URL, SITE_NAME, DEFAULT_DESCRIPTION, DEFAULT_KEYWORDS } from "@/lib/seo";
 import "./globals.css";
@@ -75,6 +76,7 @@ export default function RootLayout({ children }) {
           <Analytics />
           {children}
           <CookieBanner />
+          <PromoPopup />
         </LanguageProvider>
       </body>
     </html>

@@ -2,6 +2,7 @@
 
 import { initializeApp, getApps } from "firebase/app";
 import { initializeAuth, getAuth, browserSessionPersistence, browserPopupRedirectResolver, GoogleAuthProvider } from "firebase/auth";
+import { getRemoteConfig, fetchAndActivate, getValue } from "firebase/remote-config";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -89,4 +90,38 @@ export function getGoogleProvider() {
     _googleProvider = new GoogleAuthProvider();
   }
   return _googleProvider;
+}
+
+let _remoteConfig = null;
+
+// Two Remote Config parameters back the top-of-app announcement banner
+// (TopBanner.jsx) — siteConfig (Boolean, on/off) and appBanner (String,
+// the message) — both edited straight in Firebase console → Remote
+// Config, no redeploy needed. Fetched client-side (not through
+// backend-node) since Remote Config is designed to be consumed by the
+// client SDK directly, with its own built-in fetch caching —
+// minimumFetchIntervalMillis below is that cache window, not a
+// hand-rolled one.
+export async function getAppBannerConfig() {
+  const fallback = { enabled: false, message: "" };
+  if (!isBrowser() || !isFirebaseConfigured()) return fallback;
+  if (!_app) {
+    _app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  }
+  if (!_remoteConfig) {
+    _remoteConfig = getRemoteConfig(_app);
+    _remoteConfig.settings.minimumFetchIntervalMillis = 5 * 60 * 1000;
+    _remoteConfig.defaultConfig = { siteConfig: false, appBanner: "" };
+  }
+  try {
+    await fetchAndActivate(_remoteConfig);
+  } catch {
+    // Network hiccup, or the project has no Remote Config template
+    // published yet — fall back to defaults rather than block the app
+    // shell on this.
+  }
+  return {
+    enabled: getValue(_remoteConfig, "siteConfig").asBoolean(),
+    message: getValue(_remoteConfig, "appBanner").asString(),
+  };
 }

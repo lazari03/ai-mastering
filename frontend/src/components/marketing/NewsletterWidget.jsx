@@ -9,7 +9,7 @@ import { useLanguage } from "@/lib/i18n";
 // version (every marketing page, via Footer.jsx) and the dedicated
 // /newsletter landing page (a bigger `size="lg"` copy of the same form).
 // One backend route, one component, no duplicated subscribe logic.
-export default function NewsletterWidget({ source = "footer", size = "sm" }) {
+export default function NewsletterWidget({ source = "footer", size = "sm", onSubscribed }) {
   const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle"); // idle | busy | done | error
@@ -26,6 +26,7 @@ export default function NewsletterWidget({ source = "footer", size = "sm" }) {
       const { discountCode: code } = await postNewsletterSubscribe(email.trim(), source);
       setDiscountCode(code);
       setStatus("done");
+      onSubscribed?.();
     } catch (err) {
       setError(err?.message || t("newsletter.error"));
       setStatus("error");
