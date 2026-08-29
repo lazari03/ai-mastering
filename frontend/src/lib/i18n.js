@@ -630,6 +630,11 @@ const DICT = {
 
   "chordsPanel.title": { en: "Show Chords", sq: "Shfaq Akordet" },
   "chordsPanel.subtitle": { en: "Detect BPM, key, and chords, then play along in sync.", sq: "Zbulo BPM, tonalitetin, dhe akordet, pastaj luaj në sinkron." },
+  "chordsPanel.handoffNote": {
+    en: "Welcome! Here's the result for \"{name}\" — analyzed before you signed in.",
+    sq: "Mirë se erdhe! Ja rezultati për \"{name}\" — analizuar para se të kyçeshe.",
+  },
+  "chordsPanel.handoffFallbackName": { en: "your track", sq: "këngën tënde" },
 
   "chordGate.eyebrow": { en: "Still free", sq: "Ende falas" },
   "chordGate.title": { en: "Your chords are ready", sq: "Akordet janë gati" },

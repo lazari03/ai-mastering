@@ -9,9 +9,16 @@ import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
-export default function ChordDetector({ file, previewUrl, onOpenBilling, onMasterThisSong, onAnalysisResult }) {
+export default function ChordDetector({ file, previewUrl, onOpenBilling, onMasterThisSong, onAnalysisResult, initialAnalysis = null }) {
   const { t } = useLanguage();
-  const [analysis, setAnalysis] = useState(null);
+  // initialAnalysis: a result computed elsewhere and handed off here — see
+  // ChordsPanel.jsx's sessionStorage pickup for the public chord
+  // detector's logged-out-analyze-then-log-in-to-see-it flow. The raw
+  // audio file never survives that handoff (a real page navigation, not
+  // just a state carry-over), only the JSON result does — so the
+  // player/live-highlighting section below simply has nothing to attach
+  // to in that case, same as any other result with no file/previewUrl.
+  const [analysis, setAnalysis] = useState(initialAnalysis);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);

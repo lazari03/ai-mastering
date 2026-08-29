@@ -60,6 +60,23 @@ export default function AuthInit() {
     // now" every time this component remounts.
     if (!window.localStorage.getItem(LAST_ACTIVITY_KEY)) recordActivity();
 
+    // A fresh sign-in IS activity, even for a browser that's had this
+    // site open/idle across many previous days — without this, a stale
+    // multi-day-old timestamp from a PREVIOUS visit gets read as "idle"
+    // on the very next checkIdle() tick right after someone legitimately
+    // just signed in (or a fresh anonymous session started, e.g. from
+    // dropping a file on the public chord detector), signing them
+    // straight back out. Same root cause as the server-side fix in
+    // requireAuth.js, mirrored here: any transition into having a user
+    // resets the clock immediately instead of waiting for a qualifying
+    // DOM event to happen to fire first.
+    let hadUser = Boolean(useAuthStore.getState().user);
+    const unsubscribeActivity = useAuthStore.subscribe((state) => {
+      const hasUser = Boolean(state.user);
+      if (hasUser && !hadUser) recordActivity();
+      hadUser = hasUser;
+    });
+
     ACTIVITY_EVENTS.forEach((event) => window.addEventListener(event, recordActivity, { passive: true }));
     // Reopening/refocusing the tab counts as activity too — otherwise a
     // tab backgrounded for days, then brought back and immediately used,
@@ -86,6 +103,7 @@ export default function AuthInit() {
     checkIdle();
 
     return () => {
+      unsubscribeActivity();
       ACTIVITY_EVENTS.forEach((event) => window.removeEventListener(event, recordActivity));
       document.removeEventListener("visibilitychange", recordActivity);
       window.clearInterval(intervalId);

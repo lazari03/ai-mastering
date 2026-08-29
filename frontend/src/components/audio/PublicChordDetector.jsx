@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import ChordDetector from "./ChordDetector";
 import ChordAuthGate from "./ChordAuthGate";
 import FileDropzone from "@/components/ui/FileDropzone";
 import { useAuthStore } from "@/store/authStore";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
+import { stashPendingChordResult } from "@/lib/chordHandoff";
 import { useLanguage } from "@/lib/i18n";
 
 /**
@@ -21,29 +23,32 @@ import { useLanguage } from "@/lib/i18n";
  *    same everything, zero backend changes.
  * 2. Drop a file, hit Analyse — ChordDetector.jsx (the same component the
  *    in-app Chords tab uses, unmodified apart from the optional
- *    onAnalysisResult callback below) runs the real request.
+ *    onAnalysisResult/initialAnalysis props) runs the real request.
  * 3. If the signed-in user is still anonymous once a result exists,
- *    ChordAuthGate covers the result with a login/signup prompt instead
- *    of hiding the request entirely — "still free," not "pay to see it."
+ *    ChordAuthGate covers the ENTIRE page (not just this card) with a
+ *    login/signup prompt — "still free," not "pay to see it."
  * 4. Signing up links the anonymous session to the new real account IN
  *    PLACE (same uid — see authStore.claimWithEmail/claimWithGoogle), so
- *    the result already sitting in ChordDetector's own React state is
- *    already "theirs" the instant the gate closes: no re-fetch, no
- *    server-side transfer, nothing to move (chord analysis has never
- *    been a persisted "job" the way mastering is — the result IS the
- *    response body, held client-side). Logging into an existing
- *    (returning) account instead switches the session to that real uid;
- *    the result stays visible exactly the same way, since it was never
- *    tied to the anonymous uid it was computed under in the first place.
+ *    the quota already spent under the anonymous session carries over.
+ *    Either way (new account via linking, or logging into an existing
+ *    returning one — a genuinely different uid), the browser then
+ *    navigates into the actual app instead of revealing the result on
+ *    this marketing page: the result JSON is stashed client-side (see
+ *    lib/chordHandoff.js — there's no server-side "job" to fetch by id,
+ *    chord analysis has never been persisted) and the in-app Chords tab
+ *    picks it up on landing. The raw audio file can't survive a real
+ *    page navigation, only the parsed result can — so the destination
+ *    shows the key/BPM/chord progression, without the live-playback
+ *    highlighting a same-session result gets.
  */
 export default function PublicChordDetector() {
   const { t } = useLanguage();
+  const router = useRouter();
   const { user, loading } = useAuthStore();
   const fetchEntitlements = useEntitlementsStore((s) => s.fetch);
-  const refreshEntitlements = useEntitlementsStore((s) => s.refresh);
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
-  const [hasResult, setHasResult] = useState(false);
+  const [result, setResult] = useState(null);
 
   useEffect(() => {
     if (loading) return;
@@ -64,7 +69,7 @@ export default function PublicChordDetector() {
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
 
-  const showGate = hasResult && user?.isAnonymous;
+  const showGate = Boolean(result) && user?.isAnonymous;
   const ready = !loading && Boolean(user);
 
   return (
@@ -73,22 +78,18 @@ export default function PublicChordDetector() {
         id="publicChordFileInput"
         fileName={file?.name}
         onChange={(event) => {
-          setHasResult(false);
+          setResult(null);
           setFile(event.target.files?.[0] || null);
         }}
         onRemove={() => {
-          setHasResult(false);
+          setResult(null);
           setFile(null);
         }}
       />
 
       <div className="mt-4">
         {ready ? (
-          <ChordDetector
-            file={file}
-            previewUrl={previewUrl}
-            onAnalysisResult={() => setHasResult(true)}
-          />
+          <ChordDetector file={file} previewUrl={previewUrl} onAnalysisResult={setResult} />
         ) : (
           <p className="mt-3 text-xs text-zinc-500">{t("chordDetector.preparingUpload")}</p>
         )}
@@ -97,12 +98,8 @@ export default function PublicChordDetector() {
       {showGate ? (
         <ChordAuthGate
           onDone={() => {
-            // Whatever plan/quota state existed under the anonymous uid
-            // is gone the moment the session switches to a real account
-            // (new or returning) — refresh so the result view's own
-            // quota-aware copy (ChordDetector's button label, etc.)
-            // reflects the real account immediately.
-            refreshEntitlements();
+            stashPendingChordResult(result, file?.name);
+            router.push("/app?tab=chords");
           }}
         />
       ) : null}

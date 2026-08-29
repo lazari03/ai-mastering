@@ -57,7 +57,7 @@ export default function ChordAuthGate({ onDone }) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-black/85 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
     >
       <div className="w-full max-w-[380px] rounded-2xl border border-brass/25 bg-[#0f1113] p-6">
         <p className="m-0 text-[11px] uppercase tracking-[0.18em] text-brass">{t("chordGate.eyebrow")}</p>
