@@ -4,10 +4,15 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInAnonymously,
+  signInWithCredential,
+  linkWithCredential,
+  linkWithPopup,
   updateProfile,
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  GoogleAuthProvider,
   getAdditionalUserInfo,
   deleteUser,
   signOut as firebaseSignOut,
@@ -204,6 +209,145 @@ export const useAuthStore = create((set) => ({
       set({ busy: false });
     } catch (error) {
       set({ busy: false, error: readableAuthError(error) });
+    }
+  },
+
+  // Silent, no busy/error state — this is meant to run in the background
+  // the moment someone starts using a tool without being signed in (see
+  // PublicChordDetector.jsx), not as a user-facing action. Anonymous
+  // Firebase users are real, rate-limited, quota-tracked identities
+  // server-side (requireAuth accepts them like any other token) — this is
+  // what lets "try it before you sign up" reuse the exact same
+  // entitlements/quota system as everything else, with zero backend
+  // changes and zero abuse-surface beyond what already exists per-account.
+  async ensureAnonymous() {
+    if (!isFirebaseConfigured()) return;
+    const auth = getFirebaseAuth();
+    if (auth && !auth.currentUser) {
+      try {
+        await signInAnonymously(auth);
+      } catch (error) {
+        console.error("Anonymous sign-in failed:", error);
+      }
+    }
+  },
+
+  // Upgrades an anonymous session into a real account IN PLACE — same
+  // uid, so whatever was done anonymously (a chord analysis result held
+  // in React state, a spent free-trial quota slot) is simply already
+  // "theirs" the moment this resolves, no data transfer needed. Falls
+  // back to a plain sign-in if the email turns out to already belong to
+  // a real account (auth/email-already-in-use) — someone who clicks
+  // "Create account" but already has one gets logged into it instead of
+  // a hard error, same forgiving behavior as claimWithGoogle below.
+  async claimWithEmail(email, password, profile = {}, termsAccepted = false) {
+    if (!isFirebaseConfigured()) {
+      set({ error: NOT_CONFIGURED_MESSAGE });
+      return false;
+    }
+    set({ busy: true, error: "" });
+    const auth = getFirebaseAuth();
+    const current = auth?.currentUser;
+    try {
+      if (current?.isAnonymous) {
+        try {
+          await linkWithCredential(current, EmailAuthProvider.credential(email, password));
+        } catch (linkError) {
+          if (linkError?.code === "auth/email-already-in-use" || linkError?.code === "auth/credential-already-in-use") {
+            // Someone already owns this email — log into that account
+            // instead of blocking on "sign up" specifically. Whatever was
+            // done anonymously stays behind on the now-abandoned
+            // anonymous uid (see the module doc comment on
+            // PublicChordDetector.jsx for why that's an acceptable,
+            // deliberate trade-off here).
+            await signInWithEmailAndPassword(auth, email, password);
+            set({ busy: false });
+            trackEvent("login", { method: "password" });
+            return true;
+          }
+          throw linkError;
+        }
+      } else {
+        if (!termsAccepted) {
+          set({ busy: false, error: "You need to accept the Terms & Conditions and Privacy Policy to create an account." });
+          return false;
+        }
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+
+      const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+      try {
+        await postProfile({
+          firstName: profile.firstName || "",
+          lastName: profile.lastName || "",
+          termsAcceptedAt: new Date().toISOString(),
+          termsVersion: TERMS_VERSION,
+        });
+        if (displayName) await updateProfile(auth.currentUser, { displayName });
+      } catch (profileError) {
+        console.error("Failed to save profile details:", profileError);
+      }
+
+      trackEvent("sign_up", { method: "password" });
+      set({ busy: false });
+      return true;
+    } catch (error) {
+      set({ busy: false, error: readableAuthError(error) });
+      return false;
+    }
+  },
+
+  // Same idea as claimWithEmail but for the Google button — tries to
+  // link the anonymous session to whatever Google account the popup
+  // returns; if that Google account already has a real Auralith account
+  // (auth/credential-already-in-use), signs into that existing account
+  // instead of erroring. One button correctly covers both "new Google
+  // user" and "returning Google user" this way, unlike email/password
+  // which needs the explicit Sign Up/Log In tab choice.
+  async claimWithGoogle(termsAccepted = false) {
+    if (!isFirebaseConfigured()) {
+      set({ error: NOT_CONFIGURED_MESSAGE });
+      return false;
+    }
+    set({ busy: true, error: "" });
+    const auth = getFirebaseAuth();
+    const current = auth?.currentUser;
+    try {
+      if (current?.isAnonymous) {
+        try {
+          const result = await linkWithPopup(current, getGoogleProvider());
+          if (!termsAccepted) {
+            // Can't undo the link, but can still refuse to treat this as
+            // a completed signup without terms acceptance — same refusal
+            // shape as the plain signInWithGoogle path below.
+            set({ busy: false, error: "You need to accept the Terms & Conditions and Privacy Policy to create an account." });
+            return false;
+          }
+          try {
+            await postProfile({ termsAcceptedAt: new Date().toISOString(), termsVersion: TERMS_VERSION });
+          } catch (profileError) {
+            console.error("Failed to save profile details:", profileError);
+          }
+          trackEvent("sign_up", { method: "google" });
+          void result;
+        } catch (linkError) {
+          const credential = GoogleAuthProvider.credentialFromError(linkError);
+          if (credential && (linkError?.code === "auth/credential-already-in-use" || linkError?.code === "auth/email-already-in-use")) {
+            await signInWithCredential(auth, credential);
+            trackEvent("login", { method: "google" });
+          } else {
+            throw linkError;
+          }
+        }
+      } else {
+        const result = await signInWithPopup(auth, getGoogleProvider());
+        trackEvent(getAdditionalUserInfo(result)?.isNewUser ? "sign_up" : "login", { method: "google" });
+      }
+      set({ busy: false });
+      return true;
+    } catch (error) {
+      set({ busy: false, error: readableAuthError(error) });
+      return false;
     }
   },
 

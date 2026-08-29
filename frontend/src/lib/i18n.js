@@ -631,6 +631,15 @@ const DICT = {
   "chordsPanel.title": { en: "Show Chords", sq: "Shfaq Akordet" },
   "chordsPanel.subtitle": { en: "Detect BPM, key, and chords, then play along in sync.", sq: "Zbulo BPM, tonalitetin, dhe akordet, pastaj luaj në sinkron." },
 
+  "chordGate.eyebrow": { en: "Still free", sq: "Ende falas" },
+  "chordGate.title": { en: "Your chords are ready", sq: "Akordet janë gati" },
+  "chordGate.body": {
+    en: "Create a free account (or log in) to see the key, BPM, and chord progression — no payment, just an account.",
+    sq: "Krijo një llogari falas (ose hyr) për të parë tonalitetin, BPM-në dhe akordet — pa pagesë, thjesht një llogari.",
+  },
+  "chordGate.newHere": { en: "New here", sq: "I ri këtu" },
+  "chordGate.returning": { en: "I have an account", sq: "Kam një llogari" },
+  "chordDetector.preparingUpload": { en: "Preparing upload…", sq: "Duke përgatitur…" },
   "chordDetector.analyzing": { en: "Analyzing…", sq: "Duke analizuar…" },
   "chordDetector.detect": { en: "Detect Chords", sq: "Zbulo Akordet" },
   "chordDetector.detectFreeLeft": { en: "Detect Chords — {remaining}/{limit} free left", sq: "Zbulo Akordet — {remaining}/{limit} falas mbetur" },

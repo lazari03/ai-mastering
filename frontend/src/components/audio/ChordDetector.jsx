@@ -9,7 +9,7 @@ import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
-export default function ChordDetector({ file, previewUrl, onOpenBilling, onMasterThisSong }) {
+export default function ChordDetector({ file, previewUrl, onOpenBilling, onMasterThisSong, onAnalysisResult }) {
   const { t } = useLanguage();
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,6 +44,10 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling, onMaste
       // the balance shown here (and everywhere else) reflects it
       // immediately, same discipline as a real master completing.
       if (!chordsUnlimited) refresh();
+      // Optional — only PublicChordDetector.jsx passes this, to know when
+      // to show its login/signup gate over the result. Every other caller
+      // (the in-app Chords tab) leaves it unset.
+      onAnalysisResult?.(result);
     } catch (err) {
       setError(err?.message || t("chordDetector.failed"));
     } finally {

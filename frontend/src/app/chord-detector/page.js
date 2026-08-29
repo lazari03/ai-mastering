@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import Footer from "@/components/Footer";
+import PublicChordDetector from "@/components/audio/PublicChordDetector";
 import { CHORD_DETECTION, CHORDS_MONTHLY, PLANS } from "@/lib/pricing";
 import { CTA, CHORD_DETECTOR_RELATED_GENRES } from "@/lib/internalLinks";
 import { GENRE_PAGES } from "@/content/genrePages";
@@ -43,6 +44,17 @@ function serviceJsonLd() {
   };
 }
 
+function breadcrumbJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
+      { "@type": "ListItem", position: 2, name: "Chord Detector", item: absoluteUrl("/chord-detector") },
+    ],
+  };
+}
+
 const HOW_IT_WORKS = [
   ["01", "Upload your track", "Any format — a rough phone recording works fine, doesn't need to be mastered first."],
   ["02", "We analyze it", "Real audio analysis (madmom + essentia) detects key, tempo, and the chord progression, section by section."],
@@ -54,34 +66,43 @@ export default function ChordDetectorPage() {
     <>
     <main className="mx-auto w-full max-w-[900px] px-4 pb-24 pt-8 sm:px-6">
       <JsonLd data={serviceJsonLd()} />
+      <JsonLd data={breadcrumbJsonLd()} />
 
-      <Link href="/" className="text-[13px] text-zinc-400 hover:text-zinc-200">
-        ← Back to home
-      </Link>
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px] text-zinc-400">
+        <Link href="/" className="hover:text-zinc-200">
+          Home
+        </Link>
+        <span aria-hidden="true">/</span>
+        <span className="text-zinc-300">Chord Detector</span>
+      </nav>
 
-      <div className="relative mt-6 h-[340px] w-full overflow-hidden rounded-[28px] border border-white/10 sm:h-[420px]">
+      <h1 className="mt-4 font-[var(--font-title)] text-3xl leading-[1.1] text-white sm:text-4xl">
+        Know every chord in any song, in seconds.
+      </h1>
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-zinc-400">
+        Upload a track and get its key, BPM, and chord progression back — real audio analysis, any instrument.
+      </p>
+
+      <div id="chord-tool" className="mt-6 scroll-mt-6 rounded-2xl border border-white/10 bg-black/20 p-5 sm:p-6">
+        <PublicChordDetector />
+      </div>
+
+      <div className="relative mt-10 h-[260px] w-full overflow-hidden rounded-[28px] border border-white/10 sm:h-[340px]">
         <Image
           src="https://images.pexels.com/photos/1407322/pexels-photo-1407322.jpeg?auto=compress&cs=tinysrgb&w=1200"
           alt="Close-up of a hand forming a chord on an acoustic guitar's fretboard"
           fill
-          priority
           sizes="(max-width: 900px) 100vw, 900px"
+          loading="lazy"
           className="object-cover"
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/10" />
-        <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10">
-          <p className="m-0 text-[11px] uppercase tracking-[0.18em] text-brass">Chord Detector</p>
-          <h1 className="mt-2 max-w-lg font-[var(--font-title)] text-3xl leading-[1.1] text-white sm:text-4xl">
-            Know every chord in any song, in seconds.
-          </h1>
-        </div>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
       </div>
 
       <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-300">
-        Upload a track and get its key, BPM, and full chord progression back automatically — real audio analysis, not
-        a database lookup or a guess. Works for guitar, piano, or any instrument: if it's in the recording, the
-        engine hears it. Built for guitarists learning a song by ear, cover bands charting a setlist, and producers
-        who just want to know what key a reference track is in.
+        Works for guitar, piano, or any instrument: if it's in the recording, the engine hears it. Built for
+        guitarists learning a song by ear, cover bands charting a setlist, and producers who just want to know what
+        key a reference track is in.
       </p>
 
       <section className="mt-10">
@@ -158,10 +179,10 @@ export default function ChordDetectorPage() {
         </div>
         <div className="mt-5 flex flex-wrap gap-2.5">
           <Link
-            href={CTA.signup}
+            href="#chord-tool"
             className="inline-block rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
           >
-            Try it free
+            Analyze a track — it's free ↑
           </Link>
           <Link
             href={CTA.pricing}
