@@ -62,14 +62,21 @@ export async function requireAuth(req, res, next) {
     const userRef = getFirestore().collection("users").doc(decoded.uid);
     const userSnap = await userRef.get();
     const lastActiveAt = userSnap.data()?.lastActiveAt?.toDate?.() || null;
-    if (lastActiveAt) {
-      const idleHours = (Date.now() - lastActiveAt.getTime()) / 3600000;
-      if (idleHours > settings.sessionInactivityHours) {
-        return res.status(401).json({
-          detail: `Your session expired after ${settings.sessionInactivityHours}h of inactivity — please sign in again.`,
-          code: "SESSION_EXPIRED",
-        });
-      }
+    // A fresh real sign-in (auth_time just now) IS activity, even though
+    // it hasn't reached the throttled Firestore write below yet — without
+    // this, the very first request after any idle period longer than the
+    // cap 401s and bounces the user straight back to /login, even though
+    // they just legitimately re-authenticated. Found live: a returning
+    // user (idle >24h) signing back in on the chord-detector auth gate
+    // was immediately kicked back out on their first post-login request.
+    const authTimeMs = decoded.auth_time * 1000;
+    const effectiveLastActive = lastActiveAt ? Math.max(lastActiveAt.getTime(), authTimeMs) : authTimeMs;
+    const idleHours = (Date.now() - effectiveLastActive) / 3600000;
+    if (idleHours > settings.sessionInactivityHours) {
+      return res.status(401).json({
+        detail: `Your session expired after ${settings.sessionInactivityHours}h of inactivity — please sign in again.`,
+        code: "SESSION_EXPIRED",
+      });
     }
     const staleMs = lastActiveAt ? Date.now() - lastActiveAt.getTime() : Infinity;
     if (staleMs > LAST_ACTIVE_WRITE_THROTTLE_MS) {
