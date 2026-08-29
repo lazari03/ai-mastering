@@ -221,7 +221,7 @@ export async function postCheckout(item, successUrl) {
 }
 
 // Used instead of postCheckout when the user already has an active paid
-// subscription (see BillingPanel.jsx) — modifies that subscription in
+// subscription (see PlansPanel.jsx) — modifies that subscription in
 // place rather than starting a second, independent checkout.
 export async function postChangePlan(item) {
   return request("/billing/change-plan", {

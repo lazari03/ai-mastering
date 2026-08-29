@@ -5,17 +5,19 @@ import { useRouter } from "next/navigation";
 
 import { getProfile, postProfile } from "@/network/http/client";
 import { useAuthStore } from "@/store/authStore";
+import { useEntitlementsStore } from "@/store/entitlementsStore";
+import { PLANS } from "@/lib/pricing";
 import { scorePassword } from "@/lib/passwordStrength";
-import BillingPanel from "./BillingPanel";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
 const fieldStyle =
   "w-full box-border rounded-xl border border-white/15 bg-black/20 px-3.5 py-3 text-sm text-white outline-none focus:border-brass/60";
 
-export default function SettingsPanel({ onReplayTutorial }) {
+export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
   const { t } = useLanguage();
   const router = useRouter();
+  const { plan: currentPlan, masterQuota, loaded: entitlementsLoaded } = useEntitlementsStore();
   const { user, busy, error, changePassword, deleteAccount, signOutEverywhere, clearError } = useAuthStore();
   const [signOutEverywhereStatus, setSignOutEverywhereStatus] = useState("");
 
@@ -78,10 +80,12 @@ export default function SettingsPanel({ onReplayTutorial }) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[560px]">
+    <div className="mx-auto w-full max-w-[1040px]">
       <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("settings.title")}</h1>
       <p className="mt-2 text-sm text-zinc-300">{user?.email}</p>
 
+      <div className="mt-2 grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
+      <div className="flex flex-col gap-5">
       {!loaded ? (
         <LoadingBlock />
       ) : (
@@ -140,11 +144,34 @@ export default function SettingsPanel({ onReplayTutorial }) {
         </form>
       )}
 
-      <div className="mt-5">
-        <BillingPanel />
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("billing.title")}</h2>
+        {!entitlementsLoaded ? (
+          <LoadingBlock />
+        ) : (
+          <>
+            <p className="m-0 mt-2 text-sm text-white">{PLANS[currentPlan]?.label || PLANS.free.label}</p>
+            {masterQuota ? (
+              <p className="m-0 mt-0.5 text-xs text-zinc-500">
+                {t("billing.leftOf", { remaining: masterQuota.remaining, limit: masterQuota.limit })}
+                {" · "}
+                {masterQuota.resets ? t("billing.resetsNextMonth") : t("billing.oneTimeNoRenew")}
+              </p>
+            ) : null}
+          </>
+        )}
+        {onOpenBilling ? (
+          <button
+            type="button"
+            onClick={onOpenBilling}
+            className="mt-3 rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
+          >
+            {t("settings.managePlans")}
+          </button>
+        ) : null}
       </div>
 
-      <form onSubmit={submitPasswordChange} className="mt-5 flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/20 p-5">
+      <form onSubmit={submitPasswordChange} className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/20 p-5">
         <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("settings.changePassword")}</h2>
 
         <label className="block">
@@ -202,9 +229,11 @@ export default function SettingsPanel({ onReplayTutorial }) {
           )}
         </button>
       </form>
+      </div>
 
+      <div className="flex flex-col gap-5">
       {onReplayTutorial ? (
-        <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-5">
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
           <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("settings.help")}</h2>
           <p className="mt-2 text-sm text-zinc-400">{t("settings.wantRefresher")}</p>
           <button
@@ -217,7 +246,7 @@ export default function SettingsPanel({ onReplayTutorial }) {
         </div>
       ) : null}
 
-      <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-5">
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
         <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("settings.sessions")}</h2>
         <p className="mt-2 text-sm text-zinc-400">{t("settings.sessionsBody")}</p>
         {signOutEverywhereStatus ? <p className="mt-2 text-sm text-brass">{signOutEverywhereStatus}</p> : null}
@@ -244,7 +273,7 @@ export default function SettingsPanel({ onReplayTutorial }) {
         </button>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-red-500/25 bg-red-500/[0.04] p-5">
+      <div className="rounded-2xl border border-red-500/25 bg-red-500/[0.04] p-5">
         <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-red-300">{t("settings.dangerZone")}</h2>
         <p className="mt-2 text-sm text-zinc-400">{t("settings.dangerBody")}</p>
 
@@ -321,6 +350,8 @@ export default function SettingsPanel({ onReplayTutorial }) {
             </div>
           </form>
         )}
+      </div>
+      </div>
       </div>
     </div>
   );

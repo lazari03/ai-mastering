@@ -13,7 +13,7 @@ export const CTA = {
   // Frictionless entry point — no plan chosen yet, starts on Free.
   signup: "/login",
   // Anonymous visitors can't check out directly (Polar checkout requires
-  // an authed uid — see BillingPanel.jsx), so "subscribe" from a public
+  // an authed uid — see PlansPanel.jsx), so "subscribe" from a public
   // page always means "go see the plans," not a direct checkout link.
   pricing: "/#pricing",
   blog: "/blog",

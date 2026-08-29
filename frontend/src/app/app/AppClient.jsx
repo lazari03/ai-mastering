@@ -11,6 +11,7 @@ import MasterResultView from "@/app/ui/MasterResultView";
 import MyMastersPanel from "@/app/ui/MyMastersPanel";
 import HelpSupportPanel from "@/app/ui/HelpSupportPanel";
 import SettingsPanel from "@/app/ui/SettingsPanel";
+import PlansPanel from "@/app/ui/PlansPanel";
 import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
@@ -19,7 +20,7 @@ import EntitlementsBadge from "@/components/app/EntitlementsBadge";
 import OnboardingTour from "@/components/app/OnboardingTour";
 import MasteringLoaderOverlay from "@/components/app/MasteringLoaderOverlay";
 import { LoadingBlock } from "@/components/ui/Spinner";
-import { IconMaster, IconChords, IconMyMasters, IconHelp, IconSettings, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
+import { IconMaster, IconChords, IconMyMasters, IconHelp, IconSettings, IconBilling, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
 import { getProfile, postProfile } from "@/network/http/client";
 import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
@@ -32,17 +33,18 @@ const TABS = [
     key: "master",
     labelKey: "app.tab.master",
     icon: IconMaster,
-    render: (ctx) => <MasteringConsole onOpenHelp={() => ctx.setActiveTab("help")} onOpenBilling={() => ctx.setActiveTab("settings")} />,
+    render: (ctx) => <MasteringConsole onOpenHelp={() => ctx.setActiveTab("help")} onOpenBilling={() => ctx.setActiveTab("plans")} />,
   },
   {
     key: "chords",
     labelKey: "app.tab.chords",
     icon: IconChords,
-    render: (ctx) => <ChordsPanel onOpenBilling={() => ctx.setActiveTab("settings")} onMasterThisSong={() => ctx.setActiveTab("master")} />,
+    render: (ctx) => <ChordsPanel onOpenBilling={() => ctx.setActiveTab("plans")} onMasterThisSong={() => ctx.setActiveTab("master")} />,
   },
   { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, render: () => <MyMastersPanel /> },
+  { key: "plans", labelKey: "app.tab.plans", icon: IconBilling, render: () => <PlansPanel /> },
   { key: "help", labelKey: "app.tab.help", icon: IconHelp, render: () => <HelpSupportPanel /> },
-  { key: "settings", labelKey: "app.tab.settings", icon: IconSettings, render: (ctx) => <SettingsPanel onReplayTutorial={() => ctx.setShowTutorial(true)} /> },
+  { key: "settings", labelKey: "app.tab.settings", icon: IconSettings, render: (ctx) => <SettingsPanel onReplayTutorial={() => ctx.setShowTutorial(true)} onOpenBilling={() => ctx.setActiveTab("plans")} /> },
 ];
 
 const SIDEBAR_PREF_KEY = "sidebarOpen";
@@ -242,7 +244,7 @@ export default function AppClient() {
           </span>
         </Link>
         <div className="flex items-center gap-2">
-          <EntitlementsBadge compact onClick={() => goToTab("settings")} />
+          <EntitlementsBadge compact onClick={() => goToTab("plans")} />
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
@@ -367,7 +369,7 @@ export default function AppClient() {
 
         {sidebarOpen ? (
           <div className="px-1.5 pb-4">
-            <EntitlementsBadge onClick={() => goToTab("settings")} className="w-full justify-center" />
+            <EntitlementsBadge onClick={() => goToTab("plans")} className="w-full justify-center" />
           </div>
         ) : null}
 

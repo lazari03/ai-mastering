@@ -141,7 +141,7 @@ export default function MyMastersPanel() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[820px]">
+    <div className="mx-auto w-full max-w-[1280px]">
       <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("myMasters.title")}</h1>
       <p className="mt-2 text-sm leading-relaxed text-zinc-300">{t("myMasters.subtitle")}</p>
 
@@ -176,7 +176,7 @@ export default function MyMastersPanel() {
         </p>
       ) : null}
 
-      <div className="mt-5 flex flex-col gap-3">
+      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {pageJobs.map((job, jobIndex) => {
           const expiry = timeUntil(job.expires_at);
           const expired = expiry === "expired";

@@ -34,7 +34,7 @@ export default function ChordsPanel({ onOpenBilling, onMasterThisSong }) {
   }, [file]);
 
   return (
-    <div className="mx-auto w-full max-w-[760px]">
+    <div className="mx-auto w-full max-w-[1000px]">
       <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("chordsPanel.title")}</h1>
       <p className="mt-2 text-sm leading-relaxed text-zinc-300">{t("chordsPanel.subtitle")}</p>
 

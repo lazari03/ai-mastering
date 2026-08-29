@@ -49,6 +49,16 @@ export function IconSettings(props) {
   );
 }
 
+export function IconBilling(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="2.5" y="5.5" width="19" height="13" rx="2" />
+      <path d="M2.5 9.5h19" />
+      <path d="M6 14.5h4" />
+    </svg>
+  );
+}
+
 export function IconLayers(props) {
   return (
     <svg {...base} {...props}>

@@ -84,7 +84,7 @@ export default function HelpSupportPanel() {
   const { t } = useLanguage();
 
   return (
-    <div id="help-import-preset" className="mx-auto w-full max-w-[720px]">
+    <div id="help-import-preset" className="mx-auto w-full max-w-[900px]">
       <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("help.title")}</h1>
       <p className="mt-2 text-sm leading-relaxed text-zinc-300">{t("help.subtitle")}</p>
 

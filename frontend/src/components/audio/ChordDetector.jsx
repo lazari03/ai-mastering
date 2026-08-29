@@ -53,7 +53,7 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling, onMaste
 
   // Always a real checkout, never routed through the plan-change flow —
   // true for both the one-time credit and the standalone monthly
-  // subscription, same reasoning as BillingPanel's buyOneTime (chords
+  // subscription, same reasoning as PlansPanel's buyOneTime (chords
   // subscribing/unsubscribing is independent of the main mastering plan,
   // never a "switch" between tiers).
   const buy = async (product, planLabel) => {

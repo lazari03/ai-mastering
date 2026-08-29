@@ -1,6 +1,6 @@
 // Maps this app's internal event names (the vocabulary every trackEvent()
 // call site already uses — sign_up, begin_checkout, purchase, see
-// authStore.js/BillingPanel.jsx/ThankYouTracker.jsx) to Meta Pixel's and
+// authStore.js/PlansPanel.jsx/ThankYouTracker.jsx) to Meta Pixel's and
 // TikTok Pixel's own standard event names. The three platforms don't
 // share one taxonomy, so "sign_up" needs translating per platform.
 // "login" has no real standard-event equivalent on either (it isn't a

@@ -80,14 +80,53 @@ function productLabel(productId) {
   return (key && PRODUCT_LABELS[key]) || productId || "Unknown product";
 }
 
-// Fires the Telegram notification and appends to the purchaseEvents log
-// the bot's /stats command reads (see telegramService.js) — one shared
-// place so both the subscription and one-time-order paths below record a
-// purchase identically. Best-effort end to end: neither the Firestore
-// write nor the Telegram send may ever throw back into a webhook handler,
-// since a notification failing is not a reason to make Polar retry an
-// already-applied event.
-async function announcePurchase({ kind, product, email, amountCents, currency }) {
+// Server-side GA4 "purchase" conversion — fires from the Polar webhook,
+// never touching the visitor's browser, so it's immune to ad-blockers and
+// closed tabs during checkout redirect (the two ways the client-side copy
+// of this event, ThankYouTracker.jsx, silently loses real purchases).
+// client_id is the uid itself rather than the visitor's actual GA cookie
+// value — GA4 requires *some* client_id on every Measurement Protocol
+// event, and stitching this to the exact browsing session that started
+// checkout would mean threading the real _ga client_id through Polar
+// checkout metadata and back out of the webhook payload, a bigger
+// integration this doesn't attempt. Using the uid still gets an accurate
+// purchase count/revenue total in GA4's reports (the actual gap this is
+// closing) — session-level attribution to referrer/campaign is the only
+// thing this simplification gives up.
+async function sendGA4Purchase({ uid, transactionId, productId, amountCents, currency }) {
+  if (!settings.gaMeasurementId || !settings.gaApiSecret || !uid) return;
+  try {
+    const url = `https://www.google-analytics.com/mp/collect?measurement_id=${settings.gaMeasurementId}&api_secret=${settings.gaApiSecret}`;
+    await fetch(url, {
+      method: "POST",
+      body: JSON.stringify({
+        client_id: uid,
+        events: [
+          {
+            name: "purchase",
+            params: {
+              currency: currency || "EUR",
+              value: (amountCents ?? 0) / 100,
+              transaction_id: transactionId,
+              items: [{ item_id: productId || "unknown", item_name: productLabel(productId) }],
+            },
+          },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to send GA4 server-side purchase event (non-fatal):", error);
+  }
+}
+
+// Fires the Telegram notification, the GA4 server-side purchase event,
+// and appends to the purchaseEvents log the bot's /stats command reads
+// (see telegramService.js) — one shared place so both the subscription
+// and one-time-order paths below record a purchase identically.
+// Best-effort end to end: none of these may ever throw back into a
+// webhook handler, since a notification failing is not a reason to make
+// Polar retry an already-applied event.
+async function announcePurchase({ kind, product, email, amountCents, currency, uid, transactionId, productId }) {
   try {
     await getFirestore()
       .collection("purchaseEvents")
@@ -95,6 +134,7 @@ async function announcePurchase({ kind, product, email, amountCents, currency })
   } catch (error) {
     console.error("Failed to record purchase event (non-fatal):", error);
   }
+  await sendGA4Purchase({ uid, transactionId, productId, amountCents, currency });
   await notifyPurchase({ kind, product, email, amountCents, currency });
 }
 
@@ -347,6 +387,9 @@ async function applySubscriptionEvent(event) {
       email: sub.customer?.email,
       amountCents: sub.amount,
       currency: sub.currency,
+      uid,
+      transactionId: sub.id,
+      productId: sub.productId,
     });
   }
 }
@@ -401,6 +444,9 @@ async function applyOrderPaidEvent(event) {
       email: order.customer?.email,
       amountCents: order.totalAmount,
       currency: order.currency,
+      uid,
+      transactionId: order.id,
+      productId: order.productId,
     });
   }
 }

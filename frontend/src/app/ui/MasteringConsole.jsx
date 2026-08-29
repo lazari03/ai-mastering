@@ -194,7 +194,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
   // independently either way (masteringRoutes.js).
   const professionalUnlocked = planUnlocksProfessional(plan);
   // Quota exhausted isn't the end of the road — a purchased single-master
-  // credit (see BillingPanel's "Buy one") covers exactly this case, and
+  // credit (see PlansPanel's "Buy one") covers exactly this case, and
   // the backend already falls back to one automatically (masteringRoutes.js).
   // The button has to agree with that server-side reality: gating on
   // masterQuota.remaining alone would block someone who's already paid

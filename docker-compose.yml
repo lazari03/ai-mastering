@@ -75,6 +75,16 @@ services:
       # those commands report "GA4 not configured" instead of failing.
       GA4_PROPERTY_ID: ${GA4_PROPERTY_ID}
       GA4_SERVICE_ACCOUNT_JSON: ${GA4_SERVICE_ACCOUNT_JSON}
+      # GA4 Measurement Protocol — separate credential pair from the Data
+      # API above (writes events instead of reading reports). Fires a
+      # server-side "purchase" event from the Polar webhook, immune to
+      # ad-blockers/closed tabs unlike the client-side copy. Same
+      # measurement ID as the frontend's NEXT_PUBLIC_GA_MEASUREMENT_ID;
+      # GA_API_SECRET comes from GA4 Admin > Data Streams > your stream >
+      # Measurement Protocol API secrets. Unset either and this silently
+      # no-ops (see polarService.js's sendGA4Purchase).
+      GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID}
+      GA_API_SECRET: ${GA_API_SECRET}
       # One shared 10%-off Polar discount code shown to every newsletter
       # subscriber (see services/newsletterService.js). Unset just means
       # the widget still records the subscriber but shows no code.

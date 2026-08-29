@@ -89,7 +89,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
 
   if (loading) {
     return (
-      <div className="mx-auto flex w-full max-w-[880px] justify-center py-16">
+      <div className="mx-auto flex w-full max-w-[1040px] justify-center py-16">
         <LoadingBlock />
       </div>
     );
@@ -97,7 +97,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
 
   if (loadError || !job) {
     return (
-      <div className="mx-auto w-full max-w-[880px] py-16 text-center">
+      <div className="mx-auto w-full max-w-[1040px] py-16 text-center">
         <h1 className="m-0 font-[var(--font-title)] text-2xl">{t("result.loadFailed")}</h1>
         <p className="mt-2 text-sm text-zinc-400">{loadError || t("result.notFound")}</p>
         <button
@@ -156,7 +156,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
 
   if (job.expired) {
     return (
-      <div className="mx-auto w-full max-w-[880px] py-16 text-center">
+      <div className="mx-auto w-full max-w-[1040px] py-16 text-center">
         <h1 className="m-0 font-[var(--font-title)] text-2xl">{t("result.expiredTitle")}</h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-zinc-400">{t("result.expiredBody")}</p>
         <div className="mt-6">
@@ -174,7 +174,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
   }
 
   return (
-    <div className="reveal mx-auto w-full max-w-[880px]">
+    <div className="reveal mx-auto w-full max-w-[1040px]">
       {/* Always-visible, not buried below the player/download buttons —
           this is what actually gets someone back to the list from a deep
           link or an old habit of reaching for a "back" affordance instead
