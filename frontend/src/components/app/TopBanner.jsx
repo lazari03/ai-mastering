@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 import { getAppBannerConfig } from "@/lib/firebase";
 
-// Static top-of-app announcement bar — content and on/off flag both come
+// Static top-of-page announcement bar — content and on/off flag both come
 // from two Firebase Remote Config parameters (siteConfig: Boolean,
 // appBanner: String), edited straight in the Firebase console. No
 // redeploy to change the message or turn it off; this component just
@@ -13,11 +14,23 @@ import { getAppBannerConfig } from "@/lib/firebase";
 // this component. Dismissing hides it for the current session only (not
 // persisted) — it's meant to read as "the team has something to say
 // right now," not as a one-time toast to permanently banish.
-export default function TopBanner() {
+//
+// Mounted twice on purpose, never rendering twice: once in the root
+// layout (covers every marketing page, normal document flow, no layout
+// risk) and once inside AppClient's own pinned shell (the /app dashboard
+// is deliberately locked to exactly 100dvh so the sidebar never scrolls
+// away — a banner injected above that shell from the root layout would
+// push its bottom off-screen instead of the shell shrinking to fit). The
+// root-layout instance bails out on /app so only the shell-aware one
+// renders there.
+export default function TopBanner({ skipAppRoute = false }) {
+  const pathname = usePathname();
   const [banner, setBanner] = useState(null);
   const [dismissed, setDismissed] = useState(false);
+  const onAppRoute = pathname.startsWith("/app");
 
   useEffect(() => {
+    if (skipAppRoute && onAppRoute) return undefined;
     let cancelled = false;
     getAppBannerConfig()
       .then((data) => {
@@ -30,8 +43,9 @@ export default function TopBanner() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [skipAppRoute, onAppRoute]);
 
+  if (skipAppRoute && onAppRoute) return null;
   if (!banner?.enabled || !banner.message || dismissed) return null;
 
   return (
