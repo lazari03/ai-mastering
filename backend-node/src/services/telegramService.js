@@ -237,6 +237,3 @@ export function startBot() {
   pollLoop();
 }
 
-export function stopBot() {
-  polling = false;
-}

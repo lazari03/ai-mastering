@@ -99,20 +99,6 @@ async function consumeCredit(uid, field) {
   });
 }
 
-// Called from the order.paid webhook once a one-time purchase actually
-// completes — never from anything client-triggered, same reasoning as
-// every other entitlement in this app (server/webhook is the only thing
-// that grants access, the client only ever asks for its current status).
-async function grantCredit(uid, field, count) {
-  const db = getFirestore();
-  const ref = userDoc(uid);
-  await db.runTransaction(async (tx) => {
-    const doc = await tx.get(ref);
-    const credits = Number(doc.data()?.[field] || 0);
-    tx.set(ref, { [field]: credits + count }, { merge: true });
-  });
-}
-
 // ---- Master quota (Free lifetime trial + Studio/All-Access monthly) ---
 
 export async function getMasterQuotaStatus(uid, plan) {
@@ -153,7 +139,6 @@ export async function consumeMasterQuota(uid, limit, plan) {
 // actually exhausted, never before).
 export const getExtraCreditCount = (uid) => getCreditBalance(uid, "extraMasterCredits");
 export const consumeExtraCredit = (uid) => consumeCredit(uid, "extraMasterCredits");
-export const grantExtraCredits = (uid, count = 1) => grantCredit(uid, "extraMasterCredits", count);
 
 // ---- Chord detection (standalone: Free lifetime trial + credits) ------
 // No plan grants this for free except All-Access (checked separately by
@@ -168,7 +153,6 @@ export async function getChordQuotaStatus(uid) {
 export const consumeChordTrial = (uid) => consumeLifetime(uid, "freeChordUsage", FREE_CHORD_LIMIT);
 export const getExtraChordCreditCount = (uid) => getCreditBalance(uid, "extraChordCredits");
 export const consumeExtraChordCredit = (uid) => consumeCredit(uid, "extraChordCredits");
-export const grantExtraChordCredits = (uid, count = 1) => grantCredit(uid, "extraChordCredits", count);
 
 // ---- Stem separation (All-Access: bounded monthly sub-quota + credits; -
 // ---- Free/Studio: credits only, no bundled access at all) -------------
@@ -192,4 +176,3 @@ export async function getStemQuotaStatus(uid) {
 export const consumeStemQuota = (uid) => consumeMonthly(uid, "stemQuota", STEM_MONTHLY_LIMIT);
 export const getExtraStemCreditCount = (uid) => getCreditBalance(uid, "extraStemCredits");
 export const consumeExtraStemCredit = (uid) => consumeCredit(uid, "extraStemCredits");
-export const grantExtraStemCredits = (uid, count = 1) => grantCredit(uid, "extraStemCredits", count);

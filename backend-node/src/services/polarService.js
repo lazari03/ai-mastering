@@ -274,11 +274,6 @@ export async function getSubscriptionStatus(uid) {
   };
 }
 
-export async function isSubscriptionActive(uid) {
-  const status = await getSubscriptionStatus(uid);
-  return status.active;
-}
-
 // "free" | "studio" | "pro" — the single source of truth every gating
 // check (masteringRoutes.js) reads instead of juggling credit balances.
 // Derived from which Polar product the active subscription is actually

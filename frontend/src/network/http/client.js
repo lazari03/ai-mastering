@@ -203,10 +203,6 @@ export async function postSignOutEverywhere() {
   return request("/account/sign-out-everywhere", { method: "POST" });
 }
 
-export async function getBillingStatus() {
-  return request("/billing/status");
-}
-
 export async function getEntitlements() {
   return request("/billing/entitlements");
 }
@@ -257,10 +253,6 @@ export async function postCodecPreview(jobId, codec) {
     },
     MASTERING_TIMEOUT_MS
   );
-}
-
-export function getOriginalUrl(jobId) {
-  return `${API_BASE}/original/${jobId}`;
 }
 
 export function toAbsoluteUrl(path) {
