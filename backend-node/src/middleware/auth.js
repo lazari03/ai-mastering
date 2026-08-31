@@ -54,40 +54,54 @@ export async function requireAuth(req, res, next) {
       });
     }
 
-    // Idle-session cap, independent of the absolute one above — ends a
-    // session early if it just sits unused, even a young one. "Activity"
-    // is "made an authenticated request" (checked here, on every one);
-    // the actual timestamp write is throttled below so this doesn't cost
-    // a Firestore write per request.
-    const userRef = getFirestore().collection("users").doc(decoded.uid);
-    const userSnap = await userRef.get();
-    const lastActiveAt = userSnap.data()?.lastActiveAt?.toDate?.() || null;
-    // A fresh real sign-in (auth_time just now) IS activity, even though
-    // it hasn't reached the throttled Firestore write below yet — without
-    // this, the very first request after any idle period longer than the
-    // cap 401s and bounces the user straight back to /login, even though
-    // they just legitimately re-authenticated. Found live: a returning
-    // user (idle >24h) signing back in on the chord-detector auth gate
-    // was immediately kicked back out on their first post-login request.
-    const authTimeMs = decoded.auth_time * 1000;
-    const effectiveLastActive = lastActiveAt ? Math.max(lastActiveAt.getTime(), authTimeMs) : authTimeMs;
-    const idleHours = (Date.now() - effectiveLastActive) / 3600000;
-    if (idleHours > settings.sessionInactivityHours) {
-      return res.status(401).json({
-        detail: `Your session expired after ${settings.sessionInactivityHours}h of inactivity — please sign in again.`,
-        code: "SESSION_EXPIRED",
-      });
-    }
-    const staleMs = lastActiveAt ? Date.now() - lastActiveAt.getTime() : Infinity;
-    if (staleMs > LAST_ACTIVE_WRITE_THROTTLE_MS) {
-      // Fire-and-forget — this must never add latency to (or fail) a
-      // real request just because a bookkeeping write hiccupped.
-      userRef.set({ lastActiveAt: new Date() }, { merge: true }).catch((error) => {
-        console.error("Failed to record lastActiveAt:", error.message);
-      });
+    // Anonymous sessions (the public chord-detector's try-before-you-
+    // register flow — see PublicChordDetector.jsx) skip every Firestore
+    // read/write below entirely: no session-continuity promise is made
+    // to a disposable pre-registration identity, and every one of these
+    // is a permanent users/{uid} doc that shows up in the Firestore
+    // console forever for a visitor who never converts. The uid still
+    // exists in Firebase Auth (that's what makes the try-it-first flow
+    // possible at all), it just never touches Firestore until the person
+    // actually registers — at which point linkWithCredential upgrades
+    // the SAME uid in place and this logic applies normally from then on.
+    const isAnonymous = decoded.firebase?.sign_in_provider === "anonymous";
+
+    if (!isAnonymous) {
+      // Idle-session cap, independent of the absolute one above — ends a
+      // session early if it just sits unused, even a young one. "Activity"
+      // is "made an authenticated request" (checked here, on every one);
+      // the actual timestamp write is throttled below so this doesn't cost
+      // a Firestore write per request.
+      const userRef = getFirestore().collection("users").doc(decoded.uid);
+      const userSnap = await userRef.get();
+      const lastActiveAt = userSnap.data()?.lastActiveAt?.toDate?.() || null;
+      // A fresh real sign-in (auth_time just now) IS activity, even though
+      // it hasn't reached the throttled Firestore write below yet — without
+      // this, the very first request after any idle period longer than the
+      // cap 401s and bounces the user straight back to /login, even though
+      // they just legitimately re-authenticated. Found live: a returning
+      // user (idle >24h) signing back in on the chord-detector auth gate
+      // was immediately kicked back out on their first post-login request.
+      const authTimeMs = decoded.auth_time * 1000;
+      const effectiveLastActive = lastActiveAt ? Math.max(lastActiveAt.getTime(), authTimeMs) : authTimeMs;
+      const idleHours = (Date.now() - effectiveLastActive) / 3600000;
+      if (idleHours > settings.sessionInactivityHours) {
+        return res.status(401).json({
+          detail: `Your session expired after ${settings.sessionInactivityHours}h of inactivity — please sign in again.`,
+          code: "SESSION_EXPIRED",
+        });
+      }
+      const staleMs = lastActiveAt ? Date.now() - lastActiveAt.getTime() : Infinity;
+      if (staleMs > LAST_ACTIVE_WRITE_THROTTLE_MS) {
+        // Fire-and-forget — this must never add latency to (or fail) a
+        // real request just because a bookkeeping write hiccupped.
+        userRef.set({ lastActiveAt: new Date() }, { merge: true }).catch((error) => {
+          console.error("Failed to record lastActiveAt:", error.message);
+        });
+      }
     }
 
-    req.user = { uid: decoded.uid, email: decoded.email || null };
+    req.user = { uid: decoded.uid, email: decoded.email || null, isAnonymous };
     return next();
   } catch (error) {
     // Covers expired token, malformed token, wrong project, revoked token.

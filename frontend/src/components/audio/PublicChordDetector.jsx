@@ -8,7 +8,7 @@ import ChordAuthGate from "./ChordAuthGate";
 import FileDropzone from "@/components/ui/FileDropzone";
 import { useAuthStore } from "@/store/authStore";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
-import { stashPendingChordResult } from "@/lib/chordHandoff";
+import { stashPendingChordResult, stashPendingChordFile } from "@/lib/chordHandoff";
 import { useLanguage } from "@/lib/i18n";
 
 /**
@@ -97,8 +97,13 @@ export default function PublicChordDetector() {
 
       {showGate ? (
         <ChordAuthGate
-          onDone={() => {
+          onDone={async () => {
             stashPendingChordResult(result, file?.name);
+            // Awaited before navigating — a real page navigation can
+            // interrupt an in-flight IndexedDB transaction, and losing
+            // the file silently would just be the old "no playback"
+            // behavior again, quietly.
+            await stashPendingChordFile(file);
             router.push("/app?tab=chords");
           }}
         />

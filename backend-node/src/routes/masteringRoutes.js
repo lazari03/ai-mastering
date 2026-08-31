@@ -805,19 +805,31 @@ router.post("/analyze-chords", expensiveLimiter, upload.single("file"), async (r
     return res.status(400).json({ detail: "file is required" });
   }
 
-  const plan = await getPlan(req.user.uid).catch(() => "free");
+  // Anonymous requests (the public chord-detector's try-before-you-
+  // register flow) never touch the quota system at all — see
+  // requireAuth.js's isAnonymous comment for why. There's nothing to
+  // protect: the result is gated behind registering regardless of quota,
+  // so spending a real trial slot on an analysis nobody can see yet
+  // would only make things worse — someone who anonymously tries 3
+  // different songs before ever registering would land with zero free
+  // trials left despite never having seen a single result. The real
+  // trial only starts counting once they're a real account.
+  const isAnonymous = Boolean(req.user.isAnonymous);
+  const plan = isAnonymous ? "free" : await getPlan(req.user.uid).catch(() => "free");
   // Two independent ways to be unlimited: the All-Access plan (bundled),
   // or a standalone Chords Monthly subscription (for anyone who wants
   // unlimited chords without a mastering plan at all).
-  const chordSubscribed = await getChordSubscriptionActive(req.user.uid).catch((error) => {
-    console.error("getChordSubscriptionActive failed, failing closed:", error.message);
-    return false;
-  });
+  const chordSubscribed = isAnonymous
+    ? false
+    : await getChordSubscriptionActive(req.user.uid).catch((error) => {
+        console.error("getChordSubscriptionActive failed, failing closed:", error.message);
+        return false;
+      });
   const unlimited = plan === "pro" || chordSubscribed;
   let mustConsumeTrial = false;
   let mustConsumeChordCredit = false;
 
-  if (!unlimited) {
+  if (!unlimited && !isAnonymous) {
     // Fails CLOSED, not open — a Firestore hiccup here must never be
     // interpreted as "quota available." { remaining: 0 } forces the same
     // path as a genuinely exhausted trial, which correctly falls through
