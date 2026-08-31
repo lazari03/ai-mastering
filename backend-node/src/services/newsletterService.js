@@ -1,5 +1,6 @@
 import { getFirestore } from "../config/firebase.js";
 import { settings } from "../config/settings.js";
+import { addToBrevoNewsletter } from "./brevoService.js";
 
 // Top-level collection, not per-user — a newsletter subscriber usually
 // isn't a signed-in account at all (this widget is meant to work for an
@@ -21,6 +22,12 @@ export async function subscribeToNewsletter(email, source) {
       subscribedAt: new Date(),
     });
   }
+  // Unconditional, even if already in Firestore — Brevo's own upsert
+  // (updateEnabled:true) is what's actually idempotent here, and this
+  // also covers a subscriber whose Firestore doc predates this
+  // integration existing, or whose earlier Brevo call failed.
+  await addToBrevoNewsletter(normalized, source);
+
   // Same code for everyone who signs up — see settings.js's
   // newsletterDiscountCode comment for why this isn't a unique code per
   // subscriber.

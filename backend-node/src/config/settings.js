@@ -164,4 +164,16 @@ export const settings = {
   // See services/newsletterService.js. Unset just means the widget still
   // records the subscriber but shows no code.
   newsletterDiscountCode: process.env.NEWSLETTER_DISCOUNT_CODE || null,
+
+  // Brevo (formerly Sendinblue) — actually sends the newsletter; Firestore
+  // (newsletterSubscribers, see newsletterService.js) is just this app's
+  // own record of who subscribed, it was never capable of sending
+  // campaigns itself. Unset BREVO_API_KEY just means subscribing still
+  // works (Firestore + discount code) but the contact never reaches
+  // Brevo — same fail-open shape as every other optional integration
+  // here (Telegram, GA4). brevoListId defaults to 4, the "Auralith Forge
+  // Newsletter" list created for this — override if you ever point this
+  // at a different Brevo list.
+  brevoApiKey: process.env.BREVO_API_KEY || null,
+  brevoListId: Number(process.env.BREVO_LIST_ID || 4),
 };
