@@ -1,5 +1,6 @@
 import { getFirestore } from "../config/firebase.js";
 import { notifyNewRegistration } from "./telegramService.js";
+import { sendWelcomeEmail } from "./brevoService.js";
 
 // User profile lives in Firestore at users/{uid} — the same document whose
 // "artists" subcollection holds Saved Artists (see customPresetsService.js)
@@ -54,6 +55,10 @@ export async function saveProfile(uid, profile, email) {
     notifyNewRegistration({ uid, email }).catch((error) =>
       console.error("Signup notification failed (non-fatal):", error)
     );
+    // Same best-effort shape — sendWelcomeEmail already swallows its own
+    // errors (see brevoService.js), an unset BREVO_API_KEY just means no
+    // email goes out, signup itself is never blocked either way.
+    if (email) sendWelcomeEmail(email, profile.firstName);
   }
 
   return record;
