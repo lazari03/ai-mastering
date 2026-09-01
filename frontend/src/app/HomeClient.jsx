@@ -232,9 +232,9 @@ export default function HomeClient() {
         <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("demo.eyebrow")}</p>
         <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("demo.title")}</h2>
         <p className="mt-2 max-w-xl text-sm text-zinc-400">{t("demo.body")}</p>
-        <div className={`mt-6 grid gap-4 ${BEFORE_AFTER_DEMOS.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : "max-w-md"}`}>
+        <div className={`mt-6 grid gap-4 ${BEFORE_AFTER_DEMOS.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : ""}`}>
           {BEFORE_AFTER_DEMOS.map((demo) => (
-            <BeforeAfterPlayer key={demo.label} {...demo} />
+            <BeforeAfterPlayer key={demo.label} large={BEFORE_AFTER_DEMOS.length === 1} {...demo} />
           ))}
         </div>
       </section>

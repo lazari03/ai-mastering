@@ -19,7 +19,7 @@ function formatTime(seconds) {
 // frame) plus a brand-styled play button, seek bar, and the Before/After
 // toggle. The <audio> element itself stays hidden; every control here
 // drives it programmatically.
-export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc }) {
+export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, large = false }) {
   const { t } = useLanguage();
   const audioRef = useRef(null);
   const canvasRef = useRef(null);
@@ -52,12 +52,41 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc })
     else audio.pause();
   };
 
-  const seek = (event) => {
+  const [muted, setMuted] = useState(false);
+  const toggleMute = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.muted = !audio.muted;
+    setMuted(audio.muted);
+  };
+
+  const [scrubbing, setScrubbing] = useState(false);
+  const [dragRatio, setDragRatio] = useState(0);
+
+  const ratioFromEvent = (event, rect) => Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+
+  // Real drag-to-scrub, not just click-to-seek — the audio element's
+  // currentTime is only actually set on release; while dragging, the
+  // thumb/fill follow the pointer (dragRatio) instead of the still-stale
+  // currentTime, same as any standard media player's seek bar.
+  const startScrub = (event) => {
     const audio = audioRef.current;
     if (!audio || !duration) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-    audio.currentTime = ratio * duration;
+    const track = event.currentTarget;
+    const rect = track.getBoundingClientRect();
+    setScrubbing(true);
+    setDragRatio(ratioFromEvent(event, rect));
+
+    const onMove = (moveEvent) => setDragRatio(ratioFromEvent(moveEvent, rect));
+    const onUp = (upEvent) => {
+      const finalRatio = ratioFromEvent(upEvent, rect);
+      audio.currentTime = finalRatio * duration;
+      setScrubbing(false);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
   };
 
   // Play/pause/time state, mirrored from the hidden <audio> element.
@@ -176,74 +205,119 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const progress = duration ? (currentTime / duration) * 100 : 0;
+  const progress = (scrubbing ? dragRatio : duration ? currentTime / duration : 0) * 100;
 
   return (
     <div
-      className="rounded-2xl border border-white/10 p-5"
+      className={`rounded-2xl border border-white/10 ${large ? "p-6 sm:p-8" : "p-5"}`}
       style={{ background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))" }}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="m-0 min-w-0 text-sm font-semibold text-white">{label}</p>
-        {genre ? (
-          <span className="rounded-full border border-white/15 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.1em] text-zinc-400">
-            {genre}
-          </span>
-        ) : null}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className={`m-0 min-w-0 truncate font-semibold text-white ${large ? "text-base sm:text-lg" : "text-sm"}`}>{label}</p>
+          {genre ? (
+            <span className="shrink-0 rounded-full border border-white/15 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.1em] text-zinc-400">
+              {genre}
+            </span>
+          ) : null}
+        </div>
+
+        {/* A/B switch, standard segmented-control shape — reads as one
+            control with two states, not two separate buttons, and sits
+            with the title instead of eating its own row below. */}
+        <div className="flex shrink-0 rounded-full border border-white/15 bg-black/25 p-0.5">
+          <button
+            type="button"
+            onClick={() => swap("before")}
+            aria-pressed={mode === "before"}
+            className={`rounded-full font-bold uppercase tracking-[0.08em] transition ${large ? "px-4 py-1.5 text-xs" : "px-3 py-1 text-[10px]"} ${
+              mode === "before" ? "bg-white/15 text-white" : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            {t("demoPlayer.before")}
+          </button>
+          <button
+            type="button"
+            onClick={() => swap("after")}
+            aria-pressed={mode === "after"}
+            className={`rounded-full font-bold uppercase tracking-[0.08em] transition ${large ? "px-4 py-1.5 text-xs" : "px-3 py-1 text-[10px]"} ${
+              mode === "after" ? "bg-brass/[0.22] text-brass" : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            {t("demoPlayer.after")}
+          </button>
+        </div>
       </div>
 
-      <canvas ref={canvasRef} className="mt-4 h-24 w-full rounded-xl border border-white/10 bg-black/30" />
+      <canvas
+        ref={canvasRef}
+        className={`mt-4 w-full rounded-xl border border-white/10 bg-black/30 ${large ? "h-32 sm:h-44" : "h-24"}`}
+      />
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className={`flex items-center gap-3 ${large ? "mt-6" : "mt-4"}`}>
         <button
           type="button"
           onClick={togglePlay}
           aria-label={playing ? "Pause" : "Play"}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-ember to-brass text-[#100b08] transition hover:brightness-110"
+          className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-ember to-brass text-[#100b08] transition hover:brightness-110 ${
+            large ? "h-14 w-14 sm:h-16 sm:w-16" : "h-11 w-11"
+          }`}
         >
           {playing ? (
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor">
+            <svg width={large ? "18" : "13"} height={large ? "18" : "13"} viewBox="0 0 14 14" fill="currentColor">
               <rect x="2" y="1" width="4" height="12" />
               <rect x="8" y="1" width="4" height="12" />
             </svg>
           ) : (
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor">
+            <svg width={large ? "18" : "13"} height={large ? "18" : "13"} viewBox="0 0 14 14" fill="currentColor">
               <path d="M2 1l11 6-11 6V1z" />
             </svg>
           )}
         </button>
 
         <div className="min-w-0 flex-1">
-          <div onClick={seek} className="h-2 w-full cursor-pointer rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-gradient-to-r from-ember to-brass" style={{ width: `${progress}%` }} />
+          {/* group + a taller invisible hit-area (py-2) than the visible
+              track — standard "generous hit target around a thin track"
+              pattern, same reasoning as the app's own transport controls.
+              The thumb only appears on hover/drag so the bar reads clean
+              at rest, same convention as SoundCloud/YouTube's scrubbers. */}
+          <div
+            onPointerDown={startScrub}
+            className="group relative -my-2 flex cursor-pointer items-center py-2 touch-none"
+          >
+            <div className={`w-full rounded-full bg-white/10 ${large ? "h-2.5" : "h-2"}`}>
+              <div className="h-full rounded-full bg-gradient-to-r from-ember to-brass" style={{ width: `${progress}%` }} />
+            </div>
+            <div
+              className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full bg-white shadow-md transition-opacity ${
+                large ? "h-4 w-4" : "h-3 w-3"
+              } ${scrubbing ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+              style={{ left: `${progress}%` }}
+            />
           </div>
-          <div className="mt-1 flex justify-between text-[10px] text-zinc-500">
-            <span>{formatTime(currentTime)}</span>
+          <div className={`mt-1 flex justify-between text-zinc-500 ${large ? "text-xs" : "text-[10px]"}`}>
+            <span>{formatTime(scrubbing ? dragRatio * duration : currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
         </div>
-      </div>
 
-      <div className="mt-4 flex gap-2">
         <button
           type="button"
-          onClick={() => swap("before")}
-          aria-pressed={mode === "before"}
-          className={`flex-1 rounded-lg border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] transition ${
-            mode === "before" ? "border-white/40 bg-white/10 text-white" : "border-white/15 bg-black/20 text-zinc-400 hover:border-white/30"
-          }`}
+          onClick={toggleMute}
+          aria-label={muted ? "Unmute" : "Mute"}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition hover:text-white"
         >
-          {t("demoPlayer.before")}
-        </button>
-        <button
-          type="button"
-          onClick={() => swap("after")}
-          aria-pressed={mode === "after"}
-          className={`flex-1 rounded-lg border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] transition ${
-            mode === "after" ? "border-brass bg-brass/[0.18] text-brass" : "border-white/15 bg-black/20 text-zinc-400 hover:border-white/30"
-          }`}
-        >
-          {t("demoPlayer.after")}
+          {muted ? (
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+              <path d="m17 9 5 6M22 9l-5 6" />
+            </svg>
+          ) : (
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+              <path d="M16 8.5a5 5 0 0 1 0 7M19 6a9 9 0 0 1 0 12" />
+            </svg>
+          )}
         </button>
       </div>
 
