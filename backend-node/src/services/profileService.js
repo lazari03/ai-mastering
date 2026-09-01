@@ -17,7 +17,14 @@ export async function saveProfile(uid, profile, email) {
   if (!uid) {
     throw new Error("Profile requires a signed-in user");
   }
-  const record = {};
+  // Always written, every call, regardless of what's in `profile` —
+  // unlike the fields below this isn't user-supplied body data, it's the
+  // verified email off the caller's own Firebase ID token (see
+  // masteringRoutes.js's requireAuth), so there's no spoofing risk and no
+  // reason to gate it behind a "was this field actually sent" check. Was
+  // previously received here and silently never written at all — every
+  // users/{uid} doc had firstName/lastName/phone but no email on it.
+  const record = { email: email || null };
   // Only ever set fields that were actually passed — this is called both
   // at signup (termsAcceptedAt/termsVersion, no studioName yet) and later
   // from Settings (firstName/lastName/phone/studioName, never terms
