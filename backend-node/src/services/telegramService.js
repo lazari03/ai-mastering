@@ -226,6 +226,24 @@ async function pollLoop() {
   }
 }
 
+// Registers the native "/" menu button Telegram shows next to the message
+// box — without this, the commands above all work fine, they just aren't
+// discoverable unless you already know to type them. One-time call, not
+// per-message; Telegram remembers this until it's set again.
+async function registerCommandMenu() {
+  try {
+    await callTelegram("setMyCommands", {
+      commands: [
+        { command: "stats", description: "Signups, purchases, and traffic in one summary" },
+        { command: "pageviews", description: "Visitor traffic + top pages" },
+        { command: "help", description: "List commands" },
+      ],
+    });
+  } catch (error) {
+    console.error("Telegram setMyCommands failed (non-fatal):", error.message);
+  }
+}
+
 export function startBot() {
   if (!configured()) {
     console.log("Telegram bot: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID unset - notifications and commands disabled.");
@@ -233,6 +251,7 @@ export function startBot() {
   }
   if (polling) return;
   polling = true;
+  registerCommandMenu();
   console.log("Telegram bot: listening for admin commands.");
   pollLoop();
 }
