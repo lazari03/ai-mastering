@@ -1,6 +1,5 @@
 import { settings } from "../config/settings.js";
 import { getFirestore } from "../config/firebase.js";
-import { getTrafficSummary, getTopPages } from "./ga4Service.js";
 
 const API_BASE = "https://api.telegram.org";
 
@@ -49,25 +48,29 @@ export async function notifyPurchase({ kind, product, email, amountCents, curren
 }
 
 // ---------------------------------------------------------------------
-// On-demand stats commands — /pageviews, /stats, /help. Long-polls
-// getUpdates rather than registering a webhook: this is a single admin
-// talking to their own bot, so there's no reason to expose a new public
-// HTTP endpoint (and verify Telegram's request signature) just to receive
-// commands nobody but one person will ever send.
+// On-demand stats commands — /stats, /help. Long-polls getUpdates rather
+// than registering a webhook: this is a single admin talking to their
+// own bot, so there's no reason to expose a new public HTTP endpoint
+// (and verify Telegram's request signature) just to receive commands
+// nobody but one person will ever send.
+//
+// Traffic/pageview numbers used to live here too (via GA4's Data API),
+// but that needs a Google Cloud service account key, and this project's
+// GCP org has key creation disabled by policy — not worth fighting for
+// numbers that are already one login away at analytics.google.com
+// anyway (the NEXT_PUBLIC_GA_MEASUREMENT_ID tracking snippet is still
+// live on every page; this only ever removed the bot's ability to pull
+// that data on request, not the tracking itself).
 // ---------------------------------------------------------------------
 
-const HELP_TEXT = [
-  "Auralith Forge bot",
-  "",
-  "/pageviews [today|7d|30d] - GA4 traffic + top pages (default 7d)",
-  "/stats [today|7d|30d] - signups, purchases, and traffic in one summary (default today)",
-  "/help - this message",
-].join("\n");
+const HELP_TEXT = ["Auralith Forge bot", "", "/stats [today|7d|30d] - signups and purchases (default today)", "/help - this message"].join(
+  "\n"
+);
 
 const RANGES = {
-  today: { label: "today", ga4Start: "today", cutoff: () => new Date(new Date().setHours(0, 0, 0, 0)) },
-  "7d": { label: "last 7 days", ga4Start: "7daysAgo", cutoff: () => new Date(Date.now() - 7 * 86400000) },
-  "30d": { label: "last 30 days", ga4Start: "30daysAgo", cutoff: () => new Date(Date.now() - 30 * 86400000) },
+  today: { label: "today", cutoff: () => new Date(new Date().setHours(0, 0, 0, 0)) },
+  "7d": { label: "last 7 days", cutoff: () => new Date(Date.now() - 7 * 86400000) },
+  "30d": { label: "last 30 days", cutoff: () => new Date(Date.now() - 30 * 86400000) },
 };
 
 function resolveRange(argRaw) {
@@ -110,32 +113,11 @@ function formatRevenue(revenueByCurrency) {
   return parts.length ? parts.join(", ") : "0";
 }
 
-async function handlePageviews(argRaw) {
-  if (!settings.ga4PropertyId) {
-    return "GA4 isn't configured (GA4_PROPERTY_ID unset) - no traffic data to show.";
-  }
-  const range = resolveRange(argRaw);
-  try {
-    const [summary, topPages] = await Promise.all([getTrafficSummary(range.ga4Start), getTopPages(range.ga4Start)]);
-    const lines = [
-      `Traffic - ${range.label}`,
-      `${summary.pageViews} pageviews, ${summary.sessions} sessions, ${summary.activeUsers} users (${summary.newUsers} new)`,
-      "",
-      "Top pages:",
-      ...(topPages.length ? topPages.map((p) => `${p.pageViews}  ${p.path}`) : ["(no data)"]),
-    ];
-    return lines.join("\n");
-  } catch (error) {
-    console.error("GA4 query failed:", error);
-    return `Couldn't fetch GA4 data: ${error.message}`;
-  }
-}
-
 async function handleStats(argRaw) {
   const range = resolveRange(argRaw);
   const cutoff = range.cutoff();
 
-  const [signups, purchases, traffic] = await Promise.all([
+  const [signups, purchases] = await Promise.all([
     countUsersSince(cutoff).catch((error) => {
       console.error("Signup count query failed:", error);
       return null;
@@ -144,12 +126,6 @@ async function handleStats(argRaw) {
       console.error("Purchase stats query failed:", error);
       return null;
     }),
-    settings.ga4PropertyId
-      ? getTrafficSummary(range.ga4Start).catch((error) => {
-          console.error("GA4 query failed:", error);
-          return null;
-        })
-      : Promise.resolve(null),
   ]);
 
   const lines = [`Summary - ${range.label}`, ""];
@@ -158,13 +134,6 @@ async function handleStats(argRaw) {
     purchases != null
       ? `Purchases: ${purchases.count} (${formatRevenue(purchases.revenueByCurrency)})`
       : "Purchases: (error, see server logs)"
-  );
-  lines.push(
-    traffic
-      ? `Pageviews: ${traffic.pageViews}, sessions: ${traffic.sessions}, users: ${traffic.activeUsers}`
-      : settings.ga4PropertyId
-        ? "Pageviews: (error, see server logs)"
-        : "Pageviews: GA4 not configured"
   );
   return lines.join("\n");
 }
@@ -186,8 +155,6 @@ async function handleMessage(msg) {
   let reply;
   if (command === "/start" || command === "/help") {
     reply = HELP_TEXT;
-  } else if (command === "/pageviews") {
-    reply = await handlePageviews(args[0]);
   } else if (command === "/stats") {
     reply = await handleStats(args[0]);
   } else {
@@ -234,8 +201,7 @@ async function registerCommandMenu() {
   try {
     await callTelegram("setMyCommands", {
       commands: [
-        { command: "stats", description: "Signups, purchases, and traffic in one summary" },
-        { command: "pageviews", description: "Visitor traffic + top pages" },
+        { command: "stats", description: "Signups and purchases" },
         { command: "help", description: "List commands" },
       ],
     });

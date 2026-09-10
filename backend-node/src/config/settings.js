@@ -130,17 +130,6 @@ export const settings = {
   // revenue/traffic numbers. Get your own numeric id from @userinfobot.
   telegramChatId: process.env.TELEGRAM_CHAT_ID || null,
 
-  // GA4 Data API — backs the /pageviews and /stats bot commands with real
-  // traffic numbers (read-only). Needs a service account added as a
-  // Viewer on the GA4 property itself (Admin > Property Access
-  // Management) — the Firebase project's default service account does
-  // NOT have this by default, it's a separate grant. Same
-  // two-ways-to-supply-credentials pattern as Firebase Admin
-  // (config/firebase.js) — set exactly one of the JSON/path pair.
-  ga4PropertyId: process.env.GA4_PROPERTY_ID || null,
-  ga4ServiceAccountJson: process.env.GA4_SERVICE_ACCOUNT_JSON || null,
-  ga4ServiceAccountPath: process.env.GA4_SERVICE_ACCOUNT_PATH || null,
-
   // GA4 Measurement Protocol — a separate credential pair from the Data
   // API above (that one reads reports; this one writes events). Backs the
   // server-side "purchase" event fired from the Polar webhook
