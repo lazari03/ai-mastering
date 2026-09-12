@@ -45,6 +45,14 @@ const DICT = {
   },
   "demo.target": { en: "Mastering target for this genre", sq: "Objektivi i masterizimit për këtë zhanër" },
 
+  "genres.eyebrow": { en: "By Genre", sq: "Sipas Zhanrit" },
+  "genres.title": { en: "Mastering tuned per genre", sq: "Masterizim i përshtatur për çdo zhanër" },
+  "genres.body": {
+    en: "Every genre gets its own DSP target profile, not a one-size preset — pick one to see its real loudness target.",
+    sq: "Çdo zhanër ka profilin e vet të DSP-së, jo një preset të përgjithshëm — zgjidh një për të parë objektivin real të zërit.",
+  },
+  "genres.cta": { en: "Master {genre} tracks →", sq: "Masterizo këngë {genre} →" },
+
   "features.eyebrow": { en: "Features", sq: "Veçoritë" },
   "features.title": { en: "Everything a real release needs", sq: "Gjithçka që i duhet një botimi real" },
   "features.f1.eyebrow": { en: "Precision", sq: "Precizion" },

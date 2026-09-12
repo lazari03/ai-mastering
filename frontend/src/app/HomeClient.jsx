@@ -9,7 +9,6 @@ import SiteHeader from "@/components/marketing/SiteHeader";
 import DeferredThreads from "@/components/reactbits/DeferredThreads";
 import Footer from "@/components/Footer";
 import { POSTS } from "@/content/posts";
-import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { useLanguage } from "@/lib/i18n";
 import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 import { IconCheck } from "@/components/app/icons";
@@ -19,6 +18,7 @@ import BeforeAfterPlayer from "@/components/marketing/BeforeAfterPlayer";
 import SpectrumAnalyzer from "@/components/audio/SpectrumAnalyzer";
 import LoudnessMeter from "@/components/audio/LoudnessMeter";
 import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
+import GenreShowcase from "@/components/marketing/GenreShowcase";
 
 const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
 const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -308,21 +308,7 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section className="reveal mt-16 scroll-mt-24">
-        <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">By genre</p>
-        <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">Mastering tuned per genre</h2>
-        <div className="mt-5 flex flex-wrap gap-2">
-          {GENRE_KEYS.map((g) => (
-            <Link
-              key={g}
-              href={`/master/${g}`}
-              className="rounded-full border border-white/15 bg-black/20 px-4 py-2 text-xs text-zinc-300 hover:border-brass/50 hover:text-brass"
-            >
-              {GENRE_PAGES[g].label} mastering
-            </Link>
-          ))}
-        </div>
-      </section>
+      <GenreShowcase />
 
       <section id="faq" className="reveal mt-16 scroll-mt-24">
         <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("faq.eyebrow")}</p>
