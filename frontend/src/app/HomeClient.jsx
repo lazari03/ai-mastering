@@ -19,6 +19,7 @@ import SpectrumAnalyzer from "@/components/audio/SpectrumAnalyzer";
 import LoudnessMeter from "@/components/audio/LoudnessMeter";
 import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
 import GenreShowcase from "@/components/marketing/GenreShowcase";
+import SectionHeading from "@/components/marketing/SectionHeading";
 
 const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
 const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -67,11 +68,11 @@ export default function HomeClient() {
 
   return (
     <>
-    <main className="mx-auto w-full max-w-[1200px] px-4 pb-20 pt-5 sm:px-6">
+    <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
       <SiteHeader />
 
       <section
-        className="reveal relative mt-6 overflow-hidden rounded-[28px] border border-white/10 p-8 sm:p-12 md:p-16"
+        className="reveal relative mt-6 overflow-hidden rounded-[28px] border border-white/10 p-8 sm:p-14 md:p-20"
         style={{ background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))", boxShadow: "0 20px 60px rgba(0,0,0,.35)" }}
       >
         <div className="absolute inset-0">
@@ -80,13 +81,16 @@ export default function HomeClient() {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/80" />
 
         <div className="relative">
-          <p className="m-0 mb-4 text-[11px] uppercase tracking-[0.24em] text-zinc-400">{t("hero.eyebrow")}</p>
-          <h1 className="m-0 max-w-[680px] font-[var(--font-title)] text-4xl leading-[1.05] text-white sm:text-5xl md:text-6xl">
+          <p className="m-0 mb-5 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.26em] text-zinc-400">
+            <span className="h-px w-6 bg-ember" aria-hidden="true" />
+            {t("hero.eyebrow")}
+          </p>
+          <h1 className="m-0 max-w-[760px] font-[var(--font-title)] text-5xl leading-[0.98] tracking-tight text-white sm:text-6xl md:text-[76px]">
             {t("hero.title1")}
             <span className="block text-ember">{t("hero.title2")}</span>
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-zinc-300">{t("hero.body")}</p>
-          <div className="mt-9 flex flex-wrap gap-3.5">
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-zinc-300 sm:text-lg">{t("hero.body")}</p>
+          <div className="mt-10 flex flex-wrap gap-3.5">
             <Link href={CTA.signup} className="rounded-2xl bg-ember px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-[#100b08] transition hover:brightness-110">
               {t("hero.ctaPrimary")}
             </Link>
@@ -96,11 +100,11 @@ export default function HomeClient() {
           </div>
           <p className="m-0 mt-3 text-xs text-zinc-500">{t("hero.ctaReassurance")}</p>
 
-          <div className="mt-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-8 sm:max-w-md">
+          <div className="mt-12 flex flex-wrap gap-x-10 gap-y-6 border-t border-white/10 pt-8">
             {["stat1", "stat2", "stat3"].map((s) => (
               <div key={s}>
-                <p className="m-0 font-[var(--font-title)] text-2xl text-brass">{t(`hero.${s}.value`)}</p>
-                <p className="mt-1 text-xs text-zinc-400">{t(`hero.${s}.label`)}</p>
+                <p className="m-0 font-mono text-3xl text-brass">{t(`hero.${s}.value`)}</p>
+                <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-400">{t(`hero.${s}.label`)}</p>
               </div>
             ))}
           </div>
@@ -115,7 +119,7 @@ export default function HomeClient() {
                 src={BEFORE_AFTER_DEMOS[0].afterSrc}
                 className="h-16 w-full overflow-hidden rounded-xl border border-white/10 bg-black/20"
               />
-              <p className="m-0 mt-2 text-[11px] uppercase tracking-[0.14em] text-zinc-500">{t("hero.liveSignal")}</p>
+              <p className="m-0 mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500">{t("hero.liveSignal")}</p>
             </div>
           ) : null}
         </div>
@@ -123,13 +127,11 @@ export default function HomeClient() {
 
       <section
         id="demo"
-        className="reveal mt-16 scroll-mt-24 rounded-[28px] border border-border-subtle p-6 sm:p-8"
+        className="reveal mt-24 scroll-mt-24 rounded-[28px] border border-border-subtle p-6 sm:p-10"
         style={{ background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))" }}
       >
-        <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("demo.eyebrow")}</p>
-        <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("demo.title")}</h2>
-        <p className="mt-2 max-w-xl text-sm text-zinc-400">{t("demo.body")}</p>
-        <div className={`mt-6 grid gap-4 ${BEFORE_AFTER_DEMOS.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : ""}`}>
+        <SectionHeading eyebrow={t("demo.eyebrow")} title={t("demo.title")} subtitle={t("demo.body")} />
+        <div className={`mt-8 grid gap-4 ${BEFORE_AFTER_DEMOS.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : ""}`}>
           {BEFORE_AFTER_DEMOS.map((demo) => {
             // Real per-genre target, same table the DSP engine itself is
             // built from — not a fabricated number attached to the demo.
@@ -150,28 +152,32 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section id="features" className="reveal reveal-delay-1 mt-16 scroll-mt-24">
-        <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("features.eyebrow")}</p>
-        <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("features.title")}</h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURE_KEYS.map((k) => (
+      <section id="features" className="reveal reveal-delay-1 mt-24 scroll-mt-24">
+        <SectionHeading eyebrow={t("features.eyebrow")} title={t("features.title")} />
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURE_KEYS.map((k, idx) => (
             <article
               key={k}
-              className="rounded-[20px] border border-white/10 p-6"
+              className="group relative overflow-hidden rounded-[20px] border border-white/10 p-7 transition duration-300 hover:-translate-y-1 hover:border-ember/40"
               style={{ background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))" }}
             >
-              <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-zinc-400">{t(`features.${k}.eyebrow`)}</p>
-              <h3 className="mt-2.5 font-[var(--font-title)] text-[20px]">{t(`features.${k}.title`)}</h3>
-              <p className="mt-2.5 text-sm leading-relaxed text-zinc-300">{t(`features.${k}.body`)}</p>
+              <span
+                className="pointer-events-none absolute -right-2 -top-4 select-none font-[var(--font-title)] text-7xl font-bold text-white/[0.04] transition group-hover:text-ember/[0.08]"
+                aria-hidden="true"
+              >
+                {String(idx + 1).padStart(2, "0")}
+              </span>
+              <p className="relative m-0 font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-400">{t(`features.${k}.eyebrow`)}</p>
+              <h3 className="relative mt-2.5 font-[var(--font-title)] text-xl">{t(`features.${k}.title`)}</h3>
+              <p className="relative mt-2.5 text-sm leading-relaxed text-zinc-300">{t(`features.${k}.body`)}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="reveal mt-16">
-        <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("gallery.eyebrow")}</p>
-        <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("gallery.title")}</h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <section className="reveal mt-24">
+        <SectionHeading eyebrow={t("gallery.eyebrow")} title={t("gallery.title")} />
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
           {GALLERY.map((img) => (
             <Link
               key={img.slug}
@@ -200,12 +206,10 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section id="pricing" className="reveal mt-16 scroll-mt-24">
-        <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("pricing.eyebrow")}</p>
-        <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("pricing.title")}</h2>
-        <p className="mt-2 max-w-xl text-sm text-zinc-400">{t("pricing.subtitle")}</p>
+      <section id="pricing" className="reveal mt-24 scroll-mt-24">
+        <SectionHeading eyebrow={t("pricing.eyebrow")} title={t("pricing.title")} subtitle={t("pricing.subtitle")} />
 
-        <div className="mt-7 grid gap-5 lg:grid-cols-3">
+        <div className="mt-9 grid gap-5 lg:grid-cols-3">
           {PLAN_ORDER.map((key) => {
             const plan = PLANS[key];
             const isFeatured = key === "pro";
@@ -227,12 +231,14 @@ export default function HomeClient() {
                   </span>
                 ) : null}
 
-                <p className={`m-0 text-[11px] uppercase tracking-[0.16em] ${isFeatured ? "text-brass" : "text-zinc-400"}`}>{plan.label}</p>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="font-[var(--font-title)] text-4xl text-white">{plan.price}</span>
+                <p className={`m-0 font-mono text-[11px] uppercase tracking-[0.16em] ${isFeatured ? "text-brass" : "text-zinc-400"}`}>{plan.label}</p>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="font-mono text-5xl text-white">{plan.price}</span>
                   {plan.period ? <span className="text-sm text-zinc-400">{plan.period}</span> : null}
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-zinc-300">{plan.blurb}</p>
+
+                <div className="mt-6 border-t border-white/10" />
 
                 <ul className="mt-5 flex flex-col gap-2.5">
                   {plan.features.map((feature) => (
@@ -268,52 +274,52 @@ export default function HomeClient() {
         </Link>
       </section>
 
-      <section id="how-to" className="reveal reveal-delay-2 mt-16 scroll-mt-24">
-        <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("howTo.eyebrow")}</p>
-        <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("howTo.title")}</h2>
-        <p className="mt-2 max-w-xl text-sm text-zinc-400">{t("howTo.subtitle")}</p>
+      <section id="how-to" className="reveal reveal-delay-2 mt-24 scroll-mt-24">
+        <SectionHeading eyebrow={t("howTo.eyebrow")} title={t("howTo.title")} subtitle={t("howTo.subtitle")} />
 
-        <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="relative mt-9 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+          {/* A thin connecting rule behind the steps — a pipeline, not a
+              disconnected checklist. */}
+          <div className="pointer-events-none absolute inset-x-0 top-[18px] hidden h-px bg-gradient-to-r from-transparent via-white/10 to-transparent lg:block" aria-hidden="true" />
           {STEP_KEYS.map((k, idx) => (
-            <div key={k} className="rounded-xl border border-white/10 bg-black/20 p-3.5">
+            <div key={k} className="relative rounded-xl border border-white/10 bg-black/20 p-3.5">
               <div
-                className="flex h-7 w-7 items-center justify-center rounded-full font-[var(--font-title)] text-xs font-bold"
-                style={{ background: "rgba(232,93,42,.15)", border: "1px solid rgba(232,93,42,.4)", color: "var(--ember)" }}
+                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-ink font-mono text-xs font-bold"
+                style={{ border: "1px solid rgba(232,93,42,.4)", color: "var(--ember)" }}
               >
                 {idx + 1}
               </div>
-              <h3 className="m-0 mt-2 text-[13px] font-semibold text-white">{t(`howTo.${k}.title`)}</h3>
+              <h3 className="m-0 mt-3 text-[13px] font-semibold text-white">{t(`howTo.${k}.title`)}</h3>
               <p className="mt-1 text-xs leading-snug text-zinc-400">{t(`howTo.${k}.body`)}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="reveal mt-16 scroll-mt-24 rounded-[24px] border border-white/10 p-6 sm:p-8">
+      <section className="reveal mt-24 scroll-mt-24 rounded-[24px] border border-white/10 p-6 sm:p-9">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">Also available</p>
-            <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">Chord Detector</h2>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-400">
-              Upload any song, get its key, BPM, and full chord progression back. 3 free, then pay per song — no
-              mastering subscription required.
+            <p className="m-0 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-brass">
+              <span className="h-px w-5 bg-ember" aria-hidden="true" />
+              {t("crossPromo.eyebrow")}
             </p>
+            <h2 className="mt-3 font-[var(--font-title)] text-2xl tracking-tight text-white sm:text-3xl">{t("crossPromo.title")}</h2>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-400">{t("crossPromo.body")}</p>
           </div>
           <Link
             href="/chord-detector"
             className="shrink-0 rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
           >
-            See how it works →
+            {t("crossPromo.cta")}
           </Link>
         </div>
       </section>
 
       <GenreShowcase />
 
-      <section id="faq" className="reveal mt-16 scroll-mt-24">
-        <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("faq.eyebrow")}</p>
-        <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("faq.title")}</h2>
-        <div className="mt-6 columns-1 gap-3 sm:columns-2 [&>*]:mb-3">
+      <section id="faq" className="reveal mt-24 scroll-mt-24">
+        <SectionHeading eyebrow={t("faq.eyebrow")} title={t("faq.title")} />
+        <div className="mt-8 columns-1 gap-3 sm:columns-2 [&>*]:mb-3">
           {FAQ_KEYS.map((k) => (
             <FaqItem key={k} t={t} qKey={k} />
           ))}
@@ -322,12 +328,11 @@ export default function HomeClient() {
 
       <section
         id="contact"
-        className="reveal mt-16 scroll-mt-24 rounded-[28px] border border-white/10 p-8 sm:p-12"
+        className="reveal mt-24 scroll-mt-24 rounded-[28px] border border-white/10 p-8 sm:p-14"
         style={{ background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))" }}
       >
-        <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("contact.eyebrow")}</p>
-        <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("contact.title")}</h2>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-zinc-300">{t("contact.body")}</p>
+        <SectionHeading eyebrow={t("contact.eyebrow")} title={t("contact.title")} />
+        <p className="mt-4 max-w-xl text-sm leading-relaxed text-zinc-300">{t("contact.body")}</p>
         <p className="mt-4 text-sm text-zinc-300">
           {t("contact.emailLabel")}:{" "}
           <a href="mailto:studio@auralithforge.app" className="text-brass hover:text-ember">

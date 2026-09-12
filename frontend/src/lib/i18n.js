@@ -53,6 +53,14 @@ const DICT = {
   },
   "genres.cta": { en: "Master {genre} tracks →", sq: "Masterizo këngë {genre} →" },
 
+  "crossPromo.eyebrow": { en: "Also Available", sq: "Gjithashtu i Disponueshëm" },
+  "crossPromo.title": { en: "Chord Detector", sq: "Zbulues Akordesh" },
+  "crossPromo.body": {
+    en: "Upload any song, get its key, BPM, and full chord progression back. 3 free, then pay per song — no mastering subscription required.",
+    sq: "Ngarko një këngë dhe merr tonalitetin, BPM-në dhe progresionin e plotë të akordeve. 3 falas, pastaj pagesë për këngë — pa nevojë abonimi masterizimi.",
+  },
+  "crossPromo.cta": { en: "See how it works →", sq: "Shiko si funksionon →" },
+
   "features.eyebrow": { en: "Features", sq: "Veçoritë" },
   "features.title": { en: "Everything a real release needs", sq: "Gjithçka që i duhet një botimi real" },
   "features.f1.eyebrow": { en: "Precision", sq: "Precizion" },

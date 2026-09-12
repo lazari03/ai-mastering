@@ -8,6 +8,7 @@ import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
 import { useLanguage } from "@/lib/i18n";
 import LoudnessMeter from "@/components/audio/LoudnessMeter";
+import SectionHeading from "@/components/marketing/SectionHeading";
 
 // Joins the marketing copy (genrePages.js) with the real DSP numbers
 // (loudnessTargets.js, the same table the engine is built from) into one
@@ -21,12 +22,10 @@ export default function GenreShowcase() {
   const activeTarget = LOUDNESS_TARGETS.find((g) => g.genre === active);
 
   return (
-    <section className="reveal mt-16 scroll-mt-24">
-      <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("genres.eyebrow")}</p>
-      <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("genres.title")}</h2>
-      <p className="mt-2 max-w-xl text-sm text-zinc-400">{t("genres.body")}</p>
+    <section className="reveal mt-24 scroll-mt-24">
+      <SectionHeading eyebrow={t("genres.eyebrow")} title={t("genres.title")} subtitle={t("genres.body")} />
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-8 flex flex-wrap gap-2">
         {GENRE_KEYS.map((g) => (
           <button
             key={g}
