@@ -16,6 +16,7 @@ import { IconCheck } from "@/components/app/icons";
 import { CTA } from "@/lib/internalLinks";
 import { BEFORE_AFTER_DEMOS } from "@/lib/beforeAfterDemos";
 import BeforeAfterPlayer from "@/components/marketing/BeforeAfterPlayer";
+import SpectrumAnalyzer from "@/components/audio/SpectrumAnalyzer";
 
 const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
 const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -101,6 +102,20 @@ export default function HomeClient() {
               </div>
             ))}
           </div>
+
+          {/* Decorative only — real frequency data from the same mastered
+              clip used in the #demo section below, never audible (see
+              SpectrumAnalyzer.jsx). Not a functional player; the real
+              transport lives in #demo. */}
+          {BEFORE_AFTER_DEMOS[0] ? (
+            <div className="mt-8 max-w-md">
+              <SpectrumAnalyzer
+                src={BEFORE_AFTER_DEMOS[0].afterSrc}
+                className="h-16 w-full overflow-hidden rounded-xl border border-white/10 bg-black/20"
+              />
+              <p className="m-0 mt-2 text-[11px] uppercase tracking-[0.14em] text-zinc-500">{t("hero.liveSignal")}</p>
+            </div>
+          ) : null}
         </div>
       </section>
 
