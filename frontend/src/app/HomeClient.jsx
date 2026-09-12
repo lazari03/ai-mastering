@@ -17,6 +17,8 @@ import { CTA } from "@/lib/internalLinks";
 import { BEFORE_AFTER_DEMOS } from "@/lib/beforeAfterDemos";
 import BeforeAfterPlayer from "@/components/marketing/BeforeAfterPlayer";
 import SpectrumAnalyzer from "@/components/audio/SpectrumAnalyzer";
+import LoudnessMeter from "@/components/audio/LoudnessMeter";
+import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
 
 const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
 const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -119,14 +121,32 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section id="demo" className="reveal mt-16 scroll-mt-24">
+      <section
+        id="demo"
+        className="reveal mt-16 scroll-mt-24 rounded-[28px] border border-border-subtle p-6 sm:p-8"
+        style={{ background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))" }}
+      >
         <p className="m-0 text-[11px] uppercase tracking-[0.16em] text-brass">{t("demo.eyebrow")}</p>
         <h2 className="mt-2 font-[var(--font-title)] text-2xl text-white sm:text-3xl">{t("demo.title")}</h2>
         <p className="mt-2 max-w-xl text-sm text-zinc-400">{t("demo.body")}</p>
         <div className={`mt-6 grid gap-4 ${BEFORE_AFTER_DEMOS.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : ""}`}>
-          {BEFORE_AFTER_DEMOS.map((demo) => (
-            <BeforeAfterPlayer key={demo.label} large={BEFORE_AFTER_DEMOS.length === 1} {...demo} />
-          ))}
+          {BEFORE_AFTER_DEMOS.map((demo) => {
+            // Real per-genre target, same table the DSP engine itself is
+            // built from — not a fabricated number attached to the demo.
+            const target = LOUDNESS_TARGETS.find((g) => g.genre === demo.genre.toLowerCase());
+            return (
+              <div key={demo.label}>
+                <BeforeAfterPlayer large={BEFORE_AFTER_DEMOS.length === 1} {...demo} />
+                {target ? (
+                  <LoudnessMeter
+                    className="mt-3"
+                    label={t("demo.target")}
+                    targetLufs={target.targetLufs}
+                  />
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </section>
 

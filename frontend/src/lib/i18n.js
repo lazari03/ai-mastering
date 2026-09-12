@@ -43,6 +43,7 @@ const DICT = {
     en: "Real tracks, run through the actual engine — not a marketing clip. Toggle Before/After at the same point in the song and hear exactly what changes.",
     sq: "Këngë reale, të përpunuara nga vetë motori — jo një klip marketingu. Kalo mes Para/Pas në të njëjtin moment të këngës dhe dëgjo saktësisht çfarë ndryshon.",
   },
+  "demo.target": { en: "Mastering target for this genre", sq: "Objektivi i masterizimit për këtë zhanër" },
 
   "features.eyebrow": { en: "Features", sq: "Veçoritë" },
   "features.title": { en: "Everything a real release needs", sq: "Gjithçka që i duhet një botimi real" },
