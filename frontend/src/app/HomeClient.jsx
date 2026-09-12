@@ -20,6 +20,7 @@ import LoudnessMeter from "@/components/audio/LoudnessMeter";
 import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
 import GenreShowcase from "@/components/marketing/GenreShowcase";
 import SectionHeading from "@/components/marketing/SectionHeading";
+import TruePeakMeter from "@/components/audio/TruePeakMeter";
 
 const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
 const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -72,7 +73,7 @@ export default function HomeClient() {
       <SiteHeader />
 
       <section
-        className="reveal relative mt-6 overflow-hidden rounded-[28px] border border-white/10 p-8 sm:p-14 md:p-20"
+        className="reveal relative mt-6 overflow-hidden rounded-[28px] border border-white/10 p-8 sm:p-14 md:p-16"
         style={{ background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))", boxShadow: "0 20px 60px rgba(0,0,0,.35)" }}
       >
         <div className="absolute inset-0">
@@ -80,46 +81,69 @@ export default function HomeClient() {
         </div>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/80" />
 
-        <div className="relative">
-          <p className="m-0 mb-5 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.26em] text-zinc-400">
-            <span className="h-px w-6 bg-ember" aria-hidden="true" />
-            {t("hero.eyebrow")}
-          </p>
-          <h1 className="m-0 max-w-[760px] font-[var(--font-title)] text-5xl leading-[0.98] tracking-tight text-white sm:text-6xl md:text-[76px]">
-            {t("hero.title1")}
-            <span className="block text-ember">{t("hero.title2")}</span>
-          </h1>
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-zinc-300 sm:text-lg">{t("hero.body")}</p>
-          <div className="mt-10 flex flex-wrap gap-3.5">
-            <Link href={CTA.signup} className="rounded-2xl bg-ember px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-[#100b08] transition hover:brightness-110">
-              {t("hero.ctaPrimary")}
-            </Link>
-            <a href="#features" className="rounded-2xl border border-white/20 bg-black/20 px-8 py-4 text-sm font-semibold uppercase tracking-[0.1em] text-white transition hover:border-white/40">
-              {t("hero.ctaSecondary")}
-            </a>
-          </div>
-          <p className="m-0 mt-3 text-xs text-zinc-500">{t("hero.ctaReassurance")}</p>
+        <div className="relative grid gap-14 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+          <div>
+            <p className="m-0 mb-5 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.26em] text-zinc-400">
+              <span className="h-px w-6 bg-ember" aria-hidden="true" />
+              {t("hero.eyebrow")}
+            </p>
+            <h1 className="m-0 max-w-[640px] font-[var(--font-title)] text-5xl leading-[0.98] tracking-tight text-white sm:text-6xl md:text-[68px]">
+              {t("hero.title1")}
+              <span className="block text-ember">{t("hero.title2")}</span>
+            </h1>
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-zinc-300 sm:text-lg">{t("hero.body")}</p>
+            <div className="mt-10 flex flex-wrap gap-3.5">
+              <Link href={CTA.signup} className="rounded-2xl bg-ember px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-[#100b08] transition hover:brightness-110">
+                {t("hero.ctaPrimary")}
+              </Link>
+              <a href="#features" className="rounded-2xl border border-white/20 bg-black/20 px-8 py-4 text-sm font-semibold uppercase tracking-[0.1em] text-white transition hover:border-white/40">
+                {t("hero.ctaSecondary")}
+              </a>
+            </div>
+            <p className="m-0 mt-3 text-xs text-zinc-500">{t("hero.ctaReassurance")}</p>
 
-          <div className="mt-12 flex flex-wrap gap-x-10 gap-y-6 border-t border-white/10 pt-8">
-            {["stat1", "stat2", "stat3"].map((s) => (
-              <div key={s}>
-                <p className="m-0 font-mono text-3xl text-brass">{t(`hero.${s}.value`)}</p>
-                <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-400">{t(`hero.${s}.label`)}</p>
-              </div>
-            ))}
+            <div className="mt-12 flex flex-wrap gap-x-10 gap-y-6 border-t border-white/10 pt-8">
+              {["stat1", "stat2", "stat3"].map((s) => (
+                <div key={s}>
+                  <p className="m-0 font-mono text-3xl text-brass">{t(`hero.${s}.value`)}</p>
+                  <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-400">{t(`hero.${s}.label`)}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Decorative only — real frequency data from the same mastered
-              clip used in the #demo section below, never audible (see
-              SpectrumAnalyzer.jsx). Not a functional player; the real
-              transport lives in #demo. */}
+          {/* A real console readout, not a screenshot or a mockup: the
+              same SpectrumAnalyzer/LoudnessMeter/TruePeakMeter used
+              throughout the site, fed by the same real mastered clip as
+              #demo below and Pop's actual target profile from
+              loudnessTargets.js. Decorative/illustrative (never audible,
+              never a functional transport — that's #demo), but every
+              number on it is real. */}
           {BEFORE_AFTER_DEMOS[0] ? (
-            <div className="mt-8 max-w-md">
+            <div className="rounded-[22px] border border-white/10 bg-black/40 p-5 backdrop-blur-sm sm:p-6">
+              <div className="flex items-center justify-between">
+                <p className="m-0 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-400">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ember" aria-hidden="true" />
+                  {t("hero.liveSignal")}
+                </p>
+                <span className="rounded-full border border-white/15 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-400">
+                  {BEFORE_AFTER_DEMOS[0].genre}
+                </span>
+              </div>
               <SpectrumAnalyzer
                 src={BEFORE_AFTER_DEMOS[0].afterSrc}
-                className="h-16 w-full overflow-hidden rounded-xl border border-white/10 bg-black/20"
+                bars={56}
+                className="mt-4 h-32 w-full overflow-hidden rounded-xl border border-white/10 bg-black/40 sm:h-40"
               />
-              <p className="m-0 mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500">{t("hero.liveSignal")}</p>
+              {(() => {
+                const heroTarget = LOUDNESS_TARGETS.find((g) => g.genre === BEFORE_AFTER_DEMOS[0].genre.toLowerCase());
+                return heroTarget ? (
+                  <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-end sm:gap-6">
+                    <LoudnessMeter className="sm:flex-1" label={t("hero.consoleLoudness")} targetLufs={heroTarget.targetLufs} />
+                    <TruePeakMeter label={t("hero.consoleCeiling")} />
+                  </div>
+                ) : null;
+              })()}
             </div>
           ) : null}
         </div>

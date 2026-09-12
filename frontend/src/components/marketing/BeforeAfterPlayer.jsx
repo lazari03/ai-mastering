@@ -249,17 +249,29 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
         </div>
       </div>
 
-      <canvas
-        ref={canvasRef}
-        className={`mt-4 w-full rounded-xl border border-white/10 bg-black/30 ${large ? "h-32 sm:h-44" : "h-24"}`}
-      />
+      <div
+        className={`relative mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/30 ${large ? "h-32 sm:h-44" : "h-24"}`}
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px)",
+          backgroundSize: "100% 25%, 8.33% 100%",
+        }}
+      >
+        <canvas ref={canvasRef} className="h-full w-full" />
+        <div className="pointer-events-none absolute left-2.5 top-2 flex items-center gap-1.5">
+          {playing ? <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ember" aria-hidden="true" /> : null}
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500">
+            {mode === "after" ? t("demoPlayer.after") : t("demoPlayer.before")}
+          </span>
+        </div>
+      </div>
 
       <div className={`flex items-center gap-3 ${large ? "mt-6" : "mt-4"}`}>
         <button
           type="button"
           onClick={togglePlay}
           aria-label={playing ? "Pause" : "Play"}
-          className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-ember to-brass text-[#100b08] transition hover:brightness-110 ${
+          className={`flex shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-ember to-brass text-[#100b08] shadow-[0_0_0_1px_rgba(255,255,255,.12)_inset] transition hover:brightness-110 ${
             large ? "h-14 w-14 sm:h-16 sm:w-16" : "h-11 w-11"
           }`}
         >
@@ -295,7 +307,7 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
               style={{ left: `${progress}%` }}
             />
           </div>
-          <div className={`mt-1 flex justify-between text-zinc-500 ${large ? "text-xs" : "text-[10px]"}`}>
+          <div className={`mt-1 flex justify-between font-mono text-zinc-500 ${large ? "text-xs" : "text-[10px]"}`}>
             <span>{formatTime(scrubbing ? dragRatio * duration : currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>

@@ -80,7 +80,7 @@ export default function SpectrumAnalyzer({
         }
 
         resumeOnPlay = () => {
-          if (audioContext.state === "suspended") audioContext.resume();
+          if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
         };
         audio.addEventListener("play", resumeOnPlay);
         // Belt-and-suspenders: set muted imperatively too, not just via
@@ -152,7 +152,11 @@ export default function SpectrumAnalyzer({
         graph.closeTimer = setTimeout(() => {
           sourceNode.disconnect();
           analyser.disconnect();
-          if (audioContext.state !== "closed") audioContext.close();
+          // resume() from resumeOnPlay above can still be in flight —
+          // closing mid-resume throws "Closed before resume completed"
+          // (a real, observed crash, not hypothetical). Swallow it: the
+          // context is being torn down either way.
+          if (audioContext.state !== "closed") audioContext.close().catch(() => {});
           audioGraphs.delete(audio);
         }, 0);
       }

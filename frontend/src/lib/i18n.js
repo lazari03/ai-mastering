@@ -36,6 +36,8 @@ const DICT = {
   "hero.stat3.value": { en: "-1dBTP", sq: "-1dBTP" },
   "hero.stat3.label": { en: "True-peak safe", sq: "I sigurt në true-peak" },
   "hero.liveSignal": { en: "Live signal, mastered output", sq: "Sinjal live, dalje e masterizuar" },
+  "hero.consoleLoudness": { en: "Target Loudness", sq: "Zëri Objektiv" },
+  "hero.consoleCeiling": { en: "Peak Ceiling", sq: "Tavani i Kulmit" },
 
   "demo.eyebrow": { en: "Hear It", sq: "Dëgjoje" },
   "demo.title": { en: "Before and after, in your own ears", sq: "Para dhe pas, me veshët e tu" },
