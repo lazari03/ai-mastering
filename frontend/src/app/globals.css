@@ -8,6 +8,20 @@
   --ember: #e85d2a;
   --brass: #dfc95a;
   --mist: #e8ecef;
+
+  /* Semantic aliases on top of the 5 brand tokens above — additive only,
+     no new colors. Gives new components a vocabulary ("bg-surface",
+     "border-border-subtle") instead of each one reinventing its own
+     rgba(...) literal for "a slightly raised dark panel" or "a faint
+     border", the way .glass-panel and one-off inline styles already do
+     throughout the app. Existing classes (.glass-panel, .reveal*) are
+     untouched — this doesn't replace them, it's for new work. */
+  --surface: var(--coal);
+  --surface-elevated: rgba(27, 30, 34, 0.78);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --text-primary: var(--mist);
+  --text-secondary: rgba(232, 236, 239, 0.65);
 }
 
 * {
