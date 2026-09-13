@@ -96,7 +96,7 @@ export default function HomeClient() {
               <Link href={CTA.signup} className="rounded-2xl bg-ember px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-[#100b08] transition hover:brightness-110">
                 {t("hero.ctaPrimary")}
               </Link>
-              <a href="#features" className="rounded-2xl border border-white/20 bg-black/20 px-8 py-4 text-sm font-semibold uppercase tracking-[0.1em] text-white transition hover:border-white/40">
+              <a href="#demo" className="rounded-2xl border border-white/20 bg-black/20 px-8 py-4 text-sm font-semibold uppercase tracking-[0.1em] text-white transition hover:border-white/40">
                 {t("hero.ctaSecondary")}
               </a>
             </div>

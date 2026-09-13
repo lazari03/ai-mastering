@@ -27,7 +27,7 @@ const DICT = {
     sq: "Masterizo këngët e tua online me DSP adaptiv — përpunim specifik për zhanrin, krahasim A/B të menjëhershëm, dhe parapamje kodeku për si do të tingëllojë realisht në Spotify apo Instagram.",
   },
   "hero.ctaPrimary": { en: "Master a Track Free", sq: "Masterizo Falas" },
-  "hero.ctaSecondary": { en: "Explore Features", sq: "Eksploro Veçoritë" },
+  "hero.ctaSecondary": { en: "Hear a Before / After", sq: "Dëgjo Para / Pas" },
   "hero.ctaReassurance": { en: "3 free masters · No credit card", sq: "3 masterë falas · Pa kartë krediti" },
   "hero.stat1.value": { en: "8", sq: "8" },
   "hero.stat1.label": { en: "Genre engines", sq: "Motorë zhanri" },
