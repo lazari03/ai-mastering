@@ -38,8 +38,9 @@ export default function NotificationBanner({ activeTab, onView }) {
     setDismissed(false);
 
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      const hasLufs = result.before_lufs != null && result.after_lufs != null;
       new Notification(t("notif.masterReady"), {
-        body: `${result.before_lufs} LUFS → ${result.after_lufs} LUFS`,
+        body: hasLufs ? `${result.before_lufs} LUFS → ${result.after_lufs} LUFS` : undefined,
         tag: result.job_id,
       });
     }

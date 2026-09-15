@@ -219,11 +219,13 @@ export default function MyMastersPanel() {
                 </span>
               </Link>
 
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-lg border border-white/10 px-2.5 py-1 text-zinc-300">
-                  {job.before_lufs} → {job.after_lufs} LUFS
-                </span>
-              </div>
+              {job.before_lufs != null || job.after_lufs != null ? (
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                  <span className="rounded-lg border border-white/10 px-2.5 py-1 text-zinc-300">
+                    {job.before_lufs ?? "—"} → {job.after_lufs ?? "—"} LUFS
+                  </span>
+                </div>
+              ) : null}
 
               {!expired ? (
                 <div className="mt-3 flex flex-wrap gap-2">
