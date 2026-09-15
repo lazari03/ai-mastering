@@ -15,6 +15,8 @@ import { SITE_URL } from "@/lib/seo";
 //   /                            HomeClient
 //   /ai-mastering-online         broad-intent hub
 //   /mastering-loudness-targets  LUFS reference
+//   /tools                       free tools hub
+//   /lufs-meter                  LUFS/True Peak/LRA tool
 //   /chord-detector              umbrella tool page
 //   /song-key-finder           }
 //   /bpm-finder                } TOOL_LANDING_KEYS
@@ -23,6 +25,11 @@ import { SITE_URL } from "@/lib/seo";
 //   /vs/<competitor>           COMPARISON_KEYS
 //   /blog + /blog/<slug>       POSTS
 //   /terms /privacy /refund    legal
+//
+// /admin/* is deliberately absent — see robots.js and
+// admin/analytics/layout.js's noindex metadata. This is an explicit
+// allowlist, not a directory scan, so it was never at risk of picking that
+// up by accident; the omission is the actual control, not an oversight.
 //
 // If you add a public route, add it here — nothing enforces this
 // automatically, and an unlisted page is one an AI/search crawler only
@@ -46,6 +53,11 @@ export default function sitemap() {
     { path: "/", priority: 1, changeFrequency: "weekly" },
     { path: "/ai-mastering-online", priority: 0.9, changeFrequency: "monthly" },
     { path: "/chord-detector", priority: 0.8, changeFrequency: "monthly" },
+    // LUFS Meter has direct mastering intent (spec: "strategically
+    // important") — same priority tier as Chord Detector, the other real
+    // (non-landing-page) tool.
+    { path: "/lufs-meter", priority: 0.8, changeFrequency: "monthly" },
+    { path: "/tools", priority: 0.6, changeFrequency: "monthly" },
     // Reference content rather than a landing page — priority matches the
     // genre pages because informational pages that answer a question
     // outright are what earn citations and inbound links.

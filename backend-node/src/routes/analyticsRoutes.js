@@ -9,6 +9,7 @@ import {
   getFunnel,
   getAcquisition,
   getPages,
+  getSeoOverview,
   getSales,
   getErrors,
   listSessions,
@@ -113,6 +114,17 @@ admin.get("/pages", async (req, res) => {
   } catch (error) {
     console.error("admin/pages failed:", error);
     return res.status(500).json({ detail: "Failed to load pages." });
+  }
+});
+
+admin.get("/seo", async (req, res) => {
+  try {
+    const range = resolveRange(req.query);
+    const data = await getSeoOverview(range);
+    return res.json(data);
+  } catch (error) {
+    console.error("admin/seo failed:", error);
+    return res.status(500).json({ detail: "Failed to load SEO overview." });
   }
 });
 

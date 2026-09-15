@@ -263,6 +263,9 @@ export default function LoudnessTargetsPage() {
 
         <div className="mt-8">
           <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Also useful</p>
+          <Link href="/lufs-meter" className="mt-2 block text-sm text-brass hover:text-ember">
+            Measure your own track's LUFS, True Peak and Loudness Range — try the free LUFS Meter →
+          </Link>
           <Link href={CHORD_DETECTOR_URL} className="mt-2 block text-sm text-brass hover:text-ember">
             Know the chords, key and BPM before you master — try Chord Detector →
           </Link>

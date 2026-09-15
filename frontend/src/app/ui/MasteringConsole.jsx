@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
+import { takePendingToolFile } from "@/lib/toolHandoff";
 import AdaptiveControlsPanel from "@/components/audio/AdaptiveControlsPanel";
 import ProcessingSummary from "@/components/audio/ProcessingSummary";
 import ProParamsPanel from "@/components/audio/ProParamsPanel";
@@ -139,6 +140,22 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
   useEffect(() => {
     bootstrap();
   }, [bootstrap]);
+
+  // Picks up a file handed off from a free tool (currently just the LUFS
+  // Meter — see PublicLufsMeter.jsx/lib/toolHandoff.js) after signing up
+  // from there, so "Master This Track" never makes someone re-upload the
+  // exact same file they just analyzed. Runs once; consume-once by design
+  // (takePendingToolFile deletes what it reads), same StrictMode-safe ref
+  // guard as ChordsPanel.jsx's equivalent pickup.
+  const fetchedToolFileRef = useRef(false);
+  useEffect(() => {
+    if (fetchedToolFileRef.current || file) return;
+    fetchedToolFileRef.current = true;
+    takePendingToolFile().then((handedOffFile) => {
+      if (handedOffFile) setFile(handedOffFile, "lufs_meter");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!file) {

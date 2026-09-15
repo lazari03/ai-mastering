@@ -14,6 +14,7 @@ const NAV = [
   { href: "/admin/analytics/funnel", label: "Funnel" },
   { href: "/admin/analytics/acquisition", label: "Acquisition" },
   { href: "/admin/analytics/pages", label: "Pages" },
+  { href: "/admin/analytics/seo", label: "SEO" },
   { href: "/admin/analytics/sales", label: "Sales" },
   { href: "/admin/analytics/errors", label: "Errors" },
   { href: "/admin/analytics/retention", label: "Retention" },

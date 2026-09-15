@@ -658,6 +658,68 @@ const DICT = {
   },
   "chordGate.newHere": { en: "New here", sq: "I ri këtu" },
   "chordGate.returning": { en: "I have an account", sq: "Kam një llogari" },
+
+  "lufsGate.eyebrow": { en: "Still free", sq: "Ende falas" },
+  "lufsGate.title": { en: "Your loudness reading is ready", sq: "Leximi i zërit është gati" },
+  "lufsGate.body": {
+    en: "Create a free account (or log in) to master this track next — no payment, just an account.",
+    sq: "Krijo një llogari falas (ose hyr) për ta masterizuar këngën më pas — pa pagesë, thjesht një llogari.",
+  },
+
+  "lufsMeter.measure": { en: "Measure Loudness", sq: "Mat Zërin" },
+  "lufsMeter.analyzing": { en: "Analyzing…", sq: "Duke analizuar…" },
+  "lufsMeter.alwaysFree": { en: "Free, always — no trial, no card, no limit.", sq: "Falas, gjithmonë — pa provë, pa kartë, pa limit." },
+  "lufsMeter.failed": { en: "Analysis failed", sq: "Analiza dështoi" },
+  "lufsMeter.masterThisTrack": { en: "Master This Track", sq: "Masterizo Këtë Këngë" },
+  "lufsMeter.sameFileNote": { en: "Same file, no re-upload — straight into Studio.", sq: "E njëjta skedë, pa ringarkim — direkt në Studio." },
+  "lufsMeter.integratedLabel": { en: "Integrated Loudness", sq: "Zëri i Integruar" },
+  "lufsMeter.truePeakLabel": { en: "True Peak", sq: "Kulmi i Vërtetë" },
+  "lufsMeter.rangeLabel": { en: "Loudness Range", sq: "Diapazoni i Zërit" },
+  "lufsMeter.measuredNote": {
+    en: "Measured with the same analysis engine Studio uses on every upload — not a separate lightweight estimate.",
+    sq: "Matur me të njëjtin motor analize që përdor Studio në çdo ngarkim — jo një vlerësim i thjeshtuar.",
+  },
+  "lufsMeter.ctx.veryLoud": {
+    en: "Very loud — similar to a heavily limited commercial master. Streaming platforms will turn this down on playback.",
+    sq: "Shumë i lartë — ngjashëm me një master shumë të kufizuar. Platformat e streaming do ta ulin këtë gjatë riprodhimit.",
+  },
+  "lufsMeter.ctx.loud": {
+    en: "On the loud side, in line with many modern pop/EDM masters.",
+    sq: "Relativisht i lartë, në linjë me shumë masterë modernë pop/EDM.",
+  },
+  "lufsMeter.ctx.streaming": {
+    en: "In the range most streaming platforms normalise playback to — a common, safe target for release.",
+    sq: "Në diapazonin ku shumica e platformave të streaming normalizojnë riprodhimin — një cak i zakonshëm, i sigurt për botim.",
+  },
+  "lufsMeter.ctx.quiet": {
+    en: "On the quieter side — normal for acoustic or classical material, quiet for pop or EDM.",
+    sq: "Relativisht i ulët — normale për muzikë akustike ose klasike, i ulët për pop ose EDM.",
+  },
+  "lufsMeter.ctx.veryQuiet": {
+    en: "Quiet and dynamic — typical of classical, jazz, or ambient material rather than a loud commercial master.",
+    sq: "I qetë dhe dinamik — tipik për muzikë klasike, jazz, ose ambient, jo për një master tregtar të lartë.",
+  },
+  "lufsMeter.ctx.peakRisk": {
+    en: "Above the usual -1 dBTP safety margin — lossy encoding (MP3/AAC) on streaming platforms can introduce audible clipping.",
+    sq: "Mbi margjinën e zakonshme të sigurisë -1 dBTP — encodimi humbës (MP3/AAC) në platformat e streaming mund të shkaktojë prerje të dëgjueshme.",
+  },
+  "lufsMeter.ctx.peakSafe": {
+    en: "Within a safe margin for lossy encoding on streaming platforms.",
+    sq: "Brenda një margjine të sigurt për encodim humbës në platformat e streaming.",
+  },
+  "lufsMeter.ctx.rangeNarrow": {
+    en: "Narrow dynamic range — the track is fairly compressed/limited already.",
+    sq: "Diapazon i ngushtë dinamik — kënga është tashmë mjaft e kompresuar/kufizuar.",
+  },
+  "lufsMeter.ctx.rangeModerate": {
+    en: "Moderate dynamic range, typical of a commercial master.",
+    sq: "Diapazon mesatar dinamik, tipik për një master tregtar.",
+  },
+  "lufsMeter.ctx.rangeWide": {
+    en: "Wide dynamic range — more like an unmastered mix, or a naturally dynamic genre like classical or jazz.",
+    sq: "Diapazon i gjerë dinamik — më shumë si një përzierje e pamasterizuar, ose një zhanër natyrshëm dinamik si klasik ose jazz.",
+  },
+
   "chordDetector.preparingUpload": { en: "Preparing upload…", sq: "Duke përgatitur…" },
   "chordDetector.analyzing": { en: "Analyzing…", sq: "Duke analizuar…" },
   "chordDetector.detect": { en: "Detect Chords", sq: "Zbulo Akordet" },

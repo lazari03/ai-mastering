@@ -119,6 +119,9 @@ export default function ToolLandingPage({ slug, page }) {
               {TOOL_LANDING_PAGES[key].label} →
             </Link>
           ))}
+          <Link href="/lufs-meter" className="text-sm text-brass hover:text-ember">
+            LUFS Meter →
+          </Link>
         </div>
       </section>
     </main>

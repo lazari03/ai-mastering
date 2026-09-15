@@ -18,6 +18,22 @@ function db() {
   return getFirestore();
 }
 
+// Organic = arrived via a search engine's own results, not a paid click or
+// a direct/social visit — utm_medium=organic (if a page ever sets it
+// explicitly) or a referrer domain that's a known search engine with no
+// utm params at all (the normal case: someone clicked a real Google
+// result). This is intentionally simple pattern matching, not a full
+// referrer-classification service — see analyticsQueryService.js's own
+// section 25 note: Search Console remains the source of truth for
+// queries/impressions/clicks, this only classifies what already reached
+// us as organic vs. everything else.
+const SEARCH_ENGINE_DOMAINS = ["google.", "bing.", "duckduckgo.", "yahoo.", "ecosia.", "yandex.", "baidu."];
+function isOrganicSession(session) {
+  if (session.utmMedium === "organic") return true;
+  if (session.utmSource) return false; // any other explicit UTM is a tagged campaign, not organic
+  return Boolean(session.referrerDomain) && SEARCH_ENGINE_DOMAINS.some((needle) => session.referrerDomain.includes(needle));
+}
+
 function toDate(value, fallback) {
   const d = value ? new Date(value) : null;
   return d && !Number.isNaN(d.getTime()) ? d : fallback;
@@ -252,10 +268,6 @@ export async function getAcquisition({ from, to }) {
     .sort((a, b) => b.visitors - a.visitors);
 }
 
-// Landing-page performance — doubles as the "SEO landing page" report
-// (spec section 12) when filtered by organic sessions (referrerDomain
-// contains a known search engine, or utmMedium === "organic") on the
-// frontend/admin side; the underlying aggregation is identical to Pages.
 // Per-page report (spec section 22) — driven primarily by real page_view
 // events (views, unique visitors, true average active time from each
 // event's own stored activeMs — see analyticsService.js's ingestBatch),
@@ -323,6 +335,65 @@ export async function getPages({ from, to }) {
       conversion: pct(g.paid, g.entrances || g.views),
     }))
     .sort((a, b) => b.views - a.views);
+}
+
+// Spec section 24 — separates "which pages get traffic" from "which pages
+// make money," which a plain visits-per-page table can't answer on its
+// own. Scoped to organic sessions only (isOrganicSession above); paid/
+// direct/social traffic is already covered by Acquisition and Pages.
+export async function getSeoOverview({ from, to }) {
+  const [allSessions, paymentEvents] = await Promise.all([fetchSessionsInRange(from, to), fetchEventsInRange(from, to, ["payment_succeeded"])]);
+  const sessions = allSessions.filter(isOrganicSession);
+
+  const revenueByUid = new Map();
+  for (const e of paymentEvents) {
+    if (!e.uid) continue;
+    revenueByUid.set(e.uid, (revenueByUid.get(e.uid) || 0) + (e.props?.amountCents || 0));
+  }
+
+  const visitors = new Set(sessions.map((s) => s.visitorId));
+  const newVisitors = sessions.filter((s) => s.isNewVisitor).length;
+  const masters = sessions.filter((s) => s.hasMastered).length;
+  const paidSessions = sessions.filter((s) => s.hasPaid);
+  const revenue = paidSessions.reduce((sum, s) => sum + (s.uid ? revenueByUid.get(s.uid) || 0 : 0), 0) / 100;
+
+  const byPage = new Map();
+  for (const s of sessions) {
+    const key = s.landingPage || "/";
+    if (!byPage.has(key)) byPage.set(key, { path: key, visitors: new Set(), activeMsTotal: 0, uploads: 0, masters: 0, checkouts: 0, paid: 0, revenueCents: 0 });
+    const g = byPage.get(key);
+    g.visitors.add(s.visitorId);
+    g.activeMsTotal += s.activeMs || 0;
+    if (s.hasUploaded) g.uploads++;
+    if (s.hasMastered) g.masters++;
+    if (s.hasStartedCheckout) g.checkouts++;
+    if (s.hasPaid) {
+      g.paid++;
+      g.revenueCents += s.uid ? revenueByUid.get(s.uid) || 0 : 0;
+    }
+  }
+
+  return {
+    organicVisitors: visitors.size,
+    organicNewVisitors: newVisitors,
+    organicMasters: masters,
+    organicCustomers: paidSessions.length,
+    organicRevenue: revenue,
+    organicVisitorToPaid: pct(paidSessions.length, visitors.size),
+    pages: [...byPage.values()]
+      .map((g) => ({
+        path: g.path,
+        visitors: g.visitors.size,
+        avgActiveSeconds: g.visitors.size ? Math.round(g.activeMsTotal / g.visitors.size / 1000) : 0,
+        uploads: g.uploads,
+        masters: g.masters,
+        checkouts: g.checkouts,
+        paid: g.paid,
+        revenue: Math.round(g.revenueCents) / 100,
+        conversion: pct(g.paid, g.visitors.size),
+      }))
+      .sort((a, b) => b.visitors - a.visitors),
+  };
 }
 
 export async function getSales({ from, to }) {

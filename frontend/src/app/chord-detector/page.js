@@ -197,6 +197,9 @@ export default function ChordDetectorPage() {
               {TOOL_LANDING_PAGES[key].label} →
             </Link>
           ))}
+          <Link href="/lufs-meter" className="text-sm text-brass hover:text-ember">
+            LUFS Meter →
+          </Link>
         </div>
 
         <p className="m-0 mt-6 text-xs uppercase tracking-[0.12em] text-zinc-500">Once you know the chords, master the track</p>

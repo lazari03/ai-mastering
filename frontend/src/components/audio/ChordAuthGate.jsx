@@ -21,7 +21,7 @@ const fieldStyle =
  * (claimWithGoogle tries to link, transparently falls back to signing
  * into an existing account if that Google account already has one).
  */
-export default function ChordAuthGate({ onDone }) {
+export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow", titleKey = "chordGate.title", bodyKey = "chordGate.body" }) {
   const { t } = useLanguage();
   const { busy, error, signIn, claimWithEmail, claimWithGoogle, clearError } = useAuthStore();
   const [mode, setMode] = useState("signup"); // "signup" | "signin"
@@ -60,9 +60,9 @@ export default function ChordAuthGate({ onDone }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
     >
       <div className="w-full max-w-[380px] rounded-2xl border border-brass/25 bg-[#0f1113] p-6">
-        <p className="m-0 text-[11px] uppercase tracking-[0.18em] text-brass">{t("chordGate.eyebrow")}</p>
-        <h2 className="mt-2 font-[var(--font-title)] text-xl text-white">{t("chordGate.title")}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">{t("chordGate.body")}</p>
+        <p className="m-0 text-[11px] uppercase tracking-[0.18em] text-brass">{t(eyebrowKey)}</p>
+        <h2 className="mt-2 font-[var(--font-title)] text-xl text-white">{t(titleKey)}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-400">{t(bodyKey)}</p>
 
         <div className="mt-4 flex gap-1 rounded-full border border-white/10 bg-black/20 p-1">
           <button
