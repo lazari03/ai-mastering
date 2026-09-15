@@ -236,6 +236,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
       currency: "EUR",
       value: Number(String(STEM_SEPARATION.price).replace(/[^\d.]/g, "")) || 0,
       items: [{ item_id: STEM_SEPARATION.item, item_name: "stem_separation" }],
+      checkout_source: "studio",
     });
     try {
       const successUrl = `${window.location.origin}/thank-you?plan=stem_separation&item=${encodeURIComponent(STEM_SEPARATION.item)}&price=${encodeURIComponent(STEM_SEPARATION.price)}`;

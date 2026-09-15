@@ -116,6 +116,7 @@ export const useAuthStore = create((set) => ({
       return;
     }
     set({ busy: true, error: "" });
+    trackEvent("signup_started", { method: "password" });
     try {
       // Checked before the account is even created — catches an
       // undeliverable email (fake/typo'd domain) at signup instead of
@@ -157,6 +158,7 @@ export const useAuthStore = create((set) => ({
       }
 
       trackEvent("sign_up", { method: "password" });
+      trackEvent("signup_completed", { method: "password" });
       set({ busy: false });
     } catch (error) {
       set({ busy: false, error: readableAuthError(error) });
@@ -202,6 +204,7 @@ export const useAuthStore = create((set) => ({
           console.error("Failed to save profile details:", profileError);
         }
         trackEvent("sign_up", { method: "google" });
+        trackEvent("signup_completed", { method: "google" });
       } else {
         trackEvent("login", { method: "google" });
       }
@@ -246,6 +249,7 @@ export const useAuthStore = create((set) => ({
       return false;
     }
     set({ busy: true, error: "" });
+    trackEvent("signup_started", { method: "password" });
     const auth = getFirebaseAuth();
     const current = auth?.currentUser;
     try {
@@ -289,6 +293,7 @@ export const useAuthStore = create((set) => ({
       }
 
       trackEvent("sign_up", { method: "password" });
+      trackEvent("signup_completed", { method: "password" });
       set({ busy: false });
       return true;
     } catch (error) {
@@ -329,6 +334,7 @@ export const useAuthStore = create((set) => ({
             console.error("Failed to save profile details:", profileError);
           }
           trackEvent("sign_up", { method: "google" });
+          trackEvent("signup_completed", { method: "google" });
           void result;
         } catch (linkError) {
           const credential = GoogleAuthProvider.credentialFromError(linkError);
@@ -341,7 +347,9 @@ export const useAuthStore = create((set) => ({
         }
       } else {
         const result = await signInWithPopup(auth, getGoogleProvider());
-        trackEvent(getAdditionalUserInfo(result)?.isNewUser ? "sign_up" : "login", { method: "google" });
+        const isNewUser = Boolean(getAdditionalUserInfo(result)?.isNewUser);
+        trackEvent(isNewUser ? "sign_up" : "login", { method: "google" });
+        if (isNewUser) trackEvent("signup_completed", { method: "google" });
       }
       set({ busy: false });
       return true;

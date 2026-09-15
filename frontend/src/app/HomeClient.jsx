@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
@@ -21,6 +21,31 @@ import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
 import GenreShowcase from "@/components/marketing/GenreShowcase";
 import SectionHeading from "@/components/marketing/SectionHeading";
 import TruePeakMeter from "@/components/audio/TruePeakMeter";
+import { trackEvent } from "@/lib/analytics";
+
+// Fires pricing_view once the homepage's #pricing section actually enters
+// view, not just on page load — most visitors never scroll that far, so a
+// mount-time fire would wildly overcount "viewed pricing" against the
+// in-app Plans tab's (real) mount-time fire.
+function usePricingSectionView(ref) {
+  const fired = useRef(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof IntersectionObserver === "undefined") return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !fired.current) {
+          fired.current = true;
+          trackEvent("pricing_view", { source: "homepage" });
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.3 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [ref]);
+}
 
 const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
 const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -66,6 +91,8 @@ function FaqItem({ t, qKey }) {
 
 export default function HomeClient() {
   const { t } = useLanguage();
+  const pricingSectionRef = useRef(null);
+  usePricingSectionView(pricingSectionRef);
 
   return (
     <>
@@ -230,7 +257,7 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section id="pricing" className="reveal mt-24 scroll-mt-24">
+      <section id="pricing" ref={pricingSectionRef} className="reveal mt-24 scroll-mt-24">
         <SectionHeading eyebrow={t("pricing.eyebrow")} title={t("pricing.title")} subtitle={t("pricing.subtitle")} />
 
         <div className="mt-9 grid gap-5 lg:grid-cols-3">

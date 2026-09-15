@@ -9,6 +9,7 @@ import FileDropzone from "@/components/ui/FileDropzone";
 import { useAuthStore } from "@/store/authStore";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { stashPendingChordResult, stashPendingChordFile } from "@/lib/chordHandoff";
+import { trackEvent } from "@/lib/analytics";
 import { useLanguage } from "@/lib/i18n";
 
 /**
@@ -49,6 +50,11 @@ export default function PublicChordDetector() {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    trackEvent("free_tool_opened", { source_tool: "chord_detector" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (loading) return;

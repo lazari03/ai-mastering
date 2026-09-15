@@ -2,6 +2,13 @@ import { create } from "zustand";
 
 import { fetchCatalog, importPreset, deletePreset, runMasteringJob, analyzeAudio, previewParams } from "@/domain/mastering/masteringDomain";
 import { mapAdaptiveParamsToProParams } from "@/domain/mastering/adaptiveToProParams";
+import { trackEvent } from "@/lib/analytics";
+import { useAuthStore } from "@/store/authStore";
+
+function currentAuthState() {
+  const user = useAuthStore.getState().user;
+  return user ? (user.isAnonymous ? "anonymous" : "authenticated") : "anonymous";
+}
 
 const EMPTY_TWEAKS = {
   low_end: 0,
@@ -138,7 +145,7 @@ export const useMasteringStore = create((set, get) => ({
     }
   },
 
-  setFile(file) {
+  setFile(file, sourceTool = "studio") {
     // New file invalidates any analysis/preview from the previous one —
     // clear both immediately (stale numbers for a track that's no longer
     // selected are worse than no numbers) rather than waiting for the new
@@ -152,14 +159,21 @@ export const useMasteringStore = create((set, get) => ({
       analyzeError: "",
       previewUnavailable: false,
     });
-    if (file) get().analyzeCurrentFile();
+    if (file) {
+      trackEvent("audio_upload_started", {
+        source_tool: sourceTool,
+        file_type: file.type || "unknown",
+        authenticated: currentAuthState(),
+      });
+      get().analyzeCurrentFile(sourceTool);
+    }
   },
 
   // Fires once per file selection — the one real audio-decode call the
   // whole live-preview feature needs. Everything after this (every genre/
   // style/category/flavour/tweak change) is pure math against the result,
   // via refreshPreviewParams() below.
-  async analyzeCurrentFile() {
+  async analyzeCurrentFile(sourceTool = "studio") {
     const file = get().file;
     if (!file) return;
     set({ isAnalyzing: true, analyzeError: "" });
@@ -170,6 +184,11 @@ export const useMasteringStore = create((set, get) => ({
       // with a stale response.
       if (get().file !== file) return;
       set({ analysis, isAnalyzing: false });
+      trackEvent("audio_upload_completed", {
+        source_tool: sourceTool,
+        file_type: file.type || "unknown",
+        authenticated: currentAuthState(),
+      });
       get().refreshPreviewParams();
     } catch (err) {
       if (get().file !== file) return;
@@ -472,6 +491,15 @@ export const useMasteringStore = create((set, get) => ({
       result: null,
     });
 
+    const masteringMode = referenceMode ? "reference" : state.mode;
+    const startedAt = Date.now();
+    trackEvent("master_started", {
+      mastering_mode: masteringMode,
+      tier: state.tier,
+      preview,
+      authenticated: currentAuthState(),
+    });
+
     try {
       const usingSavedPreset = Boolean(state.selectedPreset);
       // Reference mode always uses the adaptive engine (spectral matching
@@ -503,11 +531,26 @@ export const useMasteringStore = create((set, get) => ({
         status: preview ? "Preview ready." : "Mastering complete.",
         result: response,
       });
+      trackEvent("master_completed", {
+        mastering_mode: masteringMode,
+        tier: state.tier,
+        preview,
+        authenticated: currentAuthState(),
+        processing_duration_ms: Date.now() - startedAt,
+      });
     } catch (err) {
       set({
         isSubmitting: false,
         status: "",
         error: err.message || "Mastering failed",
+      });
+      trackEvent("master_failed", {
+        mastering_mode: masteringMode,
+        tier: state.tier,
+        preview,
+        authenticated: currentAuthState(),
+        processing_duration_ms: Date.now() - startedAt,
+        error_reason: err?.status ? `http_${err.status}` : "unknown",
       });
     }
   },

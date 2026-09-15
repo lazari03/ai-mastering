@@ -30,7 +30,7 @@ export default function ChordsPanel({ onOpenBilling, onMasterThisSong }) {
 
   const masterThisSong = () => {
     if (!file) return;
-    setMasteringFile(file);
+    setMasteringFile(file, "chord_detector");
     onMasterThisSong?.();
   };
 

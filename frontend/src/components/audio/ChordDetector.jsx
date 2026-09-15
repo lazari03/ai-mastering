@@ -9,7 +9,7 @@ import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
-export default function ChordDetector({ file, previewUrl, onOpenBilling, onMasterThisSong, onAnalysisResult, initialAnalysis = null }) {
+export default function ChordDetector({ file, previewUrl, onOpenBilling, onMasterThisSong, onAnalysisResult, initialAnalysis = null, sourceTool = "chord_detector" }) {
   const { t } = useLanguage();
   // initialAnalysis: a result computed elsewhere and handed off here — see
   // ChordsPanel.jsx's sessionStorage pickup for the public chord
@@ -51,6 +51,13 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling, onMaste
       // the balance shown here (and everywhere else) reflects it
       // immediately, same discipline as a real master completing.
       if (!chordsUnlimited) refresh();
+      // Only fired when onAnalysisResult is set — that's PublicChordDetector's
+      // signal that this run happened on the public, logged-out-friendly
+      // free tool, not the in-app Chords tab (an already-authenticated,
+      // non-funnel context).
+      if (onAnalysisResult) {
+        trackEvent("free_tool_analysis_completed", { source_tool: sourceTool });
+      }
       // Optional — only PublicChordDetector.jsx passes this, to know when
       // to show its login/signup gate over the result. Every other caller
       // (the in-app Chords tab) leaves it unset.
@@ -73,6 +80,7 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling, onMaste
       currency: "EUR",
       value: Number(String(product.price).replace(/[^\d.]/g, "")) || 0,
       items: [{ item_id: product.item, item_name: planLabel }],
+      checkout_source: sourceTool,
     });
     try {
       const successUrl = `${window.location.origin}/thank-you?plan=${planLabel}&item=${encodeURIComponent(product.item)}&price=${encodeURIComponent(product.price)}`;
@@ -218,7 +226,7 @@ export default function ChordDetector({ file, previewUrl, onOpenBilling, onMaste
               <button
                 type="button"
                 onClick={() => {
-                  trackEvent("chord_detector_master_cta");
+                  trackEvent("free_tool_master_cta_clicked", { source_tool: sourceTool });
                   onMasterThisSong();
                 }}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brass px-5 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-[#100b08] transition hover:brightness-110"

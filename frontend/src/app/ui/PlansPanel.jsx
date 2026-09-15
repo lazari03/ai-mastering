@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { postCheckout, postChangePlan, postBillingPortal } from "@/network/http/client";
 import { PLANS, PLAN_ORDER, SINGLE_MASTER, CHORD_DETECTION, CHORDS_MONTHLY, STEM_SEPARATION } from "@/lib/pricing";
@@ -53,6 +53,10 @@ export default function PlansPanel() {
   const [checkoutError, setCheckoutError] = useState("");
   const [changeStatus, setChangeStatus] = useState("");
 
+  useEffect(() => {
+    trackEvent("pricing_view", { source: "app_plans_tab" });
+  }, []);
+
   // planKey/price are threaded through the success URL so /thank-you can
   // fire a client-side GA4 "purchase" event as a fallback — the real,
   // reliable copy of that event now fires server-side from the Polar
@@ -66,7 +70,12 @@ export default function PlansPanel() {
     setBusyItem(item);
     setCheckoutError("");
     setChangeStatus("");
-    trackEvent("begin_checkout", { currency: "EUR", value: Number(String(priceLabel).replace(/[^\d.]/g, "")) || 0, items: [{ item_id: item, item_name: planKey }] });
+    trackEvent("begin_checkout", {
+      currency: "EUR",
+      value: Number(String(priceLabel).replace(/[^\d.]/g, "")) || 0,
+      items: [{ item_id: item, item_name: planKey }],
+      checkout_source: "app_plans_tab",
+    });
     try {
       if (currentPlan && currentPlan !== "free") {
         const { immediate } = await postChangePlan(item);
@@ -95,6 +104,7 @@ export default function PlansPanel() {
       currency: "EUR",
       value: Number(String(product.price).replace(/[^\d.]/g, "")) || 0,
       items: [{ item_id: product.item, item_name: planLabel }],
+      checkout_source: "app_plans_tab",
     });
     try {
       const successUrl = `${window.location.origin}/thank-you?plan=${planLabel}&item=${encodeURIComponent(product.item)}&price=${encodeURIComponent(product.price)}`;

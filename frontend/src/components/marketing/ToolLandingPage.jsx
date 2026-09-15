@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import Footer from "@/components/Footer";
+import ToolLandingAnalytics from "@/components/marketing/ToolLandingAnalytics";
 import { CHORD_DETECTION, CHORDS_MONTHLY, PLANS } from "@/lib/pricing";
 import { CTA, CHORD_DETECTOR_RELATED_GENRES, CHORD_DETECTOR_URL } from "@/lib/internalLinks";
 import { GENRE_PAGES } from "@/content/genrePages";
@@ -39,6 +40,7 @@ export default function ToolLandingPage({ slug, page }) {
   return (
     <>
     <main className="mx-auto w-full max-w-[900px] px-4 pb-24 pt-8 sm:px-6">
+      <ToolLandingAnalytics slug={slug} />
       <JsonLd data={serviceJsonLd()} />
       <JsonLd data={faqJsonLd(page.faq)} />
 
