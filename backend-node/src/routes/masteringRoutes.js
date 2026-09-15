@@ -163,7 +163,7 @@ router.get("/categories", (_req, res) => {
 
 router.post("/profile", async (req, res) => {
   try {
-    const saved = await saveProfile(req.user.uid, req.body || {}, req.user.email);
+    const saved = await saveProfile(req.user.uid, req.body || {}, req.user.email, req.user.signInProvider);
     return res.json(saved);
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to save profile" });

@@ -1,6 +1,7 @@
 import { getFirestore } from "../config/firebase.js";
 import { notifyNewRegistration } from "./telegramService.js";
 import { sendWelcomeEmail } from "./brevoService.js";
+import { recordServerEvent } from "./analyticsService.js";
 
 // User profile lives in Firestore at users/{uid} — the same document whose
 // "artists" subcollection holds Saved Artists (see customPresetsService.js)
@@ -13,7 +14,7 @@ function userDoc(uid) {
   return getFirestore().collection("users").doc(uid);
 }
 
-export async function saveProfile(uid, profile, email) {
+export async function saveProfile(uid, profile, email, signInProvider = null) {
   if (!uid) {
     throw new Error("Profile requires a signed-in user");
   }
@@ -66,6 +67,16 @@ export async function saveProfile(uid, profile, email) {
     // errors (see brevoService.js), an unset BREVO_API_KEY just means no
     // email goes out, signup itself is never blocked either way.
     if (email) sendWelcomeEmail(email, profile.firstName);
+    // Backend-authoritative — previously the "sign_up" analytics event
+    // fired unconditionally from the client the moment the Firebase Auth
+    // call resolved, regardless of whether this Firestore write (the one
+    // above, right here) actually succeeded. That let analytics report a
+    // signup with no matching users/{uid} doc, no Telegram notification,
+    // and no welcome email — the exact same trust gap the payment/
+    // mastering events were made server-authoritative to close (see
+    // analyticsService.js). Recording it here instead means "sign_up" in
+    // analytics can only ever mean this write actually landed.
+    recordServerEvent("sign_up", { uid, props: { method: signInProvider === "google.com" ? "google" : "password" } });
   }
 
   return record;

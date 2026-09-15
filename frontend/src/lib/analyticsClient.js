@@ -51,8 +51,6 @@ const KNOWN_EVENT_NAMES = new Set([
   "download_completed",
   "download_failed",
   "signup_started",
-  "signup_completed",
-  "sign_up",
   "login",
   "login_completed",
   "pricing_view",

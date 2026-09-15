@@ -50,8 +50,6 @@ export const ALLOWED_EVENT_NAMES = new Set([
   "download_completed",
   "download_failed",
   "signup_started",
-  "signup_completed",
-  "sign_up",
   "login",
   "login_completed",
   "pricing_view",
@@ -72,6 +70,7 @@ export const ALLOWED_EVENT_NAMES = new Set([
 // only ever written directly by server code that just observed the real
 // outcome itself (spec section 9: "sales must be server authoritative").
 export const SERVER_ONLY_EVENT_NAMES = new Set([
+  "sign_up",
   "payment_succeeded",
   "payment_failed",
   "refund_created",

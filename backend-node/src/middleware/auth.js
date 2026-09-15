@@ -101,7 +101,7 @@ export async function requireAuth(req, res, next) {
       }
     }
 
-    req.user = { uid: decoded.uid, email: decoded.email || null, isAnonymous };
+    req.user = { uid: decoded.uid, email: decoded.email || null, isAnonymous, signInProvider: decoded.firebase?.sign_in_provider || null };
     return next();
   } catch (error) {
     // Covers expired token, malformed token, wrong project, revoked token.

@@ -157,8 +157,6 @@ export const useAuthStore = create((set) => ({
         console.error("Failed to save profile details:", profileError);
       }
 
-      trackEvent("sign_up", { method: "password" });
-      trackEvent("signup_completed", { method: "password" });
       set({ busy: false });
     } catch (error) {
       set({ busy: false, error: readableAuthError(error) });
@@ -203,8 +201,6 @@ export const useAuthStore = create((set) => ({
         } catch (profileError) {
           console.error("Failed to save profile details:", profileError);
         }
-        trackEvent("sign_up", { method: "google" });
-        trackEvent("signup_completed", { method: "google" });
       } else {
         trackEvent("login", { method: "google" });
       }
@@ -292,8 +288,6 @@ export const useAuthStore = create((set) => ({
         console.error("Failed to save profile details:", profileError);
       }
 
-      trackEvent("sign_up", { method: "password" });
-      trackEvent("signup_completed", { method: "password" });
       set({ busy: false });
       return true;
     } catch (error) {
@@ -333,8 +327,6 @@ export const useAuthStore = create((set) => ({
           } catch (profileError) {
             console.error("Failed to save profile details:", profileError);
           }
-          trackEvent("sign_up", { method: "google" });
-          trackEvent("signup_completed", { method: "google" });
           void result;
         } catch (linkError) {
           const credential = GoogleAuthProvider.credentialFromError(linkError);
@@ -348,8 +340,7 @@ export const useAuthStore = create((set) => ({
       } else {
         const result = await signInWithPopup(auth, getGoogleProvider());
         const isNewUser = Boolean(getAdditionalUserInfo(result)?.isNewUser);
-        trackEvent(isNewUser ? "sign_up" : "login", { method: "google" });
-        if (isNewUser) trackEvent("signup_completed", { method: "google" });
+        if (!isNewUser) trackEvent("login", { method: "google" });
       }
       set({ busy: false });
       return true;
