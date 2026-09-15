@@ -18,7 +18,7 @@ const COOLDOWN_MS = 30 * 24 * 3600 * 1000;
 // reading this page," not "glanced and bounced."
 const SCROLL_TRIGGER_RATIO = 0.6;
 
-const EXCLUDED_PREFIXES = ["/app", "/login", "/newsletter", "/shared"];
+const EXCLUDED_PREFIXES = ["/app", "/login", "/newsletter", "/shared", "/admin"];
 
 function isEligiblePath(pathname) {
   return !EXCLUDED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
