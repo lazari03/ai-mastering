@@ -4,6 +4,7 @@ import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks"
 import { settings } from "../config/settings.js";
 import { getFirestore } from "../config/firebase.js";
 import { notifyPurchase } from "./telegramService.js";
+import { recordServerEvent } from "./analyticsService.js";
 
 // Polar is a Merchant of Record — it handles global VAT/sales tax, so we
 // never register in any jurisdiction ourselves. Subscription state is
@@ -281,6 +282,18 @@ export async function applyWebhookEvent(event) {
   if (event.type === "order.paid") {
     return applyOrderPaidEvent(event);
   }
+  // Not verified against Polar's live event taxonomy from this codebase
+  // (no refund flow was wired up before this) — "order.refunded" is
+  // Polar's documented name as of this writing, but if their dashboard
+  // shows a different literal event.type for a refund, this is the one
+  // line to fix, not a structural change.
+  if (event.type === "order.refunded") {
+    const order = event.data;
+    const uid = order.customer?.externalId;
+    if (uid) {
+      recordServerEvent("refund_created", { uid, props: { amountCents: order.refundedAmount || order.totalAmount, currency: order.currency } });
+    }
+  }
 }
 
 // Shared by the webhook handler and reconciliation below — one place that
@@ -344,6 +357,19 @@ async function applySubscriptionEvent(event) {
       amountCents: sub.amount,
       currency: sub.currency,
     });
+    recordServerEvent("subscription_created", { uid, props: { plan: field, amountCents: sub.amount, currency: sub.currency } });
+    recordServerEvent("payment_succeeded", { uid, props: { plan: field, amountCents: sub.amount, currency: sub.currency, kind: "subscription" } });
+  } else {
+    // Polar's event taxonomy beyond "created" isn't fully enumerated in
+    // this codebase — best-effort mapping from the resulting status
+    // rather than the specific event.type, since that's what's actually
+    // known to be reliable here. If Polar's dashboard shows event types
+    // this doesn't distinguish well (e.g. a genuine renewal vs. a plan
+    // change both landing as "active"), that's a documented limitation,
+    // not a silent guess passed off as certain.
+    const statusEventMap = { active: "subscription_renewed", canceled: "subscription_cancelled", past_due: "subscription_expired", expired: "subscription_expired" };
+    const mapped = statusEventMap[sub.status];
+    if (mapped) recordServerEvent(mapped, { uid, props: { plan: field } });
   }
 }
 
@@ -398,6 +424,7 @@ async function applyOrderPaidEvent(event) {
       amountCents: order.totalAmount,
       currency: order.currency,
     });
+    recordServerEvent("payment_succeeded", { uid, props: { plan: creditField, amountCents: order.totalAmount, currency: order.currency, kind: "one_time" } });
   }
 }
 

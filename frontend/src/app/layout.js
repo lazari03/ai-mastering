@@ -19,6 +19,10 @@ import "./globals.css";
 // resolves regardless, so a few hundred ms of extra delay before that
 // resolves is invisible, not a regression.
 const AuthInit = dynamic(() => import("./AuthInit"), { ssr: false });
+// Same reasoning as AuthInit — this only ever does anything in a real
+// browser (localStorage, document.visibilityState, sendBeacon), so it
+// costs every static marketing page nothing to load client-side, post-hydration.
+const AnalyticsPageTracker = dynamic(() => import("@/components/AnalyticsPageTracker"), { ssr: false });
 
 const titleFont = Space_Grotesk({
   subsets: ["latin"],
@@ -74,6 +78,7 @@ export default function RootLayout({ children }) {
       <body className={`${titleFont.variable} ${bodyFont.variable}`}>
         <LanguageProvider>
           <AuthInit />
+          <AnalyticsPageTracker />
           <Analytics />
           <TopBanner skipAppRoute />
           {children}

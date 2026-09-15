@@ -38,6 +38,7 @@ import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { subscribeToNewsletter } from "../services/newsletterService.js";
 import { getAuth } from "../config/firebase.js";
 import { expensiveLimiter } from "../middleware/rateLimit.js";
+import { recordServerEvent, normalizeMasteringFailure } from "../services/analyticsService.js";
 import { mintDownloadToken, mintShareToken, verifyShareToken } from "../services/downloadTokenService.js";
 
 const router = express.Router();
@@ -349,8 +350,10 @@ router.post("/billing/checkout", async (req, res) => {
   }
   try {
     const url = await createCheckoutUrl(req.user.uid, req.user.email, productKey, req.body?.success_url);
+    recordServerEvent("checkout_started", { uid: req.user.uid, props: { plan: productKey } });
     return res.json({ url });
   } catch (error) {
+    recordServerEvent("checkout_failed", { uid: req.user.uid, props: { plan: productKey, reason: "provider_error" } });
     return res.status(400).json({ detail: error?.message || "Failed to start checkout" });
   }
 });
@@ -530,6 +533,16 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
   const preview = req.body.preview === "true";
   const tier = !preview && req.body.tier === "professional" ? "professional" : "standard";
   const useStemSeparation = !preview && req.body.use_stem_separation === "true";
+
+  // Backend-authoritative mastering outcome (spec section 1/9) — the
+  // frontend's own master_started/completed/failed (masteringStore.js)
+  // measure UX timing and drive the funnel's session flags; these are the
+  // ground truth for "did the job actually succeed" and "why did it fail",
+  // recorded from the one place that actually knows.
+  const masteringStartedAt = Date.now();
+  if (!preview) {
+    recordServerEvent("master_started", { uid: req.user.uid, props: { tier, mastering_mode: useStemSeparation ? "stems" : "standard" } });
+  }
 
   // Two plans + Free (see PRICING.md): Free (3 Standard masters TOTAL —
   // a one-time trial, not a monthly allowance, no Professional tier, no
@@ -771,8 +784,25 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
       }
     }
 
+    if (!preview) {
+      recordServerEvent("master_completed", {
+        uid: req.user.uid,
+        props: { tier, mastering_mode: useStemSeparation ? "stems" : "standard", processing_duration_ms: Date.now() - masteringStartedAt },
+      });
+    }
     return res.json({ ...result, preview });
   } catch (error) {
+    if (!preview) {
+      recordServerEvent("master_failed", {
+        uid: req.user.uid,
+        props: {
+          tier,
+          mastering_mode: useStemSeparation ? "stems" : "standard",
+          processing_duration_ms: Date.now() - masteringStartedAt,
+          reason: normalizeMasteringFailure(error),
+        },
+      });
+    }
     return res.status(400).json({ detail: error?.message || "Mastering failed" });
   }
 });
@@ -789,9 +819,11 @@ router.post("/analyze-chords", expensiveLimiter, upload.single("file"), async (r
 
   try {
     const result = await analyzeChords(req.file);
+    recordServerEvent("analysis_completed", { uid: req.user.uid, props: { source_tool: "chord_detector" } });
     return res.json(result);
   } catch (error) {
     const detail = error?.stderr || error?.message || "Chord detection failed";
+    recordServerEvent("analysis_failed", { uid: req.user.uid, props: { source_tool: "chord_detector", reason: normalizeMasteringFailure(error) } });
     return res.status(500).json({ detail });
   }
 });

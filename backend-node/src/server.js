@@ -9,6 +9,7 @@ import { generalLimiter } from "./middleware/rateLimit.js";
 import { verifyDownloadToken } from "./services/downloadTokenService.js";
 import masteringRoutes from "./routes/masteringRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
 import { reconcileAllSubscriptions } from "./services/polarService.js";
 import { startBot as startTelegramBot } from "./services/telegramService.js";
 
@@ -92,14 +93,21 @@ app.use(generalLimiter);
 // homepage visitor, not just a signed-in user), /admin/* (gated instead
 // by requireAdminKey in masteringRoutes.js), /webhooks/* (gated by
 // signature verification, handled above and already responded to by the
-// time a request would reach here), and /shared/* — a share link is
+// time a request would reach here), /shared/* — a share link is
 // explicitly meant for someone with no account at all; it's gated by its
-// own ?token= instead (verifyShareToken, inside the route itself).
+// own ?token= instead (verifyShareToken, inside the route itself) — and
+// /analytics/collect, the one first-party-analytics ingestion endpoint
+// that must accept a request from a visitor with literally no Firebase
+// interaction yet (a first page view, before even anonymous sign-in
+// exists). /analytics/admin/* is deliberately NOT listed here — it's a
+// real authenticated + role-checked admin surface (requireAdmin.js), and
+// naming it "/admin/..." would have wrongly matched the bypass above.
 app.use((req, res, next) => {
   if (
     req.path === "/health" ||
     req.path === "/validate-email" ||
     req.path === "/newsletter/subscribe" ||
+    req.path === "/analytics/collect" ||
     req.path.startsWith("/admin/") ||
     req.path.startsWith("/webhooks/") ||
     req.path.startsWith("/shared/")
@@ -119,6 +127,7 @@ app.use((req, res, next) => {
 });
 
 app.use("/", masteringRoutes);
+app.use("/", analyticsRoutes);
 
 // Without this, anything thrown/passed to next(err) that a route didn't
 // catch itself (a multer file-filter rejection, a body-size overflow, a

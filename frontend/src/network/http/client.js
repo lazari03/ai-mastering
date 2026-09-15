@@ -231,6 +231,18 @@ export async function postBillingPortal() {
   return request("/billing/portal", { method: "POST" });
 }
 
+// Private admin analytics dashboard (/admin/analytics/*) — every one of
+// these hits /analytics/admin/*, which requireAuth (this same Bearer
+// token, attached automatically above) AND requireAdmin (role === "admin"
+// on the caller's own Firestore user doc, checked server-side) both gate.
+// A non-admin gets a real 403 from the backend, same as any other blocked
+// request through this client — nothing about admin access is decided
+// here on the frontend.
+export async function getAdminAnalytics(path, params = {}) {
+  const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ""))).toString();
+  return request(`/analytics/admin${path}${qs ? `?${qs}` : ""}`);
+}
+
 // Public — works for a signed-out visitor too (see server.js's auth
 // gate), so this deliberately doesn't rely on authHeader() finding a
 // user. source is just a free-text tag ("footer", "newsletter-page") for

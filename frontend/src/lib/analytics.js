@@ -1,11 +1,12 @@
-// Every third-party tracker (Google Analytics, Meta Pixel, TikTok Pixel)
-// has been removed from this app. trackEvent() is kept as a no-op stub
-// rather than deleted, since dozens of call sites across the app
-// (authStore.js, PlansPanel.jsx, masteringStore.js, ChordDetector.jsx,
-// HomeClient.jsx, SiteHeader.jsx, ToolLandingAnalytics.jsx,
-// PublicChordDetector.jsx, ...) already call it at exactly the funnel
-// moments worth measuring — ripping those out would mean re-instrumenting
-// all of them from scratch the next time this app gets any analytics
-// destination (first-party or otherwise). For now, every call here goes
-// nowhere and does nothing.
-export function trackEvent() {}
+import { track } from "./analyticsClient";
+
+// Every call site across the app (authStore.js, PlansPanel.jsx,
+// masteringStore.js, ChordDetector.jsx, HomeClient.jsx, SiteHeader.jsx,
+// ToolLandingAnalytics.jsx, PublicChordDetector.jsx, ...) already calls
+// trackEvent() at exactly the funnel moments worth measuring — this is
+// now the one place that forwards those calls into the first-party
+// analytics pipeline (analyticsClient.js -> /analytics/collect ->
+// Firestore), replacing what used to go to Google Analytics/Meta/TikTok.
+export function trackEvent(name, params = {}) {
+  track(name, params);
+}

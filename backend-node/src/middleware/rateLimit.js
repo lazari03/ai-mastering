@@ -40,3 +40,20 @@ export const expensiveLimiter = rateLimit({
   keyGenerator: keyByUidOrIp,
   message: { detail: "Too many render requests — wait a few minutes before trying again." },
 });
+
+// First-party analytics ingestion (/analytics/collect) — public and
+// anonymous by design (most page views happen before any Firebase
+// interaction at all, see analyticsRoutes.js), so this is the one route
+// that can never key by uid. IP-only, generous enough for a real visitor's
+// batched heartbeat/event traffic across a normal session, but low enough
+// to block a script from turning this into an unbounded write sink (see
+// SECURITY notes in analyticsService.js for the payload-shape validation
+// that does the rest of that job).
+export const analyticsCollectLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.ip),
+  message: { detail: "Too many analytics requests." },
+});

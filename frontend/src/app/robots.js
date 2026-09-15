@@ -26,7 +26,14 @@ import { SITE_URL } from "@/lib/seo";
 // only bites when a URL is already in the index and needs the noindex read
 // to get *out*. If one of these ever does show up in search results,
 // remove it from this list temporarily so the noindex can be crawled.
-const DISALLOW = ["/app", "/thank-you", "/shared/"];
+// /admin is the private first-party analytics dashboard (spec section
+// 14/35) — disallowed here for the same "don't even fetch it" reason as
+// the other three, but this is belt-and-suspenders, NOT the actual
+// security boundary: every /admin/analytics/* page requires a signed-in
+// account, and every /analytics/admin/* API it calls independently
+// verifies role === "admin" server-side (requireAdmin.js). A crawler that
+// ignored this file entirely would still get nothing without both of those.
+const DISALLOW = ["/app", "/thank-you", "/shared/", "/admin"];
 
 // Explicitly named so a future tightening of the "*" group can't silently
 // take AI answer engines with it. Being cited by ChatGPT/Perplexity/Claude

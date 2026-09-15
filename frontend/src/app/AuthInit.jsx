@@ -4,6 +4,7 @@ import { useEffect } from "react";
 
 import { useAuthStore } from "@/store/authStore";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { identify } from "@/lib/analyticsClient";
 
 // Subscribes to Firebase's auth state once, globally, for the whole app —
 // mounted in the root layout so every page (including the public landing
@@ -75,6 +76,11 @@ export default function AuthInit() {
       const hasUser = Boolean(state.user);
       if (hasUser && !hadUser) recordActivity();
       hadUser = hasUser;
+      // Links the anonymous visitor identity to the real account uid once
+      // signed in (spec section 2) — never an anonymous Firebase uid, since
+      // that's a disposable pre-registration identity, not a real user to
+      // attribute analytics to.
+      identify(state.user && !state.user.isAnonymous ? state.user.uid : null);
     });
 
     ACTIVITY_EVENTS.forEach((event) => window.addEventListener(event, recordActivity, { passive: true }));

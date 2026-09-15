@@ -33,11 +33,17 @@ export default function LoginClient() {
   const [phone, setPhone] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
 
+  // ?redirect=/admin/analytics (or any other in-app path) sends someone
+  // back where they actually meant to go instead of always landing on
+  // /app — used by the admin dashboard's own auth gate (AdminAuthGate.jsx)
+  // when it bounces a signed-out visitor here. Only ever a same-origin,
+  // in-app path (starts with "/"), never an external redirect target.
+  const redirectTo = searchParams.get("redirect");
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/app");
+      router.replace(redirectTo && redirectTo.startsWith("/") ? redirectTo : "/app");
     }
-  }, [loading, user, router]);
+  }, [loading, user, router, redirectTo]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
