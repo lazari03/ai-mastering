@@ -3,7 +3,16 @@ import { getFirestore } from "../config/firebase.js";
 // Aliased — this file already has its own resolveRange(argRaw) for the
 // older /stats command's simpler today/7d/30d shape; this is analyticsQueryService.js's
 // version (accepts the full admin-dashboard preset set, used by /funnel below).
-import { resolveRange as resolveAnalyticsRange, getOverview } from "./analyticsQueryService.js";
+import {
+  resolveRange as resolveAnalyticsRange,
+  getOverview,
+  getAcquisition,
+  getPages,
+  getSeoOverview,
+  getSales,
+  getErrors,
+  getRetention,
+} from "./analyticsQueryService.js";
 
 const API_BASE = "https://api.telegram.org";
 
@@ -67,11 +76,20 @@ export async function notifyPurchase({ kind, product, email, amountCents, curren
 // separate, purely traffic-level tool this bot doesn't query.
 // ---------------------------------------------------------------------
 
+// One command per admin dashboard tab (/admin/analytics/*) — same
+// analyticsQueryService.js functions, same numbers, so this bot never
+// shows fewer stats than opening the dashboard on a laptop would.
 const HELP_TEXT = [
   "Auralith Forge bot",
   "",
   "/stats [today|7d|30d] - signups and purchases (default 7d)",
   "/funnel [today|yesterday|7d|30d|90d] - visitors, uploads, masters, checkout, revenue (default 7d)",
+  "/acquisition [preset] - visitors/masters/revenue by source",
+  "/pages [preset] - views/active time/conversion per page",
+  "/seo [preset] - organic-only overview + top landing pages (default 30d)",
+  "/sales [preset] - revenue, subscriptions, checkout, failure reasons",
+  "/errors [preset] - upload/mastering/checkout failures",
+  "/retention [preset] - unique vs returning visitors (default 30d)",
   "/help - this message",
 ].join("\n");
 
@@ -192,6 +210,145 @@ async function handleFunnel(argRaw) {
   ].join("\n");
 }
 
+function normalizePreset(argRaw, fallback = "7d") {
+  return FUNNEL_PRESETS.has((argRaw || "").toLowerCase()) ? argRaw.toLowerCase() : fallback;
+}
+
+// The rest of these mirror the admin dashboard's other tabs 1:1 (same
+// analyticsQueryService.js functions, same numbers) — this bot is meant
+// to be a full second surface onto that dashboard, not just an Overview
+// summary, so checking Auralith from Telegram never means fewer numbers
+// than opening /admin/analytics on a laptop.
+
+async function handleAcquisition(argRaw) {
+  const preset = normalizePreset(argRaw);
+  let rows;
+  try {
+    rows = await getAcquisition(resolveAnalyticsRange({ preset }));
+  } catch (error) {
+    console.error("Telegram /acquisition query failed:", error);
+    return "Couldn't load acquisition data — see server logs.";
+  }
+  if (!rows.length) return `Acquisition - ${preset}\n\nNo sessions in this period.`;
+  const lines = [`Acquisition - ${preset}`, ""];
+  for (const r of rows.slice(0, 8)) {
+    lines.push(`${r.source}: ${r.visitors} visitors, ${r.masters} masters, ${r.customers} paid (${r.conversion}%), €${r.revenue.toFixed(2)}`);
+  }
+  return lines.join("\n");
+}
+
+async function handlePages(argRaw) {
+  const preset = normalizePreset(argRaw);
+  let rows;
+  try {
+    rows = await getPages(resolveAnalyticsRange({ preset }));
+  } catch (error) {
+    console.error("Telegram /pages query failed:", error);
+    return "Couldn't load pages data — see server logs.";
+  }
+  if (!rows.length) return `Pages - ${preset}\n\nNo page views in this period.`;
+  const lines = [`Pages - ${preset}`, ""];
+  for (const r of rows.slice(0, 8)) {
+    lines.push(`${r.path}: ${r.views} views, ${r.uniqueVisitors} visitors, ${r.avgActiveSeconds}s active, ${r.paid} paid (${r.conversion}%)`);
+  }
+  return lines.join("\n");
+}
+
+async function handleSeo(argRaw) {
+  const preset = normalizePreset(argRaw, "30d");
+  let data;
+  try {
+    data = await getSeoOverview(resolveAnalyticsRange({ preset }));
+  } catch (error) {
+    console.error("Telegram /seo query failed:", error);
+    return "Couldn't load SEO data — see server logs.";
+  }
+  const lines = [
+    `SEO (organic) - ${preset}`,
+    "",
+    `Organic visitors: ${data.organicVisitors}`,
+    `Organic new visitors: ${data.organicNewVisitors}`,
+    `Organic masters: ${data.organicMasters}`,
+    `Organic customers: ${data.organicCustomers}`,
+    `Organic revenue: €${data.organicRevenue.toFixed(2)}`,
+    `Visitor -> Paid: ${data.organicVisitorToPaid}%`,
+  ];
+  if (data.pages.length) {
+    lines.push("", "Top organic landing pages:");
+    for (const r of data.pages.slice(0, 5)) {
+      lines.push(`${r.path}: ${r.visitors} visitors, ${r.paid} paid, €${r.revenue.toFixed(2)}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+async function handleSales(argRaw) {
+  const preset = normalizePreset(argRaw);
+  let data;
+  try {
+    data = await getSales(resolveAnalyticsRange({ preset }));
+  } catch (error) {
+    console.error("Telegram /sales query failed:", error);
+    return "Couldn't load sales data — see server logs.";
+  }
+  const lines = [
+    `Sales - ${preset}`,
+    "",
+    `Revenue: €${data.revenue.toFixed(2)}`,
+    `New customers: ${data.newCustomers}`,
+    `Subscriptions created: ${data.subscriptionsCreated}`,
+    `Renewals: ${data.renewals}`,
+    `Cancellations: ${data.cancellations}`,
+    `Refunds: ${data.refunds}`,
+    "",
+    `Checkout started: ${data.checkout.started}`,
+    `Checkout succeeded: ${data.checkout.succeeded}`,
+    `Checkout failed: ${data.checkout.failed}`,
+    `Checkout abandoned: ${data.checkout.abandoned}`,
+  ];
+  if (data.failureReasons.length) {
+    lines.push("", "Checkout failure reasons:");
+    for (const r of data.failureReasons.slice(0, 6)) lines.push(`${r.reason}: ${r.count}`);
+  }
+  return lines.join("\n");
+}
+
+async function handleErrors(argRaw) {
+  const preset = normalizePreset(argRaw);
+  let rows;
+  try {
+    rows = await getErrors(resolveAnalyticsRange({ preset }));
+  } catch (error) {
+    console.error("Telegram /errors query failed:", error);
+    return "Couldn't load errors data — see server logs.";
+  }
+  if (!rows.length) return `Errors - ${preset}\n\nNo funnel-affecting failures in this period.`;
+  const lines = [`Errors - ${preset}`, ""];
+  for (const r of rows.slice(0, 8)) {
+    const trend = r.previousCount ? ` (was ${r.previousCount})` : "";
+    lines.push(`${r.event} / ${r.reason}: ${r.count}${trend}, ${r.affectedSessions} sessions`);
+  }
+  return lines.join("\n");
+}
+
+async function handleRetention(argRaw) {
+  const preset = normalizePreset(argRaw, "30d");
+  let data;
+  try {
+    data = await getRetention(resolveAnalyticsRange({ preset }));
+  } catch (error) {
+    console.error("Telegram /retention query failed:", error);
+    return "Couldn't load retention data — see server logs.";
+  }
+  return [
+    `Retention - ${preset}`,
+    "",
+    `Unique visitors: ${data.uniqueVisitors}`,
+    `Returning visitors: ${data.returningVisitors}`,
+    `Returning %: ${data.returningPct}%`,
+  ].join("\n");
+}
+
 async function handleMessage(msg) {
   // Only the configured admin chat is ever answered — a Telegram bot is
   // discoverable by anyone who finds its @username, so without this an
@@ -213,6 +370,18 @@ async function handleMessage(msg) {
     reply = await handleStats(args[0]);
   } else if (command === "/funnel") {
     reply = await handleFunnel(args[0]);
+  } else if (command === "/acquisition") {
+    reply = await handleAcquisition(args[0]);
+  } else if (command === "/pages") {
+    reply = await handlePages(args[0]);
+  } else if (command === "/seo") {
+    reply = await handleSeo(args[0]);
+  } else if (command === "/sales") {
+    reply = await handleSales(args[0]);
+  } else if (command === "/errors") {
+    reply = await handleErrors(args[0]);
+  } else if (command === "/retention") {
+    reply = await handleRetention(args[0]);
   } else {
     reply = `Unknown command.\n\n${HELP_TEXT}`;
   }
@@ -259,6 +428,12 @@ async function registerCommandMenu() {
       commands: [
         { command: "stats", description: "Signups and purchases" },
         { command: "funnel", description: "Visitors, uploads, masters, revenue" },
+        { command: "acquisition", description: "Visitors/revenue by source" },
+        { command: "pages", description: "Views/active time per page" },
+        { command: "seo", description: "Organic visitors, masters, revenue" },
+        { command: "sales", description: "Revenue, subscriptions, checkout" },
+        { command: "errors", description: "Upload/mastering/checkout failures" },
+        { command: "retention", description: "Unique vs returning visitors" },
         { command: "help", description: "List commands" },
       ],
     });
