@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-import { initAnalyticsClient, trackPageView } from "@/lib/analyticsClient";
+import { initAnalyticsClient, trackPageView, pauseTracking } from "@/lib/analyticsClient";
 
 // Mounted once in the root layout (spec section 4: "Track SPA route
 // changes correctly"). Next.js App Router navigations never hit the
@@ -25,6 +25,13 @@ export default function AnalyticsPageTracker() {
   }, []);
 
   useEffect(() => {
+    // The admin dashboard is the site owner's own browsing, not a
+    // visitor's — never a page_view, never attributed heartbeat time,
+    // for /admin or anything under it.
+    if (pathname.startsWith("/admin")) {
+      pauseTracking();
+      return;
+    }
     const search = typeof window !== "undefined" ? window.location.search : "";
     trackPageView(search ? `${pathname}${search}` : pathname);
   }, [pathname]);

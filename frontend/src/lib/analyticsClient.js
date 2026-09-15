@@ -259,6 +259,22 @@ export function identify(uid) {
   uidRef = uid || null;
 }
 
+// Called when entering a route that must never be tracked (the admin
+// dashboard — that's the site owner's own traffic, not a visitor's, and
+// counting it would pollute every visitor/funnel/time-on-page number).
+// Flushes whatever heartbeat time had genuinely accumulated for the real
+// page just left (that time IS real visitor activity, still worth
+// keeping), then clears currentPath so the ongoing tick()/heartbeat
+// interval has nothing to attribute time to while on the untracked route
+// — otherwise that dwell time would silently land on whichever real page
+// is visited next, once trackPageView runs again there.
+export function pauseTracking() {
+  if (!isBrowser()) return;
+  flushHeartbeat();
+  currentPath = null;
+  heartbeatAccumulatorMs = 0;
+}
+
 export function trackPageView(path) {
   if (!isBrowser()) return;
   flushHeartbeat();
