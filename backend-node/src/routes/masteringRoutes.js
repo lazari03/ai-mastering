@@ -21,7 +21,6 @@ import {
   getSubscriptionStatus,
   getPlan,
   changeSubscriptionPlan,
-  getChordSubscriptionActive,
 } from "../services/polarService.js";
 import {
   getMasterQuotaStatus,
@@ -29,11 +28,6 @@ import {
   PLAN_MASTER_LIMITS,
   getExtraCreditCount,
   consumeExtraCredit,
-  getChordQuotaStatus,
-  consumeChordTrial,
-  getExtraChordCreditCount,
-  consumeExtraChordCredit,
-  FREE_CHORD_LIMIT,
   getStemQuotaStatus,
   consumeStemQuota,
   getExtraStemCreditCount,
@@ -314,25 +308,18 @@ router.get("/billing/status", async (req, res) => {
 router.get("/billing/entitlements", async (req, res) => {
   try {
     const plan = await getPlan(req.user.uid);
-    const [subscription, masterQuota, extraCredits, chordQuota, extraChordCredits, chordSubscriptionActive, stemQuota, extraStemCredits] =
-      await Promise.all([
-        getSubscriptionStatus(req.user.uid),
-        getMasterQuotaStatus(req.user.uid, plan),
-        getExtraCreditCount(req.user.uid),
-        getChordQuotaStatus(req.user.uid),
-        getExtraChordCreditCount(req.user.uid),
-        getChordSubscriptionActive(req.user.uid),
-        getStemQuotaStatus(req.user.uid),
-        getExtraStemCreditCount(req.user.uid),
-      ]);
+    const [subscription, masterQuota, extraCredits, stemQuota, extraStemCredits] = await Promise.all([
+      getSubscriptionStatus(req.user.uid),
+      getMasterQuotaStatus(req.user.uid, plan),
+      getExtraCreditCount(req.user.uid),
+      getStemQuotaStatus(req.user.uid),
+      getExtraStemCreditCount(req.user.uid),
+    ]);
     return res.json({
       plan,
       subscription,
       masterQuota,
       extraCredits,
-      chordQuota,
-      extraChordCredits,
-      chordSubscriptionActive,
       stemQuota,
       extraStemCredits,
     });
@@ -341,18 +328,17 @@ router.get("/billing/entitlements", async (req, res) => {
   }
 });
 
-// body.item is one of: plan_studio | plan_pro | chords_monthly |
-// single_master | chord_detection | stem_separation. The first three are
-// subscriptions (chords_monthly is standalone — never routed through
-// changeSubscriptionPlan, see /billing/checkout below); the last three
-// are one-time purchases — low-commitment top-ups for someone who just
-// needs this one track mastered/analyzed/separated, not a recurring plan.
+// body.item is one of: plan_studio | plan_pro | single_master |
+// stem_separation. chords_monthly/chord_detection are deliberately absent —
+// chord detection is unconditionally free now (see /analyze-chords above),
+// so there's nothing left to sell there; anyone with an existing
+// chordSubscription keeps being honored by polarService.js's webhook
+// handling, this just stops new purchases of a product with no gate behind
+// it anymore.
 const CHECKOUT_ITEM_TO_PRODUCT_KEY = {
   plan_studio: "planStudio",
   plan_pro: "planPro",
-  chords_monthly: "chordsMonthly",
   single_master: "singleMaster",
-  chord_detection: "chordDetection",
   stem_separation: "stemSeparation",
 };
 
@@ -792,83 +778,17 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
 });
 
 // Chord detection is BOTH an All-Access plan perk (unlimited, unchanged)
-// AND its own standalone product for anyone else — a guitarist who wants
-// chords for one song has no reason to buy a mastering subscription.
-// Standalone path: FREE_CHORD_LIMIT lifetime free (never resets, same
-// one-time-trial shape as the Free master quota), then pay-per-song
-// credits. Entirely separate counters from mastering — buying/using one
-// product never touches the other's balance. Consumed only after a
-// successful analysis, same "never charge for a failure" discipline as
-// /master.
+// Chord detection is unconditionally free — no trial counter, no credits,
+// no subscription check. It's a top-of-funnel lead-gen tool (see
+// PublicChordDetector.jsx), not a product on its own, so gating it ever
+// cost more in funnel drop-off than the €1.49/€2.99 it used to bring in.
 router.post("/analyze-chords", expensiveLimiter, upload.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ detail: "file is required" });
   }
 
-  // Anonymous requests (the public chord-detector's try-before-you-
-  // register flow) never touch the quota system at all — see
-  // requireAuth.js's isAnonymous comment for why. There's nothing to
-  // protect: the result is gated behind registering regardless of quota,
-  // so spending a real trial slot on an analysis nobody can see yet
-  // would only make things worse — someone who anonymously tries 3
-  // different songs before ever registering would land with zero free
-  // trials left despite never having seen a single result. The real
-  // trial only starts counting once they're a real account.
-  const isAnonymous = Boolean(req.user.isAnonymous);
-  const plan = isAnonymous ? "free" : await getPlan(req.user.uid).catch(() => "free");
-  // Two independent ways to be unlimited: the All-Access plan (bundled),
-  // or a standalone Chords Monthly subscription (for anyone who wants
-  // unlimited chords without a mastering plan at all).
-  const chordSubscribed = isAnonymous
-    ? false
-    : await getChordSubscriptionActive(req.user.uid).catch((error) => {
-        console.error("getChordSubscriptionActive failed, failing closed:", error.message);
-        return false;
-      });
-  const unlimited = plan === "pro" || chordSubscribed;
-  let mustConsumeTrial = false;
-  let mustConsumeChordCredit = false;
-
-  if (!unlimited && !isAnonymous) {
-    // Fails CLOSED, not open — a Firestore hiccup here must never be
-    // interpreted as "quota available." { remaining: 0 } forces the same
-    // path as a genuinely exhausted trial, which correctly falls through
-    // to checking credits and then the honest "try again" error below,
-    // rather than a raw 500 or (worse) silently letting the request
-    // through unverified.
-    const trial = await getChordQuotaStatus(req.user.uid).catch((error) => {
-      console.error("getChordQuotaStatus failed, failing closed:", error.message);
-      return { remaining: 0, limit: FREE_CHORD_LIMIT };
-    });
-    if (trial.remaining > 0) {
-      mustConsumeTrial = true;
-    } else {
-      const credits = await getExtraChordCreditCount(req.user.uid).catch(() => 0);
-      if (credits > 0) {
-        mustConsumeChordCredit = true;
-      } else {
-        return res.status(402).json({
-          detail: `You've used your ${trial.limit} free chord detections — that's a one-time trial, it doesn't renew. Buy one for €1.49, get unlimited chord detection for €2.99/mo, or it's included with All-Access (€19.99/mo). Manage in Settings → Billing.`,
-        });
-      }
-    }
-  }
-
   try {
     const result = await analyzeChords(req.file);
-    if (mustConsumeTrial) {
-      try {
-        await consumeChordTrial(req.user.uid);
-      } catch (error) {
-        console.error("Failed to consume chord trial after successful analysis:", error.message);
-      }
-    } else if (mustConsumeChordCredit) {
-      try {
-        await consumeExtraChordCredit(req.user.uid);
-      } catch (error) {
-        console.error("Failed to consume chord credit after successful analysis:", error.message);
-      }
-    }
     return res.json(result);
   } catch (error) {
     const detail = error?.stderr || error?.message || "Chord detection failed";

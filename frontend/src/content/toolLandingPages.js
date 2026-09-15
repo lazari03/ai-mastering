@@ -12,7 +12,7 @@ export const TOOL_LANDING_PAGES = {
     label: "Song Key Finder",
     headline: "Song Key Finder — Find the Key of Any Track Instantly",
     description:
-      "Upload a song and get its musical key detected automatically — for transposing, singing along, DJ set planning, or matching a cover to your vocal range. 3 free, no card required.",
+      "Upload a song and get its musical key detected automatically — for transposing, singing along, DJ set planning, or matching a cover to your vocal range. Completely free, no card required.",
     keywords: ["song key finder", "find the key of a song", "what key is this song in", "audio key detector", "key finder online"],
     heroImage: "https://images.pexels.com/photos/1246437/pexels-photo-1246437.jpeg?auto=compress&cs=tinysrgb&w=1200",
     heroAlt: "Hands playing a chord on a piano",
@@ -46,7 +46,7 @@ export const TOOL_LANDING_PAGES = {
     label: "BPM Finder",
     headline: "BPM Finder — Detect the Tempo of Any Song",
     description:
-      "Upload a track and get its exact BPM detected automatically — for beatmatching, syncing samples, or setting a click track tempo. 3 free, no card required.",
+      "Upload a track and get its exact BPM detected automatically — for beatmatching, syncing samples, or setting a click track tempo. Completely free, no card required.",
     keywords: ["bpm finder", "tempo finder", "find bpm of a song", "bpm detector online", "tempo detector"],
     heroImage: "https://images.pexels.com/photos/210922/pexels-photo-210922.jpeg?auto=compress&cs=tinysrgb&w=1200",
     heroAlt: "A guitarist performing live on stage",
@@ -71,7 +71,7 @@ export const TOOL_LANDING_PAGES = {
       },
       {
         question: "Is this free?",
-        answer: "3 free detections, lifetime, no card required. After that it's pay-per-song, a Chords Monthly subscription, or unlimited on All-Access.",
+        answer: "Yes — completely free, no trial limit, no card, no subscription.",
       },
     ],
     crossLinkLabel: "Once you know the tempo, master the track",
@@ -80,7 +80,7 @@ export const TOOL_LANDING_PAGES = {
     label: "Chord Progression Finder",
     headline: "Chord Progression Finder — Get the Full Chord Chart",
     description:
-      "Upload a song and get its complete chord progression detected automatically, section by section — for learning a song by ear, charting a cover, or transcribing a reference. 3 free, no card required.",
+      "Upload a song and get its complete chord progression detected automatically, section by section — for learning a song by ear, charting a cover, or transcribing a reference. Completely free, no card required.",
     keywords: ["chord progression finder", "find chords in a song", "chord chart generator", "chord finder online", "song chord finder"],
     heroImage: "https://images.pexels.com/photos/1407322/pexels-photo-1407322.jpeg?auto=compress&cs=tinysrgb&w=1200",
     heroAlt: "Close-up of a hand forming a chord on an acoustic guitar's fretboard",

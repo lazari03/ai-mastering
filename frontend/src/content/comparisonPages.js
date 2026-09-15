@@ -42,7 +42,7 @@ export const COMPARISON_PAGES = {
       },
       {
         title: "Pricing shape",
-        auralith: "Free (3 masters, lifetime trial, no card) → Studio €9.99/mo (50 masters) → All-Access €19.99/mo (250 masters, stems, unlimited chords).",
+        auralith: "Free (3 masters, lifetime trial, no card) → Studio €9.99/mo (50 masters) → All-Access €19.99/mo (250 masters, stems). Chord/key/BPM detection is free for everyone, on every plan.",
         competitor: "Check landr.com/pricing for current plans — pricing and what's included has changed over time.",
       },
     ],
@@ -85,7 +85,7 @@ export const COMPARISON_PAGES = {
       },
       {
         title: "Pricing shape",
-        auralith: "Free (3 masters, lifetime trial, no card) → Studio €9.99/mo (50 masters) → All-Access €19.99/mo (250 masters, stems, unlimited chords).",
+        auralith: "Free (3 masters, lifetime trial, no card) → Studio €9.99/mo (50 masters) → All-Access €19.99/mo (250 masters, stems). Chord/key/BPM detection is free for everyone, on every plan.",
         competitor: "Check emastered.com/pricing for their current plans.",
       },
     ],

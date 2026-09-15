@@ -13,13 +13,6 @@ import { getFirestore } from "../config/firebase.js";
 // PRICING.md.
 export const PLAN_MASTER_LIMITS = { free: 3, studio: 50, pro: 250 };
 
-// Chord detection has no monthly-tiered quota at all — either you're on
-// All-Access (unlimited, checked separately by the caller and never
-// touches any of this) or you're not, in which case it's a standalone
-// product: a lifetime free trial, then pay-per-song credits. One number,
-// not a per-plan table.
-export const FREE_CHORD_LIMIT = 3;
-
 function currentMonthKey() {
   const now = new Date();
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -140,19 +133,9 @@ export async function consumeMasterQuota(uid, limit, plan) {
 export const getExtraCreditCount = (uid) => getCreditBalance(uid, "extraMasterCredits");
 export const consumeExtraCredit = (uid) => consumeCredit(uid, "extraMasterCredits");
 
-// ---- Chord detection (standalone: Free lifetime trial + credits) ------
-// No plan grants this for free except All-Access (checked separately by
-// the caller, see masteringRoutes.js — All-Access never touches these
-// counters at all). Everyone else gets FREE_CHORD_LIMIT lifetime, then
-// pays per song. Same two-shape pattern as masters, entirely separate
-// counters so buying/using one product never affects the other's balance.
-export async function getChordQuotaStatus(uid) {
-  const used = await getLifetimeUsed(uid, "freeChordUsage");
-  return { used, remaining: Math.max(0, FREE_CHORD_LIMIT - used), limit: FREE_CHORD_LIMIT, resets: false };
-}
-export const consumeChordTrial = (uid) => consumeLifetime(uid, "freeChordUsage", FREE_CHORD_LIMIT);
-export const getExtraChordCreditCount = (uid) => getCreditBalance(uid, "extraChordCredits");
-export const consumeExtraChordCredit = (uid) => consumeCredit(uid, "extraChordCredits");
+// Chord detection used to be gated here (a lifetime trial + pay-per-song
+// credits, same shape as masters) but is now unconditionally free — see
+// masteringRoutes.js's /analyze-chords. No quota/credit functions needed.
 
 // ---- Stem separation (All-Access: bounded monthly sub-quota + credits; -
 // ---- Free/Studio: credits only, no bundled access at all) -------------

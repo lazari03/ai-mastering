@@ -58,8 +58,8 @@ const DICT = {
   "crossPromo.eyebrow": { en: "Also Available", sq: "Gjithashtu i Disponueshëm" },
   "crossPromo.title": { en: "Chord Detector", sq: "Zbulues Akordesh" },
   "crossPromo.body": {
-    en: "Upload any song, get its key, BPM, and full chord progression back. 3 free, then pay per song — no mastering subscription required.",
-    sq: "Ngarko një këngë dhe merr tonalitetin, BPM-në dhe progresionin e plotë të akordeve. 3 falas, pastaj pagesë për këngë — pa nevojë abonimi masterizimi.",
+    en: "Upload any song, get its key, BPM, and full chord progression back. Completely free, always — no mastering subscription required.",
+    sq: "Ngarko një këngë dhe merr tonalitetin, BPM-në dhe progresionin e plotë të akordeve. Plotësisht falas, gjithmonë — pa nevojë abonimi masterizimi.",
   },
   "crossPromo.cta": { en: "See how it works →", sq: "Shiko si funksionon →" },
 
@@ -175,12 +175,13 @@ const DICT = {
   // Numbers interpolated from lib/pricing.js (not hand-typed) — this
   // exact string went stale twice already after pricing changes before
   // this fix (once missing the free-trial-not-monthly correction, once
-  // missing Chords Monthly entirely on a different page). Deriving from
-  // the same source PLANS/pricing cards read means a price change here
-  // is now structurally impossible to forget.
+  // missing Chords Monthly entirely on a different page, back when chord
+  // detection was still paywalled). Deriving from the same source
+  // PLANS/pricing cards read means a price change here is now
+  // structurally impossible to forget.
   "faq.a8": {
-    en: `30-second mastering previews (unlimited, Standard engine) and 3 full-length masters total, free — a one-time trial, not renewed monthly. After that, single masters are ${SINGLE_MASTER.price} each, or subscribe: ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period}) gives ${PLANS.studio.masterLimit}/month (resets monthly) and adds Professional mastering and stem separation. ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period}) gives ${PLANS.pro.masterLimit}/month and adds unlimited chord detection.`,
-    sq: `Parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard) dhe 3 masterë të plotë gjithsej, falas — një provë një-herëshe, nuk rinovohet çdo muaj. Pas kësaj, çdo master i vetëm kushton ${SINGLE_MASTER.price}, ose abonohu: ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period.replace("/mo", "/muaj")}) jep ${PLANS.studio.masterLimit}/muaj (rinovohet çdo muaj) dhe shton masterizimin Professional e ndarjen e instrumenteve. ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period.replace("/mo", "/muaj")}) jep ${PLANS.pro.masterLimit}/muaj dhe shton zbulim të pakufizuar akordesh.`,
+    en: `30-second mastering previews (unlimited, Standard engine), chord/key/BPM detection (unlimited, always free), and 3 full-length masters total, free — a one-time trial, not renewed monthly. After that, single masters are ${SINGLE_MASTER.price} each, or subscribe: ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period}) gives ${PLANS.studio.masterLimit}/month (resets monthly) and adds Professional mastering and stem separation. ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period}) gives ${PLANS.pro.masterLimit}/month and adds everything else in the studio.`,
+    sq: `Parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard), zbulimi i akordeve/tonalitetit/BPM-së (i pakufizuar, gjithmonë falas), dhe 3 masterë të plotë gjithsej, falas — një provë një-herëshe, nuk rinovohet çdo muaj. Pas kësaj, çdo master i vetëm kushton ${SINGLE_MASTER.price}, ose abonohu: ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period.replace("/mo", "/muaj")}) jep ${PLANS.studio.masterLimit}/muaj (rinovohet çdo muaj) dhe shton masterizimin Professional e ndarjen e instrumenteve. ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period.replace("/mo", "/muaj")}) jep ${PLANS.pro.masterLimit}/muaj dhe shton gjithçka tjetër në studio.`,
   },
 
   "contact.eyebrow": { en: "Contact", sq: "Kontakt" },
@@ -358,13 +359,6 @@ const DICT = {
   "billing.plusCreditsMaster": { en: "+{n} single-master credit{s} on top", sq: "+{n} kredit{s} master-i-vetëm shtesë" },
   "billing.buyOne": { en: "Buy one", sq: "Bli një" },
   "billing.noSubNote": { en: "No subscription — just this one track.", sq: "Pa abonim — vetëm kjo këngë." },
-  "billing.chordDetection": { en: "Chord detection", sq: "Zbulim akordesh" },
-  "billing.freeTrialChords": { en: "Free trial chord detections", sq: "Zbulime akordesh të provës falas" },
-  "billing.unlimitedAllAccess": { en: "Unlimited on All-Access.", sq: "Të pakufizuara në All-Access." },
-  "billing.unlimitedChordsMonthly": { en: "Unlimited on Chords Monthly.", sq: "Të pakufizuara në Chords Monthly." },
-  "billing.plusCreditsChord": { en: "+{n} credit{s} on top", sq: "+{n} kredit{s} shtesë" },
-  "billing.manageShort": { en: "Manage", sq: "Menaxho" },
-  "billing.subscribe": { en: "Subscribe", sq: "Abonohu" },
   "billing.stemsThisMonth": { en: "Stem separations this month", sq: "Ndarje instrumentesh këtë muaj" },
   "billing.plusCreditsStem": { en: "+{n} extra credit{s} on top", sq: "+{n} kredit{s} shtesë" },
   "billing.stemNoteAllAccess": { en: "For when your monthly 20 run out — no need to wait for reset.", sq: "Për kur 20-shi mujor mbaron — pa pritur rinovimin." },
@@ -667,18 +661,8 @@ const DICT = {
   "chordDetector.preparingUpload": { en: "Preparing upload…", sq: "Duke përgatitur…" },
   "chordDetector.analyzing": { en: "Analyzing…", sq: "Duke analizuar…" },
   "chordDetector.detect": { en: "Detect Chords", sq: "Zbulo Akordet" },
-  "chordDetector.detectFreeLeft": { en: "Detect Chords — {remaining}/{limit} free left", sq: "Zbulo Akordet — {remaining}/{limit} falas mbetur" },
-  "chordDetector.detectCredit": { en: "Detect Chords — using 1 credit ({n} left)", sq: "Zbulo Akordet — duke përdorur 1 kredit ({n} mbetur)" },
-  "chordDetector.detectBuyUpgrade": { en: "Detect Chords — buy or upgrade", sq: "Zbulo Akordet — bli ose përmirëso" },
-  "chordDetector.unlimitedPlan": { en: "Unlimited on your plan.", sq: "Të pakufizuara në planin tënd." },
-  "chordDetector.freeTrialLeft": { en: "Free trial — {remaining} of {limit} left, one-time, doesn't renew.", sq: "Provë falas — {remaining} nga {limit} mbetur, një-herëshe, nuk rinovohet." },
-  "chordDetector.creditsLeft": { en: "{n} purchased credit{s} left.", sq: "{n} kredit{s} të blerë mbetur." },
+  "chordDetector.alwaysFree": { en: "Free, always — no trial, no card, no limit.", sq: "Falas, gjithmonë — pa provë, pa kartë, pa limit." },
   "chordDetector.failed": { en: "Chord detection failed", sq: "Zbulimi i akordeve dështoi" },
-  "chordDetector.checkoutFailed": { en: "Failed to start checkout.", sq: "Nisja e checkout dështoi." },
-  "chordDetector.buyOne": { en: "Buy one ({price})", sq: "Bli një ({price})" },
-  "chordDetector.redirecting": { en: "Redirecting…", sq: "Duke ridrejtuar…" },
-  "chordDetector.unlimitedPrice": { en: "Unlimited — {price}/mo", sq: "Të pakufizuara — {price}/muaj" },
-  "chordDetector.seeAllPlans": { en: "or see all plans", sq: "ose shiko të gjitha planet" },
   "chordDetector.key": { en: "Key", sq: "Tonaliteti" },
   "chordDetector.bpm": { en: "BPM", sq: "BPM" },
   "chordDetector.timeSig": { en: "Time Sig.", sq: "Metrika" },

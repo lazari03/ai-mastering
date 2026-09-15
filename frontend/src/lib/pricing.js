@@ -5,9 +5,11 @@
 // organization's default presentment currency.
 //
 // Two paid plans + Free, plus one one-time purchase (SINGLE_MASTER below):
-//   Free    — 3 masters TOTAL (one-time trial, never resets), Standard only, no stems, no chords
-//   Studio  — 50 masters/month (resets monthly), Standard + Professional, stems included, no chords
-//   All-Access — 250 masters/month (5x Studio, resets monthly), everything, unlimited chord detection
+//   Free    — 3 masters TOTAL (one-time trial, never resets), Standard only, no stems
+//   Studio  — 50 masters/month (resets monthly), Standard + Professional, stems included
+//   All-Access — 250 masters/month (5x Studio, resets monthly), everything
+// Chord detection is unconditionally free for everyone (see
+// /chord-detector) — it's not part of any plan's paywall.
 export const PLANS = {
   free: {
     key: "free",
@@ -37,13 +39,7 @@ export const PLANS = {
     period: "/mo",
     masterLimit: 250,
     blurb: "The full toolkit, 5x Studio's headroom.",
-    features: [
-      "250 masters / month",
-      "Everything in Studio",
-      "Stem separation, 20/month included",
-      "Unlimited chord detection",
-      "Shareable download links",
-    ],
+    features: ["250 masters / month", "Everything in Studio", "Stem separation, 20/month included", "Shareable download links"],
   },
 };
 
@@ -62,34 +58,9 @@ export const SINGLE_MASTER = {
   blurb: "One extra master, no subscription. Same Standard/Professional engine as your plan.",
 };
 
-// Standalone product — chord detection for anyone who wants it without a
-// mastering subscription (a guitarist working out one song, say). Priced
-// below Single Master since it's analysis-only, no multi-stage DSP
-// render. 3 free lifetime (never resets, same one-time-trial shape as
-// Free's master quota), then pay per song. Included unlimited on
-// All-Access regardless — this is only relevant to Free/Studio users.
-export const CHORD_DETECTION = {
-  item: "chord_detection",
-  label: "Chord Detection",
-  price: "€1.49",
-  freeLimit: 3,
-  blurb: "Key, BPM, and chord progression for one song. 3 free, then pay per song — or unlimited on All-Access.",
-};
-
-// Standalone recurring subscription — for anyone who'd rather pay a flat
-// cheap monthly rate than per song. Priced to undercut Moises (~$40/yr,
-// ~€3/mo) on a monthly basis for this narrower, single-purpose tool.
-// Independent from the main mastering plan — a Free or Studio user can
-// subscribe to this without touching their mastering plan at all;
-// All-Access already includes unlimited chords, so this isn't offered
-// there (redundant).
-export const CHORDS_MONTHLY = {
-  item: "chords_monthly",
-  label: "Chords Monthly",
-  price: "€2.99",
-  period: "/mo",
-  blurb: "Unlimited chord detection, no mastering plan needed.",
-};
+// Chord detection used to be sold here (a lifetime trial then pay-per-song
+// or a Chords Monthly subscription) — it's unconditionally free now (see
+// backend-node's /analyze-chords), so there's nothing left to price.
 
 // One-time — an extra stem-separated master. All-Access includes 20/month
 // (see PLANS.pro.features); once that runs out, or for Free/Studio (who

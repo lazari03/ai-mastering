@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { postCheckout, postChangePlan, postBillingPortal } from "@/network/http/client";
-import { PLANS, PLAN_ORDER, SINGLE_MASTER, CHORD_DETECTION, CHORDS_MONTHLY, STEM_SEPARATION } from "@/lib/pricing";
+import { PLANS, PLAN_ORDER, SINGLE_MASTER, STEM_SEPARATION } from "@/lib/pricing";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { trackEvent } from "@/lib/analytics";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
@@ -21,7 +21,7 @@ const COMPARISON_ROWS = [
   { label: "Standard engine", values: [true, true, true] },
   { label: "Professional engine", values: [false, true, true] },
   { label: "Stem separation", values: ["Pay per use", "Pay per use", "20 / month included"] },
-  { label: "Chord detection", values: ["3 free, then pay", "3 free, then pay", "Unlimited"] },
+  { label: "Chord detection", values: ["Free, unlimited", "Free, unlimited", "Free, unlimited"] },
   { label: "Shareable download links", values: [false, false, true] },
 ];
 
@@ -41,9 +41,6 @@ export default function PlansPanel() {
     plan: currentPlan,
     masterQuota,
     extraCredits,
-    chordQuota,
-    extraChordCredits,
-    chordSubscriptionActive,
     stemQuota,
     extraStemCredits,
     loaded,
@@ -301,98 +298,6 @@ export default function PlansPanel() {
               </button>
             </div>
           </div>
-
-          {chordQuota ? (
-            <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="m-0 text-sm text-white">
-                {currentPlan === "pro" || chordSubscriptionActive ? t("billing.chordDetection") : t("billing.freeTrialChords")}
-              </p>
-              <p className="m-0 text-xs text-zinc-500">
-                {currentPlan === "pro"
-                  ? t("billing.unlimitedAllAccess")
-                  : chordSubscriptionActive
-                    ? t("billing.unlimitedChordsMonthly")
-                    : `${t("billing.leftOf", { remaining: chordQuota.remaining, limit: chordQuota.limit })} · ${t("billing.oneTimeNoRenew")}${
-                        extraChordCredits > 0 ? ` · ${t("billing.plusCreditsChord", { n: extraChordCredits, s: extraChordCredits === 1 ? "" : "s" })}` : ""
-                      }`}
-              </p>
-            </div>
-          ) : null}
-
-          {currentPlan !== "pro" ? (
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {!chordSubscriptionActive ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
-                  <div className="min-w-0">
-                    <p className="m-0 text-sm text-white">
-                      {CHORD_DETECTION.label} — {CHORD_DETECTION.price}
-                    </p>
-                    <p className="m-0 mt-0.5 text-xs text-zinc-500">{CHORD_DETECTION.blurb}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => buyOneTime(CHORD_DETECTION, "chord_detection")}
-                    disabled={Boolean(busyItem)}
-                    className="flex shrink-0 items-center gap-2 rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
-                  >
-                    {busyItem === CHORD_DETECTION.item ? (
-                      <>
-                        <Spinner size={12} /> {t("billing.redirecting")}
-                      </>
-                    ) : (
-                      t("billing.buyOne")
-                    )}
-                  </button>
-                </div>
-              ) : null}
-
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-brass/30 bg-brass/[0.05] p-3">
-                <div className="min-w-0">
-                  <p className="m-0 text-sm text-white">
-                    {CHORDS_MONTHLY.label} — {CHORDS_MONTHLY.price}
-                    {CHORDS_MONTHLY.period}
-                    {chordSubscriptionActive ? (
-                      <span className="ml-2 rounded-full border border-brass/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-brass">
-                        {t("billing.current")}
-                      </span>
-                    ) : null}
-                  </p>
-                  <p className="m-0 mt-0.5 text-xs text-zinc-500">{CHORDS_MONTHLY.blurb}</p>
-                </div>
-                {chordSubscriptionActive ? (
-                  <button
-                    type="button"
-                    onClick={openPortal}
-                    disabled={Boolean(busyItem)}
-                    className="flex shrink-0 items-center gap-2 rounded-full border border-brass/50 bg-brass/[0.18] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
-                  >
-                    {busyItem === "portal" ? (
-                      <>
-                        <Spinner size={12} /> {t("billing.redirecting")}
-                      </>
-                    ) : (
-                      t("billing.manageShort")
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => buyOneTime(CHORDS_MONTHLY, "chords_monthly")}
-                    disabled={Boolean(busyItem)}
-                    className="flex shrink-0 items-center gap-2 rounded-full border border-brass/50 bg-brass/[0.18] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
-                  >
-                    {busyItem === CHORDS_MONTHLY.item ? (
-                      <>
-                        <Spinner size={12} /> {t("billing.redirecting")}
-                      </>
-                    ) : (
-                      t("billing.subscribe")
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : null}
 
           {currentPlan === "pro" && stemQuota ? (
             <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">

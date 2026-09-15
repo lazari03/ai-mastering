@@ -3,8 +3,7 @@ import Image from "next/image";
 
 import Footer from "@/components/Footer";
 import ToolLandingAnalytics from "@/components/marketing/ToolLandingAnalytics";
-import { CHORD_DETECTION, CHORDS_MONTHLY, PLANS } from "@/lib/pricing";
-import { CTA, CHORD_DETECTOR_RELATED_GENRES, CHORD_DETECTOR_URL } from "@/lib/internalLinks";
+import { CHORD_DETECTOR_RELATED_GENRES, CHORD_DETECTOR_URL } from "@/lib/internalLinks";
 import { GENRE_PAGES } from "@/content/genrePages";
 import { TOOL_LANDING_KEYS, TOOL_LANDING_PAGES } from "@/content/toolLandingPages";
 import { JsonLd, faqJsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
@@ -30,9 +29,9 @@ export default function ToolLandingPage({ slug, page }) {
       url: absoluteUrl(`/${slug}`),
       offers: {
         "@type": "Offer",
-        price: "1.49",
+        price: "0",
         priceCurrency: "EUR",
-        description: "Per-song detection after the 3 free lifetime uses.",
+        description: "Free, unlimited detection.",
       },
     };
   }
@@ -74,48 +73,17 @@ export default function ToolLandingPage({ slug, page }) {
         </div>
       </section>
 
-      <section className="mt-10 rounded-2xl border border-brass/25 bg-brass/[0.06] p-6">
-        <h2 className="m-0 font-[var(--font-title)] text-xl text-white">Pricing</h2>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-            <p className="m-0 text-sm font-semibold text-white">Free trial</p>
-            <p className="m-0 mt-1 text-2xl font-bold text-brass">3 songs</p>
-            <p className="mt-2 text-xs text-zinc-400">Lifetime, no card required. Try it before you pay anything.</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-            <p className="m-0 text-sm font-semibold text-white">Pay per song</p>
-            <p className="m-0 mt-1 text-2xl font-bold text-brass">{CHORD_DETECTION.price}</p>
-            <p className="mt-2 text-xs text-zinc-400">After your 3 free — no subscription, just this one track.</p>
-          </div>
-          <div className="rounded-xl border border-brass/40 bg-brass/[0.1] p-4">
-            <p className="m-0 text-sm font-semibold text-white">Chords Monthly</p>
-            <p className="m-0 mt-1 text-2xl font-bold text-brass">
-              {CHORDS_MONTHLY.price}
-              <span className="text-sm font-normal text-zinc-400">{CHORDS_MONTHLY.period}</span>
-            </p>
-            <p className="mt-2 text-xs text-zinc-400">Unlimited detection on its own — no mastering plan needed.</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-            <p className="m-0 text-sm font-semibold text-white">{PLANS.pro.label}</p>
-            <p className="m-0 mt-1 text-2xl font-bold text-brass">
-              {PLANS.pro.price}
-              <span className="text-sm font-normal text-zinc-400">{PLANS.pro.period}</span>
-            </p>
-            <p className="mt-2 text-xs text-zinc-400">Unlimited detection, plus everything else in the studio.</p>
-          </div>
-        </div>
-        <div className="mt-5 flex flex-wrap gap-2.5">
+      <section className="mt-10 rounded-2xl border border-brass/25 bg-brass/[0.06] p-6 text-center">
+        <h2 className="m-0 font-[var(--font-title)] text-xl text-white">Completely free</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-zinc-400">
+          No trial limit, no card, no subscription — detection is free for every song, always.
+        </p>
+        <div className="mt-5">
           <Link
-            href={CTA.signup}
+            href={CHORD_DETECTOR_URL}
             className="inline-block rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
           >
-            Try it free
-          </Link>
-          <Link
-            href={CTA.pricing}
-            className="inline-block rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35"
-          >
-            See all plans →
+            Try it free →
           </Link>
         </div>
       </section>

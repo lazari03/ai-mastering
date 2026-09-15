@@ -122,11 +122,11 @@ export default function TermsPage() {
       <section>
         <h2>8. Fees and paid plans</h2>
         <p>
-          Mastering previews (30-second, Standard engine) are free, unlimited, and
-          every account gets 3 free full-length masters as a one-time trial (never resets). The Studio plan raises
-          that to a monthly limit and adds Professional mastering and stem separation; the All-Access plan raises
-          it further and adds unlimited chord detection. Chord detection is not available for individual purchase — it&apos;s an
-          All-Access plan feature only. Current pricing is listed in the app (Settings → Billing) and may change;
+          Mastering previews (30-second, Standard engine) and chord/key/BPM detection are both free and unlimited for
+          everyone, no account tier required. Every account also gets 3 free full-length masters as a one-time trial
+          (never resets). The Studio plan raises that to a monthly limit and adds Professional mastering and stem
+          separation; the All-Access plan raises it further and adds everything else in the studio. Current pricing
+          is listed in the app (Settings → Billing) and may change;
           we&apos;ll show you the price before you pay, every time. Our{" "}
           <a href="/refund" className="text-brass hover:text-ember">Refund Policy</a> applies to all purchases.
         </p>

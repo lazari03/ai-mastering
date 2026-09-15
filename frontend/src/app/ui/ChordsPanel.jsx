@@ -8,7 +8,7 @@ import { useMasteringStore } from "@/store/masteringStore";
 import { takePendingChordResult, takePendingChordFile } from "@/lib/chordHandoff";
 import { useLanguage } from "@/lib/i18n";
 
-export default function ChordsPanel({ onOpenBilling, onMasterThisSong }) {
+export default function ChordsPanel({ onMasterThisSong }) {
   const { t } = useLanguage();
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -91,7 +91,6 @@ export default function ChordsPanel({ onOpenBilling, onMasterThisSong }) {
         <ChordDetector
           file={file}
           previewUrl={previewUrl}
-          onOpenBilling={onOpenBilling}
           onMasterThisSong={masterThisSong}
           initialAnalysis={handoff?.result || null}
         />

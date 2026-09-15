@@ -39,7 +39,7 @@ const TABS = [
     key: "chords",
     labelKey: "app.tab.chords",
     icon: IconChords,
-    render: (ctx) => <ChordsPanel onOpenBilling={() => ctx.setActiveTab("plans")} onMasterThisSong={() => ctx.setActiveTab("master")} />,
+    render: (ctx) => <ChordsPanel onMasterThisSong={() => ctx.setActiveTab("master")} />,
   },
   { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, render: () => <MyMastersPanel /> },
   { key: "plans", labelKey: "app.tab.plans", icon: IconBilling, render: () => <PlansPanel /> },

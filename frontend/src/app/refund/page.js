@@ -14,11 +14,11 @@ export default function RefundPage() {
       <section>
         <h2>1. What's paid</h2>
         <p>
-          Mastering previews and 3 full-length masters/month are free and never require payment.
-          Everything beyond that — higher monthly mastering limits, Professional mastering, stem separation, and
-          chord detection — is unlocked entirely through the Studio or All-Access monthly subscription (see current
-          pricing in the app under Settings → Billing). There are no one-time purchases; this policy covers the two
-          subscription plans.
+          Mastering previews, chord/key/BPM detection, and 3 full-length masters as a one-time free trial (never
+          renews) are free and never require payment. Beyond that trial, a single extra master or a stem-separated
+          render can be bought one-time, or you can subscribe to Studio or All-Access for a higher monthly mastering
+          limit, Professional mastering, and bundled stem separation (see current pricing in the app under Settings →
+          Billing). This policy covers both the one-time purchases and the two subscription plans.
         </p>
       </section>
 
@@ -27,9 +27,9 @@ export default function RefundPage() {
         <p>
           If you subscribe to either plan and decide it's not for you, request a refund of your{" "}
           <strong>most recent charge</strong> within 14 days of that charge, provided you haven't substantially used
-          the plan in that period (e.g. run several full-length masters, used stem separation, or run several chord
-          analyses). Cancelling stops future renewals immediately (Settings → Billing → Manage billing) but doesn't
-          by itself refund the current period — request that separately if you want it.
+          the plan in that period (e.g. run several full-length masters or used stem separation). Cancelling stops
+          future renewals immediately (Settings → Billing → Manage billing) but doesn't by itself refund the current
+          period — request that separately if you want it.
         </p>
       </section>
 

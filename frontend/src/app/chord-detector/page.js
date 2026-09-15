@@ -3,7 +3,6 @@ import Image from "next/image";
 
 import Footer from "@/components/Footer";
 import PublicChordDetector from "@/components/audio/PublicChordDetector";
-import { CHORD_DETECTION, CHORDS_MONTHLY, PLANS } from "@/lib/pricing";
 import { CTA, CHORD_DETECTOR_RELATED_GENRES } from "@/lib/internalLinks";
 import { GENRE_PAGES } from "@/content/genrePages";
 import { TOOL_LANDING_KEYS, TOOL_LANDING_PAGES } from "@/content/toolLandingPages";
@@ -12,7 +11,7 @@ import { buildMetadata, JsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
 export const metadata = buildMetadata({
   title: `Chord Detector — Find Key, BPM & Chords Online | ${SITE_NAME}`,
   description:
-    "Upload a song and get its key, BPM, and full chord progression back — for guitar, piano, or any instrument. 3 free detections, then pay per song or go unlimited.",
+    "Upload a song and get its key, BPM, and full chord progression back — for guitar, piano, or any instrument. Completely free, no limit, no card required.",
   path: "/chord-detector",
   keywords: [
     "chord detector",
@@ -37,9 +36,9 @@ function serviceJsonLd() {
     url: absoluteUrl("/chord-detector"),
     offers: {
       "@type": "Offer",
-      price: "1.49",
+      price: "0",
       priceCurrency: "EUR",
-      description: "Per-song chord detection after the 3 free lifetime detections are used.",
+      description: "Free, unlimited chord detection.",
     },
   };
 }
@@ -147,48 +146,17 @@ export default function ChordDetectorPage() {
         </div>
       </section>
 
-      <section className="mt-10 rounded-2xl border border-brass/25 bg-brass/[0.06] p-6">
-        <h2 className="m-0 font-[var(--font-title)] text-xl text-white">Pricing</h2>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-            <p className="m-0 text-sm font-semibold text-white">Free trial</p>
-            <p className="m-0 mt-1 text-2xl font-bold text-brass">3 songs</p>
-            <p className="mt-2 text-xs text-zinc-400">Lifetime, no card required. Try it before you pay anything.</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-            <p className="m-0 text-sm font-semibold text-white">Pay per song</p>
-            <p className="m-0 mt-1 text-2xl font-bold text-brass">{CHORD_DETECTION.price}</p>
-            <p className="mt-2 text-xs text-zinc-400">After your 3 free — no subscription, just this one track.</p>
-          </div>
-          <div className="rounded-xl border border-brass/40 bg-brass/[0.1] p-4">
-            <p className="m-0 text-sm font-semibold text-white">Chords Monthly</p>
-            <p className="m-0 mt-1 text-2xl font-bold text-brass">
-              {CHORDS_MONTHLY.price}
-              <span className="text-sm font-normal text-zinc-400">{CHORDS_MONTHLY.period}</span>
-            </p>
-            <p className="mt-2 text-xs text-zinc-400">Unlimited chord detection on its own — no mastering plan needed.</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-            <p className="m-0 text-sm font-semibold text-white">{PLANS.pro.label}</p>
-            <p className="m-0 mt-1 text-2xl font-bold text-brass">
-              {PLANS.pro.price}
-              <span className="text-sm font-normal text-zinc-400">{PLANS.pro.period}</span>
-            </p>
-            <p className="mt-2 text-xs text-zinc-400">Unlimited chord detection, plus everything else in the studio.</p>
-          </div>
-        </div>
-        <div className="mt-5 flex flex-wrap gap-2.5">
+      <section className="mt-10 rounded-2xl border border-brass/25 bg-brass/[0.06] p-6 text-center">
+        <h2 className="m-0 font-[var(--font-title)] text-xl text-white">Completely free</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-zinc-400">
+          No trial limit, no card, no subscription — chord detection is free for every song, always.
+        </p>
+        <div className="mt-5">
           <Link
             href="#chord-tool"
             className="inline-block rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
           >
             Analyze a track — it's free ↑
-          </Link>
-          <Link
-            href={CTA.pricing}
-            className="inline-block rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35"
-          >
-            See all plans →
           </Link>
         </div>
       </section>
@@ -214,9 +182,8 @@ export default function ChordDetectorPage() {
           <div className="rounded-xl border border-white/10 bg-black/20 p-4">
             <p className="m-0 text-sm font-semibold text-white">Is this bundled with a mastering plan?</p>
             <p className="mt-1.5 text-sm text-zinc-400">
-              It's its own standalone product — you don't need to master anything or subscribe to use it. Everyone
-              gets 3 free, then it's pay per song, a Chords Monthly subscription on its own, or unlimited as part of
-              All-Access if you're already on that plan.
+              No — it's a separate, free tool. You don't need to master anything, subscribe, or pay anything to use
+              it, whether or not you're on a mastering plan.
             </p>
           </div>
         </div>

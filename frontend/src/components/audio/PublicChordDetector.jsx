@@ -20,17 +20,18 @@ import { useLanguage } from "@/lib/i18n";
  * 1. On mount, silently sign in anonymously (see authStore.ensureAnonymous)
  *    if nobody's signed in yet — a real Firebase user, no form, so
  *    /analyze-chords (which requires a valid token like every other
- *    route) works exactly as it does inside the app, same quota system,
- *    same everything, zero backend changes.
+ *    route) works exactly as it does inside the app, zero backend changes.
  * 2. Drop a file, hit Analyse — ChordDetector.jsx (the same component the
  *    in-app Chords tab uses, unmodified apart from the optional
- *    onAnalysisResult/initialAnalysis props) runs the real request.
+ *    onAnalysisResult/initialAnalysis props) runs the real request —
+ *    unconditionally free, no quota to spend.
  * 3. If the signed-in user is still anonymous once a result exists,
  *    ChordAuthGate covers the ENTIRE page (not just this card) with a
- *    login/signup prompt — "still free," not "pay to see it."
+ *    login/signup prompt — a lead-capture moment for a genuinely free
+ *    result, not a paywall: "create an account to see it," never "pay to
+ *    see it."
  * 4. Signing up links the anonymous session to the new real account IN
- *    PLACE (same uid — see authStore.claimWithEmail/claimWithGoogle), so
- *    the quota already spent under the anonymous session carries over.
+ *    PLACE (same uid — see authStore.claimWithEmail/claimWithGoogle).
  *    Either way (new account via linking, or logging into an existing
  *    returning one — a genuinely different uid), the browser then
  *    navigates into the actual app instead of revealing the result on
