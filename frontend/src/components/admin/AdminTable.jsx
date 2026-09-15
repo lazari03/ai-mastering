@@ -11,7 +11,7 @@ export default function AdminTable({ columns, rows, emptyLabel = "No data for th
     return <p className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-500">{emptyLabel}</p>;
   }
   return (
-    <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/20">
+    <div className="max-w-full overflow-x-auto rounded-xl border border-white/10 bg-black/20">
       <table className="w-full min-w-[560px] text-xs">
         <thead>
           <tr className="border-b border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500">

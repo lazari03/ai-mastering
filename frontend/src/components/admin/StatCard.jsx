@@ -18,9 +18,13 @@ export default function StatCard({ label, stat, suffix = "" }) {
   const isDeltaShape = stat && typeof stat === "object" && "value" in stat;
   const display = isDeltaShape ? stat.value : stat;
   return (
-    <div className="rounded-xl border border-white/10 bg-black/20 p-3.5">
-      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-zinc-500">{label}</p>
-      <p className="mt-1.5 text-2xl font-bold text-white">
+    // min-w-0 is load-bearing on a grid item: without it, a long unbroken
+    // string (a big currency figure, a long stat value) forces this
+    // track wider than its share of the grid, which forces the whole
+    // grid — and the page — to scroll horizontally on a narrow screen.
+    <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 p-3.5">
+      <p className="m-0 truncate text-[10px] uppercase tracking-[0.1em] text-zinc-500">{label}</p>
+      <p className="mt-1.5 truncate text-2xl font-bold text-white">
         {typeof display === "number" ? display.toLocaleString() : display}
         {suffix}
       </p>

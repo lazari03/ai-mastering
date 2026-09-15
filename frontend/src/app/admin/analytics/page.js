@@ -7,6 +7,13 @@ import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import StatCard from "@/components/admin/StatCard";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
+function formatMinSec(totalSeconds) {
+  const s = Math.max(0, Math.round(totalSeconds || 0));
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return m > 0 ? `${m}m ${rem}s` : `${rem}s`;
+}
+
 export default function AdminOverviewPage() {
   const [preset, setPreset] = useState("7d");
   const [data, setData] = useState(null);
@@ -41,6 +48,10 @@ export default function AdminOverviewPage() {
             <StatCard label="New Visitors" stat={data.newVisitors} />
             <StatCard label="Returning Visitors" stat={data.returningVisitors} />
             <StatCard label="Signups" stat={data.signups} />
+            <StatCard
+              label="Avg. Time on Site"
+              stat={{ ...data.avgSessionSeconds, value: formatMinSec(data.avgSessionSeconds.value) }}
+            />
             <StatCard label="Audio Uploads" stat={data.uploads} />
             <StatCard label="Completed Masters" stat={data.masters} />
             <StatCard label="Pricing Views" stat={data.pricingViews} />

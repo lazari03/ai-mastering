@@ -10,6 +10,7 @@ import { usePathname } from "next/navigation";
 // it just scrolls, same convention as a native app's tab bar.
 const NAV = [
   { href: "/admin/analytics", label: "Overview" },
+  { href: "/admin/analytics/live", label: "Live" },
   { href: "/admin/analytics/sessions", label: "Sessions" },
   { href: "/admin/analytics/funnel", label: "Funnel" },
   { href: "/admin/analytics/acquisition", label: "Acquisition" },
@@ -24,7 +25,7 @@ export default function AdminShell({ children }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-[#0b0d10] text-zinc-100">
+    <div className="min-h-screen w-full overflow-x-hidden bg-[#0b0d10] text-zinc-100">
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0b0d10]/95 backdrop-blur-md" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 pt-3 sm:px-6">
           <p className="m-0 text-xs font-bold uppercase tracking-[0.16em] text-brass">Analytics</p>
@@ -49,7 +50,7 @@ export default function AdminShell({ children }) {
           })}
         </nav>
       </header>
-      <main className="mx-auto max-w-[1200px] px-4 pb-16 pt-5 sm:px-6">{children}</main>
+      <main className="mx-auto min-w-0 max-w-[1200px] px-4 pb-16 pt-5 sm:px-6">{children}</main>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
   listSessions,
   getSessionDetail,
   getRetention,
+  getLive,
 } from "../services/analyticsQueryService.js";
 
 const router = express.Router();
@@ -65,6 +66,18 @@ router.post("/analytics/collect", analyticsCollectLimiter, async (req, res) => {
 // ---------------------------------------------------------------------
 const admin = express.Router();
 admin.use(requireAdmin);
+
+// No date-range params — "live" always means "right now," see getLive's
+// own fixed 5-minute window.
+admin.get("/live", async (req, res) => {
+  try {
+    const data = await getLive();
+    return res.json(data);
+  } catch (error) {
+    console.error("admin/live failed:", error);
+    return res.status(500).json({ detail: "Failed to load live overview." });
+  }
+});
 
 admin.get("/overview", async (req, res) => {
   try {

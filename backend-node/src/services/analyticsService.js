@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import geoip from "geoip-lite";
 
 import { getFirestore } from "../config/firebase.js";
 
@@ -133,6 +134,23 @@ function sanitizeReferrer(referrer) {
   }
 }
 
+// Offline lookup (bundled MaxMind-derived DB, no external API call, no IP
+// ever leaves this server) — the only geo source this app uses, in keeping
+// with the same privacy stance that removed GA/Meta/TikTok. req.ip is
+// trustworthy here because server.js already sets `trust proxy` for
+// Caddy's X-Forwarded-For; "::ffff:"-prefixed IPv4-in-IPv6 addresses (what
+// Node reports for an IPv4 client behind a proxy) need the prefix
+// stripped or geoip-lite's lookup misses them entirely.
+function resolveCountry(ip) {
+  if (typeof ip !== "string" || !ip) return null;
+  try {
+    const normalized = ip.startsWith("::ffff:") ? ip.slice(7) : ip;
+    return geoip.lookup(normalized)?.country || null;
+  } catch {
+    return null;
+  }
+}
+
 function referrerDomain(referrer) {
   if (typeof referrer !== "string" || !referrer) return null;
   try {
@@ -219,12 +237,12 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
     content: typeof context?.utmContent === "string" ? context.utmContent.slice(0, 80) : null,
     term: typeof context?.utmTerm === "string" ? context.utmTerm.slice(0, 80) : null,
   };
-  // Coarse geography only, never the raw IP itself (spec section 3) — if
-  // the reverse proxy adds a country header (e.g. a CDN in front of
-  // Caddy) it's used as-is; otherwise this stays null. IP is used above
-  // only for rate limiting (see analyticsRoutes.js), never persisted here.
-  const country = typeof context?.country === "string" ? context.country.slice(0, 2).toUpperCase() : null;
-  void ip;
+  // Coarse geography only, never the raw IP itself (spec section 3) —
+  // resolved server-side from the request IP via an offline DB, never
+  // trusted from the client (a visitor's browser has no legitimate way to
+  // know its own IP-derived country, and letting it claim one would just
+  // be spoofable garbage in the admin dashboard).
+  const country = resolveCountry(ip);
 
   const visitorRef = db().collection("analyticsVisitors").doc(visitorId);
   const sessionRef = db().collection("analyticsSessions").doc(sessionId);

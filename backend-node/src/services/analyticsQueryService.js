@@ -165,6 +165,7 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
     checkoutStarts: list.filter((s) => s.hasStartedCheckout).length,
     paid: list.filter((s) => s.hasPaid).length,
     signups: list.filter((s) => s.authenticated && s.isNewVisitor).length,
+    avgActiveSeconds: list.length ? Math.round(list.reduce((sum, s) => sum + (s.activeMs || 0), 0) / list.length / 1000) : 0,
   });
 
   const current = summarize(sessions);
@@ -180,6 +181,7 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
     newVisitors: withDelta(current.newVisitors, previous.newVisitors),
     returningVisitors: withDelta(current.returningVisitors, previous.returningVisitors),
     signups: withDelta(current.signups, previous.signups),
+    avgSessionSeconds: withDelta(current.avgActiveSeconds, previous.avgActiveSeconds),
     uploads: withDelta(current.uploads, previous.uploads),
     masters: withDelta(current.masters, previous.masters),
     pricingViews: withDelta(current.pricingViews, previous.pricingViews),
@@ -496,6 +498,42 @@ export async function getSessionDetail(sessionId) {
   const session = serializeTimestamps({ id: sessionSnap.id, ...sessionSnap.data() });
   const events = eventsSnap.docs.map((d) => serializeTimestamps({ id: d.id, ...d.data() }));
   return { session, events };
+}
+
+const LIVE_WINDOW_MS = 5 * 60 * 1000;
+
+// "Real-time" here means "active in the last 5 minutes," refreshed by
+// polling (see the frontend Live page) — not a websocket/SSE push feed.
+// lastSeenAt is already updated on every event/heartbeat a session sends
+// (ingestBatch), so this needs no new tracking, just a query scoped to
+// "recently," instead of the explicit from/to range every other report
+// here takes.
+export async function getLive() {
+  const since = new Date(Date.now() - LIVE_WINDOW_MS);
+  const snap = await db().collection("analyticsSessions").where("lastSeenAt", ">=", Timestamp.fromDate(since)).get();
+  const sessions = snap.docs.map((d) => d.data());
+
+  const countryCounts = new Map();
+  const pageCounts = new Map();
+  let activeMsTotal = 0;
+  for (const s of sessions) {
+    const country = s.country || "Unknown";
+    countryCounts.set(country, (countryCounts.get(country) || 0) + 1);
+    const page = s.exitPage || s.landingPage || "/";
+    pageCounts.set(page, (pageCounts.get(page) || 0) + 1);
+    activeMsTotal += s.activeMs || 0;
+  }
+
+  const sortedByCount = (map, key) =>
+    [...map.entries()].map(([k, count]) => ({ [key]: k, visitors: count })).sort((a, b) => b.visitors - a.visitors);
+
+  return {
+    windowMinutes: LIVE_WINDOW_MS / 60000,
+    activeVisitors: new Set(sessions.map((s) => s.visitorId)).size,
+    avgActiveSeconds: sessions.length ? Math.round(activeMsTotal / sessions.length / 1000) : 0,
+    countries: sortedByCount(countryCounts, "country"),
+    pages: sortedByCount(pageCounts, "path"),
+  };
 }
 
 export async function getRetention({ from, to }) {
