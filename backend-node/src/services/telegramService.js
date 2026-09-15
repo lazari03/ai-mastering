@@ -55,12 +55,10 @@ export async function notifyPurchase({ kind, product, email, amountCents, curren
 // nobody but one person will ever send.
 //
 // Traffic/pageview numbers used to live here too (via GA4's Data API),
-// but that needs a Google Cloud service account key, and this project's
-// GCP org has key creation disabled by policy — not worth fighting for
-// numbers that are already one login away at analytics.google.com
-// anyway (the NEXT_PUBLIC_GA_MEASUREMENT_ID tracking snippet is still
-// live on every page; this only ever removed the bot's ability to pull
-// that data on request, not the tracking itself).
+// but Google Analytics has been removed from this app entirely — there's
+// no GA property left to query. Plausible (if configured, see
+// components/Analytics.jsx) is the only traffic-analytics provider now,
+// checked directly at plausible.io rather than through this bot.
 // ---------------------------------------------------------------------
 
 const HELP_TEXT = ["Auralith Forge bot", "", "/stats [today|7d|30d] - signups and purchases (default today)", "/help - this message"].join(

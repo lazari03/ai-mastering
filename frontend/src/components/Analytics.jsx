@@ -9,45 +9,13 @@ import { getStoredConsent } from "./CookieBanner";
 // wire up. Set NEXT_PUBLIC_PLAUSIBLE_DOMAIN to turn this on.
 const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
 
-// GA4 — set NEXT_PUBLIC_GA_MEASUREMENT_ID (the "G-XXXXXXXXXX" from
-// Analytics > Admin > Data Streams) to turn this on. All four providers
-// below can run side by side; all are gated behind the same cookie-banner
-// acceptance, checked/re-checked live via the "cookie-consent-changed"
-// event CookieBanner fires — accepting or later withdrawing consent takes
-// effect immediately, no reload needed.
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-
-// Ad conversion pixels — separate purpose from GA/Plausible above (those
-// measure traffic; these let Meta/TikTok attribute and optimize ad spend
+// Ad conversion pixels — separate purpose from Plausible above (that
+// measures traffic; these let Meta/TikTok attribute and optimize ad spend
 // against sign_up/begin_checkout/purchase, see lib/analytics.js's
 // trackEvent). Get each ID from Meta Events Manager / TikTok Events
 // Manager after creating a pixel there.
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 const TIKTOK_PIXEL_ID = process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID;
-
-function loadGtag(measurementId) {
-  if (window.gtag) return; // already loaded (e.g. consent toggled off then back on)
-  window.dataLayer = window.dataLayer || [];
-  window.gtag = function gtag() {
-    window.dataLayer.push(arguments);
-  };
-  window.gtag("js", new Date());
-  // send_page_view:false — the pathname effect below is the single source
-  // of every page_view (including the first one), so gtag's own automatic
-  // page_view on config doesn't fire a duplicate for the initial load.
-  window.gtag("config", measurementId, { anonymize_ip: true, send_page_view: false });
-  // Fired here, not left to the pathname effect's initial run — gtag now
-  // loads asynchronously after "load", so by the time this function
-  // returns, window.gtag exists but the pathname effect may already have
-  // run once (and found it missing) before this. This is what guarantees
-  // the very first page_view is never silently dropped.
-  window.gtag("event", "page_view", { page_path: window.location.pathname, page_location: window.location.href });
-
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-  document.head.appendChild(script);
-}
 
 // Meta's own base pixel snippet, written out instead of pasted-in-minified
 // — functionally identical (same queue-until-loaded shim: window.fbq
@@ -123,16 +91,16 @@ export default function Analytics() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!PLAUSIBLE_DOMAIN && !GA_MEASUREMENT_ID && !META_PIXEL_ID && !TIKTOK_PIXEL_ID) {
+    if (!PLAUSIBLE_DOMAIN && !META_PIXEL_ID && !TIKTOK_PIXEL_ID) {
       // Also caught at build time in next.config.mjs (a much louder,
       // impossible-to-miss warning in the build log) — this one's for
-      // whoever's staring at DevTools on the live site wondering why GA
-      // shows nothing, without having to go dig through build logs first.
-      // Scoped to GA/Plausible specifically (traffic measurement) rather
-      // than the pixels too — running ad pixels without GA, or vice
+      // whoever's staring at DevTools on the live site wondering why
+      // nothing shows, without having to go dig through build logs first.
+      // Scoped to Plausible specifically (traffic measurement) rather than
+      // the pixels too — running ad pixels without Plausible, or vice
       // versa, is a legitimate setup, not something worth warning about.
-      if (process.env.NODE_ENV === "production" && !GA_MEASUREMENT_ID && !PLAUSIBLE_DOMAIN) {
-        console.warn("[Analytics] Neither NEXT_PUBLIC_GA_MEASUREMENT_ID nor NEXT_PUBLIC_PLAUSIBLE_DOMAIN is set — no analytics will load on this page.");
+      if (process.env.NODE_ENV === "production" && !PLAUSIBLE_DOMAIN) {
+        console.warn("[Analytics] NEXT_PUBLIC_PLAUSIBLE_DOMAIN is not set — no traffic analytics will load on this page.");
       }
       return;
     }
@@ -144,7 +112,7 @@ export default function Analytics() {
 
   useEffect(() => {
     if (!enabled) return;
-    if (!GA_MEASUREMENT_ID && !META_PIXEL_ID && !TIKTOK_PIXEL_ID) return;
+    if (!META_PIXEL_ID && !TIKTOK_PIXEL_ID) return;
     // Deferred past "load", not fired the instant consent is confirmed —
     // for a repeat visitor (consent already stored) that confirmation
     // happens immediately on mount, which would otherwise pull in these
@@ -152,7 +120,6 @@ export default function Analytics() {
     // effect below only fires once each provider's global actually
     // exists, so nothing is lost, just delayed a few hundred ms.
     const loadAll = () => {
-      if (GA_MEASUREMENT_ID) loadGtag(GA_MEASUREMENT_ID);
       if (META_PIXEL_ID) loadMetaPixel(META_PIXEL_ID);
       if (TIKTOK_PIXEL_ID) loadTikTokPixel(TIKTOK_PIXEL_ID);
     };
@@ -169,9 +136,6 @@ export default function Analytics() {
   // only ever sees the very first page someone lands on.
   useEffect(() => {
     if (!enabled) return;
-    if (GA_MEASUREMENT_ID && window.gtag) {
-      window.gtag("event", "page_view", { page_path: pathname, page_location: window.location.href });
-    }
     if (META_PIXEL_ID && typeof window.fbq === "function") {
       window.fbq("track", "PageView");
     }

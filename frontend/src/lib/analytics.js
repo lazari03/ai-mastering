@@ -35,16 +35,16 @@ function pixelParams(params) {
   };
 }
 
-// Thin wrapper around window.gtag/fbq/ttq — every call is a safe no-op for
-// whichever of the three isn't loaded (not configured, or the user hasn't
+// Thin wrapper around window.fbq/ttq — every call is a safe no-op for
+// whichever of the two isn't loaded (not configured, or the user hasn't
 // accepted the cookie banner — see Analytics.jsx), so call sites (
 // authStore, checkout, etc.) never need to check for that themselves.
+// Google Analytics/gtag was removed entirely — this only ever reaches the
+// ad pixels now, so most of the app's own funnel event names (cta_click,
+// second_master, free_tool_opened, etc.) are silent no-ops here unless
+// they also happen to be in META_EVENT_MAP/TIKTOK_EVENT_MAP below.
 export function trackEvent(name, params = {}) {
   if (typeof window === "undefined") return;
-
-  if (typeof window.gtag === "function") {
-    window.gtag("event", name, params);
-  }
 
   const metaEvent = META_EVENT_MAP[name];
   if (metaEvent && typeof window.fbq === "function") {

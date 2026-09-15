@@ -63,27 +63,12 @@ services:
       # Idle-session cap, separate from the absolute one above — see
       # requireAuth.js / settings.js:sessionInactivityHours.
       SESSION_INACTIVITY_HOURS: ${SESSION_INACTIVITY_HOURS:-24}
-      # Telegram admin bot — new-signup/new-purchase alerts plus /pageviews
-      # and /stats commands. Unset either and the whole feature silently
-      # disables itself (see services/telegramService.js and
-      # backend-node/.env.example for how to get both values).
+      # Telegram admin bot — new-signup/new-purchase alerts plus a /stats
+      # command. Unset either and the whole feature silently disables
+      # itself (see services/telegramService.js and backend-node/.env.example
+      # for how to get both values).
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
-      # GA4 Measurement Protocol — writes a server-side "purchase" event
-      # from the Polar webhook, immune to ad-blockers/closed tabs unlike
-      # the client-side copy. Same measurement ID as the frontend's
-      # NEXT_PUBLIC_GA_MEASUREMENT_ID; GA_API_SECRET comes from GA4 Admin
-      # > Data Streams > your stream > Measurement Protocol API secrets.
-      # Unset either and this silently no-ops (see polarService.js's
-      # sendGA4Purchase). (There used to also be a GA4 Data API
-      # integration here for reading traffic reports into the Telegram
-      # bot's /pageviews command — removed: it needed a service account
-      # key, and this project's GCP org has key creation disabled by
-      # policy. That data was never lost, it's one login away at
-      # analytics.google.com — only the bot's ability to fetch it on
-      # request went away.)
-      GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID}
-      GA_API_SECRET: ${GA_API_SECRET}
       # One shared 10%-off Polar discount code shown to every newsletter
       # subscriber (see services/newsletterService.js). Unset just means
       # the widget still records the subscriber but shows no code.
@@ -119,9 +104,8 @@ services:
         NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
         NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
-        NEXT_PUBLIC_GA_MEASUREMENT_ID: ${NEXT_PUBLIC_GA_MEASUREMENT_ID}
         NEXT_PUBLIC_PLAUSIBLE_DOMAIN: ${NEXT_PUBLIC_PLAUSIBLE_DOMAIN}
-        # Ad conversion tracking — same cookie-consent gate as GA/Plausible
+        # Ad conversion tracking — same cookie-consent gate as Plausible
         # (components/Analytics.jsx), same build-time-baked caveat.
         NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID}
         NEXT_PUBLIC_TIKTOK_PIXEL_ID: ${NEXT_PUBLIC_TIKTOK_PIXEL_ID}

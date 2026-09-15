@@ -118,33 +118,16 @@ export const settings = {
     stemSeparation: process.env.POLAR_STEM_SEPARATION_PRODUCT_ID || null,
   },
 
-  // Telegram bot — admin notifications (new signup, new purchase) and
-  // on-demand stats commands (/pageviews, /stats). See
-  // services/telegramService.js. Unset token disables the whole feature
-  // silently, same "ungated when unset" pattern as everything else
-  // optional in this file.
+  // Telegram bot — admin notifications (new signup, new purchase) and an
+  // on-demand /stats command. See services/telegramService.js. Unset
+  // token disables the whole feature silently, same "ungated when unset"
+  // pattern as everything else optional in this file.
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || null,
   // Only this chat is ever notified or allowed to run a command — a
   // Telegram bot is discoverable by anyone who finds its @username, so
   // without this allowlist a stranger could message it and pull real
   // revenue/traffic numbers. Get your own numeric id from @userinfobot.
   telegramChatId: process.env.TELEGRAM_CHAT_ID || null,
-
-  // GA4 Measurement Protocol — a separate credential pair from the Data
-  // API above (that one reads reports; this one writes events). Backs the
-  // server-side "purchase" event fired from the Polar webhook
-  // (announcePurchase in polarService.js) — the frontend's own
-  // client-side purchase event (ThankYouTracker.jsx) is lost entirely if
-  // someone has an ad-blocker or closes the tab during the checkout
-  // redirect, which is common right on a payment page. This copy never
-  // touches the visitor's browser at all, so it can't be blocked.
-  // gaMeasurementId is the same "G-XXXXXXXXXX" as the frontend's
-  // NEXT_PUBLIC_GA_MEASUREMENT_ID (set it again here — this is a
-  // different process, NEXT_PUBLIC_* vars aren't available to it).
-  // gaApiSecret: GA4 Admin > Data Streams > your stream > Measurement
-  // Protocol API secrets > Create.
-  gaMeasurementId: process.env.GA_MEASUREMENT_ID || null,
-  gaApiSecret: process.env.GA_API_SECRET || null,
 
   // Newsletter signup — one shared 10%-off Polar discount code (not a
   // unique per-subscriber code; there's no transactional-email sending in
