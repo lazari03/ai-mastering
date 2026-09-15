@@ -4,6 +4,7 @@ import { fetchCatalog, importPreset, deletePreset, runMasteringJob, analyzeAudio
 import { mapAdaptiveParamsToProParams } from "@/domain/mastering/adaptiveToProParams";
 import { trackEvent } from "@/lib/analytics";
 import { useAuthStore } from "@/store/authStore";
+import { useEntitlementsStore } from "@/store/entitlementsStore";
 
 function currentAuthState() {
   const user = useAuthStore.getState().user;
@@ -538,6 +539,18 @@ export const useMasteringStore = create((set, get) => ({
         authenticated: currentAuthState(),
         processing_duration_ms: Date.now() - startedAt,
       });
+      // Funnel checkpoint distinguishing a one-and-done trial user from
+      // someone who came back for a repeat master — masterQuota.used is
+      // read from BEFORE this job's own consumption is reflected (it's
+      // only refreshed after this resolves, see AppClient's
+      // refreshEntitlements() call), so used === 1 here means this
+      // completion is what brings the count to exactly 2.
+      if (!preview) {
+        const quotaBeforeThisJob = useEntitlementsStore.getState().masterQuota;
+        if (quotaBeforeThisJob?.used === 1) {
+          trackEvent("second_master", { mastering_mode: masteringMode, authenticated: currentAuthState() });
+        }
+      }
     } catch (err) {
       set({
         isSubmitting: false,

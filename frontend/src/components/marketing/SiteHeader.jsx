@@ -7,6 +7,11 @@ import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import { useLanguage } from "@/lib/i18n";
 import { CTA } from "@/lib/internalLinks";
+import { trackEvent } from "@/lib/analytics";
+
+function trackOpenAppClick() {
+  trackEvent("cta_click", { cta_id: "open_app", location: "header" });
+}
 
 // Data-driven, same shape as AppClient.jsx's TABS array (key + a t()
 // lookup key) — one array drives both the desktop nav and the mobile
@@ -53,11 +58,12 @@ export default function SiteHeader() {
 
           <div className="hidden items-center gap-3 md:flex">
             <LanguageSwitch lang={lang} setLang={setLang} />
-            <Link href={CTA.signup} className="text-[13px] text-zinc-300 hover:text-white">
+            <Link href={CTA.signin} className="text-[13px] text-zinc-300 hover:text-white">
               {t("nav.signin")}
             </Link>
             <Link
               href={CTA.signup}
+              onClick={trackOpenAppClick}
               className="rounded-full border border-brass/50 bg-brass/[0.15] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass transition hover:bg-brass/25"
             >
               {t("nav.openApp")}
@@ -129,14 +135,17 @@ export default function SiteHeader() {
 
           <div className="border-t border-white/10 pt-4">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <Link href={CTA.signup} onClick={() => setMenuOpen(false)} className="text-xs text-zinc-400">
+              <Link href={CTA.signin} onClick={() => setMenuOpen(false)} className="text-xs text-zinc-400">
                 {t("nav.signin")}
               </Link>
               <LanguageSwitch lang={lang} setLang={setLang} />
             </div>
             <Link
               href={CTA.signup}
-              onClick={() => setMenuOpen(false)}
+              onClick={() => {
+                trackOpenAppClick();
+                setMenuOpen(false);
+              }}
               className="block w-full rounded-full border border-brass/50 bg-brass/[0.15] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em] text-brass"
             >
               {t("nav.openApp")}

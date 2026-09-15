@@ -10,8 +10,15 @@ import { POSTS } from "@/content/posts";
 // ---- Conversion CTA targets ------------------------------------------
 // One name per destination, used everywhere instead of a raw path string.
 export const CTA = {
-  // Frictionless entry point — no plan chosen yet, starts on Free.
-  signup: "/login",
+  // Frictionless entry point — no plan chosen yet, starts on Free. Lands
+  // directly on the Sign Up tab (see LoginClient.jsx's ?mode= read) — every
+  // current use of this is a "try it free" conversion moment, not a
+  // returning-user login, so defaulting to Sign In there cost every one of
+  // them an extra, unnecessary click to find the right tab.
+  signup: "/login?mode=signup",
+  // Explicit "I already have an account" entry point — used only by the
+  // header's own "Sign In" links, which should default to that tab.
+  signin: "/login",
   // Anonymous visitors can't check out directly (Polar checkout requires
   // an authed uid — see PlansPanel.jsx), so "subscribe" from a public
   // page always means "go see the plans," not a direct checkout link.

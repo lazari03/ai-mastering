@@ -20,7 +20,12 @@ export default function LoginClient() {
   // for a request to 401 first — same query param, same message either way.
   const sessionExpired = searchParams.get("reason") === "session_expired";
 
-  const [mode, setMode] = useState("signin"); // "signin" | "signup"
+  // Defaults to Sign In for a bare /login visit, but every "Master a Track
+  // Free"/"Try it free"-style CTA site-wide links to /login?mode=signup
+  // (see lib/internalLinks.js's CTA.signup) — those are all fresh-visitor
+  // conversion moments, and landing them on Sign In first cost every one
+  // an extra click to find the right tab.
+  const [mode, setMode] = useState(() => (searchParams.get("mode") === "signup" ? "signup" : "signin")); // "signin" | "signup"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");

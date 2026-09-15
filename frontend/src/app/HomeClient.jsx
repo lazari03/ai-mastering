@@ -23,6 +23,10 @@ import SectionHeading from "@/components/marketing/SectionHeading";
 import TruePeakMeter from "@/components/audio/TruePeakMeter";
 import { trackEvent } from "@/lib/analytics";
 
+function handleCtaClick(ctaId, location) {
+  trackEvent("cta_click", { cta_id: ctaId, location });
+}
+
 // Fires pricing_view once the homepage's #pricing section actually enters
 // view, not just on page load — most visitors never scroll that far, so a
 // mount-time fire would wildly overcount "viewed pricing" against the
@@ -120,7 +124,11 @@ export default function HomeClient() {
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-zinc-300 sm:text-lg">{t("hero.body")}</p>
             <div className="mt-10 flex flex-wrap gap-3.5">
-              <Link href={CTA.signup} className="rounded-2xl bg-ember px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-[#100b08] transition hover:brightness-110">
+              <Link
+                href={CTA.signup}
+                onClick={() => handleCtaClick("master_a_track_free", "homepage_hero")}
+                className="rounded-2xl bg-ember px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-[#100b08] transition hover:brightness-110"
+              >
                 {t("hero.ctaPrimary")}
               </Link>
               <a href="#demo" className="rounded-2xl border border-white/20 bg-black/20 px-8 py-4 text-sm font-semibold uppercase tracking-[0.1em] text-white transition hover:border-white/40">
@@ -306,6 +314,7 @@ export default function HomeClient() {
 
                 <Link
                   href={CTA.signup}
+                  onClick={() => handleCtaClick(key === "free" ? "pricing_free_cta" : `pricing_${key}_cta`, "homepage_pricing")}
                   className={`mt-6 block rounded-2xl px-6 py-3.5 text-center text-sm font-bold uppercase tracking-[0.1em] transition ${
                     isFeatured
                       ? "bg-brass text-[#100b08] hover:brightness-110"
