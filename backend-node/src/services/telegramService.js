@@ -1,5 +1,9 @@
 import { settings } from "../config/settings.js";
 import { getFirestore } from "../config/firebase.js";
+// Aliased — this file already has its own resolveRange(argRaw) for the
+// older /stats command's simpler today/7d/30d shape; this is analyticsQueryService.js's
+// version (accepts the full admin-dashboard preset set, used by /funnel below).
+import { resolveRange as resolveAnalyticsRange, getOverview } from "./analyticsQueryService.js";
 
 const API_BASE = "https://api.telegram.org";
 
@@ -55,15 +59,21 @@ export async function notifyPurchase({ kind, product, email, amountCents, curren
 // nobody but one person will ever send.
 //
 // Traffic/pageview numbers used to live here too (via GA4's Data API),
-// but Google Analytics has been removed from this app entirely — there's
-// no GA property left to query. Plausible (if configured, see
-// components/Analytics.jsx) is the only traffic-analytics provider now,
-// checked directly at plausible.io rather than through this bot.
+// but Google Analytics has been removed from this app entirely. /funnel
+// below now covers that gap instead — it reads the first-party analytics
+// pipeline directly (analyticsQueryService.js's getOverview, the same
+// function the admin dashboard's Overview page calls), not a third-party
+// API. Plausible (if configured, see components/Analytics.jsx) is a
+// separate, purely traffic-level tool this bot doesn't query.
 // ---------------------------------------------------------------------
 
-const HELP_TEXT = ["Auralith Forge bot", "", "/stats [today|7d|30d] - signups and purchases (default today)", "/help - this message"].join(
-  "\n"
-);
+const HELP_TEXT = [
+  "Auralith Forge bot",
+  "",
+  "/stats [today|7d|30d] - signups and purchases (default 7d)",
+  "/funnel [today|yesterday|7d|30d|90d] - visitors, uploads, masters, checkout, revenue (default 7d)",
+  "/help - this message",
+].join("\n");
 
 const RANGES = {
   today: { label: "today", cutoff: () => new Date(new Date().setHours(0, 0, 0, 0)) },
@@ -136,6 +146,52 @@ async function handleStats(argRaw) {
   return lines.join("\n");
 }
 
+const FUNNEL_PRESETS = new Set(["today", "yesterday", "7d", "30d", "90d"]);
+
+// Same data the admin dashboard's Overview page shows (getOverview in
+// analyticsQueryService.js) — this bot is a second surface onto the exact
+// same first-party analytics, not a separate stats system to keep in sync.
+function fmtDelta({ value, deltaPct }, suffix = "") {
+  const num = typeof value === "number" ? Math.round(value * 100) / 100 : value;
+  if (deltaPct == null) return `${num}${suffix}`;
+  const arrow = deltaPct > 0 ? "↑" : deltaPct < 0 ? "↓" : "→";
+  return `${num}${suffix} (${arrow}${Math.abs(deltaPct)}%)`;
+}
+
+async function handleFunnel(argRaw) {
+  const preset = FUNNEL_PRESETS.has((argRaw || "").toLowerCase()) ? argRaw.toLowerCase() : "7d";
+  let overview;
+  try {
+    overview = await getOverview(resolveAnalyticsRange({ preset }));
+  } catch (error) {
+    console.error("Telegram /funnel query failed:", error);
+    return "Couldn't load funnel data — see server logs.";
+  }
+
+  return [
+    `Funnel - ${preset}`,
+    "",
+    `Visitors: ${fmtDelta(overview.visitors)}`,
+    `New visitors: ${fmtDelta(overview.newVisitors)}`,
+    `Signups: ${fmtDelta(overview.signups)}`,
+    `Uploads: ${fmtDelta(overview.uploads)}`,
+    `Masters: ${fmtDelta(overview.masters)}`,
+    `Pricing views: ${fmtDelta(overview.pricingViews)}`,
+    `Checkout starts: ${fmtDelta(overview.checkoutStarts)}`,
+    `New customers: ${fmtDelta(overview.newCustomers)}`,
+    `Revenue: ${fmtDelta(overview.revenue, " EUR")}`,
+    "",
+    `MRR: ${Math.round(overview.mrr)} EUR`,
+    `Active subscribers: ${overview.activeSubscribers}`,
+    `Cancellations: ${overview.cancellations}`,
+    "",
+    `Visitor -> Upload: ${overview.conversion.visitorToUpload}%`,
+    `Visitor -> Master: ${overview.conversion.visitorToMaster}%`,
+    `Visitor -> Paid: ${fmtDelta(overview.conversion.visitorToPaid, "%")}`,
+    `Checkout -> Paid: ${overview.conversion.checkoutToPaid}%`,
+  ].join("\n");
+}
+
 async function handleMessage(msg) {
   // Only the configured admin chat is ever answered — a Telegram bot is
   // discoverable by anyone who finds its @username, so without this an
@@ -155,6 +211,8 @@ async function handleMessage(msg) {
     reply = HELP_TEXT;
   } else if (command === "/stats") {
     reply = await handleStats(args[0]);
+  } else if (command === "/funnel") {
+    reply = await handleFunnel(args[0]);
   } else {
     reply = `Unknown command.\n\n${HELP_TEXT}`;
   }
@@ -200,6 +258,7 @@ async function registerCommandMenu() {
     await callTelegram("setMyCommands", {
       commands: [
         { command: "stats", description: "Signups and purchases" },
+        { command: "funnel", description: "Visitors, uploads, masters, revenue" },
         { command: "help", description: "List commands" },
       ],
     });
