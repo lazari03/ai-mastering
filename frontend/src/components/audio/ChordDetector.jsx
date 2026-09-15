@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { postAnalyzeChords } from "@/network/http/client";
 import { trackEvent } from "@/lib/analytics";
@@ -62,6 +62,18 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
 
   const chordChips = useMemo(() => analysis?.chords || [], [analysis]);
 
+  // The login-handoff path (ChordsPanel.jsx) seeds `analysis` immediately
+  // from the stashed JSON result, so this <audio> element can mount before
+  // the actual file arrives from its async IndexedDB pickup — previewUrl
+  // starts empty and updates a beat later. Just letting React patch the
+  // `src` attribute on that later update isn't reliable once the element
+  // already went through a resource-selection pass with nothing to play;
+  // an explicit load() forces it to pick up the real source instead of
+  // silently staying in its earlier (no-audio) state.
+  useEffect(() => {
+    if (previewUrl) audioRef.current?.load();
+  }, [previewUrl]);
+
   return (
     <div>
       <button
@@ -104,7 +116,7 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
 
           <p className="text-[11px] text-zinc-500">{t("chordDetector.estimatedNote")}</p>
 
-          <audio ref={audioRef} src={previewUrl} controls onTimeUpdate={onTimeUpdate} className="w-full" />
+          <audio ref={audioRef} src={previewUrl || undefined} controls onTimeUpdate={onTimeUpdate} className="w-full" />
 
           <div className="rounded-xl border border-white/10 bg-black/20 p-4">
             <p className="m-0 mb-2.5 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.chordProgression")}</p>
