@@ -32,7 +32,7 @@ const FAQ_ITEMS = [
   {
     question: "What's the difference between Standard and Professional?",
     answer:
-      "Standard applies fast, safe adaptive mastering — 3 full-length renders a month are free. Professional adds oversampled true-peak limiting, finer dynamic EQ, and tempo-aware compression timing for release-grade results, unlocked (along with a much higher monthly limit) on the Studio plan or higher.",
+      "Standard applies fast, safe adaptive mastering — it's what your 3 free full-length masters (a one-time trial, not renewed monthly) run on. Professional adds oversampled true-peak limiting, finer dynamic EQ, and tempo-aware compression timing for release-grade results, unlocked (along with a much higher monthly limit) on the Studio plan or higher.",
   },
   {
     question: "Can I save an artist's exact mastering chain?",

@@ -143,8 +143,8 @@ const DICT = {
   },
   "faq.q2": { en: "What's the difference between Standard and Professional?", sq: "Cili është ndryshimi midis Standard dhe Professional?" },
   "faq.a2": {
-    en: "Standard applies fast, safe adaptive mastering — 3 full-length renders a month are free. Professional adds oversampled true-peak limiting, finer dynamic EQ, and tempo-aware compression timing for release-grade results, unlocked (along with a much higher monthly limit) on the Studio plan or higher. Free previews use the Standard engine.",
-    sq: "Standard aplikon masterizim adaptiv të shpejtë dhe të sigurt — 3 renderë të plotë në muaj janë falas. Professional shton kufizim true-peak me oversampling, EQ dinamik më të hollësishëm, dhe kohëzgjatje kompresimi të ndjeshme ndaj tempos, i zhbllokuar (bashkë me një limit mujor shumë më të lartë) me planin Studio ose më lart. Parapamjet falas përdorin motorin Standard.",
+    en: "Standard applies fast, safe adaptive mastering — it's what your 3 free full-length masters (a one-time trial, not renewed monthly) run on. Professional adds oversampled true-peak limiting, finer dynamic EQ, and tempo-aware compression timing for release-grade results, unlocked (along with a much higher monthly limit) on the Studio plan or higher. Free previews use the Standard engine.",
+    sq: "Standard aplikon masterizim adaptiv të shpejtë dhe të sigurt — mbi të funksionojnë 3 masterët e tu falas (një provë një-herëshe, nuk rinovohet çdo muaj). Professional shton kufizim true-peak me oversampling, EQ dinamik më të hollësishëm, dhe kohëzgjatje kompresimi të ndjeshme ndaj tempos, i zhbllokuar (bashkë me një limit mujor shumë më të lartë) me planin Studio ose më lart. Parapamjet falas përdorin motorin Standard.",
   },
   "faq.q3": { en: "Can I save an artist's exact mastering chain?", sq: "Mund ta ruaj zinxhirin e saktë të masterizimit të një artisti?" },
   "faq.a3": {
@@ -246,8 +246,8 @@ const DICT = {
   "pricing.eyebrow": { en: "Pricing", sq: "Çmimet" },
   "pricing.title": { en: "Three plans. No confusing add-ons.", sq: "Tre plane. Pa shtesa konfuze." },
   "pricing.subtitle": {
-    en: "Start free with 3 full masters a month. Upgrade only when you actually need more.",
-    sq: "Fillo falas me 3 masterë të plotë në muaj. Përmirëso vetëm kur të nevojitet më shumë.",
+    en: "Start free with 3 full masters, no card required — a one-time trial, not a monthly allowance. Upgrade only when you actually need more.",
+    sq: "Fillo falas me 3 masterë të plotë, pa kartë — një provë një-herëshe, jo një kuotë mujore. Përmirëso vetëm kur të nevojitet më shumë.",
   },
   "pricing.badge": { en: "Best Value", sq: "Vlera më e Mirë" },
   "pricing.freeCta": { en: "Start Free", sq: "Fillo Falas" },
