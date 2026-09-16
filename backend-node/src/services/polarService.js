@@ -4,6 +4,7 @@ import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks"
 import { settings } from "../config/settings.js";
 import { getFirestore } from "../config/firebase.js";
 import { notifyPurchase } from "./telegramService.js";
+import { writeNotification } from "./adminNotificationService.js";
 import { recordServerEvent } from "./analyticsService.js";
 
 // Polar is a Merchant of Record — it handles global VAT/sales tax, so we
@@ -42,7 +43,12 @@ function subscriptionPeriodEndDate(sub) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function isEntitled(sub) {
+// Exported so adminUsersService.js can derive a plan for a whole page of
+// users (up to 1000 at once) from Firestore docs it already batch-fetched,
+// rather than calling getPlan(uid) per user — which does its own fresh
+// Firestore read internally and would mean up to 1000 extra round trips
+// for one admin page load. Same entitlement logic either way.
+export function isEntitled(sub) {
   if (!sub) return false;
   if (ACTIVE_STATUSES.has(sub.status)) return true;
   const periodEnd = subscriptionPeriodEndDate(sub);
@@ -98,6 +104,10 @@ async function announcePurchase({ kind, product, email, amountCents, currency })
     console.error("Failed to record purchase event (non-fatal):", error);
   }
   await notifyPurchase({ kind, product, email, amountCents, currency });
+  // Same event, a second destination — the admin dashboard's own
+  // notification bell (writeNotification is already internally
+  // best-effort, no .catch() needed here).
+  writeNotification({ type: "payment", email, amountCents, currency, message: `Payment: ${product} — ${email || "unknown"}` });
 }
 
 // Polar's own validation errors (HTTPValidationError) carry a `detail`

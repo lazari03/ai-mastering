@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import NotificationBell from "./NotificationBell";
+
 // Internal business dashboard (spec section 37) — clarity/density/speed
 // over decoration. One horizontal scrollable tab strip works identically
 // at every width (phone through desktop) rather than maintaining two
@@ -19,6 +21,7 @@ const NAV = [
   { href: "/admin/analytics/sales", label: "Sales" },
   { href: "/admin/analytics/errors", label: "Errors" },
   { href: "/admin/analytics/retention", label: "Retention" },
+  { href: "/admin/users", label: "Users" },
 ];
 
 export default function AdminShell({ children }) {
@@ -29,9 +32,12 @@ export default function AdminShell({ children }) {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0b0d10]/95 backdrop-blur-md" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 pt-3 sm:px-6">
           <p className="m-0 text-xs font-bold uppercase tracking-[0.16em] text-brass">Analytics</p>
-          <Link href="/app" className="text-[11px] text-zinc-500 hover:text-zinc-300">
-            ← Back to app
-          </Link>
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <Link href="/app" className="text-[11px] text-zinc-500 hover:text-zinc-300">
+              ← Back to app
+            </Link>
+          </div>
         </div>
         <nav className="mx-auto flex max-w-[1200px] gap-1 overflow-x-auto px-4 pb-2 pt-3 sm:px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {NAV.map((item) => {

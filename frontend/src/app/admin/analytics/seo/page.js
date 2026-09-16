@@ -6,6 +6,7 @@ import { getAdminAnalytics } from "@/network/http/client";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import StatCard from "@/components/admin/StatCard";
 import AdminTable from "@/components/admin/AdminTable";
+import ExportButtons from "@/components/admin/ExportButtons";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
 const COLUMNS = [
@@ -47,7 +48,10 @@ export default function AdminSeoPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="m-0 text-lg font-bold text-white">SEO</h1>
-        <DateRangeFilter value={preset} onChange={setPreset} />
+        <div className="flex flex-wrap items-center gap-3">
+          <DateRangeFilter value={preset} onChange={setPreset} />
+          <ExportButtons path="/seo" params={{ preset }} />
+        </div>
       </div>
       <p className="m-0 text-xs text-zinc-500">
         Organic sessions only — arrived via a search engine, not a paid/social/direct visit. Query-level data

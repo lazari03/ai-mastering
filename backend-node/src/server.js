@@ -10,6 +10,8 @@ import { verifyDownloadToken } from "./services/downloadTokenService.js";
 import masteringRoutes from "./routes/masteringRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import adminUsersRoutes from "./routes/adminUsersRoutes.js";
+import adminNotificationsRoutes from "./routes/adminNotificationsRoutes.js";
 import { reconcileAllSubscriptions } from "./services/polarService.js";
 import { startBot as startTelegramBot } from "./services/telegramService.js";
 
@@ -128,6 +130,8 @@ app.use((req, res, next) => {
 
 app.use("/", masteringRoutes);
 app.use("/", analyticsRoutes);
+app.use("/", adminUsersRoutes);
+app.use("/", adminNotificationsRoutes);
 
 // Without this, anything thrown/passed to next(err) that a route didn't
 // catch itself (a multer file-filter rejection, a body-size overflow, a

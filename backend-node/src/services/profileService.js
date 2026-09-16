@@ -2,6 +2,7 @@ import { getFirestore } from "../config/firebase.js";
 import { notifyNewRegistration } from "./telegramService.js";
 import { sendWelcomeEmail } from "./brevoService.js";
 import { recordServerEvent } from "./analyticsService.js";
+import { writeNotification } from "./adminNotificationService.js";
 
 // User profile lives in Firestore at users/{uid} — the same document whose
 // "artists" subcollection holds Saved Artists (see customPresetsService.js)
@@ -63,6 +64,10 @@ export async function saveProfile(uid, profile, email, signInProvider = null) {
     notifyNewRegistration({ uid, email }).catch((error) =>
       console.error("Signup notification failed (non-fatal):", error)
     );
+    // Same event, a second destination — the admin dashboard's own
+    // notification bell, not just Telegram (writeNotification is already
+    // internally best-effort, no .catch() needed here).
+    writeNotification({ type: "new_registration", uid, email, message: `New signup: ${email || uid}` });
     // Same best-effort shape — sendWelcomeEmail already swallows its own
     // errors (see brevoService.js), an unset BREVO_API_KEY just means no
     // email goes out, signup itself is never blocked either way.

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getAdminAnalytics } from "@/network/http/client";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import AdminTable from "@/components/admin/AdminTable";
+import ExportButtons from "@/components/admin/ExportButtons";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
 const COLUMNS = [
@@ -46,7 +47,10 @@ export default function AdminPagesPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="m-0 text-lg font-bold text-white">Pages</h1>
-        <DateRangeFilter value={preset} onChange={setPreset} />
+        <div className="flex flex-wrap items-center gap-3">
+          <DateRangeFilter value={preset} onChange={setPreset} />
+          <ExportButtons path="/pages" params={{ preset }} />
+        </div>
       </div>
       <p className="m-0 text-xs text-zinc-500">
         Includes organic/SEO landing pages — sort by Entrances to see which pages bring visitors, by Conversion to see which ones actually produce

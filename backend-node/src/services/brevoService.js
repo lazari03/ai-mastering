@@ -73,6 +73,67 @@ export async function sendWelcomeEmail(email, firstName) {
   }
 }
 
+function passwordResetEmailHtml(firstName, resetLink) {
+  const greeting = firstName ? `Hey ${firstName},` : "Hey,";
+  return `<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background:#0f1113;font-family:-apple-system,Helvetica,Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f1113;padding:32px 16px;">
+      <tr><td align="center">
+        <table width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#16181b;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px;">
+          <tr><td>
+            <p style="margin:0;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#dfc95a;">Auralith Forge</p>
+            <h1 style="margin:12px 0 0;font-size:22px;line-height:1.3;color:#ffffff;">${greeting} reset your password.</h1>
+            <p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:#c7c9cc;">
+              We received a request to reset your password. Click below to choose a new one — this link expires soon, so use it right away.
+            </p>
+            <table cellpadding="0" cellspacing="0" style="margin:24px 0 0;">
+              <tr><td style="background:linear-gradient(135deg,#e85d2a,#dfc95a);border-radius:999px;">
+                <a href="${resetLink}" style="display:inline-block;padding:12px 24px;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#100b08;text-decoration:none;">Reset Password →</a>
+              </td></tr>
+            </table>
+            <p style="margin:28px 0 0;font-size:12px;line-height:1.6;color:#7a7d82;">
+              Didn't request this? You can safely ignore this email — your password won't change unless you click the link above.
+            </p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+}
+
+// Fired only from the admin panel (see adminUsersService.js's
+// sendPasswordReset) — an admin-triggered action on someone else's
+// account, not the self-service "forgot password" flow this app doesn't
+// otherwise have yet. Same best-effort shape as every other email here,
+// but the caller (the admin route) DOES need to know if this failed —
+// unlike a welcome email, this is the entire point of that admin action —
+// so this one throws instead of swallowing its own errors.
+export async function sendPasswordResetEmail(email, firstName, resetLink) {
+  if (!settings.brevoApiKey) {
+    throw new Error("Email sending isn't configured (BREVO_API_KEY unset) — can't deliver the reset link.");
+  }
+  const res = await fetch(SEND_URL, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      "api-key": settings.brevoApiKey,
+    },
+    body: JSON.stringify({
+      sender: SENDER,
+      to: [{ email }],
+      subject: "Reset your Auralith Forge password",
+      htmlContent: passwordResetEmailHtml(firstName, resetLink),
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Brevo password reset email failed (${res.status}): ${body.slice(0, 200)}`);
+  }
+}
+
 // Contacts API — https://developers.brevo.com/reference/createcontact.
 // updateEnabled:true makes this idempotent for a repeat subscribe (same
 // shape as newsletterService.js's own Firestore doc-id-is-the-email

@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { getAdminAnalytics } from "@/network/http/client";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
+import ExportButtons from "@/components/admin/ExportButtons";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
 function formatDuration(ms) {
@@ -41,7 +42,10 @@ export default function AdminSessionsPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="m-0 text-lg font-bold text-white">Sessions</h1>
-        <DateRangeFilter value={preset} onChange={setPreset} />
+        <div className="flex flex-wrap items-center gap-3">
+          <DateRangeFilter value={preset} onChange={setPreset} />
+          <ExportButtons path="/sessions" params={{ preset, limit: 50 }} />
+        </div>
       </div>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
       {!sessions && !error ? <LoadingBlock /> : null}

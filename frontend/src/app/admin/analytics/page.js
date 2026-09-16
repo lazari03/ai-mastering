@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getAdminAnalytics } from "@/network/http/client";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import StatCard from "@/components/admin/StatCard";
+import ExportButtons from "@/components/admin/ExportButtons";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
 function formatMinSec(totalSeconds) {
@@ -35,7 +36,10 @@ export default function AdminOverviewPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="m-0 text-lg font-bold text-white">Overview</h1>
-        <DateRangeFilter value={preset} onChange={setPreset} />
+        <div className="flex flex-wrap items-center gap-3">
+          <DateRangeFilter value={preset} onChange={setPreset} />
+          <ExportButtons path="/overview" params={{ preset }} />
+        </div>
       </div>
 
       {error ? <p className="text-sm text-red-300">{error}</p> : null}

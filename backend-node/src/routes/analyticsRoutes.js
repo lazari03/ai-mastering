@@ -17,6 +17,52 @@ import {
   getRetention,
   getLive,
 } from "../services/analyticsQueryService.js";
+import { toCsv } from "../services/csvExportService.js";
+import { buildReportPdf } from "../services/pdfExportService.js";
+
+// Shared CSV/PDF export helper — every report below already computes its
+// data via one of the query functions above; this just adds a second
+// response shape (format=csv / format=pdf) alongside the existing res.json
+// default, rather than a parallel set of dedicated /export routes that
+// could drift from the JSON shape over time. rangeLabel is a plain string
+// ("Jan 1 - Jan 31, 2026") shown on the PDF's header — computed by the
+// caller from the same `range` it already resolved for the JSON path.
+function sendExport(req, res, { title, rangeLabel, statCards = [], tableSections = [] }) {
+  const format = req.query.format;
+  const filenameBase = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  if (format === "csv") {
+    const section = tableSections[0];
+    if (!section) return res.status(400).json({ detail: "This report has no tabular data to export as CSV." });
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filenameBase}.csv"`);
+    return res.send(toCsv(section.columns, section.rows));
+  }
+  if (format === "pdf") {
+    return buildReportPdf({ title, dateRange: rangeLabel, statCards, tableSections })
+      .then((buffer) => {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="${filenameBase}.pdf"`);
+        res.send(buffer);
+      })
+      .catch((error) => {
+        console.error(`PDF export failed for "${title}":`, error);
+        res.status(500).json({ detail: "Failed to generate PDF report." });
+      });
+  }
+  return null; // caller falls through to its normal res.json(data)
+}
+
+function rangeLabelFrom(range) {
+  const fmt = (d) => new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  return `${fmt(range.from)} – ${fmt(range.to)}`;
+}
+
+// Overview/Sales stat fields come back as either a bare number or a
+// withDelta() shape ({value, previous, deltaPct}) — same duck-typing
+// StatCard.jsx already does on the frontend for the identical reason.
+function statValue(v) {
+  return v && typeof v === "object" && "value" in v ? v.value : v;
+}
 
 const router = express.Router();
 
@@ -83,6 +129,34 @@ admin.get("/overview", async (req, res) => {
   try {
     const range = resolveRange(req.query);
     const data = await getOverview(range);
+    if (req.query.format) {
+      const statCards = [
+        { label: "Visitors", value: statValue(data.visitors) },
+        { label: "New Visitors", value: statValue(data.newVisitors) },
+        { label: "Signups", value: statValue(data.signups) },
+        { label: "Uploads", value: statValue(data.uploads) },
+        { label: "Masters", value: statValue(data.masters) },
+        { label: "New Customers", value: statValue(data.newCustomers) },
+        { label: "Revenue", value: statValue(data.revenue), suffix: " €" },
+        { label: "MRR", value: Math.round(data.mrr), suffix: " €" },
+        { label: "Active Subscribers", value: data.activeSubscribers },
+      ];
+      const exported = sendExport(req, res, {
+        title: "Overview",
+        rangeLabel: rangeLabelFrom(range),
+        statCards,
+        tableSections: [
+          {
+            columns: [
+              { key: "metric", label: "Metric" },
+              { key: "value", label: "Value" },
+            ],
+            rows: statCards.map((c) => ({ metric: c.label, value: `${c.value}${c.suffix || ""}` })),
+          },
+        ],
+      });
+      if (exported !== null) return exported;
+    }
     return res.json(data);
   } catch (error) {
     console.error("admin/overview failed:", error);
@@ -108,10 +182,30 @@ admin.get("/funnel", async (req, res) => {
   }
 });
 
+const ACQUISITION_EXPORT_COLUMNS = [
+  { key: "source", label: "Source" },
+  { key: "visitors", label: "Visitors" },
+  { key: "newVisitors", label: "New" },
+  { key: "uploads", label: "Uploads" },
+  { key: "masters", label: "Masters" },
+  { key: "checkouts", label: "Checkouts" },
+  { key: "customers", label: "Paid" },
+  { key: "revenue", label: "Revenue (€)", render: (r) => r.revenue.toFixed(2) },
+  { key: "conversion", label: "Conv. (%)" },
+];
+
 admin.get("/acquisition", async (req, res) => {
   try {
     const range = resolveRange(req.query);
     const data = await getAcquisition(range);
+    if (req.query.format) {
+      const exported = sendExport(req, res, {
+        title: "Acquisition",
+        rangeLabel: rangeLabelFrom(range),
+        tableSections: [{ title: "Acquisition", columns: ACQUISITION_EXPORT_COLUMNS, rows: data }],
+      });
+      if (exported !== null) return exported;
+    }
     return res.json(data);
   } catch (error) {
     console.error("admin/acquisition failed:", error);
@@ -119,10 +213,31 @@ admin.get("/acquisition", async (req, res) => {
   }
 });
 
+const PAGES_EXPORT_COLUMNS = [
+  { key: "path", label: "Page" },
+  { key: "views", label: "Views" },
+  { key: "uniqueVisitors", label: "Unique" },
+  { key: "entrances", label: "Entrances" },
+  { key: "exits", label: "Exits" },
+  { key: "avgActiveSeconds", label: "Avg Active (s)" },
+  { key: "uploads", label: "Uploads" },
+  { key: "masters", label: "Masters" },
+  { key: "paid", label: "Paid" },
+  { key: "conversion", label: "Conv. (%)" },
+];
+
 admin.get("/pages", async (req, res) => {
   try {
     const range = resolveRange(req.query);
     const data = await getPages(range);
+    if (req.query.format) {
+      const exported = sendExport(req, res, {
+        title: "Pages",
+        rangeLabel: rangeLabelFrom(range),
+        tableSections: [{ title: "Pages", columns: PAGES_EXPORT_COLUMNS, rows: data }],
+      });
+      if (exported !== null) return exported;
+    }
     return res.json(data);
   } catch (error) {
     console.error("admin/pages failed:", error);
@@ -130,10 +245,39 @@ admin.get("/pages", async (req, res) => {
   }
 });
 
+const SEO_EXPORT_COLUMNS = [
+  { key: "path", label: "Landing Page" },
+  { key: "visitors", label: "Visitors" },
+  { key: "avgActiveSeconds", label: "Avg Active (s)" },
+  { key: "uploads", label: "Uploads" },
+  { key: "masters", label: "Masters" },
+  { key: "checkouts", label: "Checkouts" },
+  { key: "paid", label: "Paid" },
+  { key: "revenue", label: "Revenue (€)", render: (r) => r.revenue.toFixed(2) },
+  { key: "conversion", label: "Conv. (%)" },
+];
+
 admin.get("/seo", async (req, res) => {
   try {
     const range = resolveRange(req.query);
     const data = await getSeoOverview(range);
+    if (req.query.format) {
+      const statCards = [
+        { label: "Organic Visitors", value: data.organicVisitors },
+        { label: "Organic New Visitors", value: data.organicNewVisitors },
+        { label: "Organic Masters", value: data.organicMasters },
+        { label: "Organic Customers", value: data.organicCustomers },
+        { label: "Organic Revenue", value: data.organicRevenue.toFixed(2), suffix: " €" },
+        { label: "Visitor → Paid", value: data.organicVisitorToPaid, suffix: "%" },
+      ];
+      const exported = sendExport(req, res, {
+        title: "SEO",
+        rangeLabel: rangeLabelFrom(range),
+        statCards,
+        tableSections: [{ title: "Organic Landing Pages", columns: SEO_EXPORT_COLUMNS, rows: data.pages }],
+      });
+      if (exported !== null) return exported;
+    }
     return res.json(data);
   } catch (error) {
     console.error("admin/seo failed:", error);
@@ -145,6 +289,36 @@ admin.get("/sales", async (req, res) => {
   try {
     const range = resolveRange(req.query);
     const data = await getSales(range);
+    if (req.query.format) {
+      const statCards = [
+        { label: "Revenue", value: data.revenue.toFixed(2), suffix: " €" },
+        { label: "New Customers", value: data.newCustomers },
+        { label: "Subscriptions Created", value: data.subscriptionsCreated },
+        { label: "Renewals", value: data.renewals },
+        { label: "Cancellations", value: data.cancellations },
+        { label: "Refunds", value: data.refunds },
+        { label: "Checkout Started", value: data.checkout.started },
+        { label: "Checkout Succeeded", value: data.checkout.succeeded },
+        { label: "Checkout Failed", value: data.checkout.failed },
+        { label: "Checkout Abandoned", value: data.checkout.abandoned },
+      ];
+      const exported = sendExport(req, res, {
+        title: "Sales",
+        rangeLabel: rangeLabelFrom(range),
+        statCards,
+        tableSections: [
+          {
+            title: "Checkout Failure Reasons",
+            columns: [
+              { key: "reason", label: "Reason" },
+              { key: "count", label: "Count" },
+            ],
+            rows: data.failureReasons,
+          },
+        ],
+      });
+      if (exported !== null) return exported;
+    }
     return res.json(data);
   } catch (error) {
     console.error("admin/sales failed:", error);
@@ -152,10 +326,26 @@ admin.get("/sales", async (req, res) => {
   }
 });
 
+const ERRORS_EXPORT_COLUMNS = [
+  { key: "event", label: "Event" },
+  { key: "reason", label: "Reason" },
+  { key: "count", label: "Count" },
+  { key: "affectedSessions", label: "Sessions" },
+  { key: "lastSeen", label: "Last Seen" },
+];
+
 admin.get("/errors", async (req, res) => {
   try {
     const range = resolveRange(req.query);
     const data = await getErrors(range);
+    if (req.query.format) {
+      const exported = sendExport(req, res, {
+        title: "Errors",
+        rangeLabel: rangeLabelFrom(range),
+        tableSections: [{ title: "Errors", columns: ERRORS_EXPORT_COLUMNS, rows: data }],
+      });
+      if (exported !== null) return exported;
+    }
     return res.json(data);
   } catch (error) {
     console.error("admin/errors failed:", error);
@@ -174,6 +364,23 @@ admin.get("/retention", async (req, res) => {
   }
 });
 
+const SESSIONS_EXPORT_COLUMNS = [
+  { key: "startedAt", label: "Started" },
+  { key: "authenticated", label: "Registered", render: (r) => (r.authenticated ? "yes" : "no") },
+  { key: "source", label: "Source", render: (r) => r.utmSource || r.referrerDomain || "direct" },
+  { key: "deviceCategory", label: "Device" },
+  { key: "country", label: "Country" },
+  { key: "landingPage", label: "Landing Page" },
+  { key: "pageViewCount", label: "Pages" },
+  { key: "hasMastered", label: "Mastered", render: (r) => (r.hasMastered ? "yes" : "no") },
+  { key: "hasPaid", label: "Paid", render: (r) => (r.hasPaid ? "yes" : "no") },
+];
+
+// Exports the current page only (up to `limit` rows, same as the on-screen
+// table) — not every session ever recorded for the date range. Consistent
+// with the confirmed export-scope decision (current view, not a combined
+// full-history dump) and avoids one export request trying to page through
+// an unbounded number of Firestore reads.
 admin.get("/sessions", async (req, res) => {
   try {
     const range = resolveRange(req.query);
@@ -185,6 +392,14 @@ admin.get("/sessions", async (req, res) => {
     };
     const limit = Math.min(Number(req.query.limit) || 50, 100);
     const data = await listSessions({ ...range, filters, limit, cursor: req.query.cursor || null });
+    if (req.query.format) {
+      const exported = sendExport(req, res, {
+        title: "Sessions",
+        rangeLabel: rangeLabelFrom(range),
+        tableSections: [{ title: "Sessions", columns: SESSIONS_EXPORT_COLUMNS, rows: data.sessions }],
+      });
+      if (exported !== null) return exported;
+    }
     return res.json(data);
   } catch (error) {
     console.error("admin/sessions failed:", error);

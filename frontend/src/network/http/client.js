@@ -243,6 +243,78 @@ export async function getAdminAnalytics(path, params = {}) {
   return request(`/analytics/admin${path}${qs ? `?${qs}` : ""}`);
 }
 
+// CSV/PDF export — a plain <a href> can't attach the Authorization header
+// this API requires, so this fetches the file as a blob (with the same
+// auth header every other admin call already gets via authHeader()) and
+// triggers the browser's normal download UI from that blob instead of
+// navigating to the URL directly. `prefix` is the same kind of admin
+// route prefix getAdminAnalytics hard-codes (e.g. "/analytics/admin") —
+// passed explicitly here since this is shared by every admin export
+// surface, not just analytics.
+export async function downloadAdminExport(prefix, path, params = {}) {
+  const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ""))).toString();
+  const url = `${API_BASE}${prefix}${path}${qs ? `?${qs}` : ""}`;
+  const headers = await authHeader();
+  const response = await fetch(url, { headers, cache: "no-store" });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    let detail = text;
+    try {
+      detail = JSON.parse(text)?.detail || text;
+    } catch {
+      // plain text/empty body — use as-is
+    }
+    throw new Error(detail || `Export failed (HTTP ${response.status})`);
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get("content-disposition") || "";
+  const match = disposition.match(/filename="([^"]+)"/);
+  const filename = match ? match[1] : "export";
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+// Admin Users panel (/admin/users) — same auth/authorization shape as
+// getAdminAnalytics (requireAuth + requireAdmin, both server-side), just a
+// different route prefix (/users/admin, not /analytics/admin — see
+// adminUsersRoutes.js for why the prefix can't be "/admin/...").
+export async function getAdminUsers(path, params = {}) {
+  const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ""))).toString();
+  return request(`/users/admin${path}${qs ? `?${qs}` : ""}`);
+}
+
+export async function postSendPasswordReset(uid) {
+  return request(`/users/admin/${encodeURIComponent(uid)}/reset-password`, { method: "POST" });
+}
+
+export async function postSetUserDisabled(uid, disabled) {
+  return request(`/users/admin/${encodeURIComponent(uid)}/disabled`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ disabled }),
+  });
+}
+
+// Admin notification bell (/notifications/admin) — same pattern again.
+export async function getAdminNotifications(path, params = {}) {
+  const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ""))).toString();
+  return request(`/notifications/admin${path}${qs ? `?${qs}` : ""}`);
+}
+
+export async function postMarkNotificationRead(id) {
+  return request(`/notifications/admin/${encodeURIComponent(id)}/read`, { method: "POST" });
+}
+
+export async function postMarkAllNotificationsRead() {
+  return request("/notifications/admin/read-all", { method: "POST" });
+}
+
 // Public — works for a signed-out visitor too (see server.js's auth
 // gate), so this deliberately doesn't rely on authHeader() finding a
 // user. source is just a free-text tag ("footer", "newsletter-page") for
