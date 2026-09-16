@@ -349,6 +349,8 @@ const DICT = {
     en: "Scheduled: you'll move to {plan} at the start of your next billing period, no charge yet.",
     sq: "E planifikuar: do kalosh tek {plan} në fillim të periudhës tënde të radhës të faturimit, ende pa pagesë.",
   },
+  "billing.scheduled": { en: "Switch scheduled", sq: "Ndryshimi është planifikuar" },
+  "billing.scheduledFor": { en: "Switching on {date}", sq: "Kalimi bëhet më {date}" },
   "billing.checkoutFailed": { en: "Failed to start checkout.", sq: "Nisja e checkout dështoi." },
   "billing.portalFailed": { en: "Failed to open billing portal.", sq: "Hapja e portalit të faturimit dështoi." },
   "billing.mastersThisMonth": { en: "Masters this month", sq: "Masterë këtë muaj" },
