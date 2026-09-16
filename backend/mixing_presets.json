@@ -1,6 +1,6 @@
 {
-  "version": "2.0.0",
-  "description": "Professional mastering preset definitions with concrete DSP targets, true-peak limiting, dynamic EQ, stereo management, clipping, saturation and QC.",
+  "version": "3.0.0",
+  "description": "Source-adaptive professional mastering intents. Genre models define context and safety envelopes; presets define aesthetic direction and maximum permissions; waveform analysis decides actual processing.",
   "architecture": {
     "signal_flow": [
       "input_gain",
@@ -15,8 +15,552 @@
       "quality_control",
       "output_dither"
     ],
-    "principle": "Presets define targets and limits; the DSP engine must adapt gain reduction and processing intensity to the source audio.",
-    "important": "Numeric targets are starting points, not guarantees of a professional-sounding master. The engine must analyze the incoming audio and avoid unnecessary processing."
+    "principle": "Analyze first. Genre provides context. Preset provides aesthetic intent. DSP applies only justified processing. Re-analyze and reject regressions.",
+    "priority_order": [
+      "technical_safety",
+      "source_evidence",
+      "musical_preservation",
+      "genre_context",
+      "preset_intent",
+      "loudness_target"
+    ],
+    "global_adaptation": {
+      "source_analysis_has_priority": true,
+      "preset_values_are": "intent_and_maximums_not_mandatory_moves",
+      "preset_strength_default": 0.65,
+      "preset_strength_range": [
+        0.0,
+        1.0
+      ],
+      "target_windows": {
+        "enabled": true,
+        "deadband_db": 0.35,
+        "move_to_nearest_window_edge": true
+      },
+      "confidence_gating": {
+        "enabled": true,
+        "minimum_confidence_to_process": 0.45,
+        "scale_processing_by_confidence": true
+      },
+      "global_tonal_shape_vs_local_defect": {
+        "enabled": true,
+        "collapse_correlated_adjacent_band_moves": true,
+        "minimum_adjacent_bands": 3,
+        "similar_direction_tolerance_db": 0.45,
+        "prefer_broad_tilt_or_shelf": true
+      },
+      "high_frequency_budget": {
+        "enabled": true,
+        "range_hz": [
+          2000,
+          16000
+        ],
+        "max_combined_positive_change_db": 1.25,
+        "include_static_eq": true,
+        "include_vocal_presence": true,
+        "include_saturation_harmonics": true
+      },
+      "static_eq": {
+        "requires_detected_need": true,
+        "prefer_broad_q_range": [
+          0.5,
+          1.1
+        ],
+        "positive_moves_more_conservative_than_cuts": true
+      },
+      "dynamic_eq": {
+        "requires_temporal_problem": true,
+        "use_for_intermittent_harshness_boom_sibilance": true,
+        "bypass_if_condition_absent": true
+      },
+      "compression": {
+        "bypass_if_dynamics_healthy": true,
+        "quality_over_target_gr": true,
+        "protect_transients": true
+      },
+      "stereo": {
+        "bypass_if_width_healthy": true,
+        "narrow_if_phase_risk": true,
+        "protect_low_end": true,
+        "check_mono_after_processing": true
+      },
+      "saturation": {
+        "source_adaptive": true,
+        "level_compensated_evaluation": true,
+        "reduce_if_hf_regression": true
+      },
+      "clipper": {
+        "source_adaptive": true,
+        "bypass_if_not_needed": true,
+        "transient_safety_required": true
+      },
+      "limiter": {
+        "quality_over_exact_lufs": true,
+        "stop_on_transient_damage": true,
+        "stop_on_plr_violation": true,
+        "stop_on_excessive_gr": true,
+        "true_peak_default_dbtp": -1.0
+      },
+      "post_render_validation": {
+        "enabled": true,
+        "loudness_matched_ab": true,
+        "spectral_overshoot_check": true,
+        "dynamic_regression_check": true,
+        "stereo_regression_check": true,
+        "mono_compatibility_check": true,
+        "max_corrective_rerenders": 1
+      }
+    }
+  },
+  "genre_models": {
+    "pop": {
+      "description": "Modern pop: vocal clarity, controlled low end, polished extension, moderate-to-high density.",
+      "loudness": {
+        "preferred_lufs_i": -10.5,
+        "acceptable_lufs_i": [
+          -12.5,
+          -9.0
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          8.0,
+          12.0
+        ],
+        "preferred_lra_lu": [
+          3.0,
+          8.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "controlled",
+        "bass": "solid",
+        "low_mid": "clean",
+        "presence": "clear_not_harsh",
+        "air": "open_not_brittle"
+      },
+      "max_static_eq_boost_db": 1.0,
+      "max_static_eq_cut_db": 1.5,
+      "max_bus_gr_db": 1.5,
+      "max_limiter_gr_db": 3.0,
+      "max_hf_width_delta": 0.08
+    },
+    "rock": {
+      "description": "Rock/metal: punch, guitar density and transient preservation without upper-mid fatigue.",
+      "loudness": {
+        "preferred_lufs_i": -10.0,
+        "acceptable_lufs_i": [
+          -12.5,
+          -8.5
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          8.0,
+          13.0
+        ],
+        "preferred_lra_lu": [
+          3.0,
+          9.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "controlled",
+        "bass": "punchy",
+        "low_mid": "dense_not_boxy",
+        "presence": "forward_not_harsh",
+        "air": "controlled"
+      },
+      "max_static_eq_boost_db": 1.0,
+      "max_static_eq_cut_db": 1.5,
+      "max_bus_gr_db": 2.0,
+      "max_limiter_gr_db": 3.0,
+      "max_hf_width_delta": 0.07
+    },
+    "edm": {
+      "description": "EDM: powerful controlled sub/kick, high density, safe width and clean transient loudness.",
+      "loudness": {
+        "preferred_lufs_i": -9.0,
+        "acceptable_lufs_i": [
+          -11.0,
+          -7.5
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          6.5,
+          10.5
+        ],
+        "preferred_lra_lu": [
+          2.0,
+          7.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "extended_controlled",
+        "bass": "powerful",
+        "low_mid": "clean",
+        "presence": "defined",
+        "air": "extended_not_brittle"
+      },
+      "max_static_eq_boost_db": 1.0,
+      "max_static_eq_cut_db": 1.5,
+      "max_bus_gr_db": 2.0,
+      "max_limiter_gr_db": 3.5,
+      "max_hf_width_delta": 0.14
+    },
+    "hiphop": {
+      "description": "Hip-hop/trap/drill: 808 authority, vocal center, transient punch and restrained low-mid buildup.",
+      "loudness": {
+        "preferred_lufs_i": -9.5,
+        "acceptable_lufs_i": [
+          -12.0,
+          -8.0
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          7.0,
+          11.5
+        ],
+        "preferred_lra_lu": [
+          2.5,
+          8.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "authoritative",
+        "bass": "controlled",
+        "low_mid": "clean",
+        "presence": "vocal_clear",
+        "air": "style_dependent"
+      },
+      "max_static_eq_boost_db": 1.0,
+      "max_static_eq_cut_db": 1.5,
+      "max_bus_gr_db": 1.75,
+      "max_limiter_gr_db": 3.5,
+      "max_hf_width_delta": 0.06
+    },
+    "rnb": {
+      "description": "R&B/soul: warm low mids, intimate vocal, smooth presence and polished air.",
+      "loudness": {
+        "preferred_lufs_i": -11.0,
+        "acceptable_lufs_i": [
+          -13.5,
+          -9.0
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          8.5,
+          13.0
+        ],
+        "preferred_lra_lu": [
+          3.0,
+          9.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "deep_controlled",
+        "bass": "warm",
+        "low_mid": "rich_not_muddy",
+        "presence": "smooth",
+        "air": "silky"
+      },
+      "max_static_eq_boost_db": 0.8,
+      "max_static_eq_cut_db": 1.5,
+      "max_bus_gr_db": 1.5,
+      "max_limiter_gr_db": 3.0,
+      "max_hf_width_delta": 0.07
+    },
+    "acoustic": {
+      "description": "Acoustic/singer-songwriter: natural tone, room depth and transient/dynamic preservation.",
+      "loudness": {
+        "preferred_lufs_i": -14.0,
+        "acceptable_lufs_i": [
+          -17.0,
+          -11.5
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          10.0,
+          16.0
+        ],
+        "preferred_lra_lu": [
+          5.0,
+          13.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "minimal_natural",
+        "bass": "natural",
+        "low_mid": "organic",
+        "presence": "intelligible",
+        "air": "natural"
+      },
+      "max_static_eq_boost_db": 0.7,
+      "max_static_eq_cut_db": 1.2,
+      "max_bus_gr_db": 1.0,
+      "max_limiter_gr_db": 2.0,
+      "max_hf_width_delta": 0.05
+    },
+    "classical": {
+      "description": "Classical/orchestral: preserve macro/micro dynamics, natural spectral balance and stereo realism.",
+      "loudness": {
+        "preferred_lufs_i": -18.0,
+        "acceptable_lufs_i": [
+          -22.0,
+          -14.0
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          12.0,
+          20.0
+        ],
+        "preferred_lra_lu": [
+          7.0,
+          20.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "natural",
+        "bass": "natural",
+        "low_mid": "natural",
+        "presence": "unforced",
+        "air": "natural"
+      },
+      "max_static_eq_boost_db": 0.5,
+      "max_static_eq_cut_db": 0.8,
+      "max_bus_gr_db": 0.5,
+      "max_limiter_gr_db": 1.5,
+      "max_hf_width_delta": 0.03
+    },
+    "jazz": {
+      "description": "Jazz: preserve articulation, instrument timbre, space and meaningful dynamic contrast.",
+      "loudness": {
+        "preferred_lufs_i": -15.0,
+        "acceptable_lufs_i": [
+          -19.0,
+          -11.5
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          10.0,
+          17.0
+        ],
+        "preferred_lra_lu": [
+          5.0,
+          14.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "natural",
+        "bass": "full",
+        "low_mid": "organic",
+        "presence": "detailed",
+        "air": "open"
+      },
+      "max_static_eq_boost_db": 0.7,
+      "max_static_eq_cut_db": 1.0,
+      "max_bus_gr_db": 1.0,
+      "max_limiter_gr_db": 2.0,
+      "max_hf_width_delta": 0.04
+    },
+    "country": {
+      "description": "Country/americana: vocal intelligibility, acoustic/transient definition and controlled warmth.",
+      "loudness": {
+        "preferred_lufs_i": -11.5,
+        "acceptable_lufs_i": [
+          -14.0,
+          -9.5
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          9.0,
+          14.0
+        ],
+        "preferred_lra_lu": [
+          4.0,
+          10.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "controlled",
+        "bass": "natural",
+        "low_mid": "clean_warm",
+        "presence": "vocal_clear",
+        "air": "open"
+      },
+      "max_static_eq_boost_db": 0.8,
+      "max_static_eq_cut_db": 1.2,
+      "max_bus_gr_db": 1.25,
+      "max_limiter_gr_db": 2.5,
+      "max_hf_width_delta": 0.05
+    },
+    "reggae": {
+      "description": "Reggae/dancehall: deep bass authority, clean low mids, stable center and relaxed top end.",
+      "loudness": {
+        "preferred_lufs_i": -10.5,
+        "acceptable_lufs_i": [
+          -13.0,
+          -8.5
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          8.0,
+          13.0
+        ],
+        "preferred_lra_lu": [
+          3.0,
+          9.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "deep",
+        "bass": "dominant_controlled",
+        "low_mid": "clean",
+        "presence": "relaxed",
+        "air": "smooth"
+      },
+      "max_static_eq_boost_db": 0.9,
+      "max_static_eq_cut_db": 1.4,
+      "max_bus_gr_db": 1.5,
+      "max_limiter_gr_db": 3.0,
+      "max_hf_width_delta": 0.06
+    },
+    "latin": {
+      "description": "Latin/reggaeton: punchy kick/bass, vocal clarity, percussion definition and energetic but safe top end.",
+      "loudness": {
+        "preferred_lufs_i": -9.5,
+        "acceptable_lufs_i": [
+          -11.5,
+          -8.0
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          7.0,
+          11.0
+        ],
+        "preferred_lra_lu": [
+          2.5,
+          7.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "controlled_deep",
+        "bass": "punchy",
+        "low_mid": "clean",
+        "presence": "clear",
+        "air": "energetic"
+      },
+      "max_static_eq_boost_db": 0.9,
+      "max_static_eq_cut_db": 1.4,
+      "max_bus_gr_db": 1.75,
+      "max_limiter_gr_db": 3.25,
+      "max_hf_width_delta": 0.08
+    },
+    "afrobeats": {
+      "description": "Afrobeats: rhythmic low-end definition, open mids, vocal clarity and lively percussion without glare.",
+      "loudness": {
+        "preferred_lufs_i": -10.5,
+        "acceptable_lufs_i": [
+          -12.5,
+          -8.5
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          8.0,
+          12.5
+        ],
+        "preferred_lra_lu": [
+          3.0,
+          8.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "controlled",
+        "bass": "rhythmic",
+        "low_mid": "open",
+        "presence": "vocal_clear",
+        "air": "lively"
+      },
+      "max_static_eq_boost_db": 0.9,
+      "max_static_eq_cut_db": 1.3,
+      "max_bus_gr_db": 1.5,
+      "max_limiter_gr_db": 3.0,
+      "max_hf_width_delta": 0.08
+    },
+    "lofi": {
+      "description": "Lo-fi: intentionally warm/dark coloration while protecting intelligibility and avoiding uncontrolled mud.",
+      "loudness": {
+        "preferred_lufs_i": -13.0,
+        "acceptable_lufs_i": [
+          -16.0,
+          -10.5
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          8.0,
+          14.0
+        ],
+        "preferred_lra_lu": [
+          3.0,
+          10.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "soft",
+        "bass": "warm",
+        "low_mid": "colored",
+        "presence": "soft",
+        "air": "rolled"
+      },
+      "max_static_eq_boost_db": 1.0,
+      "max_static_eq_cut_db": 2.0,
+      "max_bus_gr_db": 1.25,
+      "max_limiter_gr_db": 2.5,
+      "max_hf_width_delta": 0.03
+    },
+    "podcast": {
+      "description": "Speech/content: intelligibility, stable level, low noise/mud and mono-safe translation.",
+      "loudness": {
+        "preferred_lufs_i": -16.0,
+        "acceptable_lufs_i": [
+          -18.0,
+          -14.0
+        ]
+      },
+      "dynamics": {
+        "preferred_plr_db": [
+          7.0,
+          12.0
+        ],
+        "preferred_lra_lu": [
+          2.0,
+          7.0
+        ]
+      },
+      "spectral_bias": {
+        "sub": "removed_if_noise",
+        "bass": "controlled",
+        "low_mid": "clean",
+        "presence": "intelligible",
+        "air": "controlled"
+      },
+      "max_static_eq_boost_db": 1.2,
+      "max_static_eq_cut_db": 2.0,
+      "max_bus_gr_db": 3.0,
+      "max_limiter_gr_db": 3.0,
+      "max_hf_width_delta": 0.0
+    }
   },
   "presets": {
     "streaming_pop_glue": {
@@ -32,28 +576,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 28,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 120,
-            "gain_db": 0.5,
-            "q": 0.7
+            "q": 0.7,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 300,
-            "gain_db": -0.5,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 3200,
-            "gain_db": 0.6,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.6,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 10000,
-            "gain_db": 0.4,
-            "q": 0.7
+            "q": 0.7,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.4,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -62,7 +621,10 @@
           "release_ms": 120,
           "max_gain_reduction_db": 1.5,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -70,20 +632,29 @@
             "max_gain_reduction_db": -1.5,
             "q": 1.2,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 8500,
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.035,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.035,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -91,30 +662,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.0
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.08
+              "preferred_direction": "widen",
+              "max_width_delta": 0.08,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 0.5,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.5,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -10.5,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -10.5,
+          "acceptable_lufs_i": [
+            -12.5,
+            -9.0
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -131,6 +716,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "pop",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "rock_impact_analog": {
@@ -146,28 +738,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 25,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 90,
-            "gain_db": 0.7,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.7,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 250,
-            "gain_db": -0.7,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.7,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 1800,
-            "gain_db": 0.4,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.4,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 5000,
-            "gain_db": 0.5,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -176,7 +783,10 @@
           "release_ms": 110,
           "max_gain_reduction_db": 1.5,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -184,20 +794,29 @@
             "max_gain_reduction_db": -1.2,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 7500,
             "max_gain_reduction_db": -1.5,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.055,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.055,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -205,30 +824,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.02
+              "preferred_direction": "widen",
+              "max_width_delta": 0.02,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.07
+              "preferred_direction": "widen",
+              "max_width_delta": 0.07,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 0.7,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.7,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -10.0,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -10.0,
+          "acceptable_lufs_i": [
+            -12.5,
+            -8.5
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -245,6 +878,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "rock",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "edm_loud_wide": {
@@ -260,28 +900,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 25,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 55,
-            "gain_db": 1.0,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 250,
-            "gain_db": -0.5,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 4500,
-            "gain_db": 0.8,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 10000,
-            "gain_db": 1.0,
-            "q": 0.7
+            "q": 0.7,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -290,7 +945,10 @@
           "release_ms": 90,
           "max_gain_reduction_db": 2.0,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -298,20 +956,29 @@
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 9000,
             "max_gain_reduction_db": -1.5,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.04,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.04,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -319,30 +986,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.08
+              "preferred_direction": "widen",
+              "max_width_delta": 0.08,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.14
+              "preferred_direction": "widen",
+              "max_width_delta": 0.14,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 1.2,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 1.2,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -9.0,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -9.0,
+          "acceptable_lufs_i": [
+            -11.0,
+            -7.5
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -359,6 +1040,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "edm",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "vocal_master_focus": {
@@ -374,28 +1062,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 32,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 180,
-            "gain_db": -0.5,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 2500,
-            "gain_db": 0.8,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 5000,
-            "gain_db": 0.5,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 12000,
-            "gain_db": 0.5,
-            "q": 0.7
+            "q": 0.7,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -404,7 +1107,10 @@
           "release_ms": 140,
           "max_gain_reduction_db": 1.0,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -412,20 +1118,29 @@
             "max_gain_reduction_db": -1.2,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 6500,
             "max_gain_reduction_db": -1.5,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.02,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.02,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -433,30 +1148,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.0
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.04
+              "preferred_direction": "widen",
+              "max_width_delta": 0.04,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 0.2,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.2,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -12.0,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -12.0,
+          "acceptable_lufs_i": [
+            -14.0,
+            -9.0
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -473,6 +1202,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "pop",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "podcast_voice_clean": {
@@ -488,23 +1224,35 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 70,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 180,
-            "gain_db": -1.0,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 2500,
-            "gain_db": 1.0,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 6000,
-            "gain_db": 0.5,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -513,7 +1261,10 @@
           "release_ms": 100,
           "max_gain_reduction_db": 3.0,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -521,20 +1272,29 @@
             "max_gain_reduction_db": -1.5,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 7000,
             "max_gain_reduction_db": -2.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.01,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.01,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -542,30 +1302,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.0
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": -0.05
+              "preferred_direction": "narrow",
+              "max_width_delta": 0.05,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": false,
-          "drive_db": 0.0,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.0,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -16.0,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -16.0,
+          "acceptable_lufs_i": [
+            -18.0,
+            -14.0
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -582,6 +1356,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "podcast",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "hiphop_lowend_lock": {
@@ -597,28 +1378,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 24,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 55,
-            "gain_db": 1.0,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 180,
-            "gain_db": -0.5,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 1200,
-            "gain_db": 0.3,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.3,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 7000,
-            "gain_db": 0.5,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -627,7 +1423,10 @@
           "release_ms": 120,
           "max_gain_reduction_db": 1.5,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -635,20 +1434,29 @@
             "max_gain_reduction_db": -1.5,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 3000,
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.035,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.035,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -656,30 +1464,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.0
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.04
+              "preferred_direction": "widen",
+              "max_width_delta": 0.04,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 0.8,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.8,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -9.5,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -9.5,
+          "acceptable_lufs_i": [
+            -12.0,
+            -8.0
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -696,6 +1518,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "hiphop",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "trap_808_forward": {
@@ -711,28 +1540,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 22,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 55,
-            "gain_db": 1.0,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 250,
-            "gain_db": -0.6,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.6,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 5000,
-            "gain_db": 0.8,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 11000,
-            "gain_db": 0.8,
-            "q": 0.7
+            "q": 0.7,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -741,7 +1585,10 @@
           "release_ms": 100,
           "max_gain_reduction_db": 1.5,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -749,20 +1596,29 @@
             "max_gain_reduction_db": -2.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 8000,
             "max_gain_reduction_db": -1.5,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.04,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.04,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -770,30 +1626,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.02
+              "preferred_direction": "widen",
+              "max_width_delta": 0.02,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.05
+              "preferred_direction": "widen",
+              "max_width_delta": 0.05,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 1.0,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 1.0,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -8.5,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -8.5,
+          "acceptable_lufs_i": [
+            -12.0,
+            -7.5
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -810,6 +1680,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "hiphop",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "drill_dark_density": {
@@ -825,37 +1702,55 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 24,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 55,
-            "gain_db": 0.8,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 300,
-            "gain_db": -0.8,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 2500,
-            "gain_db": 0.2,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.2,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 7000,
-            "gain_db": -0.4,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.4,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
           "ratio": 2.0,
           "attack_ms": 25,
           "release_ms": 100,
-          "max_gain_reduction_db": 2.0,
+          "max_gain_reduction_db": 1.75,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -863,20 +1758,29 @@
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 6000,
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.05,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.05,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -884,30 +1788,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.0
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.02
+              "preferred_direction": "widen",
+              "max_width_delta": 0.02,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 0.7,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.7,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -9.0,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -9.0,
+          "acceptable_lufs_i": [
+            -12.0,
+            -8.0
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -924,6 +1842,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "hiphop",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "rock_radio_punch": {
@@ -939,28 +1864,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 28,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 90,
-            "gain_db": 0.6,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.6,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 300,
-            "gain_db": -0.8,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 2500,
-            "gain_db": 0.5,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 7000,
-            "gain_db": 0.3,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.3,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -969,7 +1909,10 @@
           "release_ms": 100,
           "max_gain_reduction_db": 2.0,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -977,20 +1920,29 @@
             "max_gain_reduction_db": -1.2,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 7000,
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.045,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.045,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -998,30 +1950,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.02
+              "preferred_direction": "widen",
+              "max_width_delta": 0.02,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.05
+              "preferred_direction": "widen",
+              "max_width_delta": 0.05,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 0.6,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.6,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -9.5,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -9.5,
+          "acceptable_lufs_i": [
+            -12.5,
+            -8.5
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -1038,6 +2004,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "rock",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "metal_modern_glue": {
@@ -1053,28 +2026,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 25,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 80,
-            "gain_db": 0.5,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 250,
-            "gain_db": -0.7,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.7,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 1600,
-            "gain_db": 0.4,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.4,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 7000,
-            "gain_db": 0.5,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -1083,7 +2071,10 @@
           "release_ms": 90,
           "max_gain_reduction_db": 1.5,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -1091,20 +2082,29 @@
             "max_gain_reduction_db": -1.5,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 8000,
             "max_gain_reduction_db": -1.5,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.035,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.035,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -1112,30 +2112,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.02
+              "preferred_direction": "widen",
+              "max_width_delta": 0.02,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.04
+              "preferred_direction": "widen",
+              "max_width_delta": 0.04,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 0.8,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.8,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -9.0,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -9.0,
+          "acceptable_lufs_i": [
+            -12.5,
+            -8.0
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -1152,6 +2166,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "rock",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "edm_festival_hype": {
@@ -1167,28 +2188,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 25,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 50,
-            "gain_db": 1.0,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 250,
-            "gain_db": -0.5,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 5000,
-            "gain_db": 0.7,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.7,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 10000,
-            "gain_db": 0.8,
-            "q": 0.7
+            "q": 0.7,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -1197,7 +2233,10 @@
           "release_ms": 80,
           "max_gain_reduction_db": 2.0,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -1205,20 +2244,29 @@
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 9000,
             "max_gain_reduction_db": -1.5,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.045,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.045,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -1226,30 +2274,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.1
+              "preferred_direction": "widen",
+              "max_width_delta": 0.1,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.16
+              "preferred_direction": "widen",
+              "max_width_delta": 0.16,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 1.3,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 1.3,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -8.5,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -8.5,
+          "acceptable_lufs_i": [
+            -11.0,
+            -7.5
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -1266,6 +2328,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "edm",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "house_club_translator": {
@@ -1281,28 +2350,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 25,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 55,
-            "gain_db": 0.8,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 300,
-            "gain_db": -0.5,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 3500,
-            "gain_db": 0.4,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.4,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 9000,
-            "gain_db": 0.5,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -1311,7 +2395,10 @@
           "release_ms": 100,
           "max_gain_reduction_db": 1.5,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -1319,20 +2406,29 @@
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 8000,
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.035,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.035,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -1340,30 +2436,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.06
+              "preferred_direction": "widen",
+              "max_width_delta": 0.06,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.12
+              "preferred_direction": "widen",
+              "max_width_delta": 0.12,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 0.8,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.8,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -9.0,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -9.0,
+          "acceptable_lufs_i": [
+            -11.0,
+            -7.5
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -1380,6 +2490,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "edm",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "techno_dark_floor": {
@@ -1395,28 +2512,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 25,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 55,
-            "gain_db": 0.8,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 350,
-            "gain_db": -0.7,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.7,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 2500,
-            "gain_db": 0.2,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.2,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 8000,
-            "gain_db": -0.5,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -1425,7 +2557,10 @@
           "release_ms": 120,
           "max_gain_reduction_db": 2.0,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -1433,20 +2568,29 @@
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 7000,
             "max_gain_reduction_db": -1.2,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.05,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.05,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -1454,30 +2598,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.04
+              "preferred_direction": "widen",
+              "max_width_delta": 0.04,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.08
+              "preferred_direction": "widen",
+              "max_width_delta": 0.08,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 0.8,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.8,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -9.0,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -9.0,
+          "acceptable_lufs_i": [
+            -11.0,
+            -7.5
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -1494,6 +2652,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "edm",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "acoustic_natural_space": {
@@ -1509,28 +2674,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 35,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 120,
-            "gain_db": 0.3,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.3,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 300,
-            "gain_db": -0.4,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.4,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 3000,
-            "gain_db": 0.4,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.4,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 10000,
-            "gain_db": 0.3,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.3,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -1539,7 +2719,10 @@
           "release_ms": 150,
           "max_gain_reduction_db": 1.0,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -1547,20 +2730,29 @@
             "max_gain_reduction_db": -0.8,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 9000,
             "max_gain_reduction_db": -0.8,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.015,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.015,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -1568,30 +2760,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.02
+              "preferred_direction": "widen",
+              "max_width_delta": 0.02,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.05
+              "preferred_direction": "widen",
+              "max_width_delta": 0.05,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": false,
-          "drive_db": 0.0,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.0,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -14.0,
-          "max_gain_reduction_db": 3.0,
+          "max_gain_reduction_db": 2.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -14.0,
+          "acceptable_lufs_i": [
+            -17.0,
+            -11.5
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -1608,6 +2814,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "acoustic",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "singer_songwriter_focus": {
@@ -1623,28 +2836,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 35,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 150,
-            "gain_db": -0.3,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.3,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 350,
-            "gain_db": -0.5,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 2500,
-            "gain_db": 0.7,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.7,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 10000,
-            "gain_db": 0.4,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.4,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -1653,7 +2881,10 @@
           "release_ms": 150,
           "max_gain_reduction_db": 1.0,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -1661,20 +2892,29 @@
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 7000,
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.015,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.015,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -1682,30 +2922,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.0
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.04
+              "preferred_direction": "widen",
+              "max_width_delta": 0.04,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": false,
-          "drive_db": 0.0,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.0,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -14.0,
-          "max_gain_reduction_db": 3.0,
+          "max_gain_reduction_db": 2.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -14.0,
+          "acceptable_lufs_i": [
+            -17.0,
+            -11.5
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -1722,6 +2976,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "acoustic",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "lofi_vinyl_haze": {
@@ -1737,28 +2998,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 35,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 120,
-            "gain_db": 0.5,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 500,
-            "gain_db": 0.3,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.3,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 5000,
-            "gain_db": -1.0,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 12000,
-            "gain_db": -2.0,
-            "q": 0.7
+            "q": 0.7,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 2.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -1767,7 +3043,10 @@
           "release_ms": 160,
           "max_gain_reduction_db": 1.0,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -1775,13 +3054,19 @@
             "max_gain_reduction_db": -0.8,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.08,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.08,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -1789,30 +3074,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.0
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": -0.03
+              "preferred_direction": "narrow",
+              "max_width_delta": 0.03,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": false,
-          "drive_db": 0.0,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.0,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -13.0,
-          "max_gain_reduction_db": 3.0,
+          "max_gain_reduction_db": 2.5,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -13.0,
+          "acceptable_lufs_i": [
+            -16.0,
+            -10.5
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -1829,6 +3128,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "lofi",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "classical_dynamic_preserve": {
@@ -1844,28 +3150,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 25,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 80,
-            "gain_db": 0.2,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.2,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 300,
-            "gain_db": -0.2,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.2,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 3000,
-            "gain_db": 0.2,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.2,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 10000,
-            "gain_db": 0.2,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.2,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -1874,13 +3195,19 @@
           "release_ms": 250,
           "max_gain_reduction_db": 0.5,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [],
         "saturation": {
           "enabled": false,
-          "amount": 0.0,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.0,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -1888,30 +3215,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.02
+              "preferred_direction": "widen",
+              "max_width_delta": 0.02,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.04
+              "preferred_direction": "widen",
+              "max_width_delta": 0.04,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": false,
-          "drive_db": 0.0,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.0,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -18.0,
-          "max_gain_reduction_db": 3.0,
+          "max_gain_reduction_db": 1.5,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -18.0,
+          "acceptable_lufs_i": [
+            -22.0,
+            -14.0
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -1928,6 +3269,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "classical",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "youtube_voice_present": {
@@ -1943,28 +3291,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 65,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 180,
-            "gain_db": -0.8,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 2500,
-            "gain_db": 1.0,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 6000,
-            "gain_db": 0.6,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.6,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 10000,
-            "gain_db": 0.2,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.2,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -1973,7 +3336,10 @@
           "release_ms": 100,
           "max_gain_reduction_db": 2.5,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -1981,20 +3347,29 @@
             "max_gain_reduction_db": -1.2,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
             "frequency_hz": 7000,
             "max_gain_reduction_db": -1.5,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.015,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.015,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -2002,30 +3377,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.0
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": -0.04
+              "preferred_direction": "narrow",
+              "max_width_delta": 0.04,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": false,
-          "drive_db": 0.0,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.0,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -14.0,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -14.0,
+          "acceptable_lufs_i": [
+            -18.0,
+            -13.0
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -2042,6 +3431,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "podcast",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "stock_mastering_radio_glue": {
@@ -2057,28 +3453,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 28,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 100,
-            "gain_db": 0.4,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.4,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 300,
-            "gain_db": -0.4,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.4,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 3000,
-            "gain_db": 0.3,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.3,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 9000,
-            "gain_db": 0.2,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.2,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -2087,7 +3498,10 @@
           "release_ms": 120,
           "max_gain_reduction_db": 1.2,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -2095,13 +3509,19 @@
             "max_gain_reduction_db": -1.0,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.025,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.025,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -2109,30 +3529,44 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.0
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.02
+              "preferred_direction": "widen",
+              "max_width_delta": 0.02,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 0.3,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.3,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -11.0,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
-          "oversampling": 8
+          "oversampling": 8,
+          "preferred_lufs_i": -11.0,
+          "acceptable_lufs_i": [
+            -13.0,
+            -8.5
+          ],
+          "quality_over_target": true
         }
       },
       "quality_control": {
@@ -2149,6 +3583,13 @@
         "bit_depth": 24,
         "sample_rate": "source",
         "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "rock",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
       }
     },
     "stock_mastering_stream_safe": {
@@ -2164,28 +3605,43 @@
         "highpass_filter": {
           "enabled": true,
           "frequency_hz": 28,
-          "slope_db_oct": 24
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
             "frequency_hz": 120,
-            "gain_db": 0.3,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.3,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 300,
-            "gain_db": -0.3,
-            "q": 1.0
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.3,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 3000,
-            "gain_db": 0.3,
-            "q": 0.9
+            "q": 0.9,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.3,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
             "frequency_hz": 10000,
-            "gain_db": 0.2,
-            "q": 0.8
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.2,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
@@ -2194,7 +3650,10 @@
           "release_ms": 140,
           "max_gain_reduction_db": 1.0,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
@@ -2202,13 +3661,19 @@
             "max_gain_reduction_db": -0.8,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.015,
-          "oversampling": 4
+          "oversampling": 4,
+          "max_amount": 0.015,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -2216,26 +3681,371 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.0
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.03
+              "preferred_direction": "widen",
+              "max_width_delta": 0.03,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
           "enabled": true,
-          "drive_db": 0.2,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.2,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -14.0,
+          "max_gain_reduction_db": 3.0,
+          "lookahead_ms": 1.0,
+          "release_ms": 100,
+          "oversampling": 8,
+          "preferred_lufs_i": -14.0,
+          "acceptable_lufs_i": [
+            -16.0,
+            -9.0
+          ],
+          "quality_over_target": true
+        }
+      },
+      "quality_control": {
+        "true_peak_ceiling_dbtp": -1.0,
+        "phase_correlation_min": 0.0,
+        "check_mono_compatibility": true,
+        "check_loudness": true,
+        "check_clipping": true,
+        "check_spectral_balance": true,
+        "codec_preview": true
+      },
+      "output": {
+        "format": "wav",
+        "bit_depth": 24,
+        "sample_rate": "source",
+        "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "pop",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
+      }
+    },
+    "stock_mastering_lowend_control": {
+      "display_name": "Stock Mastering Low-End Control",
+      "description": "Template-inspired profile for controlled lows, cleaner mids, and reliable limiter behavior.",
+      "genre": "hiphop",
+      "style": "stock_mastering_strip",
+      "processing": {
+        "input": {
+          "headroom_target_db": -6.0,
+          "auto_gain": true
+        },
+        "highpass_filter": {
+          "enabled": true,
+          "frequency_hz": 24,
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
+        },
+        "eq": [
+          {
+            "frequency_hz": 55,
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 250,
+            "q": 1.0,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.5,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 1500,
+            "q": 1.0,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.2,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 7000,
+            "q": 0.8,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.3,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          }
+        ],
+        "bus_compressor": {
+          "ratio": 1.5,
+          "attack_ms": 30,
+          "release_ms": 120,
+          "max_gain_reduction_db": 1.2,
+          "knee_db": 2.0,
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
+        },
+        "dynamic_eq": [
+          {
+            "frequency_hz": 45,
+            "max_gain_reduction_db": -1.5,
+            "q": 1.0,
+            "attack_ms": 15,
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          },
+          {
+            "frequency_hz": 3500,
+            "max_gain_reduction_db": -0.8,
+            "q": 1.0,
+            "attack_ms": 15,
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          }
+        ],
+        "saturation": {
+          "enabled": true,
+          "oversampling": 4,
+          "max_amount": 0.025,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
+        },
+        "stereo": {
+          "low_end_mono_below_hz": 120,
+          "bands": [
+            {
+              "from_hz": 120,
+              "to_hz": 2000,
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
+            },
+            {
+              "from_hz": 2000,
+              "to_hz": 16000,
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
+            }
+          ],
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
+        },
+        "clipper": {
+          "enabled": true,
+          "oversampling": 8,
+          "ceiling_dbtp": -1.2,
+          "max_drive_db": 0.4,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
+        },
+        "limiter": {
+          "true_peak": true,
+          "ceiling_dbtp": -1.0,
+          "max_gain_reduction_db": 3.0,
+          "lookahead_ms": 1.0,
+          "release_ms": 100,
+          "oversampling": 8,
+          "preferred_lufs_i": -10.5,
+          "acceptable_lufs_i": [
+            -12.5,
+            -8.0
+          ],
+          "quality_over_target": true
+        }
+      },
+      "quality_control": {
+        "true_peak_ceiling_dbtp": -1.0,
+        "phase_correlation_min": 0.0,
+        "check_mono_compatibility": true,
+        "check_loudness": true,
+        "check_clipping": true,
+        "check_spectral_balance": true,
+        "codec_preview": true
+      },
+      "output": {
+        "format": "wav",
+        "bit_depth": 24,
+        "sample_rate": "source",
+        "dither": "triangular_if_reducing_bit_depth"
+      },
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "hiphop",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
+      }
+    },
+    "rnb_silk_depth": {
+      "display_name": "R&B Silk Depth",
+      "description": "Warm, intimate R&B master with smooth vocal presence and deep controlled lows.",
+      "genre": "rnb",
+      "style": "modern",
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "rnb",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
+      },
+      "processing": {
+        "input": {
+          "headroom_target_db": -6.0,
+          "auto_gain": true
+        },
+        "highpass_filter": {
+          "enabled": true,
+          "frequency_hz": 24,
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
+        },
+        "eq": [
+          {
+            "frequency_hz": 70,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.7,
+            "q": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 300,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.6,
+            "q": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 3200,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "q": 0.9,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 11000,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "q": 0.7,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          }
+        ],
+        "bus_compressor": {
+          "ratio": 1.3,
+          "attack_ms": 40,
+          "release_ms": 150,
+          "max_gain_reduction_db": 1.2,
+          "knee_db": 2.0,
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
+        },
+        "dynamic_eq": [
+          {
+            "frequency_hz": 3500,
+            "max_gain_reduction_db": -1.2,
+            "q": 1.0,
+            "attack_ms": 15,
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          },
+          {
+            "frequency_hz": 7500,
+            "max_gain_reduction_db": -1.2,
+            "q": 1.0,
+            "attack_ms": 12,
+            "release_ms": 90,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          }
+        ],
+        "saturation": {
+          "enabled": true,
+          "max_amount": 0.025,
+          "oversampling": 4,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
+        },
+        "stereo": {
+          "low_end_mono_below_hz": 120,
+          "bands": [
+            {
+              "from_hz": 120,
+              "to_hz": 2000,
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
+            },
+            {
+              "from_hz": 2000,
+              "to_hz": 16000,
+              "preferred_direction": "widen",
+              "max_width_delta": 0.06,
+              "requires_detected_need": true
+            }
+          ],
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
+        },
+        "clipper": {
+          "enabled": true,
+          "max_drive_db": 0.3,
+          "oversampling": 8,
+          "ceiling_dbtp": -1.2,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
+        },
+        "limiter": {
+          "true_peak": true,
+          "ceiling_dbtp": -1.0,
+          "preferred_lufs_i": -11.0,
+          "acceptable_lufs_i": [
+            -13.5,
+            -9.0
+          ],
+          "quality_over_target": true,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
@@ -2258,11 +4068,18 @@
         "dither": "triangular_if_reducing_bit_depth"
       }
     },
-    "stock_mastering_lowend_control": {
-      "display_name": "Stock Mastering Low-End Control",
-      "description": "Template-inspired profile for controlled lows, cleaner mids, and reliable limiter behavior.",
-      "genre": "hiphop",
-      "style": "stock_mastering_strip",
+    "jazz_open_dynamic": {
+      "display_name": "Jazz Open Dynamic",
+      "description": "Open, natural jazz mastering with transient articulation and minimal density processing.",
+      "genre": "jazz",
+      "style": "natural",
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "jazz",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
+      },
       "processing": {
         "input": {
           "headroom_target_db": -6.0,
@@ -2270,59 +4087,86 @@
         },
         "highpass_filter": {
           "enabled": true,
-          "frequency_hz": 24,
-          "slope_db_oct": 24
+          "frequency_hz": 28,
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
         },
         "eq": [
           {
-            "frequency_hz": 55,
-            "gain_db": 0.5,
-            "q": 0.8
+            "frequency_hz": 100,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.4,
+            "q": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
-            "frequency_hz": 250,
-            "gain_db": -0.5,
-            "q": 1.0
+            "frequency_hz": 350,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.4,
+            "q": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
-            "frequency_hz": 1500,
-            "gain_db": 0.2,
-            "q": 1.0
+            "frequency_hz": 3000,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.3,
+            "q": 0.9,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           },
           {
-            "frequency_hz": 7000,
-            "gain_db": 0.3,
-            "q": 0.8
+            "frequency_hz": 11000,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.3,
+            "q": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
           }
         ],
         "bus_compressor": {
-          "ratio": 1.5,
-          "attack_ms": 30,
-          "release_ms": 120,
-          "max_gain_reduction_db": 1.2,
+          "ratio": 1.2,
+          "attack_ms": 50,
+          "release_ms": 180,
+          "max_gain_reduction_db": 0.8,
           "knee_db": 2.0,
-          "auto_makeup": false
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
         },
         "dynamic_eq": [
           {
-            "frequency_hz": 45,
-            "max_gain_reduction_db": -1.5,
+            "frequency_hz": 3500,
+            "max_gain_reduction_db": -1.2,
             "q": 1.0,
             "attack_ms": 15,
-            "release_ms": 100
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           },
           {
-            "frequency_hz": 3500,
-            "max_gain_reduction_db": -0.8,
+            "frequency_hz": 7500,
+            "max_gain_reduction_db": -1.2,
             "q": 1.0,
-            "attack_ms": 15,
-            "release_ms": 100
+            "attack_ms": 12,
+            "release_ms": 90,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
           }
         ],
         "saturation": {
           "enabled": true,
-          "amount": 0.025,
-          "oversampling": 4
+          "max_amount": 0.01,
+          "oversampling": 4,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
         },
         "stereo": {
           "low_end_mono_below_hz": 120,
@@ -2330,26 +4174,688 @@
             {
               "from_hz": 120,
               "to_hz": 2000,
-              "gain": 0.0
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
             },
             {
               "from_hz": 2000,
               "to_hz": 16000,
-              "gain": 0.0
+              "preferred_direction": "widen",
+              "max_width_delta": 0.03,
+              "requires_detected_need": true
             }
           ],
-          "max_correlation_risk": 0.0
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
         },
         "clipper": {
-          "enabled": true,
-          "drive_db": 0.4,
+          "enabled": false,
+          "max_drive_db": 0.0,
           "oversampling": 8,
-          "ceiling_dbtp": -1.2
+          "ceiling_dbtp": -1.2,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
         },
         "limiter": {
           "true_peak": true,
           "ceiling_dbtp": -1.0,
-          "target_lufs_i": -10.5,
+          "preferred_lufs_i": -15.0,
+          "acceptable_lufs_i": [
+            -19.0,
+            -11.5
+          ],
+          "quality_over_target": true,
+          "max_gain_reduction_db": 2.0,
+          "lookahead_ms": 1.0,
+          "release_ms": 100,
+          "oversampling": 8
+        }
+      },
+      "quality_control": {
+        "true_peak_ceiling_dbtp": -1.0,
+        "phase_correlation_min": 0.0,
+        "check_mono_compatibility": true,
+        "check_loudness": true,
+        "check_clipping": true,
+        "check_spectral_balance": true,
+        "codec_preview": true
+      },
+      "output": {
+        "format": "wav",
+        "bit_depth": 24,
+        "sample_rate": "source",
+        "dither": "triangular_if_reducing_bit_depth"
+      }
+    },
+    "country_vocal_punch": {
+      "display_name": "Country Vocal Punch",
+      "description": "Clear country vocal, acoustic definition and controlled low-mid warmth.",
+      "genre": "country",
+      "style": "modern",
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "country",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
+      },
+      "processing": {
+        "input": {
+          "headroom_target_db": -6.0,
+          "auto_gain": true
+        },
+        "highpass_filter": {
+          "enabled": true,
+          "frequency_hz": 30,
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
+        },
+        "eq": [
+          {
+            "frequency_hz": 100,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.4,
+            "q": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 300,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.6,
+            "q": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 2800,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "q": 0.9,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 10000,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.35,
+            "q": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          }
+        ],
+        "bus_compressor": {
+          "ratio": 1.3,
+          "attack_ms": 35,
+          "release_ms": 130,
+          "max_gain_reduction_db": 1.2,
+          "knee_db": 2.0,
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
+        },
+        "dynamic_eq": [
+          {
+            "frequency_hz": 3500,
+            "max_gain_reduction_db": -1.2,
+            "q": 1.0,
+            "attack_ms": 15,
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          },
+          {
+            "frequency_hz": 7500,
+            "max_gain_reduction_db": -1.2,
+            "q": 1.0,
+            "attack_ms": 12,
+            "release_ms": 90,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          }
+        ],
+        "saturation": {
+          "enabled": true,
+          "max_amount": 0.015,
+          "oversampling": 4,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
+        },
+        "stereo": {
+          "low_end_mono_below_hz": 120,
+          "bands": [
+            {
+              "from_hz": 120,
+              "to_hz": 2000,
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
+            },
+            {
+              "from_hz": 2000,
+              "to_hz": 16000,
+              "preferred_direction": "widen",
+              "max_width_delta": 0.04,
+              "requires_detected_need": true
+            }
+          ],
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
+        },
+        "clipper": {
+          "enabled": true,
+          "max_drive_db": 0.25,
+          "oversampling": 8,
+          "ceiling_dbtp": -1.2,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
+        },
+        "limiter": {
+          "true_peak": true,
+          "ceiling_dbtp": -1.0,
+          "preferred_lufs_i": -11.5,
+          "acceptable_lufs_i": [
+            -14.0,
+            -9.5
+          ],
+          "quality_over_target": true,
+          "max_gain_reduction_db": 2.5,
+          "lookahead_ms": 1.0,
+          "release_ms": 100,
+          "oversampling": 8
+        }
+      },
+      "quality_control": {
+        "true_peak_ceiling_dbtp": -1.0,
+        "phase_correlation_min": 0.0,
+        "check_mono_compatibility": true,
+        "check_loudness": true,
+        "check_clipping": true,
+        "check_spectral_balance": true,
+        "codec_preview": true
+      },
+      "output": {
+        "format": "wav",
+        "bit_depth": 24,
+        "sample_rate": "source",
+        "dither": "triangular_if_reducing_bit_depth"
+      }
+    },
+    "reggae_deep_translation": {
+      "display_name": "Reggae Deep Translation",
+      "description": "Deep bass translation with relaxed presence and clean low mids.",
+      "genre": "reggae",
+      "style": "modern",
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "reggae",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
+      },
+      "processing": {
+        "input": {
+          "headroom_target_db": -6.0,
+          "auto_gain": true
+        },
+        "highpass_filter": {
+          "enabled": true,
+          "frequency_hz": 22,
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
+        },
+        "eq": [
+          {
+            "frequency_hz": 55,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.8,
+            "q": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 280,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.5,
+            "q": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 2500,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.25,
+            "q": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 9000,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.25,
+            "q": 0.9,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          }
+        ],
+        "bus_compressor": {
+          "ratio": 1.4,
+          "attack_ms": 35,
+          "release_ms": 140,
+          "max_gain_reduction_db": 1.3,
+          "knee_db": 2.0,
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
+        },
+        "dynamic_eq": [
+          {
+            "frequency_hz": 3500,
+            "max_gain_reduction_db": -1.2,
+            "q": 1.0,
+            "attack_ms": 15,
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          },
+          {
+            "frequency_hz": 7500,
+            "max_gain_reduction_db": -1.2,
+            "q": 1.0,
+            "attack_ms": 12,
+            "release_ms": 90,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          }
+        ],
+        "saturation": {
+          "enabled": true,
+          "max_amount": 0.025,
+          "oversampling": 4,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
+        },
+        "stereo": {
+          "low_end_mono_below_hz": 120,
+          "bands": [
+            {
+              "from_hz": 120,
+              "to_hz": 2000,
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
+            },
+            {
+              "from_hz": 2000,
+              "to_hz": 16000,
+              "preferred_direction": "widen",
+              "max_width_delta": 0.04,
+              "requires_detected_need": true
+            }
+          ],
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
+        },
+        "clipper": {
+          "enabled": true,
+          "max_drive_db": 0.35,
+          "oversampling": 8,
+          "ceiling_dbtp": -1.2,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
+        },
+        "limiter": {
+          "true_peak": true,
+          "ceiling_dbtp": -1.0,
+          "preferred_lufs_i": -10.5,
+          "acceptable_lufs_i": [
+            -13.0,
+            -8.5
+          ],
+          "quality_over_target": true,
+          "max_gain_reduction_db": 3.0,
+          "lookahead_ms": 1.0,
+          "release_ms": 100,
+          "oversampling": 8
+        }
+      },
+      "quality_control": {
+        "true_peak_ceiling_dbtp": -1.0,
+        "phase_correlation_min": 0.0,
+        "check_mono_compatibility": true,
+        "check_loudness": true,
+        "check_clipping": true,
+        "check_spectral_balance": true,
+        "codec_preview": true
+      },
+      "output": {
+        "format": "wav",
+        "bit_depth": 24,
+        "sample_rate": "source",
+        "dither": "triangular_if_reducing_bit_depth"
+      }
+    },
+    "latin_reggaeton_punch": {
+      "display_name": "Latin / Reggaeton Punch",
+      "description": "Energetic reggaeton master with punchy low end, vocal clarity and crisp percussion.",
+      "genre": "latin",
+      "style": "modern",
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "latin",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
+      },
+      "processing": {
+        "input": {
+          "headroom_target_db": -6.0,
+          "auto_gain": true
+        },
+        "highpass_filter": {
+          "enabled": true,
+          "frequency_hz": 23,
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
+        },
+        "eq": [
+          {
+            "frequency_hz": 60,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.7,
+            "q": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 250,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.5,
+            "q": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 3200,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.45,
+            "q": 0.9,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 9500,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.45,
+            "q": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          }
+        ],
+        "bus_compressor": {
+          "ratio": 1.5,
+          "attack_ms": 25,
+          "release_ms": 100,
+          "max_gain_reduction_db": 1.5,
+          "knee_db": 2.0,
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
+        },
+        "dynamic_eq": [
+          {
+            "frequency_hz": 3500,
+            "max_gain_reduction_db": -1.2,
+            "q": 1.0,
+            "attack_ms": 15,
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          },
+          {
+            "frequency_hz": 7500,
+            "max_gain_reduction_db": -1.2,
+            "q": 1.0,
+            "attack_ms": 12,
+            "release_ms": 90,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          }
+        ],
+        "saturation": {
+          "enabled": true,
+          "max_amount": 0.025,
+          "oversampling": 4,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
+        },
+        "stereo": {
+          "low_end_mono_below_hz": 120,
+          "bands": [
+            {
+              "from_hz": 120,
+              "to_hz": 2000,
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
+            },
+            {
+              "from_hz": 2000,
+              "to_hz": 16000,
+              "preferred_direction": "widen",
+              "max_width_delta": 0.07,
+              "requires_detected_need": true
+            }
+          ],
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
+        },
+        "clipper": {
+          "enabled": true,
+          "max_drive_db": 0.6,
+          "oversampling": 8,
+          "ceiling_dbtp": -1.2,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
+        },
+        "limiter": {
+          "true_peak": true,
+          "ceiling_dbtp": -1.0,
+          "preferred_lufs_i": -9.5,
+          "acceptable_lufs_i": [
+            -11.5,
+            -8.0
+          ],
+          "quality_over_target": true,
+          "max_gain_reduction_db": 3.25,
+          "lookahead_ms": 1.0,
+          "release_ms": 100,
+          "oversampling": 8
+        }
+      },
+      "quality_control": {
+        "true_peak_ceiling_dbtp": -1.0,
+        "phase_correlation_min": 0.0,
+        "check_mono_compatibility": true,
+        "check_loudness": true,
+        "check_clipping": true,
+        "check_spectral_balance": true,
+        "codec_preview": true
+      },
+      "output": {
+        "format": "wav",
+        "bit_depth": 24,
+        "sample_rate": "source",
+        "dither": "triangular_if_reducing_bit_depth"
+      }
+    },
+    "afrobeats_rhythm_open": {
+      "display_name": "Afrobeats Rhythm Open",
+      "description": "Open rhythmic master with controlled lows, vocal clarity and lively percussion.",
+      "genre": "afrobeats",
+      "style": "modern",
+      "adaptive": {
+        "enabled": true,
+        "genre_model": "afrobeats",
+        "requires_detected_need": true,
+        "preset_strength": 0.65,
+        "do_no_harm": true
+      },
+      "processing": {
+        "input": {
+          "headroom_target_db": -6.0,
+          "auto_gain": true
+        },
+        "highpass_filter": {
+          "enabled": true,
+          "frequency_hz": 25,
+          "slope_db_oct": 24,
+          "adaptive_frequency": true,
+          "frequency_hz_is_maximum": true,
+          "bypass_if_useful_sub_content": true
+        },
+        "eq": [
+          {
+            "frequency_hz": 75,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.5,
+            "q": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 300,
+            "preferred_direction": "cut",
+            "max_adjustment_db": 0.45,
+            "q": 1.0,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 3000,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.4,
+            "q": 0.9,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          },
+          {
+            "frequency_hz": 10500,
+            "preferred_direction": "boost",
+            "max_adjustment_db": 0.4,
+            "q": 0.8,
+            "requires_detected_need": true,
+            "allow_opposite_correction_if_analysis_requires": true
+          }
+        ],
+        "bus_compressor": {
+          "ratio": 1.35,
+          "attack_ms": 30,
+          "release_ms": 120,
+          "max_gain_reduction_db": 1.25,
+          "knee_db": 2.0,
+          "auto_makeup": false,
+          "bypass_if_not_needed": true,
+          "ratio_is_character_ceiling": true,
+          "attack_release_are_starting_points": true
+        },
+        "dynamic_eq": [
+          {
+            "frequency_hz": 3500,
+            "max_gain_reduction_db": -1.2,
+            "q": 1.0,
+            "attack_ms": 15,
+            "release_ms": 100,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          },
+          {
+            "frequency_hz": 7500,
+            "max_gain_reduction_db": -1.2,
+            "q": 1.0,
+            "attack_ms": 12,
+            "release_ms": 90,
+            "requires_detected_problem": true,
+            "frequency_is_search_center_not_fixed_resonance": true,
+            "adaptive_center_frequency": true
+          }
+        ],
+        "saturation": {
+          "enabled": true,
+          "max_amount": 0.02,
+          "oversampling": 4,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "reduce_if_hf_regression": true
+        },
+        "stereo": {
+          "low_end_mono_below_hz": 120,
+          "bands": [
+            {
+              "from_hz": 120,
+              "to_hz": 2000,
+              "preferred_direction": "unchanged",
+              "max_width_delta": 0.0,
+              "requires_detected_need": true
+            },
+            {
+              "from_hz": 2000,
+              "to_hz": 16000,
+              "preferred_direction": "widen",
+              "max_width_delta": 0.07,
+              "requires_detected_need": true
+            }
+          ],
+          "max_correlation_risk": 0.0,
+          "bypass_if_already_appropriate": true,
+          "narrow_if_phase_risk": true
+        },
+        "clipper": {
+          "enabled": true,
+          "max_drive_db": 0.35,
+          "oversampling": 8,
+          "ceiling_dbtp": -1.2,
+          "source_adaptive": true,
+          "bypass_if_not_needed": true,
+          "transient_safety_required": true
+        },
+        "limiter": {
+          "true_peak": true,
+          "ceiling_dbtp": -1.0,
+          "preferred_lufs_i": -10.5,
+          "acceptable_lufs_i": [
+            -12.5,
+            -8.5
+          ],
+          "quality_over_target": true,
           "max_gain_reduction_db": 3.0,
           "lookahead_ms": 1.0,
           "release_ms": 100,
