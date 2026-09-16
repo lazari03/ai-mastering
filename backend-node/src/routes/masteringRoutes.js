@@ -349,6 +349,25 @@ router.post("/billing/checkout", async (req, res) => {
     return res.status(400).json({ detail: `Unknown item "${req.body?.item}"` });
   }
   try {
+    // A stale client-side plan cache (PlansPanel.jsx's buy() only calls
+    // /billing/change-plan when its OWN cached currentPlan says "already
+    // paid" — see entitlementsStore) can land here for someone who
+    // already has an active mastering subscription. checkouts.create()
+    // has no concept of "this customer already has one," so Polar's own
+    // hosted checkout page rejects it with a dead-end "You already have
+    // an active subscription" screen instead of switching them — the
+    // exact failure mode changeSubscriptionPlan (see polarService.js) was
+    // built to avoid, just reached through the other endpoint. The
+    // backend is the real source of truth for subscription state, not
+    // whatever the frontend happened to cache — check it here too and
+    // perform the same in-place change /billing/change-plan does,
+    // transparently, instead of ever reaching Polar's checkout for a
+    // plan product on an already-subscribed customer.
+    if ((productKey === "planStudio" || productKey === "planPro") && (await getPlan(req.user.uid)) !== "free") {
+      const result = await changeSubscriptionPlan(req.user.uid, productKey);
+      recordServerEvent("checkout_started", { uid: req.user.uid, props: { plan: productKey, via: "auto_switched_from_checkout" } });
+      return res.json({ changedPlan: true, ...result });
+    }
     const url = await createCheckoutUrl(req.user.uid, req.user.email, productKey, req.body?.success_url);
     recordServerEvent("checkout_started", { uid: req.user.uid, props: { plan: productKey } });
     return res.json({ url });

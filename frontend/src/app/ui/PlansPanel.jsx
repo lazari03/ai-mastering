@@ -83,8 +83,20 @@ export default function PlansPanel() {
         return;
       }
       const successUrl = `${window.location.origin}/thank-you?plan=${encodeURIComponent(planKey)}&item=${encodeURIComponent(item)}&price=${encodeURIComponent(priceLabel)}`;
-      const { url } = await postCheckout(item, successUrl);
-      window.location.href = url;
+      const response = await postCheckout(item, successUrl);
+      // The backend independently detects an already-active subscription
+      // (see masteringRoutes.js's /billing/checkout) regardless of what
+      // currentPlan this component cached — if that cache was stale, this
+      // never reaches Polar's checkout at all, it just performs the plan
+      // change directly, same as the isCurrentPlan-aware branch above.
+      if (response.changedPlan) {
+        await refresh();
+        setBusyItem("");
+        const planLabel = planKey === "pro" ? "All-Access" : "Studio";
+        setChangeStatus(response.immediate ? t("billing.switchedTo", { plan: planLabel }) : t("billing.scheduledTo", { plan: planLabel }));
+        return;
+      }
+      window.location.href = response.url;
     } catch (err) {
       setBusyItem("");
       setCheckoutError(err?.message || t("billing.checkoutFailed"));
