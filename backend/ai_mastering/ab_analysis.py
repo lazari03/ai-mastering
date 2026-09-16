@@ -70,6 +70,98 @@ def _summarize_decisions(processing_params: dict, limiter_report: dict | None) -
     }
 
 
+_BAND_LABELS = {
+    "sub_bass_20_60hz": "sub-bass (20-60Hz)",
+    "bass_60_250hz": "bass (60-250Hz)",
+    "low_mid_250_500hz": "low-mids (250-500Hz)",
+    "mid_500_2000hz": "mids (500Hz-2kHz)",
+    "high_mid_2000_4000hz": "high-mids (2-4kHz)",
+    "presence_4000_6000hz": "presence (4-6kHz)",
+    "brilliance_6000_20000hz": "brilliance/air (6-20kHz)",
+}
+
+
+def build_decision_report(processing_params: dict, limiter_report: dict | None, overshoot_corrections: list) -> dict:
+    """A plain-language engineering log of what this render actually
+    decided and why — not another parameter dump (those already exist
+    elsewhere in the response). Built entirely from data other stages
+    already computed (band_diagnosis, mix_diagnosis, vocal_presence_
+    disabled_reason, the limiter's own report, the post-render overshoot
+    check) — this module only narrates it."""
+    band_diagnosis = processing_params.get("band_diagnosis", {}) or {}
+    eq_lines = []
+    for band_key, diag in band_diagnosis.items():
+        label = _BAND_LABELS.get(band_key, band_key)
+        gain_db = float(processing_params.get("per_band_gain_changes_db", {}).get(band_key, 0.0))
+        if diag.get("decision") == "within_target_window":
+            eq_lines.append(f"{label}: within target window, bypassed (raw deviation {diag['raw_delta_db']:+.1f}dB, below the 1.0dB deadband).")
+        else:
+            direction = "boost" if gain_db >= 0 else "cut"
+            eq_lines.append(
+                f"{label}: {direction} {gain_db:+.2f}dB (raw deviation {diag['raw_delta_db']:+.1f}dB, "
+                f"confidence {diag.get('confidence', 0.0):.0%})."
+            )
+
+    vocal_gain_db = float(processing_params.get("vocal_presence_gain_db", 0.0))
+    vocal_disabled = processing_params.get("vocal_presence_disabled_reason")
+    if vocal_disabled == "source_upper_mid_already_at_or_above_target":
+        vocal_line = "Vocal presence: disabled — source's 2-6kHz region is already at/above target, would only brighten the whole mix."
+    elif vocal_disabled == "shared_presence_budget_exhausted_by_static_eq":
+        vocal_line = f"Vocal presence: reduced to {vocal_gain_db:+.2f}dB — shared presence budget already spent by static EQ above."
+    elif abs(vocal_gain_db) < 0.05:
+        vocal_line = "Vocal presence: bypassed, no meaningful correction needed."
+    else:
+        vocal_line = f"Vocal presence: {vocal_gain_db:+.2f}dB."
+
+    compression_engaged = bool(processing_params.get("glue_enabled", False))
+    compression_line = (
+        f"Glue compression: engaged, ratio {float(processing_params.get('glue_ratio', 1.0)):.2f}:1 at "
+        f"{float(processing_params.get('glue_threshold_db', 0.0)):.1f}dB threshold."
+        if compression_engaged
+        else "Glue compression: bypassed — dynamics already controlled or input already clipping/limited."
+    )
+
+    side_gain = float(processing_params.get("side_gain", 1.0))
+    if abs(side_gain - 1.0) < 0.01:
+        stereo_line = "Stereo width: unchanged."
+    else:
+        stereo_line = f"Stereo width: {'widened' if side_gain > 1.0 else 'narrowed'} (side gain {side_gain:.3f}x)."
+
+    saturation_amount = float(processing_params.get("saturation_amount", 0.0))
+    saturation_line = "Saturation: bypassed." if saturation_amount < 0.01 else f"Saturation: {saturation_amount:.3f} drive amount."
+
+    limiter_gr_db = float((limiter_report or {}).get("limiter_gain_reduction_db", 0.0))
+    recovery_db = float((limiter_report or {}).get("loudness_recovery_db", 0.0))
+    limiter_line = f"Limiter: {limiter_gr_db:.2f}dB max gain reduction"
+    if recovery_db > 0.05:
+        limiter_line += f", +{recovery_db:.2f}dB loudness recovered from unused headroom"
+    limiter_line += f", output ceiling {(limiter_report or {}).get('post_limiter_peak_db', -1.0):.2f}dBTP."
+
+    verification_lines = []
+    if overshoot_corrections:
+        for c in overshoot_corrections:
+            label = _BAND_LABELS.get(c["band"], c["band"])
+            verification_lines.append(
+                f"{label}: {c['kind']} detected post-render (landed {c['after_delta_db']:+.1f}dB vs target) — "
+                f"applied a {c['trim_applied_db']:+.2f}dB corrective trim."
+            )
+    else:
+        verification_lines.append("No post-render spectral overshoot detected on the presence bands — one pass was sufficient.")
+
+    mix_diagnosis = processing_params.get("mix_diagnosis", []) or []
+
+    return {
+        "eq_decisions": eq_lines,
+        "vocal_presence_decision": vocal_line,
+        "compression_decision": compression_line,
+        "stereo_decision": stereo_line,
+        "saturation_decision": saturation_line,
+        "limiter_decision": limiter_line,
+        "post_render_verification": verification_lines,
+        "mix_diagnosis": [m["detail"] for m in mix_diagnosis],
+    }
+
+
 def build_ab_report(
     analysis_before: dict,
     analysis_after: dict,

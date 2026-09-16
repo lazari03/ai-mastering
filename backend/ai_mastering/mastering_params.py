@@ -248,8 +248,49 @@ def compute_processing_params(
     if input_lra <= 2.0 and already_limited:
         effective_target_lufs = min(effective_target_lufs, current_lufs - 0.3)
 
+    # ---------------------------------------------------------------------
+    # Target windows + confidence-scaled correction (mastering-philosophy
+    # audit). Genre/reference targets are acceptable regions, not exact
+    # destinations — the old logic below computed a nonzero correction for
+    # ANY deviation, however small, then separately widened the ceiling for
+    # severe cases. That meant a track already close to target still got
+    # nudged (never truly "left alone"), and severity/deviation only ever
+    # widened the ceiling, never shaped how quickly correction ramped in.
+    # Replaced with one formula that does both:
+    #   1. DEADBAND_DB — deviations smaller than this get exactly zero
+    #      correction. 1.0dB is a raw (pre-any-scaling) energy-share
+    #      deviation in a 7-band split of a whole mix — roughly a 12%
+    #      linear energy difference — smaller than what's reliably
+    #      perceived as a broad tonal shift on real program material, so
+    #      "fixing" it is moving a filter for a difference nobody can hear.
+    #   2. A saturating (diminishing-returns) curve on the excess beyond
+    #      the deadband, asymptotic to a ceiling — replaces both the old
+    #      flat correction_strength multiply AND the separate ad hoc
+    #      "widen the ceiling once excess_db > 6" step with one continuous
+    #      function: small excess ramps in gently (matches the old
+    #      correction_strength-only behavior for moderate deviations),
+    #      large excess approaches the ceiling smoothly instead of jumping
+    #      to a second, wider hard clip.
+    #   3. Asymmetric ceilings (BOOST_CEILING_DB < CUT_CEILING_DB) — a
+    #      confidently-identified excess is safer to remove than a
+    #      confidently-identified deficit is to add back (spec: automated
+    #      mastering should be more conservative brightening/boosting than
+    #      correcting an obvious excess).
+    # ---------------------------------------------------------------------
+    DEADBAND_DB = 1.0
+    BOOST_CEILING_DB = 2.5
+    CUT_CEILING_DB = 4.5
+    # Excess (beyond the deadband) at which the curve reaches ~86% of its
+    # ceiling — "a large, unambiguous deviation" per the confidence-scaling
+    # requirement, tuned around the old logic's own 6dB "severe" threshold
+    # (6dB excess + 1dB deadband ≈ 7dB raw, close to the old boundary) so
+    # this pass changes *how* severity scales the correction, not *when*
+    # a deviation starts counting as severe.
+    SEVERITY_SATURATION_DB = 8.0
+    _severity_k = float(-np.log(1.0 - 0.86) / SEVERITY_SATURATION_DB)
+
     per_band_gain_changes_db = {}
-    correction_strength = 0.3 if clipping_input else 0.4
+    band_diagnosis = {}
     energy_floor = 0.015
     for band_key in SPECTRAL_BAND_KEYS:
         current = float(current_balance.get(band_key, 0.0))
@@ -260,55 +301,92 @@ def compute_processing_params(
         raw_delta_db = 20.0 * np.log10((target_safe + EPS) / (current_safe + EPS))
         raw_delta_db += profile["tag_bias_band_db"].get(band_key, 0.0)
 
-        # Apply partial correction so mastering stays musical and avoids over-shaping weak material.
-        delta_db = raw_delta_db * correction_strength
+        severity_db = max(0.0, abs(raw_delta_db) - DEADBAND_DB)
+        if severity_db <= 0.0:
+            per_band_gain_changes_db[band_key] = 0.0
+            band_diagnosis[band_key] = {"raw_delta_db": round(raw_delta_db, 2), "severity_db": 0.0, "confidence": 0.0, "decision": "within_target_window"}
+            continue
+
+        ceiling = CUT_CEILING_DB if raw_delta_db < 0 else BOOST_CEILING_DB
+        if clipping_input and raw_delta_db > 0:
+            ceiling = min(ceiling, 2.0)
+        confidence = float(1.0 - np.exp(-_severity_k * severity_db))
+        delta_db = float(np.sign(raw_delta_db) * ceiling * confidence)
         if current < 0.008 and delta_db > 0:
             delta_db = min(delta_db, 1.2)
+        per_band_gain_changes_db[band_key] = delta_db
+        band_diagnosis[band_key] = {
+            "raw_delta_db": round(raw_delta_db, 2),
+            "severity_db": round(severity_db, 2),
+            "confidence": round(confidence, 2),
+            "decision": "corrected",
+        }
 
-        # Severity-scaled correction ceiling — a flat cap treats a band
-        # that's mildly off target (say 1.2x) identically to one that's
-        # severely off (3-4x+), which systematically under-corrects
-        # exactly the tracks that need correction most: a badly
-        # bass-heavy source still only got the same -3.5dB as a mildly
-        # bass-heavy one, so the imbalance visibly survived mastering.
-        # Real mastering practice allows more correction specifically
-        # when the analysis clearly identifies a real problem, not as a
-        # blanket increase — so the ceiling only widens past the normal
-        # ±3.5dB/+2.5dB range once the *raw* (pre correction_strength)
-        # deviation itself is large (>6dB, roughly 2x off in power terms),
-        # and only up to -6dB/+4dB even then — still a broad, musical
-        # move, not a surgical one. A band within normal range is
-        # completely unaffected by this.
-        excess_db = max(0.0, abs(raw_delta_db) - 6.0)
-        boost_limit = 2.0 if clipping_input else 2.5
-        cut_limit = -3.5
-        if raw_delta_db < 0:
-            cut_limit = float(np.clip(-3.5 - excess_db * 0.4, -6.0, -3.5))
-        else:
-            boost_limit = float(np.clip(boost_limit + excess_db * 0.25, boost_limit, 4.0))
-        per_band_gain_changes_db[band_key] = float(np.clip(delta_db, cut_limit, boost_limit))
-
-    # Keep top-end moves style-aware (prevents brittle modernization when
-    # older-era style is selected) — but the cap itself should widen when
-    # the source is genuinely, severely dark relative to what this genre
-    # actually needs, not just "a bit thin." Same severity-scaled
-    # reasoning as the per-band ceiling above: compares the source's
-    # actual upper-mid/presence/brilliance share against the target's own
-    # sum for those same bands (not a fixed threshold), so the widening
-    # is calibrated to how far short THIS track falls of what THIS genre
-    # target actually calls for.
-    hf_cap = float(style_profile["hf_boost_cap_db"]) + category_bias["hf_boost_cap_delta"]
+    # ---------------------------------------------------------------------
+    # HF/presence budget (mastering-philosophy audit). The three bands
+    # above 2kHz were previously clamped to one SHARED ceiling (hf_cap) —
+    # every one of them could independently reach that same number, so a
+    # track needing help in only one of the three still got all three
+    # pushed together, and nothing about it "knew" the other two bands
+    # existed. Two changes:
+    #   1. Each band gets its OWN normal ceiling instead of sharing one —
+    #      2-4kHz <=1.0dB, 4-6kHz <=0.75dB, 6-20kHz <=1.0dB. These specific
+    #      numbers are the conservative automatic-boost ceilings a real
+    #      mastering engineer would treat as normal for these ranges before
+    #      a track gives a genuinely severe reason to go further (below);
+    #      they replace style_profile["hf_boost_cap_db"] as the per-band
+    #      base (that constant becomes an availability multiplier instead —
+    #      see GLOBAL_PRESENCE_BUDGET_DB below — a style calling for less
+    #      brightness (e.g. vintage_analog) still tightens these caps, one
+    #      calling for more never widens them past what a real engineer
+    #      would call "guardrail, not mandatory move").
+    #   2. A GLOBAL ceiling on the COMBINED positive move across all three
+    #      — the actual audible result of "a bit of 3kHz + a bit of 5kHz +
+    #      a bit of 8kHz" is brighter than any one of those numbers alone
+    #      suggests, so summing and re-scaling when the total is too high
+    #      is what actually prevents the cumulative-brightening failure
+    #      mode, not three independent per-band checks that never talk to
+    #      each other. vocal_presence_gain_db (computed below) is folded
+    #      into this SAME budget once it exists — see the block after it.
+    # ---------------------------------------------------------------------
+    style_hf_multiplier = float(np.clip(1.0 + (float(style_profile["hf_boost_cap_db"]) - 1.5) * 0.3 + category_bias["hf_boost_cap_delta"] * 0.3, 0.5, 1.4))
     target_upper_mid_energy = float(
         target_balance.get("mid_500_2000hz", 0.0)
         + target_balance.get("high_mid_2000_4000hz", 0.0)
         + target_balance.get("presence_4000_6000hz", 0.0)
         + target_balance.get("brilliance_6000_20000hz", 0.0)
     )
+    # Widens a band's own ceiling only when the source is genuinely,
+    # severely dark relative to what this genre needs — same
+    # deficit-proportional widening as before, just applied per band
+    # instead of to one shared number, and with a smaller ceiling on the
+    # widening itself for the tighter 4-6kHz band (harshness/sibilance
+    # territory — the band that should earn a boost past its normal
+    # ceiling least easily).
     upper_mid_deficit = max(0.0, target_upper_mid_energy - upper_mid_energy)
-    hf_cap += float(np.clip(upper_mid_deficit * 5.0, 0.0, 1.5))
-    per_band_gain_changes_db["high_mid_2000_4000hz"] = min(per_band_gain_changes_db["high_mid_2000_4000hz"], hf_cap)
-    per_band_gain_changes_db["presence_4000_6000hz"] = min(per_band_gain_changes_db["presence_4000_6000hz"], hf_cap)
-    per_band_gain_changes_db["brilliance_6000_20000hz"] = min(per_band_gain_changes_db["brilliance_6000_20000hz"], hf_cap)
+    hf_band_ceilings = {
+        "high_mid_2000_4000hz": (1.0 * style_hf_multiplier) + float(np.clip(upper_mid_deficit * 4.0, 0.0, 1.2)),
+        "presence_4000_6000hz": (0.75 * style_hf_multiplier) + float(np.clip(upper_mid_deficit * 3.0, 0.0, 0.75)),
+        "brilliance_6000_20000hz": (1.0 * style_hf_multiplier) + float(np.clip(upper_mid_deficit * 4.0, 0.0, 1.2)),
+    }
+    for band_key, ceiling in hf_band_ceilings.items():
+        per_band_gain_changes_db[band_key] = min(per_band_gain_changes_db[band_key], ceiling)
+
+    # Combined budget: if the sum of the three bands' POSITIVE moves alone
+    # exceeds this, scale the positive contributions down proportionally
+    # (cuts are never touched by this — a shared brightness budget has
+    # nothing to say about a band being confidently reduced). 2.0dB
+    # combined is deliberately tighter than the 2.75dB sum of the three
+    # individual ceilings above — a source that independently earns a
+    # boost on all three bands at once is exactly the "sounds brighter
+    # than any one number suggests" case this budget exists to catch.
+    GLOBAL_PRESENCE_BUDGET_DB = 2.0
+    hf_positive_sum = sum(max(0.0, per_band_gain_changes_db[k]) for k in hf_band_ceilings)
+    hf_budget_scale = min(1.0, GLOBAL_PRESENCE_BUDGET_DB / hf_positive_sum) if hf_positive_sum > GLOBAL_PRESENCE_BUDGET_DB else 1.0
+    if hf_budget_scale < 1.0:
+        for band_key in hf_band_ceilings:
+            if per_band_gain_changes_db[band_key] > 0.0:
+                per_band_gain_changes_db[band_key] *= hf_budget_scale
 
     # Guitar-burn guard: if the track already has meaningful upper-mid energy, avoid further push.
     # Threshold is a genuine proportion of total spectral energy (see
@@ -471,6 +549,37 @@ def compute_processing_params(
     if rock_low_end_protection:
         vocal_presence_gain_db = min(vocal_presence_gain_db, 0.6)
 
+    # vocal_presence_gain_db used to be a completely separate EQ move with
+    # no awareness of the 2-6kHz static correction already computed above —
+    # a track could get both a positive high_mid/presence correction AND a
+    # positive vocal-presence boost, each individually within its own
+    # limit, whose SUM still over-brightened the master (spec: "vocal
+    # presence must not bypass HF protection"). Two rules, applied only to
+    # the positive (brightening) direction — a negative vocal_presence_gain_db
+    # (the mix is judged too forward already) never needed this protection:
+    #   1. If the source's upper-mid energy already meets or exceeds this
+    #      genre's own target for that range, a positive vocal-presence
+    #      correction is disabled outright. A mix that's already at/above
+    #      its target upper-mid share is not "missing" presence in any
+    #      sense mastering EQ can fix — a buried vocal against an already
+    #      dense 2-6kHz mix is a MIX-balance limitation (see
+    #      mix_diagnosis below), not something more mastering brightness
+    #      solves.
+    #   2. Otherwise, vocal presence shares the SAME GLOBAL_PRESENCE_BUDGET_DB
+    #      as the three static HF bands — it's added to that running total
+    #      and rescaled down with them if the combined move is still over
+    #      budget, rather than being a fourth, independent boost budget.
+    vocal_presence_disabled_reason = None
+    if vocal_presence_gain_db > 0.0:
+        if upper_mid_energy >= target_upper_mid_energy:
+            vocal_presence_disabled_reason = "source_upper_mid_already_at_or_above_target"
+            vocal_presence_gain_db = 0.0
+        else:
+            remaining_budget = max(0.0, GLOBAL_PRESENCE_BUDGET_DB - sum(max(0.0, per_band_gain_changes_db[k]) for k in hf_band_ceilings))
+            if vocal_presence_gain_db > remaining_budget:
+                vocal_presence_disabled_reason = "shared_presence_budget_exhausted_by_static_eq"
+                vocal_presence_gain_db = remaining_budget
+
     saturation_amount = float(np.clip(profile["base_saturation"] + max(0.0, -dr_excess) * 0.0035, 0.0, 0.12))
     if clipping_input:
         saturation_amount *= 0.7
@@ -492,6 +601,26 @@ def compute_processing_params(
     crest_db = float(analysis.get("dynamic_range_db", 8.0))
     release_adjust_ms = float(np.clip((crest_db - 8.0) * 3.0, -25.0, 30.0))
     limiter_release_ms = float(np.clip(base_release_ms + release_adjust_ms, 40.0, 250.0))
+
+    # Mix-problem diagnostic (spec: "some problems cannot be safely solved
+    # during mastering") — scoped to the one case the HF/presence budget
+    # above can actually detect from its own inputs: a vocal that measures
+    # as needing more presence while the mix already sits at/above its
+    # target upper-mid share. Reported so the caller can surface it, not
+    # silently "solved" by brightening the whole master further.
+    mix_diagnosis = []
+    if vocal_presence_disabled_reason == "source_upper_mid_already_at_or_above_target":
+        mix_diagnosis.append(
+            {
+                "issue": "probable_buried_vocal_or_dense_upper_mix",
+                "detail": (
+                    "Vocal presence appears low, but the 2-6kHz region is already at or above this genre's "
+                    "target share. Further mastering EQ here would brighten the whole mix rather than the "
+                    "vocal specifically. This is more likely a mix-balance limitation than something "
+                    "mastering EQ can safely correct."
+                ),
+            }
+        )
 
     return {
         "genre": genre,
@@ -524,9 +653,16 @@ def compute_processing_params(
         "band_dynamic_eq_max_reduction_db": band_dynamic_eq_max_reduction_db,
         "limiter_release_ms": round(limiter_release_ms, 1),
         "vocal_presence_gain_db": vocal_presence_gain_db,
+        "vocal_presence_disabled_reason": vocal_presence_disabled_reason,
         "deesser_strength": deesser_strength,
         "input_clipping_detected": clipping_input,
         "style_profile": style_profile,
+        "band_diagnosis": band_diagnosis,
+        "mix_diagnosis": mix_diagnosis,
+        # Carried forward so the caller can re-check the ACTUAL rendered
+        # spectrum against the same window this function used to decide
+        # corrections — see mastering.py's post-render overshoot check.
+        "target_spectral_balance": {k: round(float(v), 5) for k, v in target_balance.items()},
     }
 
 

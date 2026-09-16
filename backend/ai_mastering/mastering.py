@@ -4,9 +4,9 @@ from pathlib import Path
 
 import numpy as np
 import soundfile as sf
-from pedalboard import HighShelfFilter, Pedalboard, Reverb
+from pedalboard import HighShelfFilter, PeakFilter, Pedalboard, Reverb
 
-from .ab_analysis import build_ab_report
+from .ab_analysis import build_ab_report, build_decision_report
 from .audio_utils import (
     MASTER_SR,
     _ab_gain_match,
@@ -302,6 +302,70 @@ def master_track(
 
     analysis_after = _analysis_from_audio(stereo_processed, sr)
 
+    # ---------------------------------------------------------------------
+    # Post-render spectral overshoot verification (mastering-philosophy
+    # audit: "re-analyze the actual master, don't just assume parameters
+    # produced the intended result"). The per-band corrections in
+    # compute_processing_params are computed from the PRE-master analysis —
+    # a prediction, not a guarantee, since multiband compression,
+    # saturation, and the limiter all still touch the spectrum afterward.
+    # This checks the three presence-region bands (the ones the HF/presence
+    # budget above specifically governs) against the SAME target window
+    # that decided their correction, using the actual rendered result:
+    #   overshoot  — source was below target, master ended up above it
+    #   regression — source was already above target, master pushed it
+    #                further above
+    # Either one gets exactly ONE conservative corrective trim (a gentle
+    # static cut centered on the offending band), never an iterative loop —
+    # spec: "maximum of 1-2 conservative corrective rerenders." This
+    # corrects the finished signal directly (the same pattern the QC block
+    # below already uses for channel-balance/DC-offset fixes) rather than
+    # re-running the whole multiband chain, which keeps the correction's
+    # blast radius to exactly the one band that actually overshot.
+    # ---------------------------------------------------------------------
+    target_balance_check = processing_params.get("target_spectral_balance", {})
+    PRESENCE_VERIFY_BANDS = {
+        "high_mid_2000_4000hz": 3000.0,
+        "presence_4000_6000hz": 5000.0,
+        "brilliance_6000_20000hz": 9000.0,
+    }
+    OVERSHOOT_TOLERANCE_DB = 1.0  # same magnitude as the upstream deadband — a difference this small isn't a real overshoot, it's measurement noise
+    overshoot_corrections = []
+    overshoot_fx_stages = []
+    for band_key, center_hz in PRESENCE_VERIFY_BANDS.items():
+        target_share = target_balance_check.get(band_key)
+        if not target_share:
+            continue
+        before_share = max(float(analysis_before["spectral_balance"].get(band_key, 0.0)), 1e-6)
+        after_share = max(float(analysis_after["spectral_balance"].get(band_key, 0.0)), 1e-6)
+        before_delta_db = 20.0 * np.log10(before_share / target_share)
+        after_delta_db = 20.0 * np.log10(after_share / target_share)
+
+        kind = None
+        if before_delta_db < -OVERSHOOT_TOLERANCE_DB and after_delta_db > OVERSHOOT_TOLERANCE_DB:
+            kind = "overshoot"
+        elif before_delta_db > OVERSHOOT_TOLERANCE_DB and after_delta_db > before_delta_db + OVERSHOOT_TOLERANCE_DB:
+            kind = "regression"
+        if kind is None:
+            continue
+
+        # Half the measured overshoot, bounded to a small, safe range — a
+        # corrective trim, not a second attempt at hitting the target
+        # exactly (that would just be chasing the number from the other
+        # direction).
+        trim_db = -float(np.clip(after_delta_db * 0.5, 0.3, 1.5))
+        overshoot_fx_stages.append(PeakFilter(cutoff_frequency_hz=center_hz, gain_db=trim_db, q=0.9))
+        overshoot_corrections.append(
+            {"band": band_key, "kind": kind, "before_delta_db": round(before_delta_db, 2), "after_delta_db": round(after_delta_db, 2), "trim_applied_db": round(trim_db, 2)}
+        )
+
+    if overshoot_fx_stages:
+        overshoot_fx = Pedalboard(overshoot_fx_stages)
+        stereo_processed = np.asarray(
+            overshoot_fx(np.ascontiguousarray(stereo_processed.T, dtype=np.float32), sr).T, dtype=np.float32
+        )
+        analysis_after = _analysis_from_audio(stereo_processed, sr)
+
     # Final quality control (spec section 18) — checked against the actual
     # rendered signal, not assumed from the parameters that produced it.
     # Corrective action here is deliberately narrow and bounded (one pass,
@@ -384,6 +448,10 @@ def master_track(
         "reference_track": reference_info,
         "input_validation": input_validation,
         "quality_control_corrections": quality_control.get("corrections_applied", []),
+        "band_diagnosis": processing_params.get("band_diagnosis", {}),
+        "vocal_presence_disabled_reason": processing_params.get("vocal_presence_disabled_reason"),
+        "mix_diagnosis": processing_params.get("mix_diagnosis", []),
+        "post_render_overshoot_corrections": overshoot_corrections,
     }
 
     source_warnings = []
@@ -393,6 +461,12 @@ def master_track(
             "mastering can't create real stereo separation that was never in the recording. "
             "The width/wider controls have nothing to widen here."
         )
+    for issue in processing_params.get("mix_diagnosis", []):
+        # A problem mastering deliberately declined to "solve" by brightening
+        # the whole master further (spec: "know when NOT to solve a mix
+        # problem") — surfaced the same way as any other source limitation,
+        # not hidden because nothing was processed for it.
+        source_warnings.append(f"Mix note ({issue['issue']}): {issue['detail']}")
 
     ab_analysis = build_ab_report(
         analysis_before=analysis_before,
@@ -409,12 +483,15 @@ def master_track(
         # replaces an existing warning (e.g. near_mono_source) already there.
         source_warnings = source_warnings + [f"Improvement check: {reason}" for reason in ab_analysis["verdict_reasons"]]
 
+    decision_report = build_decision_report(processing_params, limiter_report, overshoot_corrections)
+
     return {
         "analysis_before": analysis_before,
         "analysis_after": analysis_after,
         "processing_applied": processing_applied,
         "ab_gain_match": _ab_gain_match(analysis_before["integrated_lufs"], analysis_after["integrated_lufs"]),
         "ab_analysis": ab_analysis,
+        "decision_report": decision_report,
         "quality_control": quality_control,
         "source_warnings": source_warnings,
         "target_profile_used": {
