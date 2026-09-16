@@ -2,6 +2,7 @@ import express from "express";
 
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { listUsers, getUserDetail, sendPasswordReset, setUserDisabled } from "../services/adminUsersService.js";
+import { reconcileUserSubscription } from "../services/polarService.js";
 
 const router = express.Router();
 
@@ -43,6 +44,26 @@ admin.post("/:uid/reset-password", async (req, res) => {
   } catch (error) {
     console.error("admin/users/:uid/reset-password failed:", error);
     return res.status(400).json({ detail: error?.message || "Failed to send password reset." });
+  }
+});
+
+// On-demand version of the periodic reconciliation pass (polarService.js's
+// reconcileAllSubscriptions), for exactly the case that pass can't catch:
+// a user whose subscription webhook never landed at all, so Firestore has
+// no subscription field to reconcile FROM in the first place (the batch
+// job only re-checks users who already have one on file — see its own
+// comment). Asks Polar directly for this uid's real subscriptions and
+// writes them into Firestore, same shape a working webhook would have.
+admin.post("/:uid/resync-subscription", async (req, res) => {
+  try {
+    const changed = await reconcileUserSubscription(req.params.uid);
+    if (!changed) {
+      return res.status(404).json({ detail: "Polar has no subscription on file for this customer — nothing to sync." });
+    }
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error("admin/users/:uid/resync-subscription failed:", error);
+    return res.status(400).json({ detail: error?.message || "Failed to resync subscription from Polar." });
   }
 });
 

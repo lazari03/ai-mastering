@@ -293,6 +293,13 @@ export async function postSendPasswordReset(uid) {
   return request(`/users/admin/${encodeURIComponent(uid)}/reset-password`, { method: "POST" });
 }
 
+// Fixes exactly the "Polar has an active subscription, Firestore has
+// none" gap — asks Polar directly for this uid's real subscriptions and
+// writes them into Firestore (backend-node's reconcileUserSubscription).
+export async function postResyncSubscription(uid) {
+  return request(`/users/admin/${encodeURIComponent(uid)}/resync-subscription`, { method: "POST" });
+}
+
 export async function postSetUserDisabled(uid, disabled) {
   return request(`/users/admin/${encodeURIComponent(uid)}/disabled`, {
     method: "POST",

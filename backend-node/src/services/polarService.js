@@ -499,7 +499,46 @@ export async function reconcileAllSubscriptions() {
     }
   }
   console.log(`Reconciliation pass complete: ${reconciled}/${uids.size} accounts synced from Polar`);
-  return { checked: uids.size, reconciled };
+
+  const backfilled = await backfillOrphanedSubscriptions();
+  return { checked: uids.size, reconciled, backfilled: backfilled.backfilled };
+}
+
+// Closes the one gap reconcileAllSubscriptions() above can't reach on its
+// own: it only re-checks uids that ALREADY have a subscription/
+// chordSubscription field in Firestore, so a user whose very first
+// subscription.created webhook never arrived (endpoint down, delivery
+// failure that outlived Polar's own retry window) is invisible to it
+// forever — there's no existing field to reconcile FROM. This instead
+// asks Polar directly for every currently-active subscription across the
+// whole account and backfills any uid that's missing the matching
+// Firestore field entirely. Deliberately narrow: only ever fills in a
+// MISSING field, never overwrites one that already exists (that's what
+// reconcileUserSubscription/reconcileAllSubscriptions above are for) — so
+// this can't step on a legitimately different, already-synced record.
+async function backfillOrphanedSubscriptions() {
+  let checked = 0;
+  let backfilled = 0;
+  try {
+    const firstPage = await client().subscriptions.list({ status: "active", limit: 100 });
+    for await (const page of firstPage) {
+      const items = page.result?.items || [];
+      for (const sub of items) {
+        checked += 1;
+        const uid = sub.customer?.externalId;
+        const field = subscriptionFieldForProduct(sub.productId);
+        if (!uid || !field) continue;
+        const doc = await userDoc(uid).get();
+        if (doc.exists && doc.data()?.[field]) continue; // already on file — nothing orphaned here
+        await userDoc(uid).set({ [field]: subscriptionRecord(sub) }, { merge: true });
+        backfilled += 1;
+        console.log(`Backfilled a missing "${field}" subscription for uid ${uid} from Polar — likely a missed webhook.`);
+      }
+    }
+  } catch (error) {
+    console.error("Orphaned-subscription backfill pass failed (non-fatal):", error);
+  }
+  return { checked, backfilled };
 }
 
 export { WebhookVerificationError };

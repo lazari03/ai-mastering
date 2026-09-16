@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
-import { getAdminUsers, postSendPasswordReset, postSetUserDisabled } from "@/network/http/client";
+import { getAdminUsers, postSendPasswordReset, postSetUserDisabled, postResyncSubscription } from "@/network/http/client";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 
 function Field({ label, value }) {
@@ -22,6 +22,7 @@ export default function AdminUserDetailPage() {
   const [error, setError] = useState("");
   const [resetStatus, setResetStatus] = useState(""); // "" | "sending" | "sent" | error message
   const [disableBusy, setDisableBusy] = useState(false);
+  const [resyncStatus, setResyncStatus] = useState(""); // "" | "syncing" | "synced" | error message
 
   const load = () => {
     setError("");
@@ -39,6 +40,17 @@ export default function AdminUserDetailPage() {
       setResetStatus("sent");
     } catch (err) {
       setResetStatus(err?.message || "Failed to send reset link.");
+    }
+  };
+
+  const resyncSubscription = async () => {
+    setResyncStatus("syncing");
+    try {
+      await postResyncSubscription(params.uid);
+      setResyncStatus("synced");
+      load();
+    } catch (err) {
+      setResyncStatus(err?.message || "Failed to resync from Polar.");
     }
   };
 
@@ -87,10 +99,20 @@ export default function AdminUserDetailPage() {
           <Field label="Last Sign-in" value={user.lastSignInTime ? new Date(user.lastSignInTime).toLocaleString() : null} />
         </div>
 
-        {user.subscription ? (
-          <div className="mt-4 border-t border-white/10 pt-4">
-            <p className="m-0 mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-500">Subscription</p>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="m-0 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-500">Subscription</p>
+            <button
+              type="button"
+              onClick={resyncSubscription}
+              disabled={resyncStatus === "syncing"}
+              className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-zinc-300 hover:border-white/30 disabled:opacity-50"
+            >
+              {resyncStatus === "syncing" ? <Spinner size={11} /> : null} Resync from Polar
+            </button>
+          </div>
+          {user.subscription ? (
+            <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-3">
               <Field label="Status" value={user.subscription.status} />
               <Field label="Product" value={user.subscription.productId} />
               <Field
@@ -98,8 +120,15 @@ export default function AdminUserDetailPage() {
                 value={user.subscription.currentPeriodEnd ? new Date(user.subscription.currentPeriodEnd).toLocaleDateString() : null}
               />
             </div>
-          </div>
-        ) : null}
+          ) : (
+            <p className="mt-2 text-xs text-zinc-500">
+              No subscription on file in Firestore. If this user has an active plan in Polar that isn&apos;t reflected here (a missed
+              webhook), use Resync from Polar to pull it in directly.
+            </p>
+          )}
+          {resyncStatus === "synced" ? <p className="mt-2 text-xs text-emerald-300">Synced from Polar.</p> : null}
+          {resyncStatus && resyncStatus !== "syncing" && resyncStatus !== "synced" ? <p className="mt-2 text-xs text-red-300">{resyncStatus}</p> : null}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">
