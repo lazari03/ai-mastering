@@ -54,6 +54,77 @@ def _apply_tag_biases(profile: dict, tags: list[str]) -> dict:
     return biased
 
 
+def _compute_transient_budget(analysis: dict, priorities: dict) -> dict:
+    """How much transient/dynamics modification THIS source can tolerate —
+    computed from what's actually in the analysis (transient strength/
+    density, short-term crest factor, whole-file crest factor, PLR) and how
+    expensive this genre says it is to damage those characteristics
+    (preservation_priorities), never from a genre-name lookup table of
+    compressor/clipper/saturation settings. A high-transient, healthy Rock
+    mix and a loose, already-compressed Rock mix get very different budgets
+    even though both are "rock" — genre only sets the PRICE of damaging a
+    characteristic, source analysis decides whether that price is actually
+    at stake.
+
+    Returns several independent 0-1 budgets (1.0 = plenty of room left to
+    process safely, near 0 = leave this alone) rather than one combined
+    number — compression, saturation, and clipping damage transients
+    through different mechanisms and shouldn't be forced to move together.
+    """
+    transient_strength = float(analysis.get("transient_strength", 0.0))
+    short_term_crest_db = float(analysis.get("short_term_crest_db", 0.0))
+    crest_db = float(analysis.get("dynamic_range_db", 10.0))
+    plr_db = float(analysis.get("plr_db", 10.0))
+
+    transients_priority = float(priorities.get("transients", 0.75))
+    dynamic_priority = float(priorities.get("dynamic_contrast", 0.7))
+
+    # "Health" = does the source already have real, intact transients/
+    # dynamics worth protecting? High transient_strength AND a healthy
+    # short-term crest factor (not already squashed) together mean this
+    # track has the MOST to lose from further processing — 16dB short-term
+    # crest is a generous, clearly-dynamic reference point (a heavily
+    # limited master typically sits well under 10dB here, see the
+    # pop-after.mp3 verification: 9.84dB short-term crest vs 12.52dB on its
+    # own pre-master), so scaling against it saturates health at 1.0 for
+    # genuinely dynamic material without needing a second magic threshold.
+    health = float(np.clip((transient_strength * 0.5) + min(short_term_crest_db / 16.0, 1.0) * 0.5, 0.0, 1.0))
+
+    # Budget shrinks as BOTH health and the genre's priority for that
+    # dimension rise — multiplicatively, so a track needs to be BOTH
+    # already-healthy AND in a genre that genuinely cares before the
+    # budget actually approaches zero. Floored at 0.05, never fully zero —
+    # "almost nothing" still leaves room for the smallest, safest moves
+    # (final peak control) rather than hard-disabling a whole stage from
+    # this formula alone.
+    transient_budget = float(np.clip(1.0 - (health * transients_priority), 0.05, 1.0))
+    dynamic_contrast_budget = float(np.clip(1.0 - (health * dynamic_priority), 0.05, 1.0))
+
+    # Compression budget also folds in whether dynamics are ALREADY under
+    # control elsewhere (a loud, low-crest, low-PLR pre-master) — no reason
+    # to reserve compression budget for something that arrives pre-limited;
+    # 8dB is comfortably below a healthy full-mix crest factor (typically
+    # 12dB+) and comfortably above what heavy limiting leaves behind
+    # (~6-9dB, per the pop-after.mp3 measurement above).
+    already_controlled = crest_db < 8.0 or plr_db < 8.0
+    compression_budget = transient_budget if not already_controlled else min(transient_budget, 0.5)
+
+    # Saturation and clipping both act directly on the waveform's peaks —
+    # scaled down further, specifically, by transient_strength (how
+    # percussive the source already measures) on top of the shared budget.
+    saturation_budget = float(np.clip(transient_budget * (1.0 - transient_strength * 0.4), 0.05, 1.0))
+    clipper_budget = float(np.clip(transient_budget * (1.0 - transient_strength * 0.6), 0.0, 1.0))
+
+    return {
+        "transient_budget": round(transient_budget, 3),
+        "dynamic_contrast_budget": round(dynamic_contrast_budget, 3),
+        "compression_budget": round(compression_budget, 3),
+        "saturation_budget": round(saturation_budget, 3),
+        "clipper_budget": round(clipper_budget, 3),
+        "source_health": round(health, 3),
+    }
+
+
 def _resolve_category_bias(category: str | None, flavour: str | None) -> dict:
     """Combine a mastering category's profile with its (optional) flavour's
     small additional nudges into one flat delta dict — see
@@ -141,6 +212,10 @@ def compute_processing_params(
     profile["target_dynamic_range_db"] = float(np.clip(profile["target_dynamic_range_db"], 5.0, 14.5))
     profile["max_stereo_width"] = float(np.clip(profile["max_stereo_width"], 0.0, 1.4))
     profile["base_saturation"] = float(np.clip(profile["base_saturation"], 0.0, 0.25))
+
+    preservation_priorities = profile.get("preservation_priorities", {})
+    transient_safety = profile.get("transient_safety", {})
+    transient_budgets = _compute_transient_budget(analysis, preservation_priorities)
 
     current_balance = analysis["spectral_balance"]
     target_balance = reference_spectral_balance if reference_spectral_balance else profile["target_spectral_balance"]
@@ -466,9 +541,23 @@ def compute_processing_params(
     if rock_low_end_protection:
         band_ratio["sub"] = min(band_ratio["sub"], 1.3)
 
-    # Keep compression musically light: reduce multiband compression by ~45%.
+    # Compression is transient-aware, not just "musically light" by a flat
+    # constant: how far each band's ratio actually moves from 1.0 (no
+    # compression) is scaled by compression_budget — the source's own
+    # measured transient strength/health against this genre's
+    # preservation_priorities, computed above. 0.9167 calibrates this so a
+    # source/genre combination with a "typical," unremarkable
+    # compression_budget (~0.6 — verified against the real pop demo track
+    # used throughout this engine's development) reproduces the previous
+    # flat 0.55 damping almost exactly; a healthy, highly transient source
+    # in a genre that prizes punch (compression_budget near its 0.05 floor)
+    # damps multiband compression down to nearly nothing instead, while a
+    # loose/uncontrolled source in a genre that doesn't prioritize
+    # transients (budget near 1.0) is allowed noticeably more than before.
+    compression_budget = transient_budgets["compression_budget"]
+    compression_damping = float(np.clip(compression_budget * 0.9167, 0.05, 1.0)) if transient_safety.get("allow_compressor_bypass", True) else 0.55
     for band_name in band_ratio:
-        band_ratio[band_name] = float(1.0 + ((band_ratio[band_name] - 1.0) * 0.55))
+        band_ratio[band_name] = float(1.0 + ((band_ratio[band_name] - 1.0) * compression_damping))
 
     threshold_base = -27.0 + min(3.0, compression_drive * 0.45)
     band_threshold_db = {
@@ -498,6 +587,23 @@ def compute_processing_params(
         "high_mid": 15.0,
         "high": 10.0,
     }
+    # Transient-aware attack: on the fast, transient-sensitive bands (punch,
+    # high_mid, high — kick/snare fundamentals and attack energy), slow the
+    # attack down further when the source's own measured transient strength
+    # is high and this genre prices transient damage highly — so the initial
+    # hit passes through uncompressed before gain reduction engages,
+    # instead of always using the same fixed constant regardless of how
+    # punchy the source actually is. Scales up to +12ms slower at maximum
+    # (transient_strength=1.0, transients_priority=1.0) — enough to matter
+    # on a typical kick/snare attack (a few ms) without pushing so slow the
+    # compressor stops responding to the band at all. "sub" and "low_mid"
+    # are untouched — sub-bass has no fast transient to protect, and
+    # low_mid's own attack is already the slowest of the transient-relevant
+    # bands by design.
+    _attack_slowdown_ms = float(np.clip(float(analysis.get("transient_strength", 0.0)) * float(preservation_priorities.get("transients", 0.75)) * 12.0, 0.0, 12.0))
+    for _fast_band in ("punch", "high_mid", "high"):
+        if _fast_band in band_attack_ms:
+            band_attack_ms[_fast_band] += _attack_slowdown_ms
     band_release_ms = {
         "sub": 220.0,
         "low": 160.0,
@@ -521,6 +627,17 @@ def compute_processing_params(
     if rock_low_end_protection:
         band_max_gain_reduction_db["sub"] = min(band_max_gain_reduction_db["sub"], 2.0)
         band_max_gain_reduction_db["low"] = min(band_max_gain_reduction_db["low"], 3.0)
+
+    # Same transient-aware scaling as band_ratio's compression_damping above,
+    # applied to the hard per-band GR ceiling on just the fast/transient-
+    # sensitive bands (punch, high_mid, high) — a tight compression_budget
+    # means a punchy source shouldn't just get a gentler ratio, the amount
+    # of gain reduction it can ever accumulate should shrink too. Floor of
+    # 1.0dB keeps this a real ceiling, never a de facto full bypass from
+    # this one number alone.
+    for _fast_band in ("punch", "high_mid", "high"):
+        if _fast_band in band_max_gain_reduction_db:
+            band_max_gain_reduction_db[_fast_band] = float(max(1.0, band_max_gain_reduction_db[_fast_band] * compression_damping))
 
     # Dynamic EQ cap per band — narrower and gentler than the band's own
     # compressor cap above (0.6x, capped at 2.5dB): this only tames the
@@ -584,6 +701,16 @@ def compute_processing_params(
     if clipping_input:
         saturation_amount *= 0.7
 
+    # Treat the value computed above as a MAXIMUM PERMISSION, not the actual
+    # amount — saturation can soften attacks even when compression looks
+    # safe (it's a separate transient-damaging mechanism, waveshaping
+    # rather than gain reduction). saturation_budget already scales down
+    # further, specifically, by the source's own measured transient
+    # strength (see _compute_transient_budget) on top of the shared
+    # transient budget, so a percussive source gets noticeably less
+    # saturation than a soft one even at an identical genre base_saturation.
+    saturation_amount *= transient_budgets["saturation_budget"] if transient_safety.get("allow_saturation_bypass", True) else 1.0
+
     # Adaptive limiter release: previously a fixed constant (120ms standard
     # tier, 60ms pro tier) regardless of the track. Real mastering limiters
     # tie release to program tempo — fast material needs the gain to
@@ -601,6 +728,32 @@ def compute_processing_params(
     crest_db = float(analysis.get("dynamic_range_db", 8.0))
     release_adjust_ms = float(np.clip((crest_db - 8.0) * 3.0, -25.0, 30.0))
     limiter_release_ms = float(np.clip(base_release_ms + release_adjust_ms, 40.0, 250.0))
+
+    # Clipper is source-adaptive, not "on because this preset/tier has one":
+    # the soft-clipper stage (bus_processing.py's _soft_clip) runs before
+    # the limiter to catch the tips of the loudest peaks with less audible
+    # cost than the limiter doing all the work alone — but on a source with
+    # strong, intact transients and little budget left to spend, that same
+    # clipping is exactly what shaves the kick/snare attack down. Disabled
+    # outright below a small threshold rather than merely "reduced," since
+    # a soft clipper's damage isn't smoothly proportional to a drive
+    # knob here (bus_processing.py always drives it at a fixed -0.3dB
+    # ceiling) — there's no "a little bit of this clipper" to fall back to,
+    # only on or off.
+    clipper_enabled = bool(transient_budgets["clipper_budget"] > 0.12 or not transient_safety.get("allow_clipper_bypass", True))
+
+    # Limiter quality budget: the crest-factor floor _recover_undershot_
+    # loudness (bus_processing.py) already uses to stop pushing gain
+    # through the limiter is normally just this genre/style's own
+    # target_dynamic_range_db. Widened here — raised, so recovery stops
+    # SOONER, leaving more transient headroom intact — when
+    # dynamic_contrast_budget is tight: up to +3dB of extra protection at
+    # the budget's floor (dynamic_contrast_budget near 0.05), none at all
+    # once budget is plentiful (near 1.0), so this never makes an
+    # already-conservative genre (classical, jazz — dynamic_contrast_budget
+    # already low from their own high preservation_priorities) MORE
+    # aggressive than before.
+    limiter_crest_floor_db = float(profile["target_dynamic_range_db"] + (1.0 - transient_budgets["dynamic_contrast_budget"]) * 3.0) if transient_safety.get("allow_limiter_backoff", True) else float(profile["target_dynamic_range_db"])
 
     # Mix-problem diagnostic (spec: "some problems cannot be safely solved
     # during mastering") — scoped to the one case the HF/presence budget
@@ -639,7 +792,7 @@ def compute_processing_params(
         "lra_target_min_lu": float(np.clip(input_lra * 0.9, 2.0, 4.0)),
         "lra_target_max_lu": 4.0,
         "low_band_stereo_keep": 0.93,
-        "glue_enabled": bool(input_lra > 2.8 and not clipping_input),
+        "glue_enabled": bool(input_lra > 2.8 and not clipping_input and (transient_budgets["compression_budget"] > 0.15 or not transient_safety.get("allow_compressor_bypass", True))),
         "glue_ratio": 1.2 if input_lra > 4.0 else 1.12,
         "glue_threshold_db": -20.5 if input_lra > 4.0 else -22.0,
         "side_gain": side_gain,
@@ -652,6 +805,10 @@ def compute_processing_params(
         "band_max_gain_reduction_db": band_max_gain_reduction_db,
         "band_dynamic_eq_max_reduction_db": band_dynamic_eq_max_reduction_db,
         "limiter_release_ms": round(limiter_release_ms, 1),
+        "clipper_enabled": clipper_enabled,
+        "limiter_crest_floor_db": round(limiter_crest_floor_db, 3),
+        "transient_budgets": transient_budgets,
+        "preservation_priorities": preservation_priorities,
         "vocal_presence_gain_db": vocal_presence_gain_db,
         "vocal_presence_disabled_reason": vocal_presence_disabled_reason,
         "deesser_strength": deesser_strength,

@@ -15,6 +15,7 @@ from .audio_utils import (
     _loudness_range_only,
     _mono_compatibility_risk_only,
     _spectral_balance_only,
+    _transient_metrics,
 )
 from .bus_processing import _bus_process, _bus_process_pro
 from .dsp_filters import _build_stereo_from_ms, _deess, _lr4_highpass, _lr4_lowpass, _oversampled_distortion, _process_band, _split_bands, _split_bands_pro
@@ -366,6 +367,89 @@ def master_track(
         )
         analysis_after = _analysis_from_audio(stereo_processed, sr)
 
+    # ---------------------------------------------------------------------
+    # Post-render transient QC (mastering-philosophy audit: "re-analyze the
+    # actual master... do not treat the expected increase in RMS/loudness
+    # as automatically better"). Loudness-matched — a louder master trips
+    # the transient-metrics' onset detector more easily than a quieter one
+    # with an identical attack SHAPE, so comparing raw scores would
+    # conflate "got louder" with "kept its punch." Gain-matching the master
+    # back down to the source's own integrated loudness before re-measuring
+    # removes that bias (same gain-matched-comparison principle
+    # ab_gain_match already applies for the UI's A/B player).
+    # ---------------------------------------------------------------------
+    gain_match_db = float(np.clip(analysis_before["integrated_lufs"] - analysis_after["integrated_lufs"], -24.0, 24.0))
+    loudness_matched_master = stereo_processed * (10.0 ** (gain_match_db / 20.0))
+    matched_transient_metrics = _transient_metrics(loudness_matched_master, sr)
+
+    source_transient_score = float(analysis_before.get("drum_punch_estimate", 0.0))
+    master_transient_score = float(matched_transient_metrics.get("drum_punch_estimate", 0.0))
+    transient_score_delta = master_transient_score - source_transient_score
+
+    transients_priority = float(processing_params.get("preservation_priorities", {}).get("transients", 0.75))
+    # Allowed loss is NOT a universal fixed number — it shrinks as this
+    # genre's own transient priority rises, so Rock/Metal (priority ~0.92)
+    # get a much tighter leash (~0.08) than Podcast/House (priority ~0.35,
+    # ~0.60) get (~0.17, ~0.13). A source with almost no punch to begin
+    # with (source_transient_score < 0.15 — spoken word, ambient pads)
+    # can't meaningfully "fail" this check for losing what it never had.
+    allowed_transient_loss = float(np.clip(0.22 - transients_priority * 0.15, 0.04, 0.22))
+    transient_qc_passed = bool(transient_score_delta >= -allowed_transient_loss or source_transient_score < 0.15)
+
+    transient_corrective_action = None
+    if not transient_qc_passed:
+        # ONE conservative corrective pass (spec: "maximum of 1-2
+        # corrective rerenders... avoid endless optimization loops"),
+        # applied in the priority order the spec itself gives: reduce
+        # unnecessary clipping first, then excessive limiting — both are
+        # bus-stage decisions, so this re-runs bus_fn once on the already-
+        # computed pre-bus signal (stereo_prebus), the exact same safe
+        # re-invocation shape the dynamics-recovery blend above already
+        # uses, rather than re-running the whole multiband EQ/compression
+        # chain from scratch for one failed check.
+        corrective_params = dict(processing_params)
+        corrective_params["clipper_enabled"] = False
+        corrective_params["limiter_crest_floor_db"] = float(processing_params.get("limiter_crest_floor_db", processing_params["target_dynamic_range_db"])) + 2.0
+        corrected_stereo, corrected_lufs_gain_db, corrected_loudness_guard, corrected_limiter_report = bus_fn(
+            stereo_prebus, sr, corrective_params, apply_glue_compression=bool(dynamics_recovery_mix <= 0.0)
+        )
+        corrected_analysis_after = _analysis_from_audio(corrected_stereo, sr)
+        corrected_gain_match_db = float(np.clip(analysis_before["integrated_lufs"] - corrected_analysis_after["integrated_lufs"], -24.0, 24.0))
+        corrected_matched_metrics = _transient_metrics(corrected_stereo * (10.0 ** (corrected_gain_match_db / 20.0)), sr)
+        corrected_score = float(corrected_matched_metrics.get("drum_punch_estimate", 0.0))
+
+        transient_corrective_action = {
+            "attempted": True,
+            "reduced": "clipper_and_limiter",
+            "score_before_correction": round(master_transient_score, 4),
+            "score_after_correction": round(corrected_score, 4),
+        }
+        # Only keep the corrective render if it actually helped — a
+        # conservative corrective pass that didn't improve the metric it
+        # was trying to fix isn't worth trading away whatever loudness the
+        # original render had.
+        if corrected_score > master_transient_score:
+            stereo_processed = corrected_stereo
+            lufs_gain_db = corrected_lufs_gain_db
+            loudness_guard = corrected_loudness_guard
+            limiter_report = corrected_limiter_report
+            analysis_after = corrected_analysis_after
+            master_transient_score = corrected_score
+            transient_score_delta = master_transient_score - source_transient_score
+            transient_qc_passed = bool(transient_score_delta >= -allowed_transient_loss or source_transient_score < 0.15)
+            transient_corrective_action["applied"] = True
+        else:
+            transient_corrective_action["applied"] = False
+
+    transient_qc = {
+        "source_transient_score": round(source_transient_score, 4),
+        "master_transient_score": round(master_transient_score, 4),
+        "delta": round(transient_score_delta, 4),
+        "allowed_loss": round(allowed_transient_loss, 4),
+        "passed": transient_qc_passed,
+        "corrective_action": transient_corrective_action,
+    }
+
     # Final quality control (spec section 18) — checked against the actual
     # rendered signal, not assumed from the parameters that produced it.
     # Corrective action here is deliberately narrow and bounded (one pass,
@@ -452,6 +536,7 @@ def master_track(
         "vocal_presence_disabled_reason": processing_params.get("vocal_presence_disabled_reason"),
         "mix_diagnosis": processing_params.get("mix_diagnosis", []),
         "post_render_overshoot_corrections": overshoot_corrections,
+        "transient_qc": transient_qc,
     }
 
     source_warnings = []
@@ -474,6 +559,7 @@ def master_track(
         processing_params=processing_params,
         limiter_report=limiter_report,
         quality_control=quality_control,
+        transient_qc=transient_qc,
     )
     if not ab_analysis["improved"]:
         # Surfaced alongside source_warnings (not just buried in ab_analysis)
@@ -483,7 +569,7 @@ def master_track(
         # replaces an existing warning (e.g. near_mono_source) already there.
         source_warnings = source_warnings + [f"Improvement check: {reason}" for reason in ab_analysis["verdict_reasons"]]
 
-    decision_report = build_decision_report(processing_params, limiter_report, overshoot_corrections)
+    decision_report = build_decision_report(processing_params, limiter_report, overshoot_corrections, transient_qc)
 
     return {
         "analysis_before": analysis_before,

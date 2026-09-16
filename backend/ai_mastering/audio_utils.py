@@ -7,7 +7,7 @@ import librosa
 import numpy as np
 import pyloudnorm as pyln
 import soundfile as sf
-from scipy.signal import resample_poly
+from scipy.signal import butter, resample_poly, sosfiltfilt
 
 EPS = 1e-9
 MASTER_SR = 44100
@@ -299,6 +299,95 @@ def _mono_compatibility_risk_only(audio_stereo: np.ndarray) -> bool:
     return bool(mono_drop_db < -3.0)
 
 
+def _transient_metrics(audio_stereo: np.ndarray, sr: int) -> dict:
+    """Waveform/envelope-based transient estimate — deliberately NOT drum
+    separation (no kick/snare-specific stems; stem_separation.py's split is
+    vocal/accompaniment only, and the spec for this is explicit: don't
+    attempt semantic drum separation without an existing reliable
+    mechanism). This estimates percussive/transient behavior the same way a
+    mastering engineer's meter would: short-window envelope, onset = a fast
+    rise in that envelope, strength = how far each onset peaks above the
+    track's own sustained baseline. Two passes — full mix, and a 60-150Hz
+    band standing in for kick/bass-note "punch," the one frequency region
+    fast attacks and mastering low-end processing both concentrate in.
+
+    Every returned value is normalized to roughly 0-1 via a saturating
+    curve, not a raw physical unit — these are relative "how much of this
+    does the track have" scores for the mastering engine's own budget
+    logic to compare against, not measurements meant to be read in
+    isolation the way dB values are.
+    """
+    n = audio_stereo.shape[0]
+    empty = {
+        "transient_density": 0.0,
+        "transient_strength": 0.0,
+        "transient_contrast": 0.0,
+        "drum_punch_estimate": 0.0,
+        "low_end_impact": 0.0,
+        "short_term_crest_db": 0.0,
+    }
+    if n < sr // 2:
+        return empty  # too short for a meaningful windowed estimate — neutral/safe, never blocks a render
+
+    mono = ((audio_stereo[:, 0] + audio_stereo[:, 1]) * 0.5).astype(np.float64)
+
+    def _onset_strength(signal: np.ndarray, win_s: float = 0.01) -> tuple[float, float]:
+        win = max(1, int(sr * win_s))
+        n_frames = signal.shape[0] // win
+        if n_frames < 4:
+            return 0.0, 0.0
+        frames = signal[: n_frames * win].reshape(n_frames, win)
+        envelope_db = 20.0 * np.log10(np.sqrt(np.mean(frames**2, axis=1)) + EPS)
+        rise_db = np.diff(envelope_db, prepend=envelope_db[0])
+        onsets = rise_db > 6.0  # a >6dB envelope jump within one 10ms frame is a genuine attack, not vibrato/tremolo
+        onset_count = int(np.sum(onsets))
+        duration_s = signal.shape[0] / sr
+        density = float(1.0 - np.exp(-(onset_count / max(duration_s, 0.1)) / 2.0))
+        if onset_count == 0:
+            return density, 0.0
+        baseline_db = float(np.percentile(envelope_db, 40.0))  # robust "typical sustained level" for this signal
+        strength_db = np.clip(envelope_db[onsets] - baseline_db, 0.0, 24.0)
+        strength = float(np.clip(np.mean(strength_db) / 18.0, 0.0, 1.0))
+        return density, strength
+
+    transient_density, transient_strength = _onset_strength(mono)
+    transient_contrast = float(np.clip(transient_density * transient_strength * 1.4, 0.0, 1.0))
+
+    try:
+        sos = butter(2, [60.0 / (sr * 0.5), 150.0 / (sr * 0.5)], btype="band", output="sos")
+        low_band = sosfiltfilt(sos, mono)
+        _, low_end_impact = _onset_strength(low_band)
+    except Exception:
+        low_end_impact = 0.0
+
+    drum_punch_estimate = float(np.clip(0.55 * transient_strength + 0.45 * low_end_impact, 0.0, 1.0))
+
+    # Short-term crest factor — peak-vs-RMS averaged over ~400ms blocks,
+    # distinct from the whole-file crest_factor_db already computed
+    # elsewhere: a track can have a healthy whole-file crest factor while
+    # every individual bar is already squashed (or vice versa on a source
+    # with one huge isolated peak) — this is the micro-dynamics reading the
+    # budget logic actually needs.
+    block = max(1, int(sr * 0.4))
+    n_blocks = mono.shape[0] // block
+    if n_blocks >= 2:
+        blocks = mono[: n_blocks * block].reshape(n_blocks, block)
+        block_peak_db = 20.0 * np.log10(np.max(np.abs(blocks), axis=1) + EPS)
+        block_rms_db = 20.0 * np.log10(np.sqrt(np.mean(blocks**2, axis=1)) + EPS)
+        short_term_crest_db = float(np.clip(np.mean(block_peak_db - block_rms_db), 0.0, 30.0))
+    else:
+        short_term_crest_db = 0.0
+
+    return {
+        "transient_density": round(transient_density, 4),
+        "transient_strength": round(transient_strength, 4),
+        "transient_contrast": round(transient_contrast, 4),
+        "drum_punch_estimate": round(drum_punch_estimate, 4),
+        "low_end_impact": round(low_end_impact, 4),
+        "short_term_crest_db": round(short_term_crest_db, 3),
+    }
+
+
 def _loudness_range_only(audio_stereo: np.ndarray, sr: int) -> float:
     """Same loudness_range_lu pyloudnorm call _analysis_from_audio makes,
     without the rest of a full analysis — for call sites (like
@@ -382,6 +471,8 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
     vocal_band = spectral_balance["mid_500_2000hz"] + spectral_balance["high_mid_2000_4000hz"]
     vocal_presence_estimate = float(vocal_band)
 
+    transient_metrics = _transient_metrics(audio_stereo, sr)
+
     short_term_series = _short_term_lufs_series(audio_stereo, sr)
     short_term_lufs = float(np.mean(short_term_series)) if short_term_series else integrated_lufs
     short_term_lufs_max = float(np.max(short_term_series)) if short_term_series else integrated_lufs
@@ -431,6 +522,7 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
         "tempo_bpm": float(round(tempo_bpm, 2)),
         "clipping_detected": clipping_detected,
         "vocal_presence_estimate": float(round(vocal_presence_estimate, 6)),
+        **transient_metrics,
     }
 
 

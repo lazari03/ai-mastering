@@ -81,7 +81,7 @@ _BAND_LABELS = {
 }
 
 
-def build_decision_report(processing_params: dict, limiter_report: dict | None, overshoot_corrections: list) -> dict:
+def build_decision_report(processing_params: dict, limiter_report: dict | None, overshoot_corrections: list, transient_qc: dict | None = None) -> dict:
     """A plain-language engineering log of what this render actually
     decided and why — not another parameter dump (those already exist
     elsewhere in the response). Built entirely from data other stages
@@ -113,12 +113,24 @@ def build_decision_report(processing_params: dict, limiter_report: dict | None, 
     else:
         vocal_line = f"Vocal presence: {vocal_gain_db:+.2f}dB."
 
+    budgets = processing_params.get("transient_budgets", {}) or {}
     compression_engaged = bool(processing_params.get("glue_enabled", False))
-    compression_line = (
-        f"Glue compression: engaged, ratio {float(processing_params.get('glue_ratio', 1.0)):.2f}:1 at "
-        f"{float(processing_params.get('glue_threshold_db', 0.0)):.1f}dB threshold."
-        if compression_engaged
-        else "Glue compression: bypassed — dynamics already controlled or input already clipping/limited."
+    if compression_engaged:
+        compression_line = (
+            f"Glue compression: engaged, ratio {float(processing_params.get('glue_ratio', 1.0)):.2f}:1 at "
+            f"{float(processing_params.get('glue_threshold_db', 0.0)):.1f}dB threshold "
+            f"(compression budget {budgets.get('compression_budget', 1.0):.2f})."
+        )
+    elif budgets.get("compression_budget", 1.0) <= 0.15:
+        compression_line = "Glue compression: bypassed — source has strong, healthy transients this genre prioritizes preserving, little compression budget available."
+    else:
+        compression_line = "Glue compression: bypassed — dynamics already controlled or input already clipping/limited."
+
+    clipper_applied = bool((limiter_report or {}).get("clipper_applied", True))
+    clipper_line = (
+        f"Clipper: engaged (clipper budget {budgets.get('clipper_budget', 1.0):.2f})."
+        if clipper_applied
+        else f"Clipper: bypassed — reduced transient preservation beyond the source's budget (clipper budget {budgets.get('clipper_budget', 0.0):.2f})."
     )
 
     side_gain = float(processing_params.get("side_gain", 1.0))
@@ -150,13 +162,36 @@ def build_decision_report(processing_params: dict, limiter_report: dict | None, 
 
     mix_diagnosis = processing_params.get("mix_diagnosis", []) or []
 
+    transient_decision = None
+    if transient_qc is not None:
+        if transient_qc.get("passed", True):
+            transient_decision = (
+                f"Transient preservation: within budget (source score {transient_qc.get('source_transient_score', 0):.2f}, "
+                f"master {transient_qc.get('master_transient_score', 0):.2f}, delta {transient_qc.get('delta', 0):+.3f}, "
+                f"allowed {-transient_qc.get('allowed_loss', 0):.3f})."
+            )
+        else:
+            action = transient_qc.get("corrective_action") or {}
+            if action.get("applied"):
+                transient_decision = (
+                    f"Transient preservation: regression detected and corrected — reduced clipper/limiter and re-rendered once "
+                    f"(score {action.get('score_before_correction', 0):.2f} -> {action.get('score_after_correction', 0):.2f})."
+                )
+            else:
+                transient_decision = (
+                    f"Transient preservation: regression detected (delta {transient_qc.get('delta', 0):+.3f}, "
+                    f"allowed {-transient_qc.get('allowed_loss', 0):.3f}) — one corrective pass was attempted but did not improve the result, kept the original render."
+                )
+
     return {
         "eq_decisions": eq_lines,
         "vocal_presence_decision": vocal_line,
         "compression_decision": compression_line,
+        "clipper_decision": clipper_line,
         "stereo_decision": stereo_line,
         "saturation_decision": saturation_line,
         "limiter_decision": limiter_line,
+        "transient_decision": transient_decision,
         "post_render_verification": verification_lines,
         "mix_diagnosis": [m["detail"] for m in mix_diagnosis],
     }
@@ -168,6 +203,7 @@ def build_ab_report(
     processing_params: dict,
     limiter_report: dict | None,
     quality_control: dict | None,
+    transient_qc: dict | None = None,
 ) -> dict:
     """Full before/after comparison plus a plain verdict on whether the
     master actually improved the source — a master that measures louder
@@ -211,6 +247,14 @@ def build_ab_report(
         # signature of loudness-over-quality mastering.
         improved = False
         reasons.append("Loudness increased while dynamic range dropped sharply — louder, not necessarily better.")
+
+    if transient_qc is not None and not transient_qc.get("passed", True):
+        improved = False
+        reasons.append(
+            f"Transient/drum-punch preservation regressed beyond this genre's tolerance "
+            f"(delta {transient_qc.get('delta', 0):+.3f}, allowed {-transient_qc.get('allowed_loss', 0):.3f}) — "
+            f"see quality_control's transient_qc for the corrective action attempted."
+        )
 
     if not reasons:
         reasons.append("Loudness, dynamics, peak integrity and stereo image all moved within acceptable mastering bounds.")
@@ -259,6 +303,7 @@ def build_ab_report(
         },
         "gain_change_db": gain_change_db,
         "processing_decisions": _summarize_decisions(processing_params, limiter_report),
+        "transient_qc": transient_qc,
         "improved": improved,
         "verdict_reasons": reasons,
     }
