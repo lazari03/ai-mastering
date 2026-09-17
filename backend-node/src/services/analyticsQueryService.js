@@ -560,11 +560,21 @@ export async function listSessions({ from, to, filters, limit = 50, cursor }) {
 export async function getSessionDetail(sessionId) {
   const [sessionSnap, eventsSnap] = await Promise.all([
     db().collection("analyticsSessions").doc(sessionId).get(),
-    db().collection("analyticsEvents").where("sessionId", "==", sessionId).orderBy("ts", "asc").get(),
+    // Equality on sessionId + orderBy a different field (ts) is exactly the
+    // shape Firestore needs a composite index for — one was never
+    // provisioned (no firestore.indexes.json in this repo), so the
+    // .orderBy() version throws FAILED_PRECONDITION on every call, which
+    // the route's catch turns into a generic "Failed to load session
+    // detail." Sorting the (small, per-session) result in memory instead
+    // needs no index at all — Firestore auto-indexes a single equality
+    // filter on its own.
+    db().collection("analyticsEvents").where("sessionId", "==", sessionId).get(),
   ]);
   if (!sessionSnap.exists) return null;
   const session = serializeTimestamps({ id: sessionSnap.id, ...sessionSnap.data() });
-  const events = eventsSnap.docs.map((d) => serializeTimestamps({ id: d.id, ...d.data() }));
+  const events = eventsSnap.docs
+    .map((d) => serializeTimestamps({ id: d.id, ...d.data() }))
+    .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
   return { session, events };
 }
 
