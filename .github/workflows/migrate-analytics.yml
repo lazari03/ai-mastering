@@ -23,4 +23,5 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           script: |
             cd ${{ secrets.DEPLOY_PATH }}
+            git pull
             make migrate-analytics
