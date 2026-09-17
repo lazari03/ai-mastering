@@ -10,7 +10,13 @@ FROM node:22-slim
 # than going through the Python service — that one route runs regardless of
 # MASTERING_ENGINE, so ffmpeg has to be present even though the main
 # adaptive_python path forwards everything else over HTTP.
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+#
+# python3/make/g++ are for better-sqlite3 (analytics storage): its prebuilt
+# binary isn't always picked up (seen failing on the VPS's host arch/libc),
+# and npm then falls back to compiling from source via node-gyp, which
+# hard-requires a Python interpreter and a C++ toolchain. Without these the
+# whole `npm ci` fails outright on that fallback path.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
