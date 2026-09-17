@@ -3,23 +3,12 @@
 import { useEffect, useState } from "react";
 
 import { getAdminAnalytics } from "@/network/http/client";
+import { useLanguage } from "@/lib/i18n";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import AdminTable from "@/components/admin/AdminTable";
 import ExportButtons from "@/components/admin/ExportButtons";
+import { IconFileText } from "@/components/admin/icons";
 import { LoadingBlock } from "@/components/ui/Spinner";
-
-const COLUMNS = [
-  { key: "path", label: "Page" },
-  { key: "views", label: "Views", align: "right" },
-  { key: "uniqueVisitors", label: "Unique", align: "right" },
-  { key: "entrances", label: "Entrances", align: "right" },
-  { key: "exits", label: "Exits", align: "right" },
-  { key: "avgActiveSeconds", label: "Avg Active", align: "right", render: (r) => `${r.avgActiveSeconds}s` },
-  { key: "uploads", label: "Uploads", align: "right" },
-  { key: "masters", label: "Masters", align: "right" },
-  { key: "paid", label: "Paid", align: "right" },
-  { key: "conversion", label: "Conv.", align: "right", render: (r) => `${r.conversion}%` },
-];
 
 // Doubles as the SEO landing-page report (spec section 12/24) — an
 // organic landing page is just a row here where entrances is high and
@@ -28,6 +17,7 @@ const COLUMNS = [
 // visitors, active time, uploads, masters, checkouts, customers, revenue,
 // conversion) is identical to what this page already shows per-path.
 export default function AdminPagesPage() {
+  const { t } = useLanguage();
   const [preset, setPreset] = useState("7d");
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
@@ -37,28 +27,41 @@ export default function AdminPagesPage() {
     setRows(null);
     getAdminAnalytics("/pages", { preset })
       .then((res) => !cancelled && setRows(res))
-      .catch((err) => !cancelled && setError(err?.message || "Failed to load pages."));
+      .catch((err) => !cancelled && setError(err?.message || t("admin.pages.loadFailed")));
     return () => {
       cancelled = true;
     };
-  }, [preset]);
+  }, [preset, t]);
+
+  const columns = [
+    { key: "path", label: t("admin.table.page") },
+    { key: "views", label: t("admin.table.views"), align: "right" },
+    { key: "uniqueVisitors", label: t("admin.table.unique"), align: "right" },
+    { key: "entrances", label: t("admin.table.entrances"), align: "right" },
+    { key: "exits", label: t("admin.table.exits"), align: "right" },
+    { key: "avgActiveSeconds", label: t("admin.table.avgActive"), align: "right", render: (r) => `${r.avgActiveSeconds}s` },
+    { key: "uploads", label: t("admin.table.uploads"), align: "right" },
+    { key: "masters", label: t("admin.table.masters"), align: "right" },
+    { key: "paid", label: t("admin.table.paid"), align: "right" },
+    { key: "conversion", label: t("admin.table.conversion"), align: "right", render: (r) => `${r.conversion}%` },
+  ];
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-lg font-bold text-white">Pages</h1>
+        <h1 className="m-0 flex items-center gap-2 text-lg font-bold text-white">
+          <IconFileText />
+          {t("admin.pages.title")}
+        </h1>
         <div className="flex flex-wrap items-center gap-3">
           <DateRangeFilter value={preset} onChange={setPreset} />
           <ExportButtons path="/pages" params={{ preset }} />
         </div>
       </div>
-      <p className="m-0 text-xs text-zinc-500">
-        Includes organic/SEO landing pages — sort by Entrances to see which pages bring visitors, by Conversion to see which ones actually produce
-        customers.
-      </p>
+      <p className="m-0 text-xs text-zinc-500">{t("admin.pages.subtitle")}</p>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
       {!rows && !error ? <LoadingBlock /> : null}
-      {rows ? <AdminTable columns={COLUMNS} rows={rows.map((r) => ({ ...r, id: r.path }))} /> : null}
+      {rows ? <AdminTable columns={columns} rows={rows.map((r) => ({ ...r, id: r.path }))} emptyLabel={t("admin.table.noData")} /> : null}
     </div>
   );
 }

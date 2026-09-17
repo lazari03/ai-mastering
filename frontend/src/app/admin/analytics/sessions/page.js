@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { getAdminAnalytics } from "@/network/http/client";
+import { useLanguage } from "@/lib/i18n";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import ExportButtons from "@/components/admin/ExportButtons";
+import { IconList } from "@/components/admin/icons";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
 function formatDuration(ms) {
@@ -23,6 +25,7 @@ function sessionDurationMs(session) {
 }
 
 export default function AdminSessionsPage() {
+  const { t } = useLanguage();
   const [preset, setPreset] = useState("7d");
   const [sessions, setSessions] = useState(null);
   const [error, setError] = useState("");
@@ -32,16 +35,19 @@ export default function AdminSessionsPage() {
     setSessions(null);
     getAdminAnalytics("/sessions", { preset, limit: 50 })
       .then((res) => !cancelled && setSessions(res.sessions))
-      .catch((err) => !cancelled && setError(err?.message || "Failed to load sessions."));
+      .catch((err) => !cancelled && setError(err?.message || t("admin.sessions.loadFailed")));
     return () => {
       cancelled = true;
     };
-  }, [preset]);
+  }, [preset, t]);
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-lg font-bold text-white">Sessions</h1>
+        <h1 className="m-0 flex items-center gap-2 text-lg font-bold text-white">
+          <IconList />
+          {t("admin.sessions.title")}
+        </h1>
         <div className="flex flex-wrap items-center gap-3">
           <DateRangeFilter value={preset} onChange={setPreset} />
           <ExportButtons path="/sessions" params={{ preset, limit: 50 }} />
@@ -51,7 +57,7 @@ export default function AdminSessionsPage() {
       {!sessions && !error ? <LoadingBlock /> : null}
       {sessions ? (
         <div className="space-y-2">
-          {sessions.length === 0 ? <p className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-500">No sessions in this period.</p> : null}
+          {sessions.length === 0 ? <p className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-500">{t("admin.sessions.empty")}</p> : null}
           {sessions.map((s) => (
             <Link
               key={s.id}
@@ -61,9 +67,9 @@ export default function AdminSessionsPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className={`rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.06em] ${s.authenticated ? "bg-brass/20 text-brass" : "bg-white/10 text-zinc-400"}`}>
-                    {s.authenticated ? "Registered" : "Anonymous"}
+                    {s.authenticated ? t("admin.sessions.registered") : t("admin.sessions.anonymous")}
                   </span>
-                  <span className="text-zinc-400">{s.utmSource || s.referrerDomain || "direct"}</span>
+                  <span className="text-zinc-400">{s.utmSource || s.referrerDomain || t("admin.sessions.direct")}</span>
                   <span className="text-zinc-600">·</span>
                   <span className="text-zinc-400">{s.deviceCategory}</span>
                   {s.country ? (
@@ -79,10 +85,10 @@ export default function AdminSessionsPage() {
               <div className="mt-1.5 flex flex-wrap gap-2 text-[11px] text-zinc-500">
                 <span>{formatDuration(sessionDurationMs(s))}</span>
                 <span>·</span>
-                <span>{s.pageViewCount || 0} pages</span>
-                {s.hasMastered ? <span className="text-emerald-400">· Mastered</span> : null}
-                {s.hasStartedCheckout ? <span className="text-brass">· Checkout</span> : null}
-                {s.hasPaid ? <span className="text-emerald-400">· Paid</span> : null}
+                <span>{s.pageViewCount || 0} {t("admin.sessions.pages")}</span>
+                {s.hasMastered ? <span className="text-emerald-400">· {t("admin.sessions.mastered")}</span> : null}
+                {s.hasStartedCheckout ? <span className="text-brass">· {t("admin.sessions.checkout")}</span> : null}
+                {s.hasPaid ? <span className="text-emerald-400">· {t("admin.sessions.paid")}</span> : null}
               </div>
             </Link>
           ))}

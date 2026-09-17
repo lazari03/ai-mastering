@@ -3,24 +3,15 @@
 import { useEffect, useState } from "react";
 
 import { getAdminAnalytics } from "@/network/http/client";
+import { useLanguage } from "@/lib/i18n";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import AdminTable from "@/components/admin/AdminTable";
 import ExportButtons from "@/components/admin/ExportButtons";
+import { IconTarget } from "@/components/admin/icons";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
-const COLUMNS = [
-  { key: "source", label: "Source" },
-  { key: "visitors", label: "Visitors", align: "right" },
-  { key: "newVisitors", label: "New", align: "right" },
-  { key: "uploads", label: "Uploads", align: "right" },
-  { key: "masters", label: "Masters", align: "right" },
-  { key: "checkouts", label: "Checkouts", align: "right" },
-  { key: "customers", label: "Paid", align: "right" },
-  { key: "revenue", label: "Revenue", align: "right", render: (r) => `€${r.revenue.toFixed(2)}` },
-  { key: "conversion", label: "Conv.", align: "right", render: (r) => `${r.conversion}%` },
-];
-
 export default function AdminAcquisitionPage() {
+  const { t } = useLanguage();
   const [preset, setPreset] = useState("7d");
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
@@ -30,16 +21,31 @@ export default function AdminAcquisitionPage() {
     setRows(null);
     getAdminAnalytics("/acquisition", { preset })
       .then((res) => !cancelled && setRows(res))
-      .catch((err) => !cancelled && setError(err?.message || "Failed to load acquisition."));
+      .catch((err) => !cancelled && setError(err?.message || t("admin.acquisition.loadFailed")));
     return () => {
       cancelled = true;
     };
-  }, [preset]);
+  }, [preset, t]);
+
+  const columns = [
+    { key: "source", label: t("admin.table.source") },
+    { key: "visitors", label: t("admin.table.visitors"), align: "right" },
+    { key: "newVisitors", label: t("admin.table.new"), align: "right" },
+    { key: "uploads", label: t("admin.table.uploads"), align: "right" },
+    { key: "masters", label: t("admin.table.masters"), align: "right" },
+    { key: "checkouts", label: t("admin.table.checkouts"), align: "right" },
+    { key: "customers", label: t("admin.table.paid"), align: "right" },
+    { key: "revenue", label: t("admin.table.revenue"), align: "right", render: (r) => `€${r.revenue.toFixed(2)}` },
+    { key: "conversion", label: t("admin.table.conversion"), align: "right", render: (r) => `${r.conversion}%` },
+  ];
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-lg font-bold text-white">Acquisition</h1>
+        <h1 className="m-0 flex items-center gap-2 text-lg font-bold text-white">
+          <IconTarget />
+          {t("admin.acquisition.title")}
+        </h1>
         <div className="flex flex-wrap items-center gap-3">
           <DateRangeFilter value={preset} onChange={setPreset} />
           <ExportButtons path="/acquisition" params={{ preset }} />
@@ -47,7 +53,7 @@ export default function AdminAcquisitionPage() {
       </div>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
       {!rows && !error ? <LoadingBlock /> : null}
-      {rows ? <AdminTable columns={COLUMNS} rows={rows.map((r) => ({ ...r, id: r.source }))} /> : null}
+      {rows ? <AdminTable columns={columns} rows={rows.map((r) => ({ ...r, id: r.source }))} emptyLabel={t("admin.table.noData")} /> : null}
     </div>
   );
 }

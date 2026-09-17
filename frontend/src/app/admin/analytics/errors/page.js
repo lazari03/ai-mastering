@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 
 import { getAdminAnalytics } from "@/network/http/client";
+import { useLanguage } from "@/lib/i18n";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import AdminTable from "@/components/admin/AdminTable";
 import ExportButtons from "@/components/admin/ExportButtons";
+import { IconAlertTriangle } from "@/components/admin/icons";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
 function formatDate(iso) {
@@ -21,18 +23,10 @@ function trendBadge(count, previousCount) {
   return <span className={up ? "text-ember" : "text-emerald-400"}>{up ? "↑" : "↓"} {Math.abs(deltaPct)}%</span>;
 }
 
-const COLUMNS = [
-  { key: "event", label: "Event" },
-  { key: "reason", label: "Reason" },
-  { key: "count", label: "Count", align: "right" },
-  { key: "affectedSessions", label: "Sessions", align: "right" },
-  { key: "trend", label: "Vs Previous", align: "right", render: (r) => trendBadge(r.count, r.previousCount) },
-  { key: "lastSeen", label: "Last Seen", align: "right", render: (r) => formatDate(r.lastSeen) },
-];
-
 // Spec section 27 — grouped, normalized failures affecting the funnel
 // (upload/mastering/checkout), not a general error/observability log.
 export default function AdminErrorsPage() {
+  const { t } = useLanguage();
   const [preset, setPreset] = useState("7d");
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
@@ -42,16 +36,28 @@ export default function AdminErrorsPage() {
     setRows(null);
     getAdminAnalytics("/errors", { preset })
       .then((res) => !cancelled && setRows(res))
-      .catch((err) => !cancelled && setError(err?.message || "Failed to load errors."));
+      .catch((err) => !cancelled && setError(err?.message || t("admin.errors.loadFailed")));
     return () => {
       cancelled = true;
     };
-  }, [preset]);
+  }, [preset, t]);
+
+  const columns = [
+    { key: "event", label: t("admin.table.event") },
+    { key: "reason", label: t("admin.table.reason") },
+    { key: "count", label: t("admin.table.count"), align: "right" },
+    { key: "affectedSessions", label: t("admin.table.sessions"), align: "right" },
+    { key: "trend", label: t("admin.table.vsPrevious"), align: "right", render: (r) => trendBadge(r.count, r.previousCount) },
+    { key: "lastSeen", label: t("admin.table.lastSeen"), align: "right", render: (r) => formatDate(r.lastSeen) },
+  ];
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-lg font-bold text-white">Errors</h1>
+        <h1 className="m-0 flex items-center gap-2 text-lg font-bold text-white">
+          <IconAlertTriangle />
+          {t("admin.errors.title")}
+        </h1>
         <div className="flex flex-wrap items-center gap-3">
           <DateRangeFilter value={preset} onChange={setPreset} />
           <ExportButtons path="/errors" params={{ preset }} />
@@ -59,7 +65,9 @@ export default function AdminErrorsPage() {
       </div>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
       {!rows && !error ? <LoadingBlock /> : null}
-      {rows ? <AdminTable columns={COLUMNS} rows={rows.map((r, i) => ({ ...r, id: `${r.event}-${r.reason}-${i}` }))} emptyLabel="No funnel-affecting failures in this period." /> : null}
+      {rows ? (
+        <AdminTable columns={columns} rows={rows.map((r, i) => ({ ...r, id: `${r.event}-${r.reason}-${i}` }))} emptyLabel={t("admin.errors.empty")} />
+      ) : null}
     </div>
   );
 }

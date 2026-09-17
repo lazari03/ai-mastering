@@ -3,21 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 
 import { getAdminAnalytics } from "@/network/http/client";
+import { useLanguage } from "@/lib/i18n";
 import StatCard from "@/components/admin/StatCard";
 import AdminTable from "@/components/admin/AdminTable";
+import { IconRadio, IconUsers, IconClock } from "@/components/admin/icons";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
 const REFRESH_MS = 15000;
-
-const COUNTRY_COLUMNS = [
-  { key: "country", label: "Country" },
-  { key: "visitors", label: "Active Now", align: "right" },
-];
-
-const PAGE_COLUMNS = [
-  { key: "path", label: "Page" },
-  { key: "visitors", label: "Active Now", align: "right" },
-];
 
 function formatMinSec(totalSeconds) {
   const s = Math.max(0, Math.round(totalSeconds || 0));
@@ -32,6 +24,7 @@ function formatMinSec(totalSeconds) {
 // enough to real-time for a solo-founder dashboard without adding a whole
 // new transport just for this one page.
 export default function AdminLivePage() {
+  const { t } = useLanguage();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const intervalRef = useRef(null);
@@ -41,7 +34,7 @@ export default function AdminLivePage() {
     const load = () => {
       getAdminAnalytics("/live")
         .then((res) => !cancelled && setData(res))
-        .catch((err) => !cancelled && setError(err?.message || "Failed to load live overview."));
+        .catch((err) => !cancelled && setError(err?.message || t("admin.live.loadFailed")));
     };
     load();
     intervalRef.current = setInterval(load, REFRESH_MS);
@@ -49,40 +42,50 @@ export default function AdminLivePage() {
       cancelled = true;
       clearInterval(intervalRef.current);
     };
-  }, []);
+  }, [t]);
+
+  const countryColumns = [
+    { key: "country", label: t("admin.table.country") },
+    { key: "visitors", label: t("admin.table.activeNow"), align: "right" },
+  ];
+  const pageColumns = [
+    { key: "path", label: t("admin.table.page") },
+    { key: "visitors", label: t("admin.table.activeNow"), align: "right" },
+  ];
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="m-0 text-lg font-bold text-white">Live</h1>
+        <h1 className="m-0 flex items-center gap-2 text-lg font-bold text-white">
+          <IconRadio />
+          {t("admin.live.title")}
+        </h1>
         <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
           <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-emerald-400" />
-          Refreshes every 15s
+          {t("admin.live.refreshNote")}
         </span>
       </div>
-      <p className="m-0 text-xs text-zinc-500">
-        Visitors active in the last {data?.windowMinutes || 5} minutes — not a historical report, this has no date filter.
-      </p>
+      <p className="m-0 text-xs text-zinc-500">{t("admin.live.windowNote", { minutes: data?.windowMinutes || 5 })}</p>
 
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
       {!data && !error ? <LoadingBlock /> : null}
 
       {data ? (
         <>
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-            <StatCard label="Active Now" stat={data.activeVisitors} />
-            <StatCard label="Avg. Active Time" stat={formatMinSec(data.avgActiveSeconds)} />
-            <StatCard label="Countries" stat={data.countries.length} />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <StatCard label={t("admin.table.activeNow")} stat={data.activeVisitors} icon={IconUsers} />
+            <StatCard label={t("admin.live.avgActiveTime")} stat={formatMinSec(data.avgActiveSeconds)} icon={IconClock} />
+            <StatCard label={t("admin.live.countries")} stat={data.countries.length} icon={IconUsers} />
           </div>
 
           <div>
-            <p className="m-0 mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-500">By Country</p>
-            <AdminTable columns={COUNTRY_COLUMNS} rows={data.countries.map((c) => ({ ...c, id: c.country }))} emptyLabel="No active visitors right now." />
+            <p className="m-0 mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-500">{t("admin.live.byCountry")}</p>
+            <AdminTable columns={countryColumns} rows={data.countries.map((c) => ({ ...c, id: c.country }))} emptyLabel={t("admin.live.empty")} />
           </div>
 
           <div>
-            <p className="m-0 mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-500">By Page</p>
-            <AdminTable columns={PAGE_COLUMNS} rows={data.pages.map((p) => ({ ...p, id: p.path }))} emptyLabel="No active visitors right now." />
+            <p className="m-0 mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-500">{t("admin.live.byPage")}</p>
+            <AdminTable columns={pageColumns} rows={data.pages.map((p) => ({ ...p, id: p.path }))} emptyLabel={t("admin.live.empty")} />
           </div>
         </>
       ) : null}
