@@ -18,6 +18,22 @@ function db() {
   return getFirestore();
 }
 
+// A "unique visitor" count is only as good as the identifier it's keyed
+// on. visitorId is a browser-local localStorage value — real, but it
+// resets the moment someone clears storage, switches browsers, or opens
+// a private window, so the same person can legitimately hold several of
+// them. Once a session is authenticated we have something better: uid,
+// the actual account, stable across every device and browser that person
+// ever signs into. Preferring it here is what stops "the same logged-in
+// user tested this 10 times from two browsers" from inflating a
+// visitor-count metric — it does NOT touch pageViewCount/views (a real
+// distinct visit each time still counts as a visit; only the "how many
+// distinct people" tally collapses them). Anonymous traffic has no uid
+// yet, so it falls back to visitorId exactly as before.
+function identityKey(record) {
+  return record.uid || record.visitorId;
+}
+
 // Organic = arrived via a search engine's own results, not a paid click or
 // a direct/social visit — utm_medium=organic (if a page ever sets it
 // explicitly) or a referrer domain that's a known search engine with no
@@ -156,7 +172,7 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
   ]);
 
   const summarize = (list) => ({
-    visitors: new Set(list.map((s) => s.visitorId)).size,
+    visitors: new Set(list.map(identityKey)).size,
     newVisitors: list.filter((s) => s.isNewVisitor).length,
     returningVisitors: list.filter((s) => !s.isNewVisitor).length,
     uploads: list.filter((s) => s.hasUploaded).length,
@@ -242,7 +258,7 @@ export async function getAcquisition({ from, to }) {
     const key = sourceKeyFor(s);
     if (!groups.has(key)) groups.set(key, { source: key, visitors: new Set(), newVisitors: 0, uploads: 0, masters: 0, checkouts: 0, customers: 0, revenueCents: 0, uids: new Set() });
     const g = groups.get(key);
-    g.visitors.add(s.visitorId);
+    g.visitors.add(identityKey(s));
     if (s.isNewVisitor) g.newVisitors++;
     if (s.hasUploaded) g.uploads++;
     if (s.hasMastered) g.masters++;
@@ -299,14 +315,14 @@ export async function getPages({ from, to }) {
   for (const e of pageViewEvents) {
     const g = ensure(e.path || "/");
     g.views++;
-    if (e.visitorId) g.visitors.add(e.visitorId);
+    if (e.visitorId) g.visitors.add(identityKey(e));
   }
   for (const e of heartbeatEvents) {
     if (typeof e.activeMs !== "number" || !e.path) continue;
     const g = ensure(e.path);
     g.activeMsTotal += e.activeMs;
     g.activeSamples++;
-    if (e.visitorId) g.visitors.add(e.visitorId);
+    if (e.visitorId) g.visitors.add(identityKey(e));
   }
   for (const s of sessions) {
     if (s.landingPage) {
@@ -353,7 +369,7 @@ export async function getSeoOverview({ from, to }) {
     revenueByUid.set(e.uid, (revenueByUid.get(e.uid) || 0) + (e.props?.amountCents || 0));
   }
 
-  const visitors = new Set(sessions.map((s) => s.visitorId));
+  const visitors = new Set(sessions.map(identityKey));
   const newVisitors = sessions.filter((s) => s.isNewVisitor).length;
   const masters = sessions.filter((s) => s.hasMastered).length;
   const paidSessions = sessions.filter((s) => s.hasPaid);
@@ -364,7 +380,7 @@ export async function getSeoOverview({ from, to }) {
     const key = s.landingPage || "/";
     if (!byPage.has(key)) byPage.set(key, { path: key, visitors: new Set(), activeMsTotal: 0, uploads: 0, masters: 0, checkouts: 0, paid: 0, revenueCents: 0 });
     const g = byPage.get(key);
-    g.visitors.add(s.visitorId);
+    g.visitors.add(identityKey(s));
     g.activeMsTotal += s.activeMs || 0;
     if (s.hasUploaded) g.uploads++;
     if (s.hasMastered) g.masters++;
@@ -536,6 +552,11 @@ export async function getLive() {
   };
 }
 
+// Deliberately visitorId-only, not identityKey() — retention/"did they
+// come back" is a browser/device-return-rate question, distinct from the
+// "how many distinct people" question the other reports ask. Folding
+// logged-in cross-device visits together here would hide the exact thing
+// this report exists to measure (whether the same browser came back).
 export async function getRetention({ from, to }) {
   const [sessions, allVisitorsWithSecondVisit] = await Promise.all([fetchSessionsInRange(from, to), Promise.resolve(null)]);
   void allVisitorsWithSecondVisit;
