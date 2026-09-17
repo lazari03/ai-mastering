@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -22,6 +23,17 @@ from app.services.presets_service import list_mixing_presets
 from params import list_categories, list_flavours, list_genres, list_styles, list_tags
 
 router = APIRouter(tags=["mastering"])
+
+# Caps how many /master requests actually run their DSP at once — see
+# Settings.max_concurrent_masters's comment for why this exists. A plain
+# threading.Semaphore, not an asyncio one: this route is a sync `def`, so
+# it executes on one of Starlette's worker threads, not the event loop.
+# Non-blocking acquire (`blocking=False`) is deliberate — a caller that
+# can't get a slot fails fast with a 503 to retry, rather than parking its
+# worker thread in a wait that just eats into the same shared thread-pool
+# capacity every other endpoint (including cheap ones like /genres) also
+# depends on.
+_master_slots = threading.Semaphore(settings.max_concurrent_masters)
 
 
 @router.get("/genres")
@@ -162,7 +174,12 @@ def master_track(
         except json.JSONDecodeError as exc:
             raise HTTPException(400, "full_preset_json must be valid JSON") from exc
 
-    result = process_mastering_request(file=file, config=resolved_config, reference_file=reference_file)
+    if not _master_slots.acquire(blocking=False):
+        raise HTTPException(503, "Server is at capacity right now — please try again in a minute.")
+    try:
+        result = process_mastering_request(file=file, config=resolved_config, reference_file=reference_file)
+    finally:
+        _master_slots.release()
     return {
         "job_id": result["job_id"],
         "download_url": result["download_url"],

@@ -195,7 +195,14 @@ export async function postMultipartToPython(pathname, { fields = {}, files = {} 
   const payload = isJson ? await response.json().catch(() => ({})) : null;
 
   if (!response.ok) {
-    throw new Error(payload?.detail ? JSON.stringify(payload.detail) : `Python service returned HTTP ${response.status}`);
+    // Status carried through (not flattened to a generic 400 by the
+    // caller) so a 503 "server at capacity" from the Python service's
+    // concurrency cap (see mastering.py's _master_slots) actually reaches
+    // the frontend as "try again in a moment," not as a permanent-looking
+    // validation error.
+    throw Object.assign(new Error(payload?.detail ? JSON.stringify(payload.detail) : `Python service returned HTTP ${response.status}`), {
+      status: response.status,
+    });
   }
   return payload;
 }

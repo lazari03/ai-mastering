@@ -825,7 +825,12 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
         },
       });
     }
-    return res.status(400).json({ detail: error?.message || "Mastering failed" });
+    // error.status carries through a real upstream status (e.g. the
+    // Python service's 503 when its concurrency cap is full — see
+    // postMultipartToPython) rather than always flattening to 400,
+    // otherwise "server's busy, try again" reads to the frontend as the
+    // same permanent-looking failure as a bad upload.
+    return res.status(error?.status === 503 ? 503 : 400).json({ detail: error?.message || "Mastering failed" });
   }
 });
 

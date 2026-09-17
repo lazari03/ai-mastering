@@ -46,11 +46,23 @@ if (settings.nodeEnv === "production" && settings.masteringEngine !== "adaptive_
   );
   process.exit(1);
 }
+// Was a console.warn — silently permissive in production is exactly the
+// "found out from a customer/security report instead of at boot" failure
+// mode the masteringEngine check above already refuses to allow for a
+// worse-quality render. A wildcard origin here means literally any website
+// can call this API's authenticated routes from a signed-in user's own
+// browser (CORS governs which origins a BROWSER lets read the response —
+// it's not a server-side allowlist, so this is a real cross-origin request
+// forgery surface, not just a style nit). docker-compose.yml already seeds
+// CORS_ORIGINS from FRONTEND_ORIGIN, which every other real-deploy
+// integration here (share links, this check) also depends on being set.
 if (settings.nodeEnv === "production" && settings.corsOrigins.includes("*")) {
-  console.warn(
-    "WARNING: CORS_ORIGINS is '*' in production — any website can call this API from a browser. " +
-      "Set it to your real frontend origin(s) once you have one."
+  console.error(
+    "Refusing to start: NODE_ENV=production but CORS_ORIGINS is '*' (or FRONTEND_ORIGIN is unset — " +
+      "docker-compose.yml seeds one from the other). Any website could call this API from a signed-in " +
+      "user's browser. Set FRONTEND_ORIGIN to your real frontend origin(s), e.g. https://auralithforge.app."
   );
+  process.exit(1);
 }
 
 const app = express();

@@ -23,6 +23,16 @@ class Settings:
     # if that's ever needed, it's a paid tier backed by real object
     # storage, not free retention on this box. 0 disables cleanup (dev).
     file_retention_hours: int
+    # /master is a synchronous `def` route, so FastAPI/Starlette runs each
+    # call in the shared AnyIO worker-thread pool (default capacity 40
+    # across the whole app) — with no cap of its own, that lets up to 40
+    # full mastering renders (multi-stage DSP, optionally Demucs source
+    # separation) run genuinely concurrently on one VPS. That's a real OOM
+    # risk, not a theoretical one, on a single-box deploy with everything
+    # else (Node API, frontend, Caddy) sharing the same RAM. See
+    # mastering.py's master_track — this caps how many can actually run at
+    # once; anything beyond it gets a 503 to retry, not queued silently.
+    max_concurrent_masters: int
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -51,6 +61,10 @@ def load_settings() -> Settings:
         output_dir=output_dir,
         max_upload_size_mb=int(os.getenv("MASTERING_MAX_UPLOAD_MB", "200")),
         file_retention_hours=int(os.getenv("MASTERING_FILE_RETENTION_HOURS", "48")),
+        # Conservative default — tune to the VPS's real core count/RAM.
+        # Better to make a burst of customers wait a few seconds and retry
+        # than to let the box OOM and take mastering down for everyone.
+        max_concurrent_masters=int(os.getenv("MASTERING_MAX_CONCURRENT_JOBS", "3")),
     )
 
 

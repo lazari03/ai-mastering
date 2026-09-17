@@ -514,6 +514,11 @@ export async function recordServerEvent(name, { uid = null, sessionId = null, vi
 // than inventing a new ad-hoc reason string at a call site.
 export function normalizeMasteringFailure(error) {
   const msg = String(error?.message || error || "").toLowerCase();
+  // The Python service's own concurrency cap rejecting a request (see
+  // mastering.py's _master_slots) — a real, expected-under-load outcome,
+  // not a bug, so it gets its own category rather than bucketing into
+  // dsp_error/server_error and skewing "something's broken" error reports.
+  if (msg.includes("capacity")) return "server_busy";
   if (msg.includes("timeout") || msg.includes("timed out")) return "processing_timeout";
   if (msg.includes("invalid") && (msg.includes("audio") || msg.includes("file"))) return "invalid_audio";
   if (msg.includes("unsupported") || msg.includes("format")) return "unsupported_format";

@@ -3,7 +3,7 @@ import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks"
 
 import { settings } from "../config/settings.js";
 import { getFirestore } from "../config/firebase.js";
-import { notifyPurchase } from "./telegramService.js";
+import { notifyPurchase, notifyPaymentFailure } from "./telegramService.js";
 import { writeNotification } from "./adminNotificationService.js";
 import { recordServerEvent } from "./analyticsService.js";
 
@@ -108,6 +108,19 @@ async function announcePurchase({ kind, product, email, amountCents, currency })
   // notification bell (writeNotification is already internally
   // best-effort, no .catch() needed here).
   writeNotification({ type: "payment", email, amountCents, currency, message: `Payment: ${product} — ${email || "unknown"}` });
+}
+
+// Mirror of announcePurchase above, for the revenue-at-risk/revenue-lost
+// side — a renewal charge failing (past_due) or a subscription actually
+// getting revoked after Polar's own dunning retries are exhausted.
+// Previously this only ever fed into recordServerEvent, an analytics
+// number nobody actively watches — this is what actually reaches the
+// founder in real time, same as a new sale does. Best-effort end to end
+// for the same reason announcePurchase is: never allowed to throw back
+// into the webhook handler.
+async function announcePaymentFailure({ kind, product, email }) {
+  await notifyPaymentFailure({ kind, product, email });
+  writeNotification({ type: "payment_failed", email, message: `${kind}: ${product} — ${email || "unknown"}` });
 }
 
 // Polar's own validation errors (HTTPValidationError) carry a `detail`
@@ -411,15 +424,30 @@ async function applySubscriptionEvent(event) {
     });
     recordServerEvent("subscription_created", { uid, props: { plan: field, amountCents: sub.amount, currency: sub.currency } });
     recordServerEvent("payment_succeeded", { uid, props: { plan: field, amountCents: sub.amount, currency: sub.currency, kind: "subscription" } });
+  } else if (event.type === "subscription.past_due") {
+    // A renewal charge just failed and Polar is now retrying it (its own
+    // dunning process) — access isn't cut off yet (see isEntitled's grace
+    // period against currentPeriodEnd), but this is exactly the moment a
+    // founder wants to know revenue is at risk, not after it's already
+    // lost. Previously this only ever produced an analytics number nobody
+    // actively watches; now it's a real-time alert, same as a new sale.
+    await announcePaymentFailure({ kind: "Payment failed (retrying)", product: productLabel(sub.productId), email: sub.customer?.email });
+    recordServerEvent("payment_failed", { uid, props: { plan: field } });
+  } else if (event.type === "subscription.revoked") {
+    // Polar's own dunning retries are exhausted — access is actually gone
+    // now, not just at risk. Distinct alert wording from past_due above so
+    // "still trying to save this" and "already lost" don't read the same.
+    await announcePaymentFailure({ kind: "Subscription revoked (payment retries exhausted)", product: productLabel(sub.productId), email: sub.customer?.email });
+    recordServerEvent("subscription_expired", { uid, props: { plan: field } });
   } else {
-    // Polar's event taxonomy beyond "created" isn't fully enumerated in
-    // this codebase — best-effort mapping from the resulting status
+    // Polar's event taxonomy beyond the cases above isn't fully enumerated
+    // in this codebase — best-effort mapping from the resulting status
     // rather than the specific event.type, since that's what's actually
     // known to be reliable here. If Polar's dashboard shows event types
     // this doesn't distinguish well (e.g. a genuine renewal vs. a plan
     // change both landing as "active"), that's a documented limitation,
     // not a silent guess passed off as certain.
-    const statusEventMap = { active: "subscription_renewed", canceled: "subscription_cancelled", past_due: "subscription_expired", expired: "subscription_expired" };
+    const statusEventMap = { active: "subscription_renewed", canceled: "subscription_cancelled", expired: "subscription_expired" };
     const mapped = statusEventMap[sub.status];
     if (mapped) recordServerEvent(mapped, { uid, props: { plan: field } });
   }

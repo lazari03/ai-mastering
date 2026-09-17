@@ -60,6 +60,15 @@ export async function notifyPurchase({ kind, product, email, amountCents, curren
   await sendMessage(`${kind}: ${product}${price}${who}`);
 }
 
+// A failed/revoked subscription renewal is the mirror image of a purchase
+// (real revenue at risk, or already lost) — previously the only trace of
+// this was an analytics event nobody actively watches; this actually
+// reaches the founder the moment it happens, the same way a new sale does.
+export async function notifyPaymentFailure({ kind, product, email }) {
+  const who = email ? `\n${email}` : "";
+  await sendMessage(`${kind}: ${product}${who}`);
+}
+
 // ---------------------------------------------------------------------
 // On-demand stats commands — /stats, /help. Long-polls getUpdates rather
 // than registering a webhook: this is a single admin talking to their
