@@ -22,6 +22,17 @@
   --border-strong: rgba(255, 255, 255, 0.2);
   --text-primary: var(--mist);
   --text-secondary: rgba(232, 236, 239, 0.65);
+
+  /* Warmer studio-hardware tier, additive on top of the ink/coal/ember/
+     brass/mist set above — same rule as --surface etc: nothing existing
+     is renamed or removed, this just gives new work (the Three.js audio
+     field, its hero panel) a true near-black/copper/cream vocabulary
+     where ink/mist read a touch cool-blue for that purpose. */
+  --void: #0a0908;
+  --void-elevated: #14120f;
+  --copper: #b96a43;
+  --cream: #f3eee7;
+  --cream-muted: #9b958e;
 }
 
 * {

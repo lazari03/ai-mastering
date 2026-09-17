@@ -18,6 +18,11 @@ module.exports = {
         "border-strong": "var(--border-strong)",
         "text-primary": "var(--text-primary)",
         "text-secondary": "var(--text-secondary)",
+        void: "var(--void)",
+        "void-elevated": "var(--void-elevated)",
+        copper: "var(--copper)",
+        cream: "var(--cream)",
+        "cream-muted": "var(--cream-muted)",
       },
       boxShadow: {
         panel: "0 10px 32px rgba(0, 0, 0, 0.25)",
