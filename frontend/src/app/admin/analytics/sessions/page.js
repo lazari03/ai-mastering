@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 import { getAdminAnalytics } from "@/network/http/client";
 import { useLanguage } from "@/lib/i18n";
+import { useAdminQuery } from "@/lib/useAdminQuery";
 import { countryLabel } from "@/lib/country";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import ExportButtons from "@/components/admin/ExportButtons";
@@ -28,19 +29,10 @@ function sessionDurationMs(session) {
 export default function AdminSessionsPage() {
   const { t } = useLanguage();
   const [preset, setPreset] = useState("7d");
-  const [sessions, setSessions] = useState(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    setSessions(null);
-    getAdminAnalytics("/sessions", { preset, limit: 50 })
-      .then((res) => !cancelled && setSessions(res.sessions))
-      .catch((err) => !cancelled && setError(err?.message || t("admin.sessions.loadFailed")));
-    return () => {
-      cancelled = true;
-    };
-  }, [preset, t]);
+  const { data: sessions, error, loading } = useAdminQuery(
+    () => getAdminAnalytics("/sessions", { preset, limit: 50 }).then((res) => res.sessions),
+    [preset, t]
+  );
 
   return (
     <div className="space-y-5">
@@ -55,9 +47,9 @@ export default function AdminSessionsPage() {
         </div>
       </div>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
-      {!sessions && !error ? <LoadingBlock /> : null}
+      {!sessions && loading ? <LoadingBlock /> : null}
       {sessions ? (
-        <div className="space-y-2">
+        <div className={`space-y-2 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
           {sessions.length === 0 ? <p className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-zinc-500">{t("admin.sessions.empty")}</p> : null}
           {sessions.map((s) => (
             <Link

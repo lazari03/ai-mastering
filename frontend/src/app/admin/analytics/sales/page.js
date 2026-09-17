@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { getAdminAnalytics } from "@/network/http/client";
 import { useLanguage } from "@/lib/i18n";
+import { useAdminQuery } from "@/lib/useAdminQuery";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import StatCard from "@/components/admin/StatCard";
 import AdminTable from "@/components/admin/AdminTable";
@@ -14,19 +15,7 @@ import { LoadingBlock } from "@/components/ui/Spinner";
 export default function AdminSalesPage() {
   const { t } = useLanguage();
   const [preset, setPreset] = useState("7d");
-  const [data, setData] = useState(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    setData(null);
-    getAdminAnalytics("/sales", { preset })
-      .then((res) => !cancelled && setData(res))
-      .catch((err) => !cancelled && setError(err?.message || t("admin.sales.loadFailed")));
-    return () => {
-      cancelled = true;
-    };
-  }, [preset, t]);
+  const { data, error, loading } = useAdminQuery(() => getAdminAnalytics("/sales", { preset }), [preset, t]);
 
   const failureColumns = [
     { key: "reason", label: t("admin.table.reason") },
@@ -46,9 +35,9 @@ export default function AdminSalesPage() {
         </div>
       </div>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
-      {!data && !error ? <LoadingBlock /> : null}
+      {!data && loading ? <LoadingBlock /> : null}
       {data ? (
-        <>
+        <div className={`space-y-5 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <StatCard label={t("admin.stat.revenue")} stat={data.revenue.toFixed(2)} suffix=" €" icon={IconCoins} />
             <StatCard label={t("admin.stat.newCustomers")} stat={data.newCustomers} icon={IconCustomer} />
@@ -72,7 +61,7 @@ export default function AdminSalesPage() {
             <p className="m-0 mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-500">{t("admin.sales.failureReasonsSection")}</p>
             <AdminTable columns={failureColumns} rows={data.failureReasons.map((r) => ({ ...r, id: r.reason }))} emptyLabel={t("admin.sales.emptyFailures")} />
           </div>
-        </>
+        </div>
       ) : null}
     </div>
   );

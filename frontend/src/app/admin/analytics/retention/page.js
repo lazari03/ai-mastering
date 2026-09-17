@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { getAdminAnalytics } from "@/network/http/client";
 import { useLanguage } from "@/lib/i18n";
+import { useAdminQuery } from "@/lib/useAdminQuery";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import StatCard from "@/components/admin/StatCard";
 import { IconRefresh, IconUsers } from "@/components/admin/icons";
@@ -18,19 +19,7 @@ import { LoadingBlock } from "@/components/ui/Spinner";
 export default function AdminRetentionPage() {
   const { t } = useLanguage();
   const [preset, setPreset] = useState("30d");
-  const [data, setData] = useState(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    setData(null);
-    getAdminAnalytics("/retention", { preset })
-      .then((res) => !cancelled && setData(res))
-      .catch((err) => !cancelled && setError(err?.message || t("admin.retention.loadFailed")));
-    return () => {
-      cancelled = true;
-    };
-  }, [preset, t]);
+  const { data, error, loading } = useAdminQuery(() => getAdminAnalytics("/retention", { preset }), [preset, t]);
 
   return (
     <div className="space-y-5">
@@ -42,9 +31,9 @@ export default function AdminRetentionPage() {
         <DateRangeFilter value={preset} onChange={setPreset} />
       </div>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
-      {!data && !error ? <LoadingBlock /> : null}
+      {!data && loading ? <LoadingBlock /> : null}
       {data ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className={`grid grid-cols-2 gap-2 transition-opacity sm:grid-cols-3 ${loading ? "opacity-60" : "opacity-100"}`}>
           <StatCard label={t("admin.retention.uniqueVisitors")} stat={data.uniqueVisitors} icon={IconUsers} />
           <StatCard label={t("admin.stat.returningVisitors")} stat={data.returningVisitors} icon={IconRefresh} />
           <StatCard label={t("admin.retention.returningPct")} stat={`${data.returningPct}%`} icon={IconRefresh} />

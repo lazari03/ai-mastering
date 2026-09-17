@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { getAdminAnalytics } from "@/network/http/client";
 import { useLanguage } from "@/lib/i18n";
+import { useAdminQuery } from "@/lib/useAdminQuery";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import AdminTable from "@/components/admin/AdminTable";
 import ExportButtons from "@/components/admin/ExportButtons";
@@ -19,19 +20,7 @@ import { LoadingBlock } from "@/components/ui/Spinner";
 export default function AdminPagesPage() {
   const { t } = useLanguage();
   const [preset, setPreset] = useState("7d");
-  const [rows, setRows] = useState(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    setRows(null);
-    getAdminAnalytics("/pages", { preset })
-      .then((res) => !cancelled && setRows(res))
-      .catch((err) => !cancelled && setError(err?.message || t("admin.pages.loadFailed")));
-    return () => {
-      cancelled = true;
-    };
-  }, [preset, t]);
+  const { data: rows, error, loading } = useAdminQuery(() => getAdminAnalytics("/pages", { preset }), [preset, t]);
 
   const columns = [
     { key: "path", label: t("admin.table.page") },
@@ -60,8 +49,12 @@ export default function AdminPagesPage() {
       </div>
       <p className="m-0 text-xs text-zinc-500">{t("admin.pages.subtitle")}</p>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
-      {!rows && !error ? <LoadingBlock /> : null}
-      {rows ? <AdminTable columns={columns} rows={rows.map((r) => ({ ...r, id: r.path }))} emptyLabel={t("admin.table.noData")} /> : null}
+      {!rows && loading ? <LoadingBlock /> : null}
+      {rows ? (
+        <div className={`transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
+          <AdminTable columns={columns} rows={rows.map((r) => ({ ...r, id: r.path }))} emptyLabel={t("admin.table.noData")} />
+        </div>
+      ) : null}
     </div>
   );
 }

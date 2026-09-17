@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { getAdminAnalytics } from "@/network/http/client";
 import { useLanguage } from "@/lib/i18n";
+import { useAdminQuery } from "@/lib/useAdminQuery";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import StatCard from "@/components/admin/StatCard";
 import ExportButtons from "@/components/admin/ExportButtons";
@@ -67,26 +68,16 @@ function StatGroup({ title, Icon, children }) {
 export default function AdminOverviewPage() {
   const { t } = useLanguage();
   const [preset, setPreset] = useState("7d");
-  const [data, setData] = useState(null);
-  const [trend, setTrend] = useState(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    setData(null);
-    setTrend(null);
-    setError("");
-    Promise.all([getAdminAnalytics("/overview", { preset }), getAdminAnalytics("/overview-timeseries", { preset })])
-      .then(([overview, timeseries]) => {
-        if (cancelled) return;
-        setData(overview);
-        setTrend(timeseries.points);
-      })
-      .catch((err) => !cancelled && setError(err?.message || t("admin.overview.loadFailed")));
-    return () => {
-      cancelled = true;
-    };
-  }, [preset, t]);
+  const { data: combined, error, loading } = useAdminQuery(
+    () =>
+      Promise.all([getAdminAnalytics("/overview", { preset }), getAdminAnalytics("/overview-timeseries", { preset })]).then(([overview, timeseries]) => ({
+        overview,
+        trend: timeseries.points,
+      })),
+    [preset, t]
+  );
+  const data = combined?.overview;
+  const trend = combined?.trend;
 
   return (
     <div className="space-y-6">
@@ -99,10 +90,10 @@ export default function AdminOverviewPage() {
       </div>
 
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
-      {!data && !error ? <LoadingBlock /> : null}
+      {!data && loading ? <LoadingBlock /> : null}
 
       {data ? (
-        <>
+        <div className={`space-y-6 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
           {/* The two numbers everyone reaches for first, at hero size — not
               buried in a 14-tile grid at the same weight as "cancellations." */}
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -188,7 +179,7 @@ export default function AdminOverviewPage() {
               <StatCard label={t("admin.stat.checkoutToPaid")} stat={`${data.conversion.checkoutToPaid}%`} icon={IconFunnel} />
             </div>
           </div>
-        </>
+        </div>
       ) : null}
     </div>
   );

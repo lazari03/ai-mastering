@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { getAdminAnalytics } from "@/network/http/client";
 import { useLanguage } from "@/lib/i18n";
+import { useAdminQuery } from "@/lib/useAdminQuery";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import { IconFunnel } from "@/components/admin/icons";
 import { LoadingBlock } from "@/components/ui/Spinner";
@@ -11,19 +12,7 @@ import { LoadingBlock } from "@/components/ui/Spinner";
 export default function AdminFunnelPage() {
   const { t } = useLanguage();
   const [preset, setPreset] = useState("7d");
-  const [steps, setSteps] = useState(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    setSteps(null);
-    getAdminAnalytics("/funnel", { preset })
-      .then((res) => !cancelled && setSteps(res))
-      .catch((err) => !cancelled && setError(err?.message || t("admin.funnel.loadFailed")));
-    return () => {
-      cancelled = true;
-    };
-  }, [preset, t]);
+  const { data: steps, error, loading } = useAdminQuery(() => getAdminAnalytics("/funnel", { preset }), [preset, t]);
 
   const maxCount = steps?.[0]?.count || 1;
 
@@ -37,9 +26,9 @@ export default function AdminFunnelPage() {
         <DateRangeFilter value={preset} onChange={setPreset} />
       </div>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
-      {!steps && !error ? <LoadingBlock /> : null}
+      {!steps && loading ? <LoadingBlock /> : null}
       {steps ? (
-        <div className="space-y-2">
+        <div className={`space-y-2 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
           {steps.map((step) => (
             <div key={step.key} className="rounded-xl border border-white/10 bg-black/20 p-3.5">
               <div className="flex items-center justify-between gap-2 text-sm">
