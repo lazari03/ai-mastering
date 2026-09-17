@@ -19,12 +19,12 @@ const DICT = {
   "nav.signin": { en: "Sign in", sq: "Hyrje" },
   "nav.openApp": { en: "Open App", sq: "Hap Aplikacionin" },
 
-  "hero.eyebrow": { en: "AI Audio Mastering, Online", sq: "Masterizim Audio me AI, Online" },
-  "hero.title1": { en: "Professional AI Mastering.", sq: "Masterizim Profesional me AI." },
-  "hero.title2": { en: "Built on Real DSP.", sq: "I Ndërtuar mbi DSP të Vërtetë." },
+  "hero.eyebrow": { en: "Adaptive Mastering Engine", sq: "Motor Masterizimi Adaptiv" },
+  "hero.title1": { en: "Master your music.", sq: "Masterizo muzikën tënde." },
+  "hero.title2": { en: "Keep what makes it yours.", sq: "Ruaj atë që e bën tëndën." },
   "hero.body": {
-    en: "Master your tracks online with adaptive DSP — genre-specific processing, instant A/B comparison, and codec preview for how it'll actually sound on Spotify or Instagram.",
-    sq: "Masterizo këngët e tua online me DSP adaptiv — përpunim specifik për zhanrin, krahasim A/B të menjëhershëm, dhe parapamje kodeku për si do të tingëllojë realisht në Spotify apo Instagram.",
+    en: "Professional automated mastering built on adaptive DSP. Auralith analyzes your mix before deciding what to change — and what to leave alone.",
+    sq: "Masterizim profesional i automatizuar, i ndërtuar mbi DSP adaptiv. Auralith analizon miksin tënd para se të vendosë çfarë të ndryshojë — dhe çfarë të lërë ashtu siç është.",
   },
   "hero.ctaPrimary": { en: "Master a Track Free", sq: "Masterizo Falas" },
   "hero.ctaSecondary": { en: "Hear a Before / After", sq: "Dëgjo Para / Pas" },
