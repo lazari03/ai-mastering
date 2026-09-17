@@ -1,0 +1,26 @@
+name: Migrate analytics from Firestore
+
+# Manual, one-off — no push trigger. Backfills analytics history written
+# before the SQLite cutover (see "Move analytics storage off Firestore to
+# local SQLite") into the SQLite file already running in production. Safe
+# to run more than once: the migration script dedupes on the same keys
+# Firestore already assigned, so re-running just no-ops on rows it already
+# copied over.
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    name: Backfill analytics into SQLite on VPS
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and migrate
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            make migrate-analytics
