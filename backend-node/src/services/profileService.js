@@ -3,10 +3,14 @@ import { notifyNewRegistration } from "./telegramService.js";
 import { sendWelcomeEmail } from "./brevoService.js";
 import { recordServerEvent } from "./analyticsService.js";
 import { writeNotification } from "./adminNotificationService.js";
+import { deleteAllJobsForUser } from "./jobsService.js";
 
 // User profile lives in Firestore at users/{uid} — the same document whose
-// "artists" subcollection holds Saved Artists (see customPresetsService.js)
-// and "jobs" subcollection holds mastering job history (see jobsService.js).
+// "artists" subcollection holds Saved Artists (see customPresetsService.js).
+// Mastering job history used to live in a "jobs" subcollection here too,
+// but moved to its own SQLite table (see jobsService.js/jobsDb.js) — high
+// write volume (a write per render, previews included), same reasoning as
+// the earlier analytics migration.
 // Firebase Auth itself only ever holds email/password + optional
 // displayName; the extra registration fields the signup form collects
 // (first/last name, phone, studio name, terms acceptance) have nowhere
@@ -110,20 +114,20 @@ async function deleteSubcollection(docRef, name) {
   await batch.commit();
 }
 
-// Deletes everything this app stored in Firestore for a user: the profile
-// doc itself plus its "artists" (Saved Artists) and "jobs" (render
-// history) subcollections — Firestore doesn't cascade-delete
-// subcollections when you delete a parent doc, so each needs an explicit
-// pass. Does NOT touch the Firebase Auth account itself — the caller
-// (DELETE /account) deletes that separately, client-side, after this
-// succeeds, since only the signed-in user's own client can re-authenticate
-// and delete their own Auth record.
+// Deletes everything this app stored for a user: the Firestore profile doc
+// itself plus its "artists" (Saved Artists) subcollection — Firestore
+// doesn't cascade-delete subcollections when you delete a parent doc, so
+// that needs an explicit pass — and their mastering job history, now in
+// SQLite rather than a Firestore subcollection. Does NOT touch the Firebase
+// Auth account itself — the caller (DELETE /account) deletes that
+// separately, client-side, after this succeeds, since only the signed-in
+// user's own client can re-authenticate and delete their own Auth record.
 export async function deleteAllUserData(uid) {
   if (!uid) {
     throw new Error("Account deletion requires a signed-in user");
   }
   const doc = userDoc(uid);
   await deleteSubcollection(doc, "artists");
-  await deleteSubcollection(doc, "jobs");
+  await deleteAllJobsForUser(uid);
   await doc.delete();
 }
