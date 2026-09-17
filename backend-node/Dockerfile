@@ -1,4 +1,9 @@
-FROM node:20-slim
+FROM node:22-slim
+# 22, not 20 — better-sqlite3 (analytics storage, see config/analyticsDb.js)
+# declares engines.node >=22. Its prebuilt binaries target N-API (stable
+# ABI across Node majors) so a mismatch likely still runs, but there's no
+# reason to rely on "likely" here — matches what the package actually
+# supports.
 
 # Needed for the /master preview path (truncateToPreview in
 # masteringRoutes.js), which shells out to ffmpeg directly in Node rather

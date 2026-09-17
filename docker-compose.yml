@@ -26,6 +26,13 @@ services:
     depends_on:
       python-service:
         condition: service_healthy
+    volumes:
+      # Analytics (visitors/sessions/events) moved off Firestore to a local
+      # SQLite file — see backend-node/src/config/analyticsDb.js. A named
+      # volume, same as mastering_uploads/mastering_outputs above, so the
+      # database survives a container recreate instead of resetting to
+      # empty on every deploy.
+      - analytics_db:/app/data
     environment:
       NODE_ENV: production
       PORT: 8000
@@ -141,5 +148,6 @@ volumes:
   mastering_uploads:
   mastering_outputs:
   mastering_cache:
+  analytics_db:
   caddy_data:
   caddy_config:

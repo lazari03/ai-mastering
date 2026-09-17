@@ -2,25 +2,32 @@ import crypto from "node:crypto";
 import geoip from "geoip-lite";
 
 import { getFirestore } from "../config/firebase.js";
+import analyticsDb from "../config/analyticsDb.js";
 
 // ---------------------------------------------------------------------
-// First-party analytics: visitors, sessions, events — all in this app's
-// own Firestore (same database everything else already uses), never a
-// third-party SaaS. See ANALYTICS.md-equivalent notes inline below; there
-// is no separate warehouse or aggregation table (yet) — admin queries
-// read analyticsEvents/analyticsSessions directly and reduce in memory,
-// which is the right amount of infrastructure for this app's actual
-// traffic volume (see PERFORMANCE section of the spec this implements).
+// First-party analytics: visitors, sessions, events — stored in a local
+// SQLite database (see config/analyticsDb.js for why: this used to be
+// Firestore, and being by far the highest-volume write path in the app —
+// a write on essentially every heartbeat/page-view/event, for every
+// visitor, all day — is exactly what exhausted Firestore's free daily
+// write quota. Everything else the app persists (users, jobs, billing)
+// stays on Firestore; this migration is scoped to analytics only.
+// There is no separate warehouse or aggregation table (yet) — admin
+// queries read analytics_events/analytics_sessions directly and reduce in
+// memory, which is the right amount of infrastructure for this app's
+// actual traffic (see PERFORMANCE section of the spec this implements).
 // ---------------------------------------------------------------------
 
 const SESSION_INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes — spec section 2
 const CHECKOUT_ABANDON_MS = 30 * 60 * 1000; // spec section 8 — configurable here, one place
 
-// Firestore write throttles for ingestBatch's per-call bookkeeping writes
-// (visitor/session lastSeenAt) — see the comments at each use site. These
-// exist because this endpoint is hit by every heartbeat/page-view/event
-// from every visitor, all day, and an unthrottled write here was a real
-// contributor to exceeding Firestore's Spark-plan daily write quota.
+// Write throttles for ingestBatch's per-call bookkeeping writes (visitor/
+// session lastSeenAt) — see the comments at each use site. These predate
+// the SQLite move (they were originally what stood between this endpoint
+// and Firestore's daily write quota) and are kept even without that quota
+// pressure: this endpoint is still hit by every heartbeat/page-view/event
+// from every visitor, all day, and there's no reason to churn a row on
+// every single one of those when the value barely changes.
 const VISITOR_LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
 const SESSION_LAST_SEEN_THROTTLE_MS = 2 * 60 * 1000;
 
@@ -108,7 +115,7 @@ function isUuid(value) {
 }
 
 // Strips anything that looks like a credential/identifier out of a path's
-// query string before it's ever written to analyticsEvents — spec section
+// query string before it's ever written to analytics_events — spec section
 // 33's "central sanitizer." Applied server-side (not just trusted from the
 // client) since this is the actual storage boundary.
 export function sanitizePath(rawPath) {
@@ -212,21 +219,19 @@ function sanitizeProps(props) {
   return out;
 }
 
-function db() {
-  return getFirestore();
-}
-
 export function newId() {
   return crypto.randomUUID();
 }
 
 // Whoever runs this dashboard shouldn't show up IN it — a founder testing
 // their own product, logged into their own admin account, isn't "traffic."
-// Cached with a short TTL rather than reading users/{uid} on every single
-// event (recordServerEvent fires on nearly every mastering/checkout
-// action): the role field changes rarely, so a few minutes of staleness
-// costs nothing and saves a Firestore read per event at real traffic
-// volumes.
+// Still backed by Firestore (the users/{uid}.role field, same one
+// requireAdmin.js reads) since that's low-volume — a handful of admin
+// accounts, checked at most once per cache TTL, not a quota risk the way
+// per-event analytics writes were. Cached with a short TTL rather than
+// reading on every single event (recordServerEvent fires on nearly every
+// mastering/checkout action): the role field changes rarely, so a few
+// minutes of staleness costs nothing and saves a Firestore read per event.
 const ADMIN_UID_CACHE_TTL_MS = 5 * 60 * 1000;
 const adminUidCache = new Map(); // uid -> { isAdmin, expiresAt }
 
@@ -236,7 +241,7 @@ async function isAdminUid(uid) {
   if (cached && cached.expiresAt > Date.now()) return cached.isAdmin;
   let isAdmin = false;
   try {
-    const snap = await db().collection("users").doc(uid).get();
+    const snap = await getFirestore().collection("users").doc(uid).get();
     isAdmin = snap.data()?.role === "admin";
   } catch (error) {
     console.error("isAdminUid check failed (treating as non-admin):", error.message);
@@ -244,6 +249,41 @@ async function isAdminUid(uid) {
   adminUidCache.set(uid, { isAdmin, expiresAt: Date.now() + ADMIN_UID_CACHE_TTL_MS });
   return isAdmin;
 }
+
+// ---------------------------------------------------------------------
+// Prepared statements — created once, reused across every call. better-
+// sqlite3 is synchronous by design (no round trip to a separate DB
+// process), which is what lets ingestBatch below read-then-write inside
+// one atomic transaction without any of the async batching machinery the
+// old Firestore version needed.
+// ---------------------------------------------------------------------
+const getVisitorStmt = analyticsDb.prepare("SELECT * FROM analytics_visitors WHERE visitor_id = ?");
+const insertVisitorStmt = analyticsDb.prepare(`
+  INSERT INTO analytics_visitors
+    (visitor_id, uid, first_seen_at, last_seen_at, first_landing_page, first_referrer, first_referrer_domain,
+     first_utm_source, first_utm_medium, first_utm_campaign, first_utm_content, first_utm_term, session_count)
+  VALUES (@visitorId, @uid, @now, @now, @landingPage, @referrer, @referrerDomain,
+          @utmSource, @utmMedium, @utmCampaign, @utmContent, @utmTerm, 0)
+`);
+
+const getSessionStmt = analyticsDb.prepare("SELECT * FROM analytics_sessions WHERE session_id = ?");
+const insertSessionStmt = analyticsDb.prepare(`
+  INSERT INTO analytics_sessions
+    (session_id, visitor_id, uid, started_at, last_seen_at, ended_at, landing_page, exit_page, referrer,
+     referrer_domain, utm_source, utm_medium, utm_campaign, utm_content, utm_term, device_category, browser,
+     os, country, authenticated, is_new_visitor, page_view_count, active_ms, has_uploaded, has_analyzed,
+     has_mastered, has_viewed_pricing, has_started_checkout, has_paid)
+  VALUES
+    (@sessionId, @visitorId, @uid, @now, @now, NULL, @landingPage, @landingPage, @referrer,
+     @referrerDomain, @utmSource, @utmMedium, @utmCampaign, @utmContent, @utmTerm, @deviceCategory, @browser,
+     @os, @country, @authenticated, @isNewVisitor, 0, 0, 0, 0,
+     0, 0, 0, 0)
+`);
+
+const insertEventStmt = analyticsDb.prepare(`
+  INSERT INTO analytics_events (session_id, visitor_id, uid, name, ts, path, props_json, active_ms, source)
+  VALUES (@sessionId, @visitorId, @uid, @name, @ts, @path, @propsJson, @activeMs, @source)
+`);
 
 // ---------------------------------------------------------------------
 // Ingestion — one batch of events from a single beacon/fetch call, all
@@ -257,9 +297,9 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
     throw Object.assign(new Error("Invalid visitor/session id"), { status: 400 });
   }
   // Skip entirely, not just at query time — nothing about an admin's own
-  // usage is written to analyticsVisitors/analyticsSessions/analyticsEvents
-  // at all, so it can never leak into a report even if a future query
-  // forgets to filter it out.
+  // usage is written to analytics_visitors/analytics_sessions/
+  // analytics_events at all, so it can never leak into a report even if a
+  // future query forgets to filter it out.
   if (uid && (await isAdminUid(uid))) {
     return { accepted: 0 };
   }
@@ -268,9 +308,10 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
   if (batchEvents.length === 0) return { accepted: 0 };
 
   const { deviceCategory, browser, os } = parseUserAgent(ua);
-  const now = new Date();
+  const now = new Date().toISOString();
   const landingPage = sanitizePath(context?.landingPage || "/");
   const referrer = sanitizeReferrer(context?.referrer);
+  const refDomain = referrerDomain(referrer);
   const utm = {
     source: typeof context?.utmSource === "string" ? context.utmSource.slice(0, 80) : null,
     medium: typeof context?.utmMedium === "string" ? context.utmMedium.slice(0, 80) : null,
@@ -285,145 +326,143 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
   // be spoofable garbage in the admin dashboard).
   const country = resolveCountry(ip);
 
-  const visitorRef = db().collection("analyticsVisitors").doc(visitorId);
-  const sessionRef = db().collection("analyticsSessions").doc(sessionId);
+  // One synchronous transaction — either the whole batch lands or none of
+  // it does, and there's no network round trip in the middle to race
+  // against (unlike the old Firestore batch.commit()).
+  const run = analyticsDb.transaction(() => {
+    const visitorRow = getVisitorStmt.get(visitorId);
+    const isNewVisitor = !visitorRow;
 
-  const [visitorSnap, sessionSnap] = await Promise.all([visitorRef.get(), sessionRef.get()]);
-  const isNewVisitor = !visitorSnap.exists;
-
-  const batch = db().batch();
-
-  if (isNewVisitor) {
-    batch.set(visitorRef, {
-      visitorId,
-      uid: uid || null,
-      firstSeenAt: now,
-      lastSeenAt: now,
-      firstLandingPage: landingPage,
-      firstReferrer: referrer,
-      firstReferrerDomain: referrerDomain(referrer),
-      firstUtmSource: utm.source,
-      firstUtmMedium: utm.medium,
-      firstUtmCampaign: utm.campaign,
-      firstUtmContent: utm.content,
-      firstUtmTerm: utm.term,
-      sessionCount: 0,
-    });
-  } else {
-    const patch = {};
-    // Visitor-level lastSeenAt only ever feeds day-granularity retention
-    // stats (getRetention) — it never needs per-heartbeat freshness, so
-    // it's written at most once per this window instead of on every
-    // ingest call. Real Firestore write, same throttle principle as
-    // requireAuth.js's LAST_ACTIVE_WRITE_THROTTLE_MS: this single line was
-    // a meaningful share of what pushed this project past Firestore's
-    // Spark-plan daily write quota (a write per open tab every heartbeat,
-    // for every visitor, all day).
-    const lastSeenAt = visitorSnap.data()?.lastSeenAt?.toDate?.();
-    if (!lastSeenAt || now.getTime() - lastSeenAt.getTime() > VISITOR_LAST_SEEN_THROTTLE_MS) {
-      patch.lastSeenAt = now;
+    if (isNewVisitor) {
+      insertVisitorStmt.run({
+        visitorId,
+        uid: uid || null,
+        now,
+        landingPage,
+        referrer,
+        referrerDomain: refDomain,
+        utmSource: utm.source,
+        utmMedium: utm.medium,
+        utmCampaign: utm.campaign,
+        utmContent: utm.content,
+        utmTerm: utm.term,
+      });
+    } else {
+      // Visitor-level lastSeenAt only ever feeds day-granularity retention
+      // stats (getRetention) — it never needs per-heartbeat freshness, so
+      // it's written at most once per this window instead of on every
+      // ingest call. Same throttle principle as requireAuth.js's
+      // LAST_ACTIVE_WRITE_THROTTLE_MS.
+      const lastSeenStale = Date.now() - new Date(visitorRow.last_seen_at).getTime() > VISITOR_LAST_SEEN_THROTTLE_MS;
+      // Links an anonymous visitor to the real account the FIRST time they
+      // authenticate — never overwritten after that (spec section 2: "if
+      // the visitor later creates/logs into an account, associate the
+      // anonymous analytics identity with the internal user ID").
+      const uidNeedsSet = uid && !visitorRow.uid;
+      if (lastSeenStale || uidNeedsSet) {
+        analyticsDb
+          .prepare("UPDATE analytics_visitors SET last_seen_at = @lastSeenAt, uid = @uid WHERE visitor_id = @visitorId")
+          .run({
+            lastSeenAt: lastSeenStale ? now : visitorRow.last_seen_at,
+            uid: uidNeedsSet ? uid : visitorRow.uid,
+            visitorId,
+          });
+      }
     }
-    // Links an anonymous visitor to the real account the FIRST time they
-    // authenticate — never overwritten after that (spec section 2: "if
-    // the visitor later creates/logs into an account, associate the
-    // anonymous analytics identity with the internal user ID").
-    if (uid && !visitorSnap.data()?.uid) patch.uid = uid;
-    if (Object.keys(patch).length > 0) batch.set(visitorRef, patch, { merge: true });
-  }
 
-  const isTrulyNewSession = isNewSession || !sessionSnap.exists;
-  if (isTrulyNewSession) {
-    batch.set(sessionRef, {
-      sessionId,
-      visitorId,
-      uid: uid || null,
-      startedAt: now,
-      lastSeenAt: now,
-      endedAt: null,
-      landingPage,
-      exitPage: landingPage,
-      referrer,
-      referrerDomain: referrerDomain(referrer),
-      utmSource: utm.source,
-      utmMedium: utm.medium,
-      utmCampaign: utm.campaign,
-      utmContent: utm.content,
-      utmTerm: utm.term,
-      deviceCategory,
-      browser,
-      os,
-      country,
-      authenticated: Boolean(uid),
-      isNewVisitor,
-      pageViewCount: 0,
-      activeMs: 0,
-      hasUploaded: false,
-      hasAnalyzed: false,
-      hasMastered: false,
-      hasViewedPricing: false,
-      hasStartedCheckout: false,
-      hasPaid: false,
-    });
-    if (!isNewVisitor) {
-      batch.set(visitorRef, { sessionCount: (visitorSnap.data()?.sessionCount || 0) + 1 }, { merge: true });
+    const sessionRow = getSessionStmt.get(sessionId);
+    const isTrulyNewSession = isNewSession || !sessionRow;
+
+    if (isTrulyNewSession) {
+      insertSessionStmt.run({
+        sessionId,
+        visitorId,
+        uid: uid || null,
+        landingPage,
+        referrer,
+        referrerDomain: refDomain,
+        utmSource: utm.source,
+        utmMedium: utm.medium,
+        utmCampaign: utm.campaign,
+        utmContent: utm.content,
+        utmTerm: utm.term,
+        deviceCategory,
+        browser,
+        os,
+        country,
+        authenticated: uid ? 1 : 0,
+        isNewVisitor: isNewVisitor ? 1 : 0,
+        now,
+      });
+      if (!isNewVisitor) {
+        analyticsDb.prepare("UPDATE analytics_visitors SET session_count = session_count + 1 WHERE visitor_id = ?").run(visitorId);
+      }
+    } else {
+      // Throttled more gently than the visitor write above (getLive's
+      // "active in the last 5 minutes" window depends on this staying
+      // reasonably fresh).
+      const sessionStale = Date.now() - new Date(sessionRow.last_seen_at).getTime() > SESSION_LAST_SEEN_THROTTLE_MS;
+      const uidChanged = uid && uid !== sessionRow.uid;
+      if (sessionStale || uidChanged) {
+        analyticsDb
+          .prepare("UPDATE analytics_sessions SET last_seen_at = @lastSeenAt, uid = @uid WHERE session_id = @sessionId")
+          .run({ lastSeenAt: now, uid: uid || sessionRow.uid || null, sessionId });
+      }
     }
-  } else {
-    // Throttled more gently than the visitor write above (getLive's
-    // "active in the last 5 minutes" window depends on this staying
-    // reasonably fresh) — still a real cut from a write every heartbeat
-    // to a write every couple of minutes per session.
-    const sessionLastSeenAt = sessionSnap.data()?.lastSeenAt?.toDate?.();
-    const sessionStale = !sessionLastSeenAt || now.getTime() - sessionLastSeenAt.getTime() > SESSION_LAST_SEEN_THROTTLE_MS;
-    const uidChanged = uid && uid !== sessionSnap.data()?.uid;
-    if (sessionStale || uidChanged) {
-      batch.set(sessionRef, { lastSeenAt: now, uid: uid || sessionSnap.data()?.uid || null }, { merge: true });
+
+    // Dynamic per-event session patch, same shape as the old Firestore
+    // merge patch — built as actual column names so the UPDATE below can
+    // stay one generic statement instead of one per possible field.
+    // Running totals seed from the real existing row when there is one
+    // (matches the old Firestore logic's "sessionSnap.exists ?
+    // sessionSnap.data().X : 0" — keyed off whether a row existed at all,
+    // not off isTrulyNewSession, which can be true for a row that already
+    // exists if the client mis-flags isNewSession).
+    let runningPageViewCount = sessionRow?.page_view_count || 0;
+    let runningActiveMs = sessionRow?.active_ms || 0;
+    const sessionPatch = {};
+
+    for (const evt of batchEvents) {
+      const path = evt.path ? sanitizePath(evt.path) : null;
+      const props = sanitizeProps(evt.props);
+      const activeMsForEvent = typeof evt.activeMs === "number" && evt.activeMs > 0 && evt.activeMs < 3600000 ? Math.round(evt.activeMs) : null;
+      insertEventStmt.run({
+        sessionId,
+        visitorId,
+        uid: uid || null,
+        name: evt.name,
+        ts: evt.ts && Number.isFinite(evt.ts) ? new Date(evt.ts).toISOString() : now,
+        path,
+        propsJson: JSON.stringify(props),
+        activeMs: activeMsForEvent,
+        source: "frontend",
+      });
+
+      if (evt.name === "page_view") {
+        sessionPatch.exit_page = path || sessionPatch.exit_page;
+        runningPageViewCount += 1;
+        sessionPatch.page_view_count = runningPageViewCount;
+      }
+      if (evt.name === "audio_upload_completed" || evt.name === "free_tool_analysis_completed") sessionPatch.has_uploaded = 1;
+      if (evt.name === "analysis_completed") sessionPatch.has_analyzed = 1;
+      if (evt.name === "master_completed") sessionPatch.has_mastered = 1;
+      if (evt.name === "pricing_view" || evt.name === "pricing_viewed") sessionPatch.has_viewed_pricing = 1;
+      if (evt.name === "checkout_started" || evt.name === "begin_checkout") sessionPatch.has_started_checkout = 1;
+
+      if (activeMsForEvent) {
+        runningActiveMs += activeMsForEvent;
+        sessionPatch.active_ms = runningActiveMs;
+      }
     }
-  }
 
-  const sessionPatch = {};
-  const eventsCollection = db().collection("analyticsEvents");
-
-  for (const evt of batchEvents) {
-    const path = evt.path ? sanitizePath(evt.path) : null;
-    const props = sanitizeProps(evt.props);
-    const activeMsForEvent = typeof evt.activeMs === "number" && evt.activeMs > 0 && evt.activeMs < 3600000 ? Math.round(evt.activeMs) : null;
-    const eventRef = eventsCollection.doc();
-    batch.set(eventRef, {
-      sessionId,
-      visitorId,
-      uid: uid || null,
-      name: evt.name,
-      ts: evt.ts && Number.isFinite(evt.ts) ? new Date(evt.ts) : now,
-      path,
-      props,
-      // Stored on the event itself (not just folded into the session
-      // total below) so a per-page active-time breakdown — "how long was
-      // /lufs-meter actually active for" — can be computed later by
-      // grouping page_view events by path, not just averaged per session.
-      activeMs: activeMsForEvent,
-      source: "frontend",
-    });
-
-    if (evt.name === "page_view") {
-      sessionPatch.exitPage = path || sessionPatch.exitPage;
-      sessionPatch.pageViewCount = (sessionSnap.exists ? sessionSnap.data().pageViewCount || 0 : 0) + 1;
+    const patchKeys = Object.keys(sessionPatch);
+    if (patchKeys.length > 0) {
+      const setClause = patchKeys.map((k) => `${k} = @${k}`).join(", ");
+      analyticsDb.prepare(`UPDATE analytics_sessions SET ${setClause} WHERE session_id = @sessionId`).run({ ...sessionPatch, sessionId });
     }
-    if (evt.name === "audio_upload_completed" || evt.name === "free_tool_analysis_completed") sessionPatch.hasUploaded = true;
-    if (evt.name === "analysis_completed") sessionPatch.hasAnalyzed = true;
-    if (evt.name === "master_completed") sessionPatch.hasMastered = true;
-    if (evt.name === "pricing_view" || evt.name === "pricing_viewed") sessionPatch.hasViewedPricing = true;
-    if (evt.name === "checkout_started" || evt.name === "begin_checkout") sessionPatch.hasStartedCheckout = true;
+  });
 
-    if (typeof evt.activeMs === "number" && evt.activeMs > 0 && evt.activeMs < 3600000) {
-      sessionPatch.activeMs = (sessionPatch.activeMs || (sessionSnap.exists ? sessionSnap.data().activeMs || 0 : 0)) + Math.round(evt.activeMs);
-    }
-  }
-
-  if (Object.keys(sessionPatch).length > 0) {
-    batch.set(sessionRef, sessionPatch, { merge: true });
-  }
-
-  await batch.commit();
+  run();
   return { accepted: batchEvents.length };
 }
 
@@ -437,24 +476,29 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
 export async function recordServerEvent(name, { uid = null, sessionId = null, visitorId = null, props = {} } = {}) {
   try {
     if (uid && (await isAdminUid(uid))) return;
-    await db()
-      .collection("analyticsEvents")
-      .add({
-        sessionId,
-        visitorId,
-        uid,
-        name,
-        ts: new Date(),
-        path: null,
-        props: sanitizeProps(props),
-        source: "backend",
-      });
+    insertEventStmt.run({
+      sessionId,
+      visitorId,
+      uid,
+      name,
+      ts: new Date().toISOString(),
+      path: null,
+      propsJson: JSON.stringify(sanitizeProps(props)),
+      activeMs: null,
+      source: "backend",
+    });
     if (sessionId) {
       const patch = {};
-      if (name === "master_completed") patch.hasMastered = true;
-      if (name === "payment_succeeded") patch.hasPaid = true;
-      if (Object.keys(patch).length) {
-        await db().collection("analyticsSessions").doc(sessionId).set(patch, { merge: true }).catch(() => {});
+      if (name === "master_completed") patch.has_mastered = 1;
+      if (name === "payment_succeeded") patch.has_paid = 1;
+      const keys = Object.keys(patch);
+      if (keys.length) {
+        const setClause = keys.map((k) => `${k} = @${k}`).join(", ");
+        try {
+          analyticsDb.prepare(`UPDATE analytics_sessions SET ${setClause} WHERE session_id = @sessionId`).run({ ...patch, sessionId });
+        } catch {
+          // Non-fatal — same as the old Firestore .catch(() => {}) here.
+        }
       }
     }
   } catch (error) {

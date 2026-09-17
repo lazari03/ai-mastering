@@ -1,21 +1,85 @@
-import { Timestamp } from "firebase-admin/firestore";
-
 import { getFirestore } from "../config/firebase.js";
 import { settings } from "../config/settings.js";
+import analyticsDb from "../config/analyticsDb.js";
 import { CHECKOUT_ABANDON_MS } from "./analyticsService.js";
 
 // ---------------------------------------------------------------------
 // Admin read/aggregation layer. Deliberately NOT a data warehouse (spec
-// section 29/30): every function here reads the matching Firestore docs
-// for the requested date range and reduces them in memory. That's the
-// right amount of infrastructure for this app's actual traffic — if
-// volume ever makes that slow, the fix is a scheduled rollup job writing
-// daily summary docs, not swapping the whole storage model, and nothing
-// below is structured in a way that would block adding that later.
+// section 29/30): every function here reads the matching SQLite rows for
+// the requested date range and reduces them in memory. That's the right
+// amount of infrastructure for this app's actual traffic — if volume
+// ever makes that slow, the fix is a scheduled rollup job writing daily
+// summary rows, not swapping the whole storage model, and nothing below
+// is structured in a way that would block adding that later.
+//
+// Rows come back from better-sqlite3 as plain JS objects with snake_case
+// columns and 0/1 integers for booleans — the row mappers below
+// (sessionFromRow/eventFromRow) are the one place that translates those
+// into the camelCase/boolean/ISO-string shape every function here (and
+// the frontend) already expects, so the business logic below reads
+// exactly like it did against Firestore.
 // ---------------------------------------------------------------------
 
 function db() {
-  return getFirestore();
+  return analyticsDb;
+}
+
+function sessionFromRow(row) {
+  if (!row) return null;
+  return {
+    id: row.session_id,
+    sessionId: row.session_id,
+    visitorId: row.visitor_id,
+    uid: row.uid,
+    startedAt: row.started_at,
+    lastSeenAt: row.last_seen_at,
+    endedAt: row.ended_at,
+    landingPage: row.landing_page,
+    exitPage: row.exit_page,
+    referrer: row.referrer,
+    referrerDomain: row.referrer_domain,
+    utmSource: row.utm_source,
+    utmMedium: row.utm_medium,
+    utmCampaign: row.utm_campaign,
+    utmContent: row.utm_content,
+    utmTerm: row.utm_term,
+    deviceCategory: row.device_category,
+    browser: row.browser,
+    os: row.os,
+    country: row.country,
+    authenticated: Boolean(row.authenticated),
+    isNewVisitor: Boolean(row.is_new_visitor),
+    pageViewCount: row.page_view_count,
+    activeMs: row.active_ms,
+    hasUploaded: Boolean(row.has_uploaded),
+    hasAnalyzed: Boolean(row.has_analyzed),
+    hasMastered: Boolean(row.has_mastered),
+    hasViewedPricing: Boolean(row.has_viewed_pricing),
+    hasStartedCheckout: Boolean(row.has_started_checkout),
+    hasPaid: Boolean(row.has_paid),
+  };
+}
+
+function eventFromRow(row) {
+  if (!row) return null;
+  let props = {};
+  try {
+    props = row.props_json ? JSON.parse(row.props_json) : {};
+  } catch {
+    props = {};
+  }
+  return {
+    id: String(row.id),
+    sessionId: row.session_id,
+    visitorId: row.visitor_id,
+    uid: row.uid,
+    name: row.name,
+    ts: row.ts,
+    path: row.path,
+    props,
+    activeMs: row.active_ms,
+    source: row.source,
+  };
 }
 
 // A "unique visitor" count is only as good as the identifier it's keyed
@@ -94,20 +158,18 @@ export function resolveRange({ preset, from, to }) {
   return { from: rangeFrom, to: rangeTo, prevFrom, prevTo };
 }
 
-async function fetchSessionsInRange(from, to) {
-  const snap = await db()
-    .collection("analyticsSessions")
-    .where("startedAt", ">=", Timestamp.fromDate(from))
-    .where("startedAt", "<", Timestamp.fromDate(to))
-    .get();
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+// ISO 8601 strings sort lexicographically in the same order as
+// chronologically, so a plain TEXT >= / < range comparison in SQL is
+// exact — no date parsing needed on the SQLite side at all.
+function fetchSessionsInRange(from, to) {
+  const rows = db().prepare("SELECT * FROM analytics_sessions WHERE started_at >= ? AND started_at < ?").all(from.toISOString(), to.toISOString());
+  return rows.map(sessionFromRow);
 }
 
-async function fetchEventsInRange(from, to, names = null) {
-  let q = db().collection("analyticsEvents").where("ts", ">=", Timestamp.fromDate(from)).where("ts", "<", Timestamp.fromDate(to));
-  const snap = await q.get();
-  const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  return names ? docs.filter((e) => names.includes(e.name)) : docs;
+function fetchEventsInRange(from, to, names = null) {
+  const rows = db().prepare("SELECT * FROM analytics_events WHERE ts >= ? AND ts < ?").all(from.toISOString(), to.toISOString());
+  const events = rows.map(eventFromRow);
+  return names ? events.filter((e) => names.includes(e.name)) : events;
 }
 
 function applySessionFilters(sessions, filters = {}) {
@@ -122,20 +184,6 @@ function applySessionFilters(sessions, filters = {}) {
   });
 }
 
-// Firestore Timestamp instances don't reliably JSON.stringify into
-// anything a frontend can parse as a date — converted explicitly to ISO
-// strings at the one boundary that actually sends this data over HTTP
-// (analyticsRoutes.js's res.json()), rather than trusting default
-// serialization for a type this app doesn't otherwise pass across that
-// boundary anywhere else.
-function serializeTimestamps(obj) {
-  const out = {};
-  for (const [key, value] of Object.entries(obj)) {
-    out[key] = value?.toDate ? value.toDate().toISOString() : value;
-  }
-  return out;
-}
-
 function pct(numerator, denominator) {
   if (!denominator) return 0;
   return Math.round((numerator / denominator) * 10000) / 100;
@@ -148,13 +196,14 @@ function pct(numerator, denominator) {
 // update both.
 const PLAN_MONTHLY_PRICE_EUR = { studio: 9.99, pro: 19.99 };
 
+// Subscriptions themselves stay in Firestore (users/{uid}.subscription) —
+// that's low-volume, one doc per paying customer, nowhere near the
+// analytics write pattern that forced the SQLite move.
 async function estimateSubscriptionStats() {
-  const [studioSnap, proSnap, cancelledLast30dSnap] = await Promise.all([
-    db().collection("users").where("subscription.status", "==", "active").where("subscription.productId", "==", settings.polarProducts.planStudio).count().get(),
-    db().collection("users").where("subscription.status", "==", "active").where("subscription.productId", "==", settings.polarProducts.planPro).count().get(),
-    Promise.resolve(null),
+  const [studioSnap, proSnap] = await Promise.all([
+    getFirestore().collection("users").where("subscription.status", "==", "active").where("subscription.productId", "==", settings.polarProducts.planStudio).count().get(),
+    getFirestore().collection("users").where("subscription.status", "==", "active").where("subscription.productId", "==", settings.polarProducts.planPro).count().get(),
   ]);
-  void cancelledLast30dSnap;
   const studioCount = studioSnap.data().count;
   const proCount = proSnap.data().count;
   const mrr = studioCount * PLAN_MONTHLY_PRICE_EUR.studio + proCount * PLAN_MONTHLY_PRICE_EUR.pro;
@@ -162,17 +211,15 @@ async function estimateSubscriptionStats() {
 }
 
 export async function getOverview({ from, to, prevFrom, prevTo }) {
-  const [sessions, prevSessions, paymentEvents, prevPaymentEvents, cancelEvents, subStats, shareEvents, downloadEvents, errorEvents] = await Promise.all([
-    fetchSessionsInRange(from, to),
-    fetchSessionsInRange(prevFrom, prevTo),
-    fetchEventsInRange(from, to, ["payment_succeeded"]),
-    fetchEventsInRange(prevFrom, prevTo, ["payment_succeeded"]),
-    fetchEventsInRange(from, to, ["subscription_cancelled"]),
-    estimateSubscriptionStats(),
-    fetchEventsInRange(from, to, ["share_created"]),
-    fetchEventsInRange(from, to, ["download_completed"]),
-    fetchEventsInRange(from, to, FAILURE_EVENT_NAMES),
-  ]);
+  const [subStats] = await Promise.all([estimateSubscriptionStats()]);
+  const sessions = fetchSessionsInRange(from, to);
+  const prevSessions = fetchSessionsInRange(prevFrom, prevTo);
+  const paymentEvents = fetchEventsInRange(from, to, ["payment_succeeded"]);
+  const prevPaymentEvents = fetchEventsInRange(prevFrom, prevTo, ["payment_succeeded"]);
+  const cancelEvents = fetchEventsInRange(from, to, ["subscription_cancelled"]);
+  const shareEvents = fetchEventsInRange(from, to, ["share_created"]);
+  const downloadEvents = fetchEventsInRange(from, to, ["download_completed"]);
+  const errorEvents = fetchEventsInRange(from, to, FAILURE_EVENT_NAMES);
 
   const summarize = (list) => ({
     visitors: new Set(list.map(identityKey)).size,
@@ -228,10 +275,8 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
 // folding buckets into it, so a caller that only needs the headline
 // numbers isn't forced to pay for (or receive) a day-by-day breakdown too.
 export async function getOverviewTimeseries({ from, to }) {
-  const [sessions, paymentEvents] = await Promise.all([
-    fetchSessionsInRange(from, to),
-    fetchEventsInRange(from, to, ["payment_succeeded"]),
-  ]);
+  const sessions = fetchSessionsInRange(from, to);
+  const paymentEvents = fetchEventsInRange(from, to, ["payment_succeeded"]);
 
   const dayKey = (date) => date.toISOString().slice(0, 10);
   const buckets = new Map();
@@ -245,7 +290,7 @@ export async function getOverviewTimeseries({ from, to }) {
   const bucketFor = (date) => buckets.get(dayKey(date)) || [...buckets.values()][buckets.size - 1];
 
   for (const s of sessions) {
-    const started = s.startedAt?.toDate?.() || (s.startedAt ? new Date(s.startedAt) : null);
+    const started = s.startedAt ? new Date(s.startedAt) : null;
     if (!started) continue;
     const bucket = bucketFor(started);
     if (!bucket) continue;
@@ -253,7 +298,7 @@ export async function getOverviewTimeseries({ from, to }) {
     if (s.hasMastered) bucket.masters++;
   }
   for (const e of paymentEvents) {
-    const ts = e.ts?.toDate?.() || (e.ts ? new Date(e.ts) : null);
+    const ts = e.ts ? new Date(e.ts) : null;
     if (!ts) continue;
     const bucket = bucketFor(ts);
     if (!bucket) continue;
@@ -269,7 +314,7 @@ export async function getOverviewTimeseries({ from, to }) {
 }
 
 export async function getFunnel({ from, to, filters }) {
-  const sessions = applySessionFilters(await fetchSessionsInRange(from, to), filters);
+  const sessions = applySessionFilters(fetchSessionsInRange(from, to), filters);
   const visitors = sessions.length;
   const uploaded = sessions.filter((s) => s.hasUploaded).length;
   const mastered = sessions.filter((s) => s.hasMastered).length;
@@ -299,7 +344,8 @@ function sourceKeyFor(session) {
 }
 
 export async function getAcquisition({ from, to }) {
-  const [sessions, paymentEvents] = await Promise.all([fetchSessionsInRange(from, to), fetchEventsInRange(from, to, ["payment_succeeded"])]);
+  const sessions = fetchSessionsInRange(from, to);
+  const paymentEvents = fetchEventsInRange(from, to, ["payment_succeeded"]);
   const revenueByUid = new Map();
   for (const e of paymentEvents) {
     if (!e.uid) continue;
@@ -352,11 +398,9 @@ export async function getPages({ from, to }) {
   // actually carries real per-path active time, not page_view itself —
   // a page_view fires once, at the moment of arrival, before any time has
   // passed on it at all.
-  const [pageViewEvents, heartbeatEvents, sessions] = await Promise.all([
-    fetchEventsInRange(from, to, ["page_view"]),
-    fetchEventsInRange(from, to, ["heartbeat"]),
-    fetchSessionsInRange(from, to),
-  ]);
+  const pageViewEvents = fetchEventsInRange(from, to, ["page_view"]);
+  const heartbeatEvents = fetchEventsInRange(from, to, ["heartbeat"]);
+  const sessions = fetchSessionsInRange(from, to);
 
   const groups = new Map();
   const ensure = (path) => {
@@ -412,7 +456,8 @@ export async function getPages({ from, to }) {
 // own. Scoped to organic sessions only (isOrganicSession above); paid/
 // direct/social traffic is already covered by Acquisition and Pages.
 export async function getSeoOverview({ from, to }) {
-  const [allSessions, paymentEvents] = await Promise.all([fetchSessionsInRange(from, to), fetchEventsInRange(from, to, ["payment_succeeded"])]);
+  const allSessions = fetchSessionsInRange(from, to);
+  const paymentEvents = fetchEventsInRange(from, to, ["payment_succeeded"]);
   const sessions = allSessions.filter(isOrganicSession);
 
   const revenueByUid = new Map();
@@ -467,21 +512,19 @@ export async function getSeoOverview({ from, to }) {
 }
 
 export async function getSales({ from, to }) {
-  const [paymentEvents, failedEvents, subCreated, subRenewed, subCancelled, subExpired, refunds, sessions] = await Promise.all([
-    fetchEventsInRange(from, to, ["payment_succeeded"]),
-    fetchEventsInRange(from, to, ["checkout_failed"]),
-    fetchEventsInRange(from, to, ["subscription_created"]),
-    fetchEventsInRange(from, to, ["subscription_renewed"]),
-    fetchEventsInRange(from, to, ["subscription_cancelled"]),
-    fetchEventsInRange(from, to, ["subscription_expired"]),
-    fetchEventsInRange(from, to, ["refund_created"]),
-    fetchSessionsInRange(from, to),
-  ]);
+  const paymentEvents = fetchEventsInRange(from, to, ["payment_succeeded"]);
+  const failedEvents = fetchEventsInRange(from, to, ["checkout_failed"]);
+  const subCreated = fetchEventsInRange(from, to, ["subscription_created"]);
+  const subRenewed = fetchEventsInRange(from, to, ["subscription_renewed"]);
+  const subCancelled = fetchEventsInRange(from, to, ["subscription_cancelled"]);
+  const subExpired = fetchEventsInRange(from, to, ["subscription_expired"]);
+  const refunds = fetchEventsInRange(from, to, ["refund_created"]);
+  const sessions = fetchSessionsInRange(from, to);
 
   const revenue = paymentEvents.reduce((sum, e) => sum + (e.props?.amountCents || 0), 0) / 100;
   const checkoutStarted = sessions.filter((s) => s.hasStartedCheckout).length;
   const checkoutSucceeded = sessions.filter((s) => s.hasPaid).length;
-  const abandoned = sessions.filter((s) => s.hasStartedCheckout && !s.hasPaid && Date.now() - (s.lastSeenAt?.toDate?.()?.getTime() || 0) > CHECKOUT_ABANDON_MS).length;
+  const abandoned = sessions.filter((s) => s.hasStartedCheckout && !s.hasPaid && Date.now() - (s.lastSeenAt ? new Date(s.lastSeenAt).getTime() : 0) > CHECKOUT_ABANDON_MS).length;
 
   const failureReasons = {};
   for (const e of failedEvents) {
@@ -512,7 +555,8 @@ export async function getSales({ from, to }) {
 const FAILURE_EVENT_NAMES = ["audio_upload_failed", "analysis_failed", "master_failed", "checkout_failed"];
 
 export async function getErrors({ from, to, prevFrom, prevTo }) {
-  const [events, prevEvents] = await Promise.all([fetchEventsInRange(from, to, FAILURE_EVENT_NAMES), fetchEventsInRange(prevFrom, prevTo, FAILURE_EVENT_NAMES)]);
+  const events = fetchEventsInRange(from, to, FAILURE_EVENT_NAMES);
+  const prevEvents = fetchEventsInRange(prevFrom, prevTo, FAILURE_EVENT_NAMES);
 
   const countBy = (list) => {
     const map = new Map();
@@ -523,8 +567,8 @@ export async function getErrors({ from, to, prevFrom, prevTo }) {
       const entry = map.get(key);
       entry.count++;
       if (e.sessionId) entry.sessions.add(e.sessionId);
-      if (e.ts?.toDate?.() < entry.firstSeen?.toDate?.()) entry.firstSeen = e.ts;
-      if (e.ts?.toDate?.() > entry.lastSeen?.toDate?.()) entry.lastSeen = e.ts;
+      if (new Date(e.ts) < new Date(entry.firstSeen)) entry.firstSeen = e.ts;
+      if (new Date(e.ts) > new Date(entry.lastSeen)) entry.lastSeen = e.ts;
     }
     return map;
   };
@@ -538,44 +582,33 @@ export async function getErrors({ from, to, prevFrom, prevTo }) {
       reason: e.reason,
       count: e.count,
       affectedSessions: e.sessions.size,
-      firstSeen: e.firstSeen?.toDate?.()?.toISOString() || null,
-      lastSeen: e.lastSeen?.toDate?.()?.toISOString() || null,
+      firstSeen: e.firstSeen || null,
+      lastSeen: e.lastSeen || null,
       previousCount: previous.get(`${e.name}:${e.reason}`)?.count || 0,
     }))
     .sort((a, b) => b.count - a.count);
 }
 
 export async function listSessions({ from, to, filters, limit = 50, cursor }) {
-  let q = db().collection("analyticsSessions").where("startedAt", ">=", Timestamp.fromDate(from)).where("startedAt", "<", Timestamp.fromDate(to)).orderBy("startedAt", "desc").limit(limit);
-  if (cursor) {
-    const cursorSnap = await db().collection("analyticsSessions").doc(cursor).get();
-    if (cursorSnap.exists) q = q.startAfter(cursorSnap);
-  }
-  const snap = await q.get();
-  let sessions = snap.docs.map((d) => serializeTimestamps({ id: d.id, ...d.data() }));
+  // cursor is a plain row offset (opaque to the caller — the frontend
+  // never inspects it, just echoes whatever nextCursor comes back). Plain
+  // OFFSET is the right amount of complexity here: this dataset is one
+  // admin's date-range query at a time, not a high-traffic paginated
+  // public endpoint where OFFSET's O(n) cost would matter.
+  const offset = Number(cursor) > 0 ? Number(cursor) : 0;
+  const rows = db()
+    .prepare("SELECT * FROM analytics_sessions WHERE started_at >= ? AND started_at < ? ORDER BY started_at DESC LIMIT ? OFFSET ?")
+    .all(from.toISOString(), to.toISOString(), limit, offset);
+  let sessions = rows.map(sessionFromRow);
   sessions = applySessionFilters(sessions, filters);
-  return { sessions, nextCursor: snap.docs.length === limit ? snap.docs[snap.docs.length - 1].id : null };
+  return { sessions, nextCursor: rows.length === limit ? String(offset + limit) : null };
 }
 
 export async function getSessionDetail(sessionId) {
-  const [sessionSnap, eventsSnap] = await Promise.all([
-    db().collection("analyticsSessions").doc(sessionId).get(),
-    // Equality on sessionId + orderBy a different field (ts) is exactly the
-    // shape Firestore needs a composite index for — one was never
-    // provisioned (no firestore.indexes.json in this repo), so the
-    // .orderBy() version throws FAILED_PRECONDITION on every call, which
-    // the route's catch turns into a generic "Failed to load session
-    // detail." Sorting the (small, per-session) result in memory instead
-    // needs no index at all — Firestore auto-indexes a single equality
-    // filter on its own.
-    db().collection("analyticsEvents").where("sessionId", "==", sessionId).get(),
-  ]);
-  if (!sessionSnap.exists) return null;
-  const session = serializeTimestamps({ id: sessionSnap.id, ...sessionSnap.data() });
-  const events = eventsSnap.docs
-    .map((d) => serializeTimestamps({ id: d.id, ...d.data() }))
-    .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
-  return { session, events };
+  const sessionRow = db().prepare("SELECT * FROM analytics_sessions WHERE session_id = ?").get(sessionId);
+  if (!sessionRow) return null;
+  const eventRows = db().prepare("SELECT * FROM analytics_events WHERE session_id = ? ORDER BY ts ASC").all(sessionId);
+  return { session: sessionFromRow(sessionRow), events: eventRows.map(eventFromRow) };
 }
 
 const LIVE_WINDOW_MS = 5 * 60 * 1000;
@@ -587,9 +620,9 @@ const LIVE_WINDOW_MS = 5 * 60 * 1000;
 // "recently," instead of the explicit from/to range every other report
 // here takes.
 export async function getLive() {
-  const since = new Date(Date.now() - LIVE_WINDOW_MS);
-  const snap = await db().collection("analyticsSessions").where("lastSeenAt", ">=", Timestamp.fromDate(since)).get();
-  const sessions = snap.docs.map((d) => d.data());
+  const since = new Date(Date.now() - LIVE_WINDOW_MS).toISOString();
+  const rows = db().prepare("SELECT * FROM analytics_sessions WHERE last_seen_at >= ?").all(since);
+  const sessions = rows.map(sessionFromRow);
 
   const countryCounts = new Map();
   const pageCounts = new Map();
@@ -620,11 +653,10 @@ export async function getLive() {
 // logged-in cross-device visits together here would hide the exact thing
 // this report exists to measure (whether the same browser came back).
 export async function getRetention({ from, to }) {
-  const [sessions, allVisitorsWithSecondVisit] = await Promise.all([fetchSessionsInRange(from, to), Promise.resolve(null)]);
-  void allVisitorsWithSecondVisit;
+  const sessions = fetchSessionsInRange(from, to);
   const visitorFirstLastSeen = new Map();
   for (const s of sessions) {
-    const started = s.startedAt?.toDate?.()?.getTime() || 0;
+    const started = s.startedAt ? new Date(s.startedAt).getTime() : 0;
     const existing = visitorFirstLastSeen.get(s.visitorId);
     if (!existing) visitorFirstLastSeen.set(s.visitorId, { first: started, last: started, sessionCount: 1 });
     else {

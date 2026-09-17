@@ -27,7 +27,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22, matching backend-node's Dockerfile — better-sqlite3
+          # (analytics storage) declares engines.node >=22.
+          node-version: 22
 
       - name: Frontend — install + build
         working-directory: frontend
