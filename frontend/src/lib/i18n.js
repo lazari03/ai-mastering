@@ -841,6 +841,49 @@ const DICT = {
     sq: "Skedarët fshihen 48 orë pas krijimit. Metadata e këtij ende është këtu, por vetë audio ka shkuar — ngarkoje përsëri dhe masterizoje sërish nëse të duhet.",
   },
   "result.backToMasters": { en: "Back to My Masters", sq: "Kthehu te Masterat e Mia" },
+
+  // Admin analytics dashboard — internal-only (never indexed, never
+  // shown to a customer), but still routed through t() rather than
+  // hardcoded so the one localization system in this app stays the one
+  // localization system, not "everywhere except admin."
+  "admin.nav.overview": { en: "Overview", sq: "Përmbledhje" },
+  "admin.nav.live": { en: "Live", sq: "Live" },
+  "admin.nav.sessions": { en: "Sessions", sq: "Sesionet" },
+  "admin.nav.funnel": { en: "Funnel", sq: "Hinka" },
+  "admin.nav.acquisition": { en: "Acquisition", sq: "Përvetësimi" },
+  "admin.nav.pages": { en: "Pages", sq: "Faqet" },
+  "admin.nav.seo": { en: "SEO", sq: "SEO" },
+  "admin.nav.sales": { en: "Sales", sq: "Shitjet" },
+  "admin.nav.errors": { en: "Errors", sq: "Gabimet" },
+  "admin.nav.retention": { en: "Retention", sq: "Mbajtja" },
+  "admin.nav.users": { en: "Users", sq: "Përdoruesit" },
+  "admin.nav.backToApp": { en: "Back to app", sq: "Kthehu te aplikacioni" },
+  "admin.badge": { en: "Analytics", sq: "Analitika" },
+
+  "admin.overview.title": { en: "Overview", sq: "Përmbledhje" },
+  "admin.overview.loadFailed": { en: "Failed to load overview.", sq: "Ngarkimi i përmbledhjes dështoi." },
+  "admin.overview.trendTitle": { en: "Visitors & masters", sq: "Vizitorë & masterizime" },
+  "admin.overview.revenueTrendTitle": { en: "Revenue", sq: "Të ardhurat" },
+  "admin.overview.conversionTitle": { en: "Core conversion", sq: "Konversioni kryesor" },
+
+  "admin.stat.visitors": { en: "Visitors", sq: "Vizitorë" },
+  "admin.stat.newVisitors": { en: "New visitors", sq: "Vizitorë të rinj" },
+  "admin.stat.returningVisitors": { en: "Returning visitors", sq: "Vizitorë kthyes" },
+  "admin.stat.signups": { en: "Signups", sq: "Regjistrime" },
+  "admin.stat.avgTimeOnSite": { en: "Avg. time on site", sq: "Koha mesatare në sajt" },
+  "admin.stat.uploads": { en: "Audio uploads", sq: "Ngarkime audio" },
+  "admin.stat.masters": { en: "Completed masters", sq: "Masterizime të përfunduara" },
+  "admin.stat.pricingViews": { en: "Pricing views", sq: "Shikime çmimesh" },
+  "admin.stat.checkoutStarts": { en: "Checkout starts", sq: "Fillime pagese" },
+  "admin.stat.newCustomers": { en: "New customers", sq: "Klientë të rinj" },
+  "admin.stat.revenue": { en: "Revenue", sq: "Të ardhura" },
+  "admin.stat.mrr": { en: "MRR", sq: "MRR" },
+  "admin.stat.activeSubscribers": { en: "Active subscribers", sq: "Abonentë aktivë" },
+  "admin.stat.cancellations": { en: "Cancellations", sq: "Anulime" },
+  "admin.stat.visitorToUpload": { en: "Visitor → Upload", sq: "Vizitor → Ngarkim" },
+  "admin.stat.visitorToMaster": { en: "Visitor → Master", sq: "Vizitor → Master" },
+  "admin.stat.visitorToPaid": { en: "Visitor → Paid", sq: "Vizitor → Pagesë" },
+  "admin.stat.checkoutToPaid": { en: "Checkout → Paid", sq: "Pagesë → Përfunduar" },
 };
 
 const LanguageContext = createContext({ lang: "en", setLang: () => {}, t: (key) => key });

@@ -216,6 +216,52 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
   };
 }
 
+// One day-bucketed series for the Overview page's trend chart — visitors,
+// masters, and revenue per calendar day across the requested range. Kept
+// separate from getOverview() (which returns single totals) rather than
+// folding buckets into it, so a caller that only needs the headline
+// numbers isn't forced to pay for (or receive) a day-by-day breakdown too.
+export async function getOverviewTimeseries({ from, to }) {
+  const [sessions, paymentEvents] = await Promise.all([
+    fetchSessionsInRange(from, to),
+    fetchEventsInRange(from, to, ["payment_succeeded"]),
+  ]);
+
+  const dayKey = (date) => date.toISOString().slice(0, 10);
+  const buckets = new Map();
+  for (let d = new Date(from); d < to; d.setUTCDate(d.getUTCDate() + 1)) {
+    buckets.set(dayKey(d), { date: dayKey(d), visitorIds: new Set(), masters: 0, revenueCents: 0 });
+  }
+  // A range under a day still gets one bucket to plot (dayKey(from) itself),
+  // rather than an empty chart.
+  if (buckets.size === 0) buckets.set(dayKey(from), { date: dayKey(from), visitorIds: new Set(), masters: 0, revenueCents: 0 });
+
+  const bucketFor = (date) => buckets.get(dayKey(date)) || [...buckets.values()][buckets.size - 1];
+
+  for (const s of sessions) {
+    const started = s.startedAt?.toDate?.() || (s.startedAt ? new Date(s.startedAt) : null);
+    if (!started) continue;
+    const bucket = bucketFor(started);
+    if (!bucket) continue;
+    bucket.visitorIds.add(identityKey(s));
+    if (s.hasMastered) bucket.masters++;
+  }
+  for (const e of paymentEvents) {
+    const ts = e.ts?.toDate?.() || (e.ts ? new Date(e.ts) : null);
+    if (!ts) continue;
+    const bucket = bucketFor(ts);
+    if (!bucket) continue;
+    bucket.revenueCents += e.props?.amountCents || 0;
+  }
+
+  return [...buckets.values()].map((b) => ({
+    date: b.date,
+    visitors: b.visitorIds.size,
+    masters: b.masters,
+    revenue: Math.round(b.revenueCents) / 100,
+  }));
+}
+
 export async function getFunnel({ from, to, filters }) {
   const sessions = applySessionFilters(await fetchSessionsInRange(from, to), filters);
   const visitors = sessions.length;

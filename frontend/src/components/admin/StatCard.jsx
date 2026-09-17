@@ -14,7 +14,7 @@ function formatDelta(deltaPct) {
 // withDelta()-shaped value from analyticsQueryService.js's getOverview:
 // { value, previous, deltaPct } — or a bare number/string for stats that
 // don't have a comparison (e.g. a static count).
-export default function StatCard({ label, stat, suffix = "" }) {
+export default function StatCard({ label, stat, suffix = "", icon: Icon }) {
   const isDeltaShape = stat && typeof stat === "object" && "value" in stat;
   const display = isDeltaShape ? stat.value : stat;
   return (
@@ -22,9 +22,12 @@ export default function StatCard({ label, stat, suffix = "" }) {
     // string (a big currency figure, a long stat value) forces this
     // track wider than its share of the grid, which forces the whole
     // grid — and the page — to scroll horizontally on a narrow screen.
-    <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 p-3.5">
-      <p className="m-0 truncate text-[10px] uppercase tracking-[0.1em] text-zinc-500">{label}</p>
-      <p className="mt-1.5 truncate text-2xl font-bold text-white">
+    <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 p-3 transition hover:border-white/20">
+      <div className="flex items-center gap-1.5">
+        {Icon ? <Icon className="shrink-0 text-zinc-600" /> : null}
+        <p className="m-0 truncate text-[10px] uppercase tracking-[0.1em] text-zinc-500">{label}</p>
+      </div>
+      <p className="mt-1.5 truncate text-xl font-bold text-white sm:text-2xl">
         {typeof display === "number" ? display.toLocaleString() : display}
         {suffix}
       </p>

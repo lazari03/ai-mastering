@@ -6,6 +6,7 @@ import { ingestBatch } from "../services/analyticsService.js";
 import {
   resolveRange,
   getOverview,
+  getOverviewTimeseries,
   getFunnel,
   getAcquisition,
   getPages,
@@ -161,6 +162,21 @@ admin.get("/overview", async (req, res) => {
   } catch (error) {
     console.error("admin/overview failed:", error);
     return res.status(500).json({ detail: "Failed to load overview." });
+  }
+});
+
+// Day-bucketed visitors/masters/revenue for the Overview page's trend
+// chart — separate endpoint from /overview (see getOverviewTimeseries's
+// own comment) so the common case of just wanting the headline stat
+// cards isn't forced to also compute a daily breakdown.
+admin.get("/overview-timeseries", async (req, res) => {
+  try {
+    const range = resolveRange(req.query);
+    const data = await getOverviewTimeseries(range);
+    return res.json({ points: data });
+  } catch (error) {
+    console.error("admin/overview-timeseries failed:", error);
+    return res.status(500).json({ detail: "Failed to load overview trend." });
   }
 });
 
