@@ -9,6 +9,7 @@ import { useMasteringStore } from "@/store/masteringStore";
 import { useLanguage } from "@/lib/i18n";
 import { shortenFilename } from "@/lib/format";
 import { LoadingBlock } from "@/components/ui/Spinner";
+import { trackEvent } from "@/lib/analytics";
 
 // three.js + its postprocessing passes are real weight (~250KB+) that only
 // matters once someone actually finishes a master — dynamic + ssr:false
@@ -142,6 +143,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
     setDownloading(true);
     try {
       await downloadFileSafely(urls.masteredUrl, `mastered_${job.job_id}.${job.output_format || "wav"}`);
+      trackEvent("download_completed", { source: "result_view" });
     } catch (err) {
       setDownloadError(err?.message || t("console.downloadFailed"));
     } finally {

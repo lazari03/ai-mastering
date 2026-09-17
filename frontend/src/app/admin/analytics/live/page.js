@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { getAdminAnalytics } from "@/network/http/client";
 import { useLanguage } from "@/lib/i18n";
+import { countryLabel } from "@/lib/country";
 import StatCard from "@/components/admin/StatCard";
 import AdminTable from "@/components/admin/AdminTable";
 import { IconRadio, IconUsers, IconClock } from "@/components/admin/icons";
@@ -45,7 +46,7 @@ export default function AdminLivePage() {
   }, [t]);
 
   const countryColumns = [
-    { key: "country", label: t("admin.table.country") },
+    { key: "country", label: t("admin.table.country"), render: (r) => countryLabel(r.country) },
     { key: "visitors", label: t("admin.table.activeNow"), align: "right" },
   ];
   const pageColumns = [

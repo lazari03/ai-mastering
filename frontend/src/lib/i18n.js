@@ -991,6 +991,30 @@ const DICT = {
   "admin.sessions.mastered": { en: "Mastered", sq: "Masterizuar" },
   "admin.sessions.checkout": { en: "Checkout", sq: "Pagesë" },
   "admin.sessions.paid": { en: "Paid", sq: "Paguar" },
+
+  "admin.sessionDetail.loadFailed": { en: "Failed to load session.", sq: "Ngarkimi i sesionit dështoi." },
+  "admin.sessionDetail.new": { en: "New", sq: "I ri" },
+  "admin.sessionDetail.returning": { en: "Returning", sq: "Kthyes" },
+  "admin.sessionDetail.totalSession": { en: "Total Session", sq: "Sesioni Total" },
+  "admin.sessionDetail.active": { en: "Active", sq: "Aktiv" },
+  "admin.sessionDetail.pages": { en: "Pages", sq: "Faqe" },
+  "admin.sessionDetail.outcome": { en: "Outcome", sq: "Rezultati" },
+  "admin.sessionDetail.outcomePaid": { en: "Paid", sq: "Paguar" },
+  "admin.sessionDetail.outcomeCheckoutNoPay": { en: "Checkout, no payment", sq: "Pagesë e filluar, pa përfunduar" },
+  "admin.sessionDetail.outcomeMastered": { en: "Mastered", sq: "Masterizuar" },
+  "admin.sessionDetail.outcomeUploaded": { en: "Uploaded", sq: "Ngarkuar" },
+  "admin.sessionDetail.outcomeBrowsed": { en: "Browsed only", sq: "Vetëm shfletim" },
+  "admin.sessionDetail.journey": { en: "Journey", sq: "Udhëtimi" },
+  "admin.sessionDetail.server": { en: "server", sq: "server" },
+  "admin.sessionDetail.noEvents": { en: "No events recorded for this session.", sq: "Nuk ka ngjarje të regjistruara për këtë sesion." },
+
+  "admin.stat.sharesCreated": { en: "Shares created", sq: "Ndarje të krijuara" },
+  "admin.stat.downloadsCompleted": { en: "Downloads", sq: "Shkarkime" },
+  "admin.stat.errors": { en: "Errors", sq: "Gabime" },
+
+  "admin.overview.sectionAudience": { en: "Audience", sq: "Audienca" },
+  "admin.overview.sectionEngine": { en: "Engine activity", sq: "Aktiviteti i motorit" },
+  "admin.overview.sectionRevenue": { en: "Revenue & subscriptions", sq: "Të ardhura & abonime" },
 };
 
 const LanguageContext = createContext({ lang: "en", setLang: () => {}, t: (key) => key });

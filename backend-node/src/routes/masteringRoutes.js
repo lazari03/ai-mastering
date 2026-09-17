@@ -254,6 +254,7 @@ router.post("/jobs/:jobId/share", async (req, res) => {
     return res.status(410).json({ detail: "This master has already expired and can't be shared anymore." });
   }
   const token = mintShareToken(req.user.uid, req.params.jobId, expiresAt);
+  recordServerEvent("share_created", { uid: req.user.uid, props: { jobId: req.params.jobId } });
   // Points at the frontend's own simple download page (SharedMasterClient),
   // not straight at this API — a plain file response has no branding, no
   // "invalid/expired" explanation, nothing but a bare download. The page

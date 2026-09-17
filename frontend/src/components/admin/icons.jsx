@@ -191,6 +191,26 @@ export function IconShield(props) {
   );
 }
 
+export function IconShare(props) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="18" cy="5.5" r="2.5" />
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="18.5" r="2.5" />
+      <path d="M8.2 10.8 15.8 7M8.2 13.2 15.8 17" />
+    </svg>
+  );
+}
+
+export function IconDownload(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 3.5v11.5M8 11l4 4 4-4" />
+      <path d="M4.5 15.5V19a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-3.5" />
+    </svg>
+  );
+}
+
 export function IconXCircle(props) {
   return (
     <svg {...base} {...props}>

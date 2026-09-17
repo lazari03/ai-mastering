@@ -80,6 +80,7 @@ export const SERVER_ONLY_EVENT_NAMES = new Set([
   "subscription_cancelled",
   "subscription_expired",
   "checkout_abandoned", // derived at query time, never written directly either — see computeAbandonedCheckouts below
+  "share_created", // the /jobs/:jobId/share route observes this directly; a client claiming it created a share link proves nothing
 ]);
 
 const SENSITIVE_QUERY_KEY_PATTERNS = [
@@ -211,6 +212,31 @@ export function newId() {
   return crypto.randomUUID();
 }
 
+// Whoever runs this dashboard shouldn't show up IN it — a founder testing
+// their own product, logged into their own admin account, isn't "traffic."
+// Cached with a short TTL rather than reading users/{uid} on every single
+// event (recordServerEvent fires on nearly every mastering/checkout
+// action): the role field changes rarely, so a few minutes of staleness
+// costs nothing and saves a Firestore read per event at real traffic
+// volumes.
+const ADMIN_UID_CACHE_TTL_MS = 5 * 60 * 1000;
+const adminUidCache = new Map(); // uid -> { isAdmin, expiresAt }
+
+async function isAdminUid(uid) {
+  if (!uid) return false;
+  const cached = adminUidCache.get(uid);
+  if (cached && cached.expiresAt > Date.now()) return cached.isAdmin;
+  let isAdmin = false;
+  try {
+    const snap = await db().collection("users").doc(uid).get();
+    isAdmin = snap.data()?.role === "admin";
+  } catch (error) {
+    console.error("isAdminUid check failed (treating as non-admin):", error.message);
+  }
+  adminUidCache.set(uid, { isAdmin, expiresAt: Date.now() + ADMIN_UID_CACHE_TTL_MS });
+  return isAdmin;
+}
+
 // ---------------------------------------------------------------------
 // Ingestion — one batch of events from a single beacon/fetch call, all
 // sharing one visitor/session/page context. Never throws outward: a
@@ -221,6 +247,13 @@ export function newId() {
 export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSession, context, events }) {
   if (!isUuid(visitorId) || !isUuid(sessionId)) {
     throw Object.assign(new Error("Invalid visitor/session id"), { status: 400 });
+  }
+  // Skip entirely, not just at query time — nothing about an admin's own
+  // usage is written to analyticsVisitors/analyticsSessions/analyticsEvents
+  // at all, so it can never leak into a report even if a future query
+  // forgets to filter it out.
+  if (uid && (await isAdminUid(uid))) {
+    return { accepted: 0 };
   }
   if (!Array.isArray(events) || events.length === 0) return { accepted: 0 };
   const batchEvents = events.slice(0, MAX_EVENTS_PER_REQUEST).filter((e) => e && ALLOWED_EVENT_NAMES.has(e.name));
@@ -374,6 +407,7 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
 // ---------------------------------------------------------------------
 export async function recordServerEvent(name, { uid = null, sessionId = null, visitorId = null, props = {} } = {}) {
   try {
+    if (uid && (await isAdminUid(uid))) return;
     await db()
       .collection("analyticsEvents")
       .add({

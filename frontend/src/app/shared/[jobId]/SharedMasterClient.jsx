@@ -7,6 +7,7 @@ import LogoMark from "@/components/brand/LogoMark";
 import { getSharedJobInfo, downloadFileSafely } from "@/network/http/client";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
+import { trackEvent } from "@/lib/analytics";
 
 function formatExpiry(t, iso) {
   if (!iso) return null;
@@ -73,6 +74,7 @@ export default function SharedMasterClient({ jobId, token }) {
               setDownloading(true);
               try {
                 await downloadFileSafely(info.download_url, info.filename || "mastered.wav");
+                trackEvent("download_completed", { source: "shared_link" });
               } catch (err) {
                 setDownloadError(err?.message || t("shared.downloadFailed"));
               } finally {

@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { getAdminAnalytics } from "@/network/http/client";
 import { useLanguage } from "@/lib/i18n";
+import { countryLabel } from "@/lib/country";
 import DateRangeFilter from "@/components/admin/DateRangeFilter";
 import ExportButtons from "@/components/admin/ExportButtons";
 import { IconList } from "@/components/admin/icons";
@@ -71,11 +72,13 @@ export default function AdminSessionsPage() {
                   </span>
                   <span className="text-zinc-400">{s.utmSource || s.referrerDomain || t("admin.sessions.direct")}</span>
                   <span className="text-zinc-600">·</span>
-                  <span className="text-zinc-400">{s.deviceCategory}</span>
+                  <span className="text-zinc-400">
+                    {s.deviceCategory} · {s.browser}
+                  </span>
                   {s.country ? (
                     <>
                       <span className="text-zinc-600">·</span>
-                      <span className="text-zinc-400">{s.country}</span>
+                      <span className="text-zinc-400">{countryLabel(s.country)}</span>
                     </>
                   ) : null}
                 </div>

@@ -9,6 +9,7 @@ import { useEntitlementsStore, planUnlocksShare } from "@/store/entitlementsStor
 import { LoadingBlock } from "@/components/ui/Spinner";
 import { shortenFilename } from "@/lib/format";
 import { useLanguage } from "@/lib/i18n";
+import { trackEvent } from "@/lib/analytics";
 
 // Internal token, not display text — "expired" is compared against
 // elsewhere in this file (filtering, conditional rendering), so it stays
@@ -107,6 +108,7 @@ export default function MyMastersPanel() {
     setDownloadErrors((prev) => ({ ...prev, [job.job_id]: "" }));
     try {
       await downloadFileSafely(job.downloadUrl, `mastered_${job.job_id}.${job.output_format || "wav"}`);
+      trackEvent("download_completed", { source: "my_masters" });
     } catch (err) {
       setDownloadErrors((prev) => ({ ...prev, [job.job_id]: err?.message || t("myMasters.downloadFailed") }));
     } finally {

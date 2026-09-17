@@ -162,13 +162,16 @@ async function estimateSubscriptionStats() {
 }
 
 export async function getOverview({ from, to, prevFrom, prevTo }) {
-  const [sessions, prevSessions, paymentEvents, prevPaymentEvents, cancelEvents, subStats] = await Promise.all([
+  const [sessions, prevSessions, paymentEvents, prevPaymentEvents, cancelEvents, subStats, shareEvents, downloadEvents, errorEvents] = await Promise.all([
     fetchSessionsInRange(from, to),
     fetchSessionsInRange(prevFrom, prevTo),
     fetchEventsInRange(from, to, ["payment_succeeded"]),
     fetchEventsInRange(prevFrom, prevTo, ["payment_succeeded"]),
     fetchEventsInRange(from, to, ["subscription_cancelled"]),
     estimateSubscriptionStats(),
+    fetchEventsInRange(from, to, ["share_created"]),
+    fetchEventsInRange(from, to, ["download_completed"]),
+    fetchEventsInRange(from, to, FAILURE_EVENT_NAMES),
   ]);
 
   const summarize = (list) => ({
@@ -207,6 +210,9 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
     mrr: subStats.mrr,
     activeSubscribers: subStats.activeSubscribers,
     cancellations: cancelEvents.length,
+    sharesCreated: shareEvents.length,
+    downloadsCompleted: downloadEvents.length,
+    errorCount: errorEvents.length,
     conversion: {
       visitorToUpload: pct(current.uploads, current.visitors),
       visitorToMaster: pct(current.masters, current.visitors),

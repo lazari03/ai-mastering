@@ -880,6 +880,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                   setDownloading(true);
                   try {
                     await downloadFileSafely(result.masteredUrl, `mastered_${result.job_id}.${result.download_url?.split(".").pop() || "wav"}`);
+                    trackEvent("download_completed", { source: "console" });
                   } catch (err) {
                     setDownloadError(err?.message || t("console.downloadFailed"));
                   } finally {
