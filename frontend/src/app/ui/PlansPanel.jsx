@@ -39,6 +39,7 @@ export default function PlansPanel() {
   const { t } = useLanguage();
   const {
     plan: currentPlan,
+    subscription,
     masterQuota,
     extraCredits,
     stemQuota,
@@ -46,6 +47,15 @@ export default function PlansPanel() {
     loaded,
     refresh,
   } = useEntitlementsStore();
+  // Set once a downgrade is scheduled (see polarService.js's
+  // changeSubscriptionPlan — a "next_period" change deliberately leaves
+  // the current plan's productId untouched until the real renewal), so
+  // currentPlan alone can't show it. Without this the Studio/All-Access
+  // cards look completely unchanged after a successful downgrade click —
+  // the obvious next thing to do is click it again, which used to hit
+  // Polar's own "already has a pending update" error.
+  const pendingPlan = subscription?.pendingPlan || null;
+  const pendingAppliesAt = subscription?.pendingAppliesAt ? new Date(subscription.pendingAppliesAt) : null;
   const [busyItem, setBusyItem] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [changeStatus, setChangeStatus] = useState("");
@@ -152,6 +162,7 @@ export default function PlansPanel() {
               const plan = PLANS[key];
               const isCurrent = currentPlan === key;
               const isUpgrade = PLAN_ORDER.indexOf(key) > PLAN_ORDER.indexOf(currentPlan);
+              const isPendingTarget = pendingPlan === key;
               return (
                 <div
                   key={key}
@@ -190,6 +201,10 @@ export default function PlansPanel() {
                         t("billing.manage")
                       )}
                     </button>
+                  ) : isPendingTarget ? (
+                    <p className="mt-3 rounded-full border border-white/10 bg-black/20 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
+                      {pendingAppliesAt ? t("billing.scheduledFor", { date: pendingAppliesAt.toLocaleDateString() }) : t("billing.scheduled")}
+                    </p>
                   ) : (
                     <button
                       type="button"

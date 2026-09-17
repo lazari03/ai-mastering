@@ -123,6 +123,15 @@ function friendlyCheckoutError(error) {
   if (Array.isArray(detail) && detail.some((d) => d.loc?.includes("customer_email"))) {
     return "That email address looks invalid or can't receive mail — double check it and try again.";
   }
+  // A single flat string detail (as opposed to the validation-error array
+  // shape above) is Polar's own plain-language error message — e.g.
+  // "Subscription already has a pending update to this product" — worth
+  // showing directly rather than masking it behind the generic fallback,
+  // since it's specific enough to be actionable and never leaks anything
+  // sensitive (Polar's own user-facing copy).
+  if (typeof detail === "string" && detail.trim()) {
+    return detail;
+  }
   return "Couldn't start checkout right now — please try again in a moment.";
 }
 
@@ -206,6 +215,19 @@ export async function changeSubscriptionPlan(uid, productKey) {
   const toRank = PLAN_RANK[productKey] || 0;
   const prorationBehavior = toRank > fromRank ? "invoice" : "next_period";
 
+  // A downgrade already scheduled to this exact product (sub.productId
+  // itself never changes under "next_period" — see the comment below and
+  // subscriptionRecord's pendingProductId) — re-issuing the identical
+  // subscriptions.update() call gains nothing and some billing providers
+  // reject a second pending change outright. Without this, clicking
+  // "Switch to Studio" a second time (easy to do: the plan card still
+  // reads "All-Access" until the real renewal, so it looks like the first
+  // click failed) surfaces a raw provider error instead of just
+  // confirming what's already scheduled.
+  if (prorationBehavior === "next_period" && sub.pendingProductId === productId) {
+    return { productKey, immediate: false, alreadyScheduled: true };
+  }
+
   try {
     const updated = await client().subscriptions.update({
       id: sub.polarSubscriptionId,
@@ -243,6 +265,12 @@ export async function getSubscriptionStatus(uid) {
     active: isEntitled(sub),
     status: sub?.status || null,
     currentPeriodEnd: sub?.currentPeriodEnd || null,
+    // Lets the UI say "Switching to Studio on {date}" instead of showing
+    // a bare "Switch" button that looks identical to a downgrade that
+    // never happened (see changeSubscriptionPlan's "next_period" path —
+    // productId itself doesn't change until the real renewal).
+    pendingPlan: planKeyForProductId(sub?.pendingProductId),
+    pendingAppliesAt: sub?.pendingAppliesAt || null,
   };
 }
 
@@ -252,13 +280,18 @@ export async function getSubscriptionStatus(uid) {
 // for, not just whether one exists — an active subscription against an
 // unrecognized product ID (shouldn't happen outside manual Polar dashboard
 // fiddling) falls back to "free" rather than granting access by accident.
+function planKeyForProductId(productId) {
+  if (!productId) return null;
+  if (productId === settings.polarProducts.planPro) return "pro";
+  if (productId === settings.polarProducts.planStudio) return "studio";
+  return null;
+}
+
 export async function getPlan(uid) {
   const doc = await userDoc(uid).get();
   const sub = doc.data()?.subscription;
   if (!isEntitled(sub)) return "free";
-  if (sub.productId && sub.productId === settings.polarProducts.planPro) return "pro";
-  if (sub.productId && sub.productId === settings.polarProducts.planStudio) return "studio";
-  return "free";
+  return planKeyForProductId(sub.productId) || "free";
 }
 
 // Independent of the main plan — a Free or Studio user can subscribe to
@@ -316,6 +349,15 @@ function subscriptionRecord(sub) {
     currentPeriodEnd: sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : null,
     polarCustomerId: sub.customerId,
     polarSubscriptionId: sub.id,
+    // A "next_period" change (see changeSubscriptionPlan's downgrade path)
+    // doesn't touch productId at all — Polar deliberately leaves the
+    // current product active through the paid period and stashes the real
+    // change here instead, applying it automatically at renewal. Without
+    // capturing this, Firestore (and therefore the UI) looks completely
+    // unchanged after a successful downgrade — the user sees the same
+    // plan, assumes the click did nothing, and tries again.
+    pendingProductId: sub.pendingUpdate?.productId || null,
+    pendingAppliesAt: sub.pendingUpdate?.appliesAt ? new Date(sub.pendingUpdate.appliesAt) : null,
     updatedAt: new Date(),
   };
 }
