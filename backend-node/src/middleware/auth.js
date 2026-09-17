@@ -26,6 +26,46 @@ const LAST_ACTIVE_WRITE_THROTTLE_MS = 2 * 60 * 1000;
 const REVOCATION_CHECK_TTL_MS = 5 * 60 * 1000;
 const revocationCheckedAt = new Map(); // uid -> last time checkRevoked actually ran
 
+// One level up from the revocation-check throttle above: cache the WHOLE
+// verified session (token signature check, session-age check, idle check,
+// the Firestore lastActiveAt read) keyed by the raw token string, so a
+// burst of requests carrying the identical token — which is exactly what
+// heartbeats/polling/entitlement refreshes do, since the client SDK only
+// mints a new ID token roughly once an hour — do zero Firebase/Firestore
+// work at all while the cache entry is fresh. Only a cache miss (first
+// request with a given token, or one that's gone stale) does the real
+// verification. Short TTL on purpose: it's the window before "sign out of
+// all devices" or a session-expiry condition actually takes effect, same
+// accepted tradeoff as REVOCATION_CHECK_TTL_MS above, just tighter since
+// this skips those checks entirely rather than just the revocation call.
+const SESSION_CACHE_TTL_MS = 60 * 1000;
+const verifiedSessionCache = new Map(); // token -> { user, cachedAt }
+
+// Bounds memory: without this, a Map keyed by raw (large, ever-rotating)
+// token strings grows forever on a long-running process. Cheap linear
+// sweep on a plain setInterval — this cache is small (roughly one entry
+// per active session) and cleanup doesn't need to be precise.
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of verifiedSessionCache) {
+    if (now - entry.cachedAt > SESSION_CACHE_TTL_MS) verifiedSessionCache.delete(key);
+  }
+}, SESSION_CACHE_TTL_MS).unref();
+
+// Called wherever this app forces a session to end out-of-band —
+// revokeRefreshTokens (sign-out-everywhere, disabling a user; see
+// masteringRoutes.js and adminUsersService.js) — so that action takes
+// effect on the very next request instead of waiting out the cache TTL
+// above. Firebase's own revocation still guards the token's real cryptographic
+// validity; this just makes sure our own cache doesn't paper over it for
+// up to a minute.
+export function invalidateCachedSession(uid) {
+  for (const [key, entry] of verifiedSessionCache) {
+    if (entry.user.uid === uid) verifiedSessionCache.delete(key);
+  }
+  revocationCheckedAt.delete(uid);
+}
+
 // Verifies the Firebase ID token in the Authorization header and attaches
 // { uid, email } to req.user. Applied to every route except /health (see
 // server.js) — the whole app requires a signed-in user, not just specific
@@ -36,6 +76,12 @@ export async function requireAuth(req, res, next) {
 
   if (scheme !== "Bearer" || !token) {
     return res.status(401).json({ detail: "Missing or malformed Authorization header — expected 'Bearer <firebase-id-token>'" });
+  }
+
+  const cached = verifiedSessionCache.get(token);
+  if (cached && Date.now() - cached.cachedAt < SESSION_CACHE_TTL_MS) {
+    req.user = cached.user;
+    return next();
   }
 
   let auth;
@@ -128,6 +174,7 @@ export async function requireAuth(req, res, next) {
     }
 
     req.user = { uid: decoded.uid, email: decoded.email || null, isAnonymous, signInProvider: decoded.firebase?.sign_in_provider || null };
+    verifiedSessionCache.set(token, { user: req.user, cachedAt: Date.now() });
     return next();
   } catch (error) {
     // A quota/rate-limit error from Google's own API (RESOURCE_EXHAUSTED,

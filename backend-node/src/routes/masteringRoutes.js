@@ -8,6 +8,7 @@ import multer from "multer";
 
 import { GENRES, STYLES, TAGS, CATEGORIES, FLAVOURS_BY_CATEGORY, AUDIO_DECODE_EXTS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
+import { invalidateCachedSession } from "../middleware/auth.js";
 import { processMastering, execFileAsync, deleteJobFiles, postMultipartToPython } from "../services/masteringService.js";
 import { analyzeChords, previewCodec } from "../services/chordCleanService.js";
 import { listMixPresets } from "../services/presetsService.js";
@@ -287,6 +288,7 @@ router.delete("/account", async (req, res) => {
 router.post("/account/sign-out-everywhere", async (req, res) => {
   try {
     await getAuth().revokeRefreshTokens(req.user.uid);
+    invalidateCachedSession(req.user.uid);
     return res.json({ ok: true });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to revoke sessions" });
