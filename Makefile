@@ -1,7 +1,7 @@
 .PHONY: help up down restart ps logs build rebuild deploy \
         logs-python logs-node logs-frontend logs-caddy \
         rebuild-python rebuild-node rebuild-frontend \
-        shell-python shell-node migrate-analytics \
+        shell-python shell-node \
         dev-python dev-node dev-frontend
 
 help: ## Show this list
@@ -98,18 +98,6 @@ shell-python: ## Open a shell inside the running Python container
 
 shell-node: ## Open a shell inside the running Node container
 	docker compose exec node-api sh
-
-migrate-analytics: ## One-off: backfill analytics history from Firestore into the new SQLite store (safe to re-run)
-	# `exec` runs inside the ALREADY-RUNNING container's filesystem, which
-	# is whatever `COPY . .` baked in at the last image build — a script
-	# added to the repo after that build simply isn't there yet, even
-	# though `git pull` already updated the host checkout (hit this on the
-	# first run: "Cannot find module '/app/scripts/...'"). `build` bakes
-	# the current source into a fresh image; `run --rm` (not `up -d`)
-	# starts a one-off container from it without touching the live
-	# node-api container, sharing the same analytics_db named volume.
-	docker compose build node-api
-	docker compose run --rm node-api node scripts/migrateAnalyticsFromFirestore.js
 
 # --- Local dev (no Docker) — one terminal tab each -------------------------
 # The Python service MUST be on 8001, never bare `uvicorn app.main:app`
