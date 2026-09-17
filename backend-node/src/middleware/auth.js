@@ -1,5 +1,17 @@
+import crypto from "node:crypto";
+
 import { getAuth, getFirestore } from "../config/firebase.js";
 import { settings } from "../config/settings.js";
+
+// The cache below is keyed by a hash of the token, never the raw token
+// itself — the bearer credential never needs to sit in this process's
+// memory as plaintext for longer than the single request that's actively
+// using it. A hash is enough to recognize "same token as a moment ago"
+// without holding anything a memory dump/crash report/debugger could hand
+// over as a directly usable credential.
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
 
 // Only re-written when it's already stale by more than this — writing
 // users/{uid}.lastActiveAt on literally every single request (catalog
@@ -78,7 +90,8 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({ detail: "Missing or malformed Authorization header — expected 'Bearer <firebase-id-token>'" });
   }
 
-  const cached = verifiedSessionCache.get(token);
+  const tokenHash = hashToken(token);
+  const cached = verifiedSessionCache.get(tokenHash);
   if (cached && Date.now() - cached.cachedAt < SESSION_CACHE_TTL_MS) {
     req.user = cached.user;
     return next();
@@ -174,7 +187,7 @@ export async function requireAuth(req, res, next) {
     }
 
     req.user = { uid: decoded.uid, email: decoded.email || null, isAnonymous, signInProvider: decoded.firebase?.sign_in_provider || null };
-    verifiedSessionCache.set(token, { user: req.user, cachedAt: Date.now() });
+    verifiedSessionCache.set(tokenHash, { user: req.user, cachedAt: Date.now() });
     return next();
   } catch (error) {
     // A quota/rate-limit error from Google's own API (RESOURCE_EXHAUSTED,
