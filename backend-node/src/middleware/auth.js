@@ -8,6 +8,24 @@ import { settings } from "../config/settings.js";
 // resolution, not per-request precision.
 const LAST_ACTIVE_WRITE_THROTTLE_MS = 2 * 60 * 1000;
 
+// checkRevoked:true makes a real extra network call to Google's Identity
+// Toolkit API on top of normal (local, free) signature verification — and
+// this app has several client-side polling loops (heartbeats, the
+// notification bell, the admin Live page, entitlements refreshes) that
+// each hit an authenticated endpoint every 10-25s. Doing that extra Google
+// API call on every single one of those, across every open tab, is what
+// burns through a per-minute quota and turns into "RESOURCE_EXHAUSTED:
+// Quota exceeded" — a transient rate-limit, not an actually-bad token —
+// which the old code surfaced identically to a real invalid/expired
+// token, logging people (including admins) out over a false positive.
+// Caching "already confirmed not-revoked" per uid for a few minutes cuts
+// that call volume by roughly this TTL divided by the polling interval,
+// same throttling principle as LAST_ACTIVE_WRITE_THROTTLE_MS above — a
+// real revocation (sign-out-everywhere, password change) still takes
+// effect within this window, just not instantaneously.
+const REVOCATION_CHECK_TTL_MS = 5 * 60 * 1000;
+const revocationCheckedAt = new Map(); // uid -> last time checkRevoked actually ran
+
 // Verifies the Firebase ID token in the Authorization header and attaches
 // { uid, email } to req.user. Applied to every route except /health (see
 // server.js) — the whole app requires a signed-in user, not just specific
@@ -34,12 +52,20 @@ export async function requireAuth(req, res, next) {
   }
 
   try {
-    // checkRevoked:true costs one extra Firebase Auth lookup per request
-    // but is what actually makes "sign out of all devices" (revokeRefreshTokens,
-    // see authRoutes.js) and password-change invalidation work — without
-    // it, a token minted before the revocation keeps passing verification
-    // right up until its own 1h expiry, silent-refresh or not.
-    const decoded = await auth.verifyIdToken(token, true);
+    // Cheap, local signature verification first (no network call — the
+    // Admin SDK caches Google's public signing certs) to get the uid, then
+    // decide whether this request also needs the expensive revocation
+    // check. checkRevoked:true is what actually makes "sign out of all
+    // devices" (revokeRefreshTokens, see authRoutes.js) and password-change
+    // invalidation work — without ever calling it, a token minted before
+    // the revocation would keep passing verification right up until its
+    // own 1h expiry. Only skipping how OFTEN it's called, not skipping it.
+    let decoded = await auth.verifyIdToken(token, false);
+    const lastChecked = revocationCheckedAt.get(decoded.uid);
+    if (!lastChecked || Date.now() - lastChecked > REVOCATION_CHECK_TTL_MS) {
+      decoded = await auth.verifyIdToken(token, true);
+      revocationCheckedAt.set(decoded.uid, Date.now());
+    }
 
     // auth_time is the timestamp of the original sign-in, not the last
     // silent token refresh — the client SDK refreshes the ID token forever
@@ -104,6 +130,23 @@ export async function requireAuth(req, res, next) {
     req.user = { uid: decoded.uid, email: decoded.email || null, isAnonymous, signInProvider: decoded.firebase?.sign_in_provider || null };
     return next();
   } catch (error) {
+    // A quota/rate-limit error from Google's own API (RESOURCE_EXHAUSTED,
+    // or the transport-level UNAVAILABLE it sometimes wraps) means nothing
+    // about the token itself — verification never actually completed. This
+    // used to be indistinguishable from a genuinely bad token (401,
+    // "invalid or expired"), which reads as "you're logged out" when the
+    // real story is "try again in a moment." 503 + a distinct code lets
+    // the frontend (and AdminAuthGate) tell the two apart instead of
+    // signing someone out, or telling an admin they lack access, over a
+    // transient rate limit.
+    const message = String(error?.message || "");
+    if (message.includes("RESOURCE_EXHAUSTED") || message.includes("Quota exceeded") || message.includes("UNAVAILABLE")) {
+      console.error("Auth verification hit a transient Google API error:", message);
+      return res.status(503).json({
+        detail: "Sign-in verification is temporarily unavailable — please try again in a moment.",
+        code: "AUTH_SERVICE_UNAVAILABLE",
+      });
+    }
     // Covers expired token, malformed token, wrong project, revoked token.
     const revoked = error?.code === "auth/id-token-revoked";
     return res.status(401).json({
