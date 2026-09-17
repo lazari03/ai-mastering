@@ -20,7 +20,13 @@ const STORAGE = {
 const SESSION_INACTIVITY_MS = 30 * 60 * 1000; // spec section 2
 const FLUSH_INTERVAL_MS = 5000;
 const MAX_QUEUE_BEFORE_FORCE_FLUSH = 10;
-const HEARTBEAT_INTERVAL_MS = 10000;
+// Every heartbeat is a real Firestore write on the backend (ingestBatch),
+// for every open tab, for as long as the tab stays visible — at 10s this
+// alone was enough to burn through Firestore's Spark-plan daily write
+// quota (see analyticsService.js's ingestBatch). 30s still gives
+// avgSessionSeconds plenty of resolution for aggregate reporting; nobody
+// reads "how active was this visitor" down to 10-second precision.
+const HEARTBEAT_INTERVAL_MS = 30000;
 const IDLE_TIMEOUT_MS = 60000; // no interaction for this long => not "active" (spec section 5)
 
 // Mirrors backend-node's ALLOWED_EVENT_NAMES (analyticsService.js) — kept

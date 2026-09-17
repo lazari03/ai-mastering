@@ -16,6 +16,14 @@ import { getFirestore } from "../config/firebase.js";
 const SESSION_INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes — spec section 2
 const CHECKOUT_ABANDON_MS = 30 * 60 * 1000; // spec section 8 — configurable here, one place
 
+// Firestore write throttles for ingestBatch's per-call bookkeeping writes
+// (visitor/session lastSeenAt) — see the comments at each use site. These
+// exist because this endpoint is hit by every heartbeat/page-view/event
+// from every visitor, all day, and an unthrottled write here was a real
+// contributor to exceeding Firestore's Spark-plan daily write quota.
+const VISITOR_LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
+const SESSION_LAST_SEEN_THROTTLE_MS = 2 * 60 * 1000;
+
 const MAX_EVENTS_PER_REQUEST = 25;
 const MAX_PROP_KEYS = 20;
 const MAX_STRING_LEN = 300;
@@ -302,13 +310,25 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
       sessionCount: 0,
     });
   } else {
-    const patch = { lastSeenAt: now };
+    const patch = {};
+    // Visitor-level lastSeenAt only ever feeds day-granularity retention
+    // stats (getRetention) — it never needs per-heartbeat freshness, so
+    // it's written at most once per this window instead of on every
+    // ingest call. Real Firestore write, same throttle principle as
+    // requireAuth.js's LAST_ACTIVE_WRITE_THROTTLE_MS: this single line was
+    // a meaningful share of what pushed this project past Firestore's
+    // Spark-plan daily write quota (a write per open tab every heartbeat,
+    // for every visitor, all day).
+    const lastSeenAt = visitorSnap.data()?.lastSeenAt?.toDate?.();
+    if (!lastSeenAt || now.getTime() - lastSeenAt.getTime() > VISITOR_LAST_SEEN_THROTTLE_MS) {
+      patch.lastSeenAt = now;
+    }
     // Links an anonymous visitor to the real account the FIRST time they
     // authenticate — never overwritten after that (spec section 2: "if
     // the visitor later creates/logs into an account, associate the
     // anonymous analytics identity with the internal user ID").
     if (uid && !visitorSnap.data()?.uid) patch.uid = uid;
-    batch.set(visitorRef, patch, { merge: true });
+    if (Object.keys(patch).length > 0) batch.set(visitorRef, patch, { merge: true });
   }
 
   const isTrulyNewSession = isNewSession || !sessionSnap.exists;
@@ -348,7 +368,16 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
       batch.set(visitorRef, { sessionCount: (visitorSnap.data()?.sessionCount || 0) + 1 }, { merge: true });
     }
   } else {
-    batch.set(sessionRef, { lastSeenAt: now, uid: uid || sessionSnap.data()?.uid || null }, { merge: true });
+    // Throttled more gently than the visitor write above (getLive's
+    // "active in the last 5 minutes" window depends on this staying
+    // reasonably fresh) — still a real cut from a write every heartbeat
+    // to a write every couple of minutes per session.
+    const sessionLastSeenAt = sessionSnap.data()?.lastSeenAt?.toDate?.();
+    const sessionStale = !sessionLastSeenAt || now.getTime() - sessionLastSeenAt.getTime() > SESSION_LAST_SEEN_THROTTLE_MS;
+    const uidChanged = uid && uid !== sessionSnap.data()?.uid;
+    if (sessionStale || uidChanged) {
+      batch.set(sessionRef, { lastSeenAt: now, uid: uid || sessionSnap.data()?.uid || null }, { merge: true });
+    }
   }
 
   const sessionPatch = {};
