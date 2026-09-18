@@ -35,11 +35,11 @@ function DeltaRow({ label, before, after, unit, digits }) {
   const delta = before != null && after != null ? after - before : null;
   const deltaLabel = delta == null ? "" : `${delta >= 0 ? "+" : ""}${delta.toFixed(digits)}`;
   return (
-    <tr className="border-b border-white/5 last:border-0">
-      <td className="py-1.5 pr-3 text-zinc-300">{label}</td>
-      <td className="py-1.5 pr-3 text-right text-zinc-400">{fmt(before, digits)}{unit}</td>
-      <td className="py-1.5 pr-3 text-right text-zinc-100">{fmt(after, digits)}{unit}</td>
-      <td className={`py-1.5 text-right ${delta > 0 ? "text-brass" : delta < 0 ? "text-ember" : "text-zinc-500"}`}>
+    <tr className="border-b border-border-subtle last:border-0">
+      <td className="py-1.5 pr-3 text-text-secondary">{label}</td>
+      <td className="py-1.5 pr-3 text-right text-text-secondary">{fmt(before, digits)}{unit}</td>
+      <td className="py-1.5 pr-3 text-right text-text-primary">{fmt(after, digits)}{unit}</td>
+      <td className={`py-1.5 text-right ${delta > 0 ? "text-accent" : delta < 0 ? "text-accent" : "text-text-secondary"}`}>
         {deltaLabel}
       </td>
     </tr>
@@ -49,12 +49,12 @@ function DeltaRow({ label, before, after, unit, digits }) {
 function Table({ title, rows }) {
   if (!rows.length) return null;
   return (
-    <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-      <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-zinc-400">{title}</p>
+    <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+      <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">{title}</p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[420px] text-xs">
           <thead>
-            <tr className="border-b border-white/10 text-[10px] uppercase tracking-[0.1em] text-zinc-500">
+            <tr className="border-b border-border-subtle text-[10px] uppercase tracking-[0.1em] text-text-secondary">
               <th className="pb-1.5 text-left font-medium">Parameter</th>
               <th className="pb-1.5 text-right font-medium">Before</th>
               <th className="pb-1.5 text-right font-medium">After</th>
@@ -106,9 +106,9 @@ export default function ProcessingSummary({ result }) {
   const eqRows =
     eqGains &&
     Object.keys(eqGains).map((bandKey) => (
-      <tr key={bandKey} className="border-b border-white/5 text-xs last:border-0">
-        <td className="py-1.5 pr-3 text-zinc-300">{BAND_LABELS[bandKey] || bandKey}</td>
-        <td className="py-1.5 text-right text-zinc-100">
+      <tr key={bandKey} className="border-b border-border-subtle text-xs last:border-0">
+        <td className="py-1.5 pr-3 text-text-secondary">{BAND_LABELS[bandKey] || bandKey}</td>
+        <td className="py-1.5 text-right text-text-primary">
           {eqGains[bandKey] >= 0 ? "+" : ""}
           {eqGains[bandKey].toFixed(2)} dB
         </td>
@@ -118,10 +118,10 @@ export default function ProcessingSummary({ result }) {
   const compRows =
     compPerBand &&
     Object.keys(compPerBand).map((bandName) => (
-      <tr key={bandName} className="border-b border-white/5 text-xs last:border-0">
-        <td className="py-1.5 pr-3 capitalize text-zinc-300">{bandName.replace("_", " ")}</td>
-        <td className="py-1.5 pr-3 text-right text-zinc-100">{compPerBand[bandName].ratio.toFixed(2)}:1</td>
-        <td className="py-1.5 text-right text-zinc-100">{compPerBand[bandName].threshold_db.toFixed(1)} dB</td>
+      <tr key={bandName} className="border-b border-border-subtle text-xs last:border-0">
+        <td className="py-1.5 pr-3 capitalize text-text-secondary">{bandName.replace("_", " ")}</td>
+        <td className="py-1.5 pr-3 text-right text-text-primary">{compPerBand[bandName].ratio.toFixed(2)}:1</td>
+        <td className="py-1.5 text-right text-text-primary">{compPerBand[bandName].threshold_db.toFixed(1)} dB</td>
       </tr>
     ));
 
@@ -131,31 +131,31 @@ export default function ProcessingSummary({ result }) {
   const decisions = ab?.processing_decisions;
 
   return (
-    <div className="space-y-3 text-xs text-zinc-300">
+    <div className="space-y-3 text-xs text-text-secondary">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-white/15 px-2.5 py-1 uppercase tracking-[0.1em] text-zinc-200">
+        <span className="rounded-full border border-border-subtle px-2.5 py-1 uppercase tracking-[0.1em] text-text-primary">
           Engine: {applied.engine === "preset_dsp_engine" ? "Preset DSP" : "Adaptive DSP"}
         </span>
         {applied.tier ? (
-          <span className="rounded-full border border-brass/40 bg-brass/10 px-2.5 py-1 uppercase tracking-[0.1em] text-brass">
+          <span className="rounded-full border border-border-subtle bg-accent/10 px-2.5 py-1 uppercase tracking-[0.1em] text-accent">
             Tier: {applied.tier}
           </span>
         ) : null}
         {applied.category ? (
-          <span className="rounded-full border border-brass/40 bg-brass/10 px-2.5 py-1 uppercase tracking-[0.1em] text-brass">
+          <span className="rounded-full border border-border-subtle bg-accent/10 px-2.5 py-1 uppercase tracking-[0.1em] text-accent">
             Objective: {applied.category.replaceAll("_", " ")}
             {applied.flavour ? ` · ${applied.flavour}` : ""}
           </span>
         ) : null}
         {applied.stages ? (
-          <span className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] text-zinc-400">
+          <span className="rounded-full border border-border-subtle px-2.5 py-1 text-[10px] text-text-secondary">
             Stages: {applied.stages.join(", ")}
           </span>
         ) : null}
         {qc ? (
           <span
             className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${
-              qc.passed ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-ember/50 bg-ember/10 text-ember"
+              qc.passed ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-accent/50 bg-accent/10 text-accent"
             }`}
           >
             QC: {qc.passed ? "Passed" : `${qc.fail_count} failing`}
@@ -164,8 +164,8 @@ export default function ProcessingSummary({ result }) {
       </div>
 
       {decisions ? (
-        <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-zinc-400">What the engine actually did</p>
+        <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">What the engine actually did</p>
           <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3">
             {[
               ["EQ correction", decisions.eq_correction],
@@ -175,13 +175,13 @@ export default function ProcessingSummary({ result }) {
               ["Limiting", decisions.limiting],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.03] px-2 py-1.5">
-                <span className="text-zinc-500">{label}</span>
-                <span className="capitalize text-zinc-100">{String(value).replaceAll("_", " ")}</span>
+                <span className="text-text-secondary">{label}</span>
+                <span className="capitalize text-text-primary">{String(value).replaceAll("_", " ")}</span>
               </div>
             ))}
           </div>
           {ab ? (
-            <p className={`mt-2.5 text-[11px] ${ab.improved ? "text-emerald-300" : "text-ember"}`}>
+            <p className={`mt-2.5 text-[11px] ${ab.improved ? "text-emerald-300" : "text-accent"}`}>
               {ab.improved ? "✓ This master measurably improved on the source." : "⚠ "}
               {!ab.improved && ab.verdict_reasons?.length ? ab.verdict_reasons.join(" ") : null}
             </p>
@@ -190,15 +190,15 @@ export default function ProcessingSummary({ result }) {
       ) : null}
 
       {qc && qc.issues?.length ? (
-        <div className="rounded-xl border border-ember/30 bg-ember/[0.06] p-3">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-ember">Quality Control Notes</p>
-          <ul className="ml-4 list-disc space-y-1 text-zinc-300">
+        <div className="rounded-xl border border-accent/30 bg-accent/[0.06] p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-accent">Quality Control Notes</p>
+          <ul className="ml-4 list-disc space-y-1 text-text-secondary">
             {qc.issues.map((issue) => (
               <li key={issue}>{issue}</li>
             ))}
           </ul>
           {qc.corrections_applied?.length ? (
-            <p className="mt-2 text-[10px] text-zinc-500">Auto-corrected: {qc.corrections_applied.join("; ")}</p>
+            <p className="mt-2 text-[10px] text-text-secondary">Auto-corrected: {qc.corrections_applied.join("; ")}</p>
           ) : null}
         </div>
       ) : null}
@@ -207,15 +207,15 @@ export default function ProcessingSummary({ result }) {
       <Table title="Frequency Balance (share of total energy)" rows={bandRows} />
 
       {eqRows && eqRows.length ? (
-        <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-zinc-400">EQ Gain Applied (by frequency band)</p>
-          <p className="mb-2 text-[10px] text-zinc-500">
+        <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">EQ Gain Applied (by frequency band)</p>
+          <p className="mb-2 text-[10px] text-text-secondary">
             Target: {applied.spectral_match_source === "reference_track" ? "matched to your uploaded reference track" : "genre default profile"}
           </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[280px] text-xs">
               <thead>
-                <tr className="border-b border-white/10 text-[10px] uppercase tracking-[0.1em] text-zinc-500">
+                <tr className="border-b border-border-subtle text-[10px] uppercase tracking-[0.1em] text-text-secondary">
                   <th className="pb-1.5 text-left font-medium">Band</th>
                   <th className="pb-1.5 text-right font-medium">Gain Change</th>
                 </tr>
@@ -227,12 +227,12 @@ export default function ProcessingSummary({ result }) {
       ) : null}
 
       {compRows && compRows.length ? (
-        <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-zinc-400">Compression Per Band</p>
+        <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">Compression Per Band</p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[320px] text-xs">
               <thead>
-                <tr className="border-b border-white/10 text-[10px] uppercase tracking-[0.1em] text-zinc-500">
+                <tr className="border-b border-border-subtle text-[10px] uppercase tracking-[0.1em] text-text-secondary">
                   <th className="pb-1.5 text-left font-medium">Band</th>
                   <th className="pb-1.5 text-right font-medium">Ratio</th>
                   <th className="pb-1.5 text-right font-medium">Threshold</th>
@@ -245,24 +245,24 @@ export default function ProcessingSummary({ result }) {
       ) : null}
 
       {limiter ? (
-        <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-zinc-400">Limiter</p>
+        <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">Limiter</p>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
-              <p className="text-zinc-500">Pre-Limiter Peak</p>
-              <p className="text-zinc-100">{fmt(limiter.pre_limiter_peak_db, 2)} dB</p>
+              <p className="text-text-secondary">Pre-Limiter Peak</p>
+              <p className="text-text-primary">{fmt(limiter.pre_limiter_peak_db, 2)} dB</p>
             </div>
             <div>
-              <p className="text-zinc-500">Post-Limiter Peak</p>
-              <p className="text-zinc-100">{fmt(limiter.post_limiter_peak_db, 2)} dB</p>
+              <p className="text-text-secondary">Post-Limiter Peak</p>
+              <p className="text-text-primary">{fmt(limiter.post_limiter_peak_db, 2)} dB</p>
             </div>
             <div>
-              <p className="text-zinc-500">Gain Reduction</p>
-              <p className="text-brass">{fmt(limiter.limiter_gain_reduction_db, 2)} dB</p>
+              <p className="text-text-secondary">Gain Reduction</p>
+              <p className="text-accent">{fmt(limiter.limiter_gain_reduction_db, 2)} dB</p>
             </div>
           </div>
           {limiter.true_peak_aware ? (
-            <p className="mt-2 text-[10px] text-zinc-500">Oversampled true-peak limiting (professional tier).</p>
+            <p className="mt-2 text-[10px] text-text-secondary">Oversampled true-peak limiting (professional tier).</p>
           ) : null}
         </div>
       ) : null}
@@ -270,15 +270,15 @@ export default function ProcessingSummary({ result }) {
       {applied.saturation_amount != null || applied.width_adjustment != null ? (
         <div className="grid grid-cols-2 gap-2">
           {applied.saturation_amount != null ? (
-            <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-center">
-              <p className="text-zinc-500">Saturation Amount</p>
-              <p className="text-zinc-100">{fmt(applied.saturation_amount, 4)}</p>
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3 text-center">
+              <p className="text-text-secondary">Saturation Amount</p>
+              <p className="text-text-primary">{fmt(applied.saturation_amount, 4)}</p>
             </div>
           ) : null}
           {applied.width_adjustment != null ? (
-            <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-center">
-              <p className="text-zinc-500">Width Adjustment</p>
-              <p className="text-zinc-100">{fmt(applied.width_adjustment, 4)}</p>
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3 text-center">
+              <p className="text-text-secondary">Width Adjustment</p>
+              <p className="text-text-primary">{fmt(applied.width_adjustment, 4)}</p>
             </div>
           ) : null}
         </div>

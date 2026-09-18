@@ -80,7 +80,7 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
         type="button"
         onClick={detect}
         disabled={!file || isLoading}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-ember px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-[#100b08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-bg transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-70"
       >
         {isLoading ? (
           <>
@@ -90,9 +90,9 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
           t("chordDetector.detect")
         )}
       </button>
-      <p className="mt-1.5 text-[11px] text-zinc-500">{t("chordDetector.alwaysFree")}</p>
+      <p className="mt-1.5 text-[11px] text-text-secondary">{t("chordDetector.alwaysFree")}</p>
 
-      {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
 
       {analysis ? (
         <div className="mt-5 space-y-3">
@@ -100,34 +100,34 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
               share ~340px there, and "F# minor" at text-xl inside p-4
               padding was wrapping awkwardly per-word. */}
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-center sm:p-4">
-              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.key")}</p>
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3 text-center sm:p-4">
+              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("chordDetector.key")}</p>
               <p className="mt-1.5 text-lg font-bold sm:text-xl">{analysis.key}</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-center sm:p-4">
-              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.bpm")}</p>
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3 text-center sm:p-4">
+              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("chordDetector.bpm")}</p>
               <p className="mt-1.5 text-lg font-bold sm:text-xl">{analysis.bpm}</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-center sm:p-4">
-              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.timeSig")}</p>
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3 text-center sm:p-4">
+              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("chordDetector.timeSig")}</p>
               <p className="mt-1.5 text-lg font-bold sm:text-xl">4/4</p>
             </div>
           </div>
 
-          <p className="text-[11px] text-zinc-500">{t("chordDetector.estimatedNote")}</p>
+          <p className="text-[11px] text-text-secondary">{t("chordDetector.estimatedNote")}</p>
 
           <audio ref={audioRef} src={previewUrl || undefined} controls onTimeUpdate={onTimeUpdate} className="w-full" />
 
-          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-            <p className="m-0 mb-2.5 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("chordDetector.chordProgression")}</p>
+          <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-4">
+            <p className="m-0 mb-2.5 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("chordDetector.chordProgression")}</p>
             <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">
               {chordChips.map((c, idx) => (
                 <span
                   key={`${c.start}-${c.chord}`}
                   className={`rounded-lg border px-3.5 py-2 text-sm font-semibold transition ${
                     idx === activeIndex
-                      ? "border-brass bg-brass/[0.18] text-brass"
-                      : "border-white/15 bg-black/20 text-zinc-300"
+                      ? "border-accent bg-black/[0.05] text-accent"
+                      : "border-border-subtle bg-black/[0.045] text-text-secondary"
                   }`}
                 >
                   {c.chord}
@@ -141,23 +141,23 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
             // not before it. Reuses the same File object already in memory
             // (see ChordsPanel.jsx), so this jumps straight into the
             // Master tab with the track already attached, no re-upload.
-            <div className="rounded-xl border border-brass/30 bg-brass/[0.06] p-4 text-center">
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-4 text-center">
               <button
                 type="button"
                 onClick={() => {
                   trackEvent("free_tool_master_cta_clicked", { source_tool: sourceTool });
                   onMasterThisSong();
                 }}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brass px-5 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-[#100b08] transition hover:brightness-110"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-bg transition hover:opacity-85"
               >
                 {t("chordDetector.masterThisSong")}
               </button>
-              <p className="mt-2 text-[11px] text-zinc-500">{t("chordDetector.sameFileNote")}</p>
+              <p className="mt-2 text-[11px] text-text-secondary">{t("chordDetector.sameFileNote")}</p>
             </div>
           ) : null}
         </div>
       ) : (
-        <p className="mt-3 text-xs text-zinc-400">
+        <p className="mt-3 text-xs text-text-secondary">
           {file ? t("chordDetector.emptyWithFile") : t("chordDetector.emptyNoFile")}
         </p>
       )}

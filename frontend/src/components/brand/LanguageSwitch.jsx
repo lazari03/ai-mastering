@@ -33,13 +33,13 @@ export default function LanguageSwitch({ lang, setLang }) {
         aria-expanded={open}
         aria-label={`Language: ${current.label}`}
         title={current.label}
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/20 text-base leading-none transition hover:border-white/30"
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-border-subtle bg-black/[0.045] text-base leading-none transition hover:border-text-primary/30"
       >
         {current.flag}
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-full z-50 mt-1.5 flex flex-col overflow-hidden rounded-xl border border-white/15 bg-[#15181c] shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1.5 flex flex-col overflow-hidden rounded-xl border border-border-subtle bg-bg shadow-[0_12px_32px_rgba(0,0,0,0.08)]">
           {LANGS.map((l) => (
             <button
               key={l.code}
@@ -50,7 +50,7 @@ export default function LanguageSwitch({ lang, setLang }) {
               }}
               aria-pressed={l.code === lang}
               className={`flex items-center gap-2 px-3 py-2 text-left text-xs whitespace-nowrap transition ${
-                l.code === lang ? "bg-brass/20 text-brass" : "text-zinc-300 hover:bg-white/5"
+                l.code === lang ? "bg-black/[0.05] text-accent" : "text-text-secondary hover:bg-black/[0.04]"
               }`}
             >
               <span className="text-base leading-none">{l.flag}</span>

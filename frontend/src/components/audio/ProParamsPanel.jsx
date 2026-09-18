@@ -66,7 +66,7 @@ const SECTION_ICONS = {
 
 function Toggle({ checked, onChange, label }) {
   return (
-    <label className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-xs text-zinc-200">
+    <label className="flex items-center justify-between rounded-lg border border-border-subtle bg-black/[0.045] px-2.5 py-1.5 text-xs text-text-primary">
       <span>{label}</span>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4" />
     </label>
@@ -76,14 +76,14 @@ function Toggle({ checked, onChange, label }) {
 function Section({ icon, title, subtitle, wide, children }) {
   const Icon = SECTION_ICONS[icon];
   return (
-    <div className={`rounded-lg border border-white/10 bg-black/20 p-2 ${wide ? "sm:col-span-2 lg:col-span-3" : ""}`}>
+    <div className={`rounded-lg border border-border-subtle bg-black/[0.045] p-2 ${wide ? "sm:col-span-2 lg:col-span-3" : ""}`}>
       <div className="flex items-center gap-1.5" title={subtitle}>
         {Icon ? (
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-brass/30 bg-brass/[0.08] text-brass">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-border-subtle bg-accent/[0.08] text-accent">
             <Icon width={12} height={12} />
           </span>
         ) : null}
-        <p className="m-0 text-[10px] font-bold uppercase tracking-[0.1em] text-brass">{title}</p>
+        <p className="m-0 text-[10px] font-bold uppercase tracking-[0.1em] text-accent">{title}</p>
       </div>
       <div className="mt-1.5 flex flex-col gap-1.5">{children}</div>
     </div>
@@ -98,14 +98,14 @@ function KnobRow({ children }) {
 
 function BandRow({ band, onChange, onRemove, knobs }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border border-white/10 bg-black/25 p-1.5">
+    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border border-border-subtle bg-black/[0.045] p-1.5">
       {knobs.map(([key, label, min, max, step, unit]) => (
         <Knob key={key} label={label} unit={unit} size={32} value={band[key] ?? 0} min={min} max={max} step={step} onChange={(v) => onChange({ [key]: v })} />
       ))}
       <button
         type="button"
         onClick={onRemove}
-        className="ml-auto h-6 w-6 shrink-0 self-center rounded-md border border-red-400/30 bg-red-500/10 text-[11px] text-red-300 hover:border-red-400/50"
+        className="ml-auto h-6 w-6 shrink-0 self-center rounded-md border border-red-400/30 bg-red-500/10 text-[11px] text-red-600 hover:border-red-400/50"
       >
         ✕
       </button>
@@ -119,8 +119,8 @@ export default function ProParamsPanel({ proParams, setSection, addBand, updateB
   return (
     <div className="mt-2.5 flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <p className="m-0 text-[10px] text-zinc-500">Drag a knob, use arrow keys, or click the value to type an exact number.</p>
-        <button type="button" onClick={onReset} className="shrink-0 rounded-lg border border-white/15 bg-black/20 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30">
+        <p className="m-0 text-[10px] text-text-secondary">Drag a knob, use arrow keys, or click the value to type an exact number.</p>
+        <button type="button" onClick={onReset} className="shrink-0 rounded-lg border border-border-subtle bg-black/[0.045] px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30">
           Reset
         </button>
       </div>
@@ -184,11 +184,11 @@ export default function ProParamsPanel({ proParams, setSection, addBand, updateB
         <Section icon="output" title="Output" subtitle="Bit depth and dither for the final file">
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-zinc-400">Bit depth</span>
+              <span className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-text-secondary">Bit depth</span>
               <select
                 value={output.bit_depth}
                 onChange={(e) => setSection("output", { bit_depth: Number(e.target.value) })}
-                className="w-full rounded-lg border border-white/15 bg-black/25 px-2 py-1.5 text-[12px] text-white"
+                className="w-full rounded-lg border border-border-subtle bg-black/[0.045] px-2 py-1.5 text-[12px] text-text-primary"
               >
                 <option value={16}>16-bit</option>
                 <option value={24}>24-bit</option>
@@ -224,7 +224,7 @@ export default function ProParamsPanel({ proParams, setSection, addBand, updateB
             <button
               type="button"
               onClick={() => addBand("eq", { frequency_hz: 1000, gain_db: 0, q: 1.0 })}
-              className="rounded-lg border border-dashed border-white/20 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-zinc-400 hover:border-white/40"
+              className="rounded-lg border border-dashed border-border-subtle px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30"
             >
               + Add EQ band
             </button>
@@ -250,7 +250,7 @@ export default function ProParamsPanel({ proParams, setSection, addBand, updateB
             <button
               type="button"
               onClick={() => addBand("dynamic_eq", { frequency_hz: 3000, q: 1.5, max_gain_reduction_db: 2, release_ms: 100 })}
-              className="rounded-lg border border-dashed border-white/20 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-zinc-400 hover:border-white/40"
+              className="rounded-lg border border-dashed border-border-subtle px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30"
             >
               + Add multiband
             </button>
@@ -275,7 +275,7 @@ export default function ProParamsPanel({ proParams, setSection, addBand, updateB
             <button
               type="button"
               onClick={() => addStereoBand({ from_hz: 2000, to_hz: 12000, gain: 0.2 })}
-              className="rounded-lg border border-dashed border-white/20 px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-zinc-400 hover:border-white/40"
+              className="rounded-lg border border-dashed border-border-subtle px-3 py-1.5 text-[10px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30"
             >
               + Add width band
             </button>

@@ -219,7 +219,7 @@ export default function SignalVisualizer({ src, className = "", barColor = "#e85
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <canvas ref={canvasRef} className="h-28 w-full rounded-lg border border-white/10 bg-black/30" />
+      <canvas ref={canvasRef} className="h-28 w-full rounded-lg border border-border-subtle bg-black/[0.045]" />
       <audio ref={audioRef} controls src={src} crossOrigin="anonymous" className="w-full" />
     </div>
   );
