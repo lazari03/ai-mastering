@@ -130,9 +130,9 @@ export default function Knob({ label, unit, value, min, max, step = 1, onChange,
           width: size,
           height: size,
           background: "radial-gradient(circle at 35% 30%, rgba(255,255,255,0.16), rgba(0,0,0,0.5) 65%)",
-          borderColor: dragging ? "var(--brass)" : "rgba(255,255,255,0.15)",
+          borderColor: dragging ? "var(--accent)" : "rgba(255,255,255,0.15)",
           boxShadow: dragging
-            ? "0 0 10px 1px rgba(223,201,90,0.55), inset 0 1px 2px rgba(255,255,255,0.15)"
+            ? "0 0 10px 1px rgba(130,117,255,0.55), inset 0 1px 2px rgba(255,255,255,0.15)"
             : "0 1px 3px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.1)",
         }}
       >
@@ -147,7 +147,7 @@ export default function Knob({ label, unit, value, min, max, step = 1, onChange,
             return <line key={f} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" strokeLinecap="round" />;
           })}
           <path d={arcPath(-135, 135, 36)} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="7" strokeLinecap="round" />
-          <path d={arcPath(-135, angle, 36)} fill="none" stroke="var(--brass)" strokeWidth="7" strokeLinecap="round" style={{ filter: dragging ? "drop-shadow(0 0 3px var(--brass))" : "none" }} />
+          <path d={arcPath(-135, angle, 36)} fill="none" stroke="var(--accent)" strokeWidth="7" strokeLinecap="round" style={{ filter: dragging ? "drop-shadow(0 0 3px var(--accent))" : "none" }} />
         </svg>
         <div
           className="absolute rounded-full bg-white"
@@ -175,20 +175,20 @@ export default function Knob({ label, unit, value, min, max, step = 1, onChange,
           onKeyDown={handleEditKeyDown}
           onBlur={commitEdit}
           aria-label={`${label} value`}
-          className="w-[52px] rounded border border-brass/50 bg-black/60 px-0.5 py-px text-center text-[10px] font-semibold text-white outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="w-[52px] rounded border border-border-subtle bg-black/[0.03] px-0.5 py-px text-center text-[10px] font-semibold text-text-primary outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       ) : (
         <button
           type="button"
           onClick={beginEdit}
           title="Click to type an exact value"
-          className="whitespace-nowrap rounded text-[10px] font-semibold leading-tight text-white outline-none hover:text-brass focus-visible:text-brass"
+          className="whitespace-nowrap rounded text-[10px] font-semibold leading-tight text-text-primary outline-none hover:text-accent focus-visible:text-accent"
         >
           {formatValue(value, step)}
-          {unit ? <span className="text-zinc-500">{unit}</span> : null}
+          {unit ? <span className="text-text-secondary">{unit}</span> : null}
         </button>
       )}
-      <span className="max-w-[56px] truncate text-center text-[8px] uppercase leading-tight tracking-[0.06em] text-zinc-500">{label}</span>
+      <span className="max-w-[56px] truncate text-center text-[8px] uppercase leading-tight tracking-[0.06em] text-text-secondary">{label}</span>
     </div>
   );
 }

@@ -49,10 +49,10 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
       onDrop={handleDrop}
       className={`rounded-2xl border text-center transition ${
         dragging
-          ? "border-ember bg-ember/[0.08] shadow-[0_0_20px_rgba(232,93,42,0.25)]"
+          ? "border-accent bg-accent/[0.08] shadow-[0_0_20px_rgba(130,117,255,0.2)]"
           : selected
-            ? "border-brass/40 bg-brass/[0.06]"
-            : "border-dashed border-white/20 bg-black/[0.15]"
+            ? "border-border-subtle bg-black/[0.03]"
+            : "border-dashed border-border-subtle bg-black/[0.02]"
       } ${compact ? "p-[18px]" : "p-7"}`}
     >
       <input
@@ -71,18 +71,18 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
       {compact ? (
         <div className="flex items-center gap-2">
           <label htmlFor={id} className="block min-w-0 flex-1 cursor-pointer">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-white">
-              {selected ? <span className="text-brass">✓</span> : null}
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-text-primary">
+              {selected ? <span className="text-accent">✓</span> : null}
               {label}
             </span>
-            <span className="mt-1.5 block truncate text-[11px] text-zinc-400">{fileName || "No file selected"}</span>
+            <span className="mt-1.5 block truncate text-[11px] text-text-secondary">{fileName || "No file selected"}</span>
           </label>
           {selected && onRemove ? (
             <button
               type="button"
               onClick={onRemove}
               aria-label={`Remove ${label}`}
-              className="shrink-0 rounded-full border border-white/15 bg-black/30 px-2 py-1 text-xs text-zinc-300 hover:border-red-400/50 hover:text-red-300"
+              className="shrink-0 rounded-full border border-border-subtle bg-black/[0.03] px-2 py-1 text-xs text-text-secondary hover:border-red-400/50 hover:text-red-300"
             >
               ✕
             </button>
@@ -91,22 +91,19 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
       ) : (
         <div className="inline-flex flex-col items-center gap-2.5">
           <label htmlFor={id} className="inline-flex cursor-pointer flex-col items-center gap-2.5">
-            <span
-              className="flex h-11 w-11 items-center justify-center rounded-full text-xl"
-              style={{ background: "rgba(232,93,42,.15)", border: "1px solid rgba(232,93,42,.4)", color: "var(--ember)" }}
-            >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border-subtle bg-black/[0.03] text-xl text-text-primary">
               {selected ? "✓" : "↑"}
             </span>
-            <span className="text-[13px] font-semibold text-white">
+            <span className="text-[13px] font-semibold text-text-primary">
               {dragging ? "Drop it here" : selected ? "Selected — click to replace" : "Drop an audio file, or click to browse"}
             </span>
-            <span className="break-all text-xs text-zinc-400">{fileName || "No file selected"}</span>
+            <span className="break-all text-xs text-text-secondary">{fileName || "No file selected"}</span>
           </label>
           {selected && onRemove ? (
             <button
               type="button"
               onClick={onRemove}
-              className="rounded-full border border-white/15 bg-black/30 px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-red-400/50 hover:text-red-300"
+              className="rounded-full border border-border-subtle bg-black/[0.03] px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-red-400/50 hover:text-red-300"
             >
               Remove
             </button>

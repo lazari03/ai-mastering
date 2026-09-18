@@ -10,6 +10,7 @@ import MasteringConsole from "@/app/ui/MasteringConsole";
 import MasterResultView from "@/app/ui/MasterResultView";
 import MyMastersPanel from "@/app/ui/MyMastersPanel";
 import ExplorePanel from "@/app/ui/ExplorePanel";
+import HomePanel from "@/app/ui/HomePanel";
 import HelpSupportPanel from "@/app/ui/HelpSupportPanel";
 import SettingsPanel from "@/app/ui/SettingsPanel";
 import PlansPanel from "@/app/ui/PlansPanel";
@@ -18,11 +19,12 @@ import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
 import TopBanner from "@/components/app/TopBanner";
 import AppSearch from "@/components/app/AppSearch";
+import AppNotificationsBell from "@/components/app/AppNotificationsBell";
 import EntitlementsBadge from "@/components/app/EntitlementsBadge";
 import OnboardingTour from "@/components/app/OnboardingTour";
 import MasteringLoaderOverlay from "@/components/app/MasteringLoaderOverlay";
 import { LoadingBlock } from "@/components/ui/Spinner";
-import { IconMaster, IconChords, IconMyMasters, IconExplore, IconHelp, IconSettings, IconBilling, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
+import { IconHome, IconMaster, IconChords, IconMyMasters, IconExplore, IconHelp, IconSettings, IconBilling, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
 import { getProfile, postProfile } from "@/network/http/client";
 import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
@@ -38,6 +40,7 @@ import { useLanguage } from "@/lib/i18n";
 // doesn't add tools (Reference Master, Stem Separation, etc.) that aren't
 // real features yet.
 const TABS = [
+  { key: "home", labelKey: "app.tab.home", icon: IconHome, render: (ctx) => <HomePanel onNavigate={ctx.setActiveTab} /> },
   { key: "explore", labelKey: "app.tab.explore", icon: IconExplore, render: (ctx) => <ExplorePanel onNavigate={ctx.setActiveTab} /> },
   {
     key: "master",
@@ -59,24 +62,28 @@ const TABS = [
   { key: "help", labelKey: "app.tab.help", icon: IconHelp, render: () => <HelpSupportPanel /> },
 ];
 
-// Sidebar/mobile-menu nav renders Explore first, then grouped tabs under
-// their section header, then every settings/help tab as a flat trailing
-// list — `plans` is deliberately excluded here since the reference's own
-// nav doesn't list billing as a tab, only as the clickable usage widget
-// (EntitlementsBadge already does this).
-const TOP_TABS = TABS.filter((tab) => tab.key === "explore");
+// Sidebar/mobile-menu nav renders Home first (the default landing tab,
+// matching the reference dashboard), then grouped tabs under their
+// section header, then every settings/help tab as a flat trailing list.
+// `plans` is excluded since the reference's own nav doesn't list billing
+// as a tab, only as the clickable usage widget (EntitlementsBadge already
+// does this); `explore` is excluded too — it's reachable from Home's
+// "Explore all tools" links and from search, not its own sidebar row,
+// matching the reference exactly (no separate "Explore" nav item there).
+const TOP_TABS = TABS.filter((tab) => tab.key === "home");
 const NAV_GROUPS = [
   { key: "app.navGroup.create", tabs: TABS.filter((tab) => tab.group === "app.navGroup.create") },
   { key: "app.navGroup.analyze", tabs: TABS.filter((tab) => tab.group === "app.navGroup.analyze") },
   { key: "app.navGroup.library", tabs: TABS.filter((tab) => tab.group === "app.navGroup.library") },
 ];
-const BOTTOM_TABS = TABS.filter((tab) => !tab.group && tab.key !== "plans" && tab.key !== "explore");
+const BOTTOM_TABS = TABS.filter((tab) => !tab.group && tab.key !== "plans" && tab.key !== "explore" && tab.key !== "home");
 
 // Real, working search — not a decorative box. Matches against the tabs
 // that actually exist (including the deep-link-only Explore cards for
 // Reference Mastering / Stem Separation, which live inside the Mastering
 // tab rather than as tabs of their own) and jumps straight there.
 const SEARCH_INDEX = [
+  { id: "home", labelKey: "app.tab.home", goTo: "home" },
   { id: "master", labelKey: "app.tab.master", goTo: "master" },
   { id: "reference", labelKey: "app.explore.reference.title", goTo: "master" },
   { id: "stems", labelKey: "app.explore.stems.title", goTo: "master" },
@@ -147,7 +154,7 @@ export default function AppClient() {
   // synced continuously, same as every other tab switch that follows.
   const [activeTab, setActiveTab] = useState(() => {
     const requested = searchParams.get("tab");
-    return TABS.some((tab) => tab.key === requested) ? requested : "master";
+    return TABS.some((tab) => tab.key === requested) ? requested : "home";
   });
   const [menuOpen, setMenuOpen] = useState(false);
   // Desktop sidebar on/off — separate from menuOpen (that's the mobile
@@ -431,11 +438,6 @@ export default function AppClient() {
           </button>
         </div>
 
-        {sidebarOpen ? (
-          <div className="mb-4 px-1.5">
-            <AppSearch index={SEARCH_INDEX} onSelect={goToTab} />
-          </div>
-        ) : null}
 
         <nav className={`flex flex-col gap-4 ${sidebarOpen ? "" : "items-center"}`}>
           {TOP_TABS.map((tab) => (
@@ -493,6 +495,28 @@ export default function AppClient() {
         )}
       </aside>
 
+      {/* min-h-0/min-w-0 wrapper — same reasoning as <main>'s own comment
+          below, just one level up now that a persistent top bar sits
+          beside it in this column. */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Desktop-only top bar (mobile already has its own, above) —
+            search, the real notifications bell, and a quick account
+            shortcut, matching the reference dashboard's header row. */}
+        <div className="hidden shrink-0 items-center justify-between gap-4 border-b border-border-subtle px-6 py-3.5 md:flex md:px-10">
+          <AppSearch index={SEARCH_INDEX} onSelect={goToTab} className="w-full max-w-md" />
+          <div className="flex shrink-0 items-center gap-1.5">
+            <AppNotificationsBell onViewResult={() => goToTab("master")} />
+            <button
+              type="button"
+              onClick={() => goToTab("settings")}
+              title={user.email}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle text-sm font-semibold text-text-primary hover:border-text-primary/30"
+            >
+              {(user.email || "?")[0].toUpperCase()}
+            </button>
+          </div>
+        </div>
+
       {/* min-h-0 is not decorative — without it, a flex column child (the
           mobile layout, since the shell is flex-col below md:) defaults to
           min-height:auto, which blocks overflow-y-auto from ever actually
@@ -528,6 +552,7 @@ export default function AppClient() {
           </motion.div>
         </AnimatePresence>
       </main>
+      </div>
 
       <NotificationBanner activeTab={activeTab} onView={() => goToTab("master")} />
       {showTutorial ? <OnboardingTour onDone={dismissTutorial} /> : null}
