@@ -1,15 +1,14 @@
-name: Diagnose admin users list
+name: Diagnose signup funnel
 
-# Manual, one-off, read-only — prints what Firebase Auth's listUsers()
-# actually returns in production, to answer "why is the admin Users page
-# empty/missing emails" with ground truth instead of guesswork. Deleted
-# once its job is done, same as the earlier migrate-analytics workflow.
+# Manual, one-off, read-only — aggregate counts only, no PII. Answers "why
+# aren't visitors registering" from the real SQLite analytics data instead
+# of a guess. Deleted once its job is done.
 on:
   workflow_dispatch:
 
 jobs:
   diagnose:
-    name: Print Firebase Auth users on VPS
+    name: Print funnel numbers on VPS
     runs-on: ubuntu-latest
     steps:
       - name: SSH and diagnose
@@ -22,4 +21,4 @@ jobs:
           script: |
             cd ${{ secrets.DEPLOY_PATH }}
             git pull
-            make diagnose-admin-users
+            make diagnose-funnel

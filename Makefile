@@ -1,7 +1,7 @@
 .PHONY: help up down restart ps logs build rebuild deploy \
         logs-python logs-node logs-frontend logs-caddy \
         rebuild-python rebuild-node rebuild-frontend \
-        shell-python shell-node diagnose-admin-users \
+        shell-python shell-node diagnose-funnel \
         dev-python dev-node dev-frontend
 
 help: ## Show this list
@@ -99,9 +99,9 @@ shell-python: ## Open a shell inside the running Python container
 shell-node: ## Open a shell inside the running Node container
 	docker compose exec node-api sh
 
-diagnose-admin-users: ## One-off, read-only: print what Firebase Auth's listUsers() actually returns
+diagnose-funnel: ## One-off, read-only: print real signup-funnel numbers from the SQLite analytics store
 	docker compose build node-api
-	docker compose run --rm node-api node scripts/diagnoseAdminUsers.js
+	docker compose run --rm node-api node scripts/diagnoseFunnel.js
 
 # --- Local dev (no Docker) — one terminal tab each -------------------------
 # The Python service MUST be on 8001, never bare `uvicorn app.main:app`

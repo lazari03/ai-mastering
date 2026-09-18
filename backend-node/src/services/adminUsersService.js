@@ -53,6 +53,20 @@ function mergeUserRecord(userRecord, profileData) {
 // since this is an internal tool, not a customer-facing search box.
 const MAX_SEARCH_SCAN = 5000;
 
+// PublicChordDetector.jsx (the free, no-signup tool) silently creates a
+// Firebase Anonymous Auth session per visitor so it can hold a result
+// across an eventual sign-up (see authStore.js's ensureAnonymous/upgrade
+// flow) — a real, intentional part of that funnel, not a bug. But it
+// means Firebase Auth's own user list is mostly these placeholder
+// accounts (no email, no linked provider) for everyone who tried the
+// tool and never converted. An admin looking at "registered users" wants
+// actual accounts, not that noise — providerData is only ever empty for
+// an anonymous session, so that's the one reliable signal to filter on
+// server-side rather than making every caller re-derive it.
+function isAnonymous(userRecord) {
+  return userRecord.providerData.length === 0;
+}
+
 export async function listUsers({ pageToken, search } = {}) {
   const auth = getAuth();
 
@@ -67,6 +81,12 @@ export async function listUsers({ pageToken, search } = {}) {
     }
   }
 
+  // Anonymous placeholders are excluded up front, then pages are refilled
+  // until either a full page of real users is gathered or Auth genuinely
+  // runs out — otherwise a page that happens to be mostly anonymous
+  // sessions would return back a near-empty result instead of continuing
+  // to look, which is exactly the "why is this empty" confusion this
+  // whole diagnostic started from.
   let userRecords = [];
   let nextPageToken = null;
   if (search) {
@@ -76,13 +96,17 @@ export async function listUsers({ pageToken, search } = {}) {
     const needle = search.trim().toLowerCase();
     do {
       const page = await auth.listUsers(1000, token);
-      userRecords.push(...page.users.filter((u) => (u.email || "").toLowerCase().includes(needle)));
+      userRecords.push(...page.users.filter((u) => !isAnonymous(u) && (u.email || "").toLowerCase().includes(needle)));
       token = page.pageToken;
     } while (token && userRecords.length < 200 && userRecords.length + 1000 <= MAX_SEARCH_SCAN);
   } else {
-    const page = await auth.listUsers(1000, pageToken || undefined);
-    userRecords = page.users;
-    nextPageToken = page.pageToken || null;
+    let token = pageToken || undefined;
+    do {
+      const page = await auth.listUsers(1000, token);
+      userRecords.push(...page.users.filter((u) => !isAnonymous(u)));
+      token = page.pageToken || null;
+    } while (token && userRecords.length < 200);
+    nextPageToken = token || null;
   }
 
   if (userRecords.length === 0) return { users: [], nextPageToken };
