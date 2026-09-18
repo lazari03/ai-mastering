@@ -83,17 +83,23 @@ main {
 }
 
 .glass-panel {
-  background: linear-gradient(145deg, rgba(27, 30, 34, 0.78), rgba(15, 17, 19, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(8px);
+  /* Was a dark frosted-glass gradient (the old brand's whole visual
+     language) — the minimal-premium palette has no glassmorphism, so this
+     is now just a plain light card: a background (so it visually reads as
+     raised over the page even though both are the same #F6F5F1) plus a
+     thin border. Left as this class rather than inlined at each of its 3
+     call sites (MasteringConsole/MasterResultView/NotificationBanner) so
+     they can't drift out of sync with each other again. */
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.06);
 }
 
 .legal-prose h2 {
   margin: 0 0 0.6em;
-  font-family: var(--font-title), sans-serif;
   font-size: 1.15rem;
-  color: #fff;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .legal-prose p {
@@ -112,11 +118,11 @@ main {
 .legal-prose section + section {
   margin-top: 1.75rem;
   padding-top: 1.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .legal-prose strong {
-  color: #e8ecef;
+  color: var(--text-primary);
 }
 
 @keyframes pulseRing {
