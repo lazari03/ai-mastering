@@ -107,7 +107,7 @@ function SidebarNavButton({ tab, isActive, sidebarOpen, t, onClick }) {
       title={sidebarOpen ? undefined : t(tab.labelKey)}
       className={`flex items-center rounded-lg text-[12.5px] font-medium transition ${
         sidebarOpen ? "gap-2.5 px-2.5 py-2" : "h-9 w-9 justify-center"
-      } ${isActive ? "bg-black/[0.05] text-text-primary" : "text-text-secondary hover:bg-black/[0.03] hover:text-text-primary"}`}
+      } ${isActive ? "bg-black/[0.05] text-text-primary" : "text-text-secondary hover:bg-black/[0.045] hover:text-text-primary"}`}
     >
       <Icon />
       {sidebarOpen ? <span className="truncate">{t(tab.labelKey)}</span> : null}
@@ -123,7 +123,7 @@ function MobileNavButton({ tab, isActive, t, onClick }) {
       onClick={onClick}
       aria-pressed={isActive}
       className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium transition ${
-        isActive ? "bg-black/[0.05] text-text-primary" : "text-text-secondary active:bg-black/[0.03]"
+        isActive ? "bg-black/[0.05] text-text-primary" : "text-text-secondary active:bg-black/[0.045]"
       }`}
     >
       <Icon />
@@ -406,7 +406,7 @@ export default function AppClient() {
             <button
               type="button"
               onClick={signOut}
-              className="w-full rounded-lg border border-border-subtle px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-text-primary active:bg-black/[0.03]"
+              className="w-full rounded-lg border border-border-subtle px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-text-primary active:bg-black/[0.045]"
             >
               {t("app.signout")}
             </button>

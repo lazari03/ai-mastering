@@ -12,7 +12,7 @@ import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
 const fieldStyle =
-  "w-full box-border rounded-xl border border-border-subtle bg-black/[0.03] px-3.5 py-3 text-sm text-text-primary outline-none focus:border-border-subtle";
+  "w-full box-border rounded-xl border border-border-subtle bg-black/[0.045] px-3.5 py-3 text-sm text-text-primary outline-none focus:border-border-subtle";
 
 export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
   const { t } = useLanguage();
@@ -89,7 +89,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
       {!loaded ? (
         <LoadingBlock />
       ) : (
-        <form onSubmit={saveProfile} className="mt-6 flex flex-col gap-4 rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+        <form onSubmit={saveProfile} className="mt-6 flex flex-col gap-4 rounded-2xl border border-border-subtle bg-black/[0.045] p-5">
           <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-accent">{t("settings.profile")}</h2>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -144,7 +144,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
         </form>
       )}
 
-      <div className="rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+      <div className="rounded-2xl border border-border-subtle bg-black/[0.045] p-5">
         <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-accent">{t("billing.title")}</h2>
         {!entitlementsLoaded ? (
           <LoadingBlock />
@@ -171,7 +171,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
         ) : null}
       </div>
 
-      <form onSubmit={submitPasswordChange} className="flex flex-col gap-4 rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+      <form onSubmit={submitPasswordChange} className="flex flex-col gap-4 rounded-2xl border border-border-subtle bg-black/[0.045] p-5">
         <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-accent">{t("settings.changePassword")}</h2>
 
         <label className="block">
@@ -233,20 +233,20 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
 
       <div className="flex flex-col gap-5">
       {onReplayTutorial ? (
-        <div className="rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+        <div className="rounded-2xl border border-border-subtle bg-black/[0.045] p-5">
           <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-accent">{t("settings.help")}</h2>
           <p className="mt-2 text-sm text-text-secondary">{t("settings.wantRefresher")}</p>
           <button
             type="button"
             onClick={onReplayTutorial}
-            className="mt-3 rounded-full border border-border-subtle bg-black/[0.03] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text-primary hover:border-text-primary/30"
+            className="mt-3 rounded-full border border-border-subtle bg-black/[0.045] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text-primary hover:border-text-primary/30"
           >
             {t("settings.replayTutorial")}
           </button>
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+      <div className="rounded-2xl border border-border-subtle bg-black/[0.045] p-5">
         <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-accent">{t("settings.sessions")}</h2>
         <p className="mt-2 text-sm text-text-secondary">{t("settings.sessionsBody")}</p>
         {signOutEverywhereStatus ? <p className="mt-2 text-sm text-accent">{signOutEverywhereStatus}</p> : null}
@@ -261,7 +261,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
               router.push("/login");
             }
           }}
-          className="mt-3 flex items-center gap-2 rounded-full border border-border-subtle bg-black/[0.03] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
+          className="mt-3 flex items-center gap-2 rounded-full border border-border-subtle bg-black/[0.045] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
         >
           {busy ? (
             <>
@@ -343,7 +343,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
                   setDeletePassword("");
                   clearError();
                 }}
-                className="rounded-full border border-border-subtle bg-black/[0.03] px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30"
+                className="rounded-full border border-border-subtle bg-black/[0.045] px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30"
               >
                 {t("settings.cancel")}
               </button>

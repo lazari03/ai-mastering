@@ -53,7 +53,7 @@ Here is the sound I want:
 function Item({ q, a }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-xl border border-border-subtle bg-black/[0.03] p-4">
+    <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-4">
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center justify-between gap-3 text-left">
         <span className="text-sm font-semibold text-text-primary">{q}</span>
         <span className={`shrink-0 text-accent transition-transform ${open ? "rotate-45" : ""}`}>+</span>
@@ -88,7 +88,7 @@ export default function HelpSupportPanel() {
       <h1 className="m-0 text-[26px]">{t("help.title")}</h1>
       <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t("help.subtitle")}</p>
 
-      <div className="mt-6 rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+      <div className="mt-6 rounded-2xl border border-border-subtle bg-black/[0.045] p-5">
         <h2 className="m-0 text-sm font-semibold text-text-primary">{t("help.chatgptTitle")}</h2>
         <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">{t("help.chatgptBody")}</p>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-text-secondary">
@@ -114,7 +114,7 @@ export default function HelpSupportPanel() {
         {/* MASTER_PROMPT stays English-only — it's fed verbatim to an LLM
             and must match the app's real JSON schema/enum values exactly;
             translating it would break the thing it's for. */}
-        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-border-subtle bg-black/[0.03] p-3 text-[11px] leading-relaxed text-text-secondary">
+        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-border-subtle bg-black/[0.045] p-3 text-[11px] leading-relaxed text-text-secondary">
           {MASTER_PROMPT}
         </pre>
       </div>
@@ -125,7 +125,7 @@ export default function HelpSupportPanel() {
         ))}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+      <div className="mt-6 rounded-2xl border border-border-subtle bg-black/[0.045] p-5">
         <h2 className="m-0 text-sm font-semibold text-text-primary">{t("help.stillStuck")}</h2>
         <p className="mt-1.5 text-sm text-text-secondary">
           {t("help.emailIntro")}{" "}

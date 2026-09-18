@@ -53,7 +53,7 @@ export default function AppNotificationsBell({ onViewResult }) {
                 onViewResult();
                 setOpen(false);
               }}
-              className="block w-full px-4 py-3 text-left text-sm text-text-primary hover:bg-black/[0.03]"
+              className="block w-full px-4 py-3 text-left text-sm text-text-primary hover:bg-black/[0.045]"
             >
               {t("notif.masterReady")}
             </button>

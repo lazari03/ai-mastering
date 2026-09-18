@@ -73,7 +73,7 @@ export default function ChordsPanel({ onMasterThisSong }) {
       <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t("chordsPanel.subtitle")}</p>
 
       {handoff ? (
-        <p className="mt-4 rounded-xl border border-border-subtle bg-black/[0.03] px-4 py-3 text-sm text-accent">
+        <p className="mt-4 rounded-xl border border-border-subtle bg-black/[0.045] px-4 py-3 text-sm text-accent">
           {t("chordsPanel.handoffNote", { name: handoff.fileName || t("chordsPanel.handoffFallbackName") })}
         </p>
       ) : null}

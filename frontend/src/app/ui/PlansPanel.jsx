@@ -166,7 +166,7 @@ export default function PlansPanel() {
               return (
                 <div
                   key={key}
-                  className={`rounded-xl border p-4 ${isCurrent ? "border-border-subtle bg-black/[0.03]" : "border-border-subtle bg-black/[0.03]"}`}
+                  className={`rounded-xl border p-4 ${isCurrent ? "border-border-subtle bg-black/[0.045]" : "border-border-subtle bg-black/[0.045]"}`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="m-0 text-sm font-semibold text-text-primary">{plan.label}</p>
@@ -202,7 +202,7 @@ export default function PlansPanel() {
                       )}
                     </button>
                   ) : isPendingTarget ? (
-                    <p className="mt-3 rounded-full border border-border-subtle bg-black/[0.03] px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
+                    <p className="mt-3 rounded-full border border-border-subtle bg-black/[0.045] px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                       {pendingAppliesAt ? t("billing.scheduledFor", { date: pendingAppliesAt.toLocaleDateString() }) : t("billing.scheduled")}
                     </p>
                   ) : (
@@ -210,7 +210,7 @@ export default function PlansPanel() {
                       type="button"
                       onClick={() => buy(plan.item, plan.key, plan.price)}
                       disabled={Boolean(busyItem)}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-border-subtle bg-black/[0.03] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-border-subtle bg-black/[0.045] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
                     >
                       {busyItem === plan.item ? (
                         <>
@@ -232,7 +232,7 @@ export default function PlansPanel() {
           <div className="mt-6 overflow-x-auto rounded-xl border border-border-subtle">
             <table className="w-full min-w-[560px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-border-subtle bg-black/[0.03]">
+                <tr className="border-b border-border-subtle bg-black/[0.045]">
                   <th className="p-3 text-left text-xs uppercase tracking-[0.1em] text-text-secondary">{t("plans.feature")}</th>
                   {PLAN_ORDER.map((key) => (
                     <th key={key} className="p-3 text-left text-xs uppercase tracking-[0.1em] text-text-secondary">
@@ -263,7 +263,7 @@ export default function PlansPanel() {
           </div>
 
           {masterQuota ? (
-            <div className="mt-6 rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+            <div className="mt-6 rounded-xl border border-border-subtle bg-black/[0.045] p-3">
               <p className="m-0 text-sm text-text-primary">{masterQuota.resets ? t("billing.mastersThisMonth") : t("billing.freeTrialMasters")}</p>
               <p className="m-0 text-xs text-text-secondary">
                 {t("billing.leftOf", { remaining: masterQuota.remaining, limit: masterQuota.limit })}
@@ -288,7 +288,7 @@ export default function PlansPanel() {
                 type="button"
                 onClick={() => buyOneTime(SINGLE_MASTER, "single_master")}
                 disabled={Boolean(busyItem)}
-                className="flex shrink-0 items-center gap-2 rounded-full border border-border-subtle bg-black/[0.03] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
+                className="flex shrink-0 items-center gap-2 rounded-full border border-border-subtle bg-black/[0.045] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
               >
                 {busyItem === SINGLE_MASTER.item ? (
                   <>
@@ -313,7 +313,7 @@ export default function PlansPanel() {
                 type="button"
                 onClick={() => buyOneTime(STEM_SEPARATION, "stem_separation")}
                 disabled={Boolean(busyItem)}
-                className="flex shrink-0 items-center gap-2 rounded-full border border-border-subtle bg-black/[0.03] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
+                className="flex shrink-0 items-center gap-2 rounded-full border border-border-subtle bg-black/[0.045] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
               >
                 {busyItem === STEM_SEPARATION.item ? (
                   <>
@@ -327,7 +327,7 @@ export default function PlansPanel() {
           </div>
 
           {currentPlan === "pro" && stemQuota ? (
-            <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+            <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.045] p-3">
               <p className="m-0 text-sm text-text-primary">{t("billing.stemsThisMonth")}</p>
               <p className="m-0 text-xs text-text-secondary">
                 {t("billing.leftOf", { remaining: stemQuota.remaining, limit: stemQuota.limit })} · {t("billing.resetsNextMonth")}

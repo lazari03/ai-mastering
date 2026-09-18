@@ -124,7 +124,7 @@ export default function SiteHeader() {
                 key={link.key}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className="rounded-xl px-3.5 py-3 text-left text-sm font-semibold uppercase tracking-[0.1em] text-text-secondary active:bg-black/[0.03]"
+                className="rounded-xl px-3.5 py-3 text-left text-sm font-semibold uppercase tracking-[0.1em] text-text-secondary active:bg-black/[0.045]"
               >
                 {t(link.key)}
               </a>

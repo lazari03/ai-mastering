@@ -51,7 +51,7 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
         dragging
           ? "border-accent bg-accent/[0.08] shadow-[0_0_20px_rgba(130,117,255,0.2)]"
           : selected
-            ? "border-border-subtle bg-black/[0.03]"
+            ? "border-border-subtle bg-black/[0.045]"
             : "border-dashed border-border-subtle bg-black/[0.02]"
       } ${compact ? "p-[18px]" : "p-7"}`}
     >
@@ -82,7 +82,7 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
               type="button"
               onClick={onRemove}
               aria-label={`Remove ${label}`}
-              className="shrink-0 rounded-full border border-border-subtle bg-black/[0.03] px-2 py-1 text-xs text-text-secondary hover:border-red-400/50 hover:text-red-300"
+              className="shrink-0 rounded-full border border-border-subtle bg-black/[0.045] px-2 py-1 text-xs text-text-secondary hover:border-red-400/50 hover:text-red-300"
             >
               ✕
             </button>
@@ -91,7 +91,7 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
       ) : (
         <div className="inline-flex flex-col items-center gap-2.5">
           <label htmlFor={id} className="inline-flex cursor-pointer flex-col items-center gap-2.5">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border-subtle bg-black/[0.03] text-xl text-text-primary">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border-subtle bg-black/[0.045] text-xl text-text-primary">
               {selected ? "✓" : "↑"}
             </span>
             <span className="text-[13px] font-semibold text-text-primary">
@@ -103,7 +103,7 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
             <button
               type="button"
               onClick={onRemove}
-              className="rounded-full border border-border-subtle bg-black/[0.03] px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-red-400/50 hover:text-red-300"
+              className="rounded-full border border-border-subtle bg-black/[0.045] px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-red-400/50 hover:text-red-300"
             >
               Remove
             </button>

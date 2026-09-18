@@ -29,7 +29,7 @@ const CODEC_OPTIONS = [
   { value: "opus_128", label: "Opus 128kbps" },
 ];
 
-const CHIP_BASE = "border-border-subtle bg-black/[0.03] text-text-secondary";
+const CHIP_BASE = "border-border-subtle bg-black/[0.045] text-text-secondary";
 const CHIP_EMBER = "border-accent bg-accent/[0.15] text-accent";
 const CHIP_BRASS = "border-accent bg-black/[0.05] text-accent";
 
@@ -354,13 +354,13 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 <button
                   type="button"
                   onClick={() => setReferenceFile(null)}
-                  className="mt-3 rounded-lg border border-border-subtle bg-black/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30"
+                  className="mt-3 rounded-lg border border-border-subtle bg-black/[0.045] px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30"
                 >
                   {t("console.switchManual")}
                 </button>
 
                 <div className="mt-4">
-                  <label className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-black/[0.03] p-3.5 text-sm">
+                  <label className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-black/[0.045] p-3.5 text-sm">
                     <span className="flex items-center gap-2">
                       {t("console.stemSeparation")}
                       {!stemUnlocked ? (
@@ -403,12 +403,12 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                       type="button"
                       onClick={() => setMode("quick")}
                       aria-pressed={mode === "quick"}
-                      className={`relative rounded-2xl border p-4 text-left transition ${mode === "quick" ? "border-accent bg-accent/[0.1]" : "border-border-subtle bg-black/[0.03] hover:border-border-subtle"}`}
+                      className={`relative rounded-2xl border p-4 text-left transition ${mode === "quick" ? "border-accent bg-accent/[0.1]" : "border-border-subtle bg-black/[0.045] hover:border-border-subtle"}`}
                     >
                       {mode === "quick" ? (
                         <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-bg">✓</span>
                       ) : null}
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle bg-black/[0.03] text-base">🎚️</span>
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle bg-black/[0.045] text-base">🎚️</span>
                       <p className="m-0 mt-2.5 text-sm font-bold uppercase tracking-[0.1em] text-text-primary">{t("console.quickMaster")}</p>
                       <p className="mt-1.5 text-xs text-text-secondary">{t("console.quickMasterBody")}</p>
                     </button>
@@ -416,12 +416,12 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                       type="button"
                       onClick={() => setMode("pro")}
                       aria-pressed={mode === "pro"}
-                      className={`relative rounded-2xl border p-4 text-left transition ${mode === "pro" ? "border-accent bg-accent/[0.1]" : "border-border-subtle bg-black/[0.03] hover:border-border-subtle"}`}
+                      className={`relative rounded-2xl border p-4 text-left transition ${mode === "pro" ? "border-accent bg-accent/[0.1]" : "border-border-subtle bg-black/[0.045] hover:border-border-subtle"}`}
                     >
                       {mode === "pro" ? (
                         <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-bg">✓</span>
                       ) : null}
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle bg-black/[0.03] text-base">🎛️</span>
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle bg-black/[0.045] text-base">🎛️</span>
                       <p className="m-0 mt-2.5 text-sm font-bold uppercase tracking-[0.1em] text-text-primary">{t("console.proMaster")}</p>
                       <p className="mt-1.5 text-xs text-text-secondary">{t("console.proMasterBody")}</p>
                     </button>
@@ -436,7 +436,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                       <select
                         value={builtInPresets.some((p) => p.name === selectedPreset) ? selectedPreset : ""}
                         onChange={(event) => setPreset(event.target.value)}
-                        className="w-full rounded-[10px] border border-border-subtle bg-black/[0.03] p-2.5 text-[13px] text-text-primary"
+                        className="w-full rounded-[10px] border border-border-subtle bg-black/[0.045] p-2.5 text-[13px] text-text-primary"
                       >
                         <option value="">{t("console.custom")}</option>
                         {builtInPresets.map((preset) => (
@@ -451,7 +451,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                       <select
                         value={tier}
                         onChange={(event) => setTier(event.target.value)}
-                        className="w-full rounded-[10px] border border-border-subtle bg-black/[0.03] p-2.5 text-[13px] text-text-primary"
+                        className="w-full rounded-[10px] border border-border-subtle bg-black/[0.045] p-2.5 text-[13px] text-text-primary"
                       >
                         <option value="standard">{t("console.standard")}</option>
                         <option value="professional" disabled={!professionalUnlocked}>
@@ -548,7 +548,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                   ) : null}
 
                   <div className="mt-4">
-                    <label className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-black/[0.03] p-3.5 text-sm">
+                    <label className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-black/[0.045] p-3.5 text-sm">
                       <span className="flex items-center gap-2">
                         {t("console.stemSeparation")}
                         {!stemUnlocked ? (
@@ -582,7 +582,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                     ) : null}
                   </div>
 
-                  <div className="mt-4 rounded-xl border border-border-subtle bg-black/[0.03] p-3.5">
+                  <div className="mt-4 rounded-xl border border-border-subtle bg-black/[0.045] p-3.5">
                     <span className="block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.savedArtists")}</span>
                     <span className="mt-1 block text-[11px] text-text-secondary">{t("console.savedArtistsBody")}</span>
 
@@ -590,7 +590,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                       <select
                         value={savedArtistPresets.some((p) => p.name === selectedPreset) ? selectedPreset : ""}
                         onChange={(event) => setPreset(event.target.value)}
-                        className="min-w-[10rem] flex-1 rounded-[10px] border border-border-subtle bg-black/[0.03] p-2.5 text-[13px] text-text-primary"
+                        className="min-w-[10rem] flex-1 rounded-[10px] border border-border-subtle bg-black/[0.045] p-2.5 text-[13px] text-text-primary"
                       >
                         <option value="">{savedArtistPresets.length ? t("console.chooseArtist") : t("console.noSavedArtists")}</option>
                         {savedArtistPresets.map((preset) => (
@@ -630,7 +630,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                           onChange={(event) => setImportArtistName(event.target.value)}
                           placeholder={t("console.artistNamePlaceholder")}
                           disabled={isImportingPreset}
-                          className="flex-1 rounded-lg border border-border-subtle bg-black/[0.03] px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary"
+                          className="flex-1 rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary"
                         />
                         <label
                           htmlFor="presetImportInput"
@@ -674,7 +674,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                           <button
                             type="button"
                             onClick={() => setImportFilePending(null)}
-                            className="rounded-lg border border-border-subtle bg-black/[0.03] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30"
+                            className="rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30"
                           >
                             {t("console.clear")}
                           </button>
@@ -734,7 +734,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 type="button"
                 onClick={() => submit(true)}
                 disabled={isSubmitting || isBootstrapping || !file}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border-subtle bg-black/[0.03] px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-text-primary transition hover:border-text-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border-subtle bg-black/[0.045] px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-text-primary transition hover:border-text-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
@@ -773,7 +773,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
             type="button"
             onClick={prevStep}
             disabled={activeStep === 0}
-            className="rounded-xl border border-border-subtle bg-black/[0.03] px-[22px] py-3 text-xs font-bold uppercase tracking-[0.12em] text-text-primary disabled:opacity-40"
+            className="rounded-xl border border-border-subtle bg-black/[0.045] px-[22px] py-3 text-xs font-bold uppercase tracking-[0.12em] text-text-primary disabled:opacity-40"
           >
             {t("console.back")}
           </button>
@@ -794,7 +794,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
             type="button"
             onClick={() => submit(true)}
             disabled={isSubmitting || isBootstrapping || !file}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border-subtle bg-black/[0.03] px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary transition hover:border-border-subtle disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border-subtle bg-black/[0.045] px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary transition hover:border-border-subtle disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isSubmitting ? (
               <>
@@ -844,11 +844,11 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
             ))}
 
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+              <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
                 <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.beforeLufs")}</p>
                 <p className="mt-1.5 text-[17px] font-bold">{result.before_lufs}</p>
               </div>
-              <div className="rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+              <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
                 <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.afterLufs")}</p>
                 <p className="mt-1.5 text-[17px] font-bold text-accent">{result.after_lufs}</p>
               </div>
@@ -865,12 +865,12 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
               </p>
             ) : null}
 
-            <div className="rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
               <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.originalSignal")}</p>
               <SignalVisualizer src={result.originalUrl} gainDb={result.ab_gain_match?.before_gain_db || 0} />
             </div>
 
-            <div className="rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
               <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.masteredSignal")}</p>
               <SignalVisualizer src={result.previewUrl || result.masteredUrl} barColor="#dfc95a" gainDb={result.ab_gain_match?.after_gain_db || 0} />
               <button
@@ -895,14 +895,14 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
               {downloadError ? <p className="mt-2 text-xs text-red-300">⚠ {downloadError}</p> : null}
             </div>
 
-            <div className="rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
               <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.codecPreview")}</p>
               <p className="mb-3 text-[11px] text-text-secondary">{t("console.codecPreviewBody")}</p>
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={codecChoice}
                   onChange={(e) => setCodecChoice(e.target.value)}
-                  className="flex-1 rounded-lg border border-border-subtle bg-black/[0.03] px-2 py-2 text-xs text-text-primary"
+                  className="flex-1 rounded-lg border border-border-subtle bg-black/[0.045] px-2 py-2 text-xs text-text-primary"
                 >
                   {CODEC_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -931,15 +931,15 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
               {codecPreview ? (
                 <div className="mt-3 space-y-3">
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-lg border border-border-subtle bg-black/[0.03] p-2">
+                    <div className="rounded-lg border border-border-subtle bg-black/[0.045] p-2">
                       <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.truePeakDelta")}</p>
                       <p className="mt-1 text-sm font-semibold">{codecPreview.true_peak_delta_db > 0 ? "+" : ""}{codecPreview.true_peak_delta_db} dB</p>
                     </div>
-                    <div className="rounded-lg border border-border-subtle bg-black/[0.03] p-2">
+                    <div className="rounded-lg border border-border-subtle bg-black/[0.045] p-2">
                       <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.lufsDelta")}</p>
                       <p className="mt-1 text-sm font-semibold">{codecPreview.lufs_delta_db > 0 ? "+" : ""}{codecPreview.lufs_delta_db} dB</p>
                     </div>
-                    <div className="rounded-lg border border-border-subtle bg-black/[0.03] p-2">
+                    <div className="rounded-lg border border-border-subtle bg-black/[0.045] p-2">
                       <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.highFreqDelta")}</p>
                       <p className="mt-1 text-sm font-semibold">{codecPreview.high_frequency_change_db > 0 ? "+" : ""}{codecPreview.high_frequency_change_db} dB</p>
                     </div>
@@ -949,7 +949,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
               ) : null}
             </div>
 
-            <div className="rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
               <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.processingSummary")}</p>
               <ProcessingSummary result={result} />
             </div>
@@ -960,7 +960,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
           <div className="mt-4 space-y-3.5 text-sm text-text-secondary">
             <p className="m-0">{t("console.emptyReview")}</p>
             {inputPreviewUrl ? (
-              <div className="rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+              <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
                 <p className="m-0 mb-2 text-xs uppercase tracking-[0.1em] text-text-secondary">{t("console.inputSignalPreview")}</p>
                 <SignalVisualizer src={inputPreviewUrl} />
               </div>

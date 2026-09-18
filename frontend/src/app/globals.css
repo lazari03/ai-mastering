@@ -13,12 +13,19 @@
      tokens in this block, not those. */
   --bg: #f6f5f1;
   --text-primary: #111111;
-  --text-secondary: #6b6b68;
+  /* Darkened from the original spec's #6b6b68 (~4.9:1 on --bg) to ~6.9:1 —
+     labels, hints, and secondary copy were reading as too faint/washed
+     out, especially at the small uppercase tracking-heavy sizes used
+     throughout the in-app product. */
+  --text-secondary: #55534f;
   --dark-bg: #0c0c0d;
   --dark-surface: #151516;
   --dark-text-primary: #f5f5f3;
   --dark-text-secondary: #969696;
-  --border-subtle: rgba(0, 0, 0, 0.1);
+  /* Was 0.1 — too close to --bg's own luminance to actually read as a
+     boundary, which is what made form fields/cards hard to place at a
+     glance ("not giving visibility to fields"). */
+  --border-subtle: rgba(0, 0, 0, 0.16);
   --dark-border-subtle: rgba(255, 255, 255, 0.1);
   --accent: #8275ff;
 

@@ -28,7 +28,7 @@ export default function EntitlementsBadge({ onClick, compact = false, className 
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-black/[0.03] px-3 py-1.5 text-[11px] font-semibold text-text-primary transition hover:border-border-subtle ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-black/[0.045] px-3 py-1.5 text-[11px] font-semibold text-text-primary transition hover:border-border-subtle ${className}`}
     >
       <span className={plan === "free" ? "text-text-secondary" : "text-accent"}>{label}</span>
       {!compact && masterQuota ? (

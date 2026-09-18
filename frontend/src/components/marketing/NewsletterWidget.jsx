@@ -58,7 +58,7 @@ export default function NewsletterWidget({ source = "footer", size = "sm", onSub
               <button
                 type="button"
                 onClick={copyCode}
-                className="rounded-lg border border-border-subtle px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-text-primary hover:bg-black/[0.03]"
+                className="rounded-lg border border-border-subtle px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-text-primary hover:bg-black/[0.045]"
               >
                 {copied ? t("newsletter.copied") : t("newsletter.copy")}
               </button>

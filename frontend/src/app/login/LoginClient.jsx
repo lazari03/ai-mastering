@@ -55,7 +55,7 @@ export default function LoginClient() {
   };
 
   const fieldStyle =
-    "w-full box-border rounded-xl border border-border-subtle bg-black/[0.03] px-3.5 py-3 text-sm text-text-primary outline-none focus:border-text-primary/30";
+    "w-full box-border rounded-xl border border-border-subtle bg-black/[0.045] px-3.5 py-3 text-sm text-text-primary outline-none focus:border-text-primary/30";
   const isSignup = mode === "signup";
   const googleDisabled = busy || (isSignup && !termsAccepted);
   const passwordStrength = scorePassword(password);
@@ -213,7 +213,7 @@ export default function LoginClient() {
             type="button"
             onClick={() => signInWithGoogle(termsAccepted)}
             disabled={googleDisabled}
-            className="w-full rounded-full border border-border-subtle bg-black/[0.03] px-4 py-3.5 text-[13px] font-semibold uppercase tracking-[0.14em] text-text-primary transition hover:border-text-primary/30 disabled:opacity-50"
+            className="w-full rounded-full border border-border-subtle bg-black/[0.045] px-4 py-3.5 text-[13px] font-semibold uppercase tracking-[0.14em] text-text-primary transition hover:border-text-primary/30 disabled:opacity-50"
           >
             {t("login.google")}
           </button>

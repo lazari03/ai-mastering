@@ -175,7 +175,7 @@ export default function Knob({ label, unit, value, min, max, step = 1, onChange,
           onKeyDown={handleEditKeyDown}
           onBlur={commitEdit}
           aria-label={`${label} value`}
-          className="w-[52px] rounded border border-border-subtle bg-black/[0.03] px-0.5 py-px text-center text-[10px] font-semibold text-text-primary outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="w-[52px] rounded border border-border-subtle bg-black/[0.045] px-0.5 py-px text-center text-[10px] font-semibold text-text-primary outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       ) : (
         <button

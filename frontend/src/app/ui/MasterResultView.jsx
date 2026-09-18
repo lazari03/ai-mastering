@@ -104,7 +104,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
         <button
           type="button"
           onClick={onViewAllMasters}
-          className="mt-5 rounded-lg border border-border-subtle bg-black/[0.03] px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30"
+          className="mt-5 rounded-lg border border-border-subtle bg-black/[0.045] px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30"
         >
           {t("result.backToMasters")}
         </button>
@@ -167,7 +167,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
         <button
           type="button"
           onClick={onViewAllMasters}
-          className="mt-6 rounded-lg border border-border-subtle bg-black/[0.03] px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30"
+          className="mt-6 rounded-lg border border-border-subtle bg-black/[0.045] px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30"
         >
           {t("result.backToMasters")}
         </button>
@@ -205,19 +205,19 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
           ) : null}
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
-          {target.genre ? <span className="rounded-lg border border-border-subtle bg-black/[0.03] px-3 py-1.5 text-xs capitalize">{target.genre}</span> : null}
+          {target.genre ? <span className="rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-1.5 text-xs capitalize">{target.genre}</span> : null}
           {target.category ? (
             <span className="rounded-lg border border-border-subtle bg-accent/10 px-3 py-1.5 text-xs capitalize text-accent">
               {target.category.replaceAll("_", " ")}
               {target.flavour ? ` · ${target.flavour}` : ""}
             </span>
           ) : null}
-          {applied.tier ? <span className="rounded-lg border border-border-subtle bg-black/[0.03] px-3 py-1.5 text-xs uppercase tracking-[0.08em]">{applied.tier}</span> : null}
+          {applied.tier ? <span className="rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-1.5 text-xs uppercase tracking-[0.08em]">{applied.tier}</span> : null}
         </div>
       </div>
 
       <div className="glass-panel rounded-[20px] p-4 sm:p-[22px]">
-        <div className="mb-4 flex items-center justify-center gap-1 rounded-full border border-border-subtle bg-black/[0.03] p-1">
+        <div className="mb-4 flex items-center justify-center gap-1 rounded-full border border-border-subtle bg-black/[0.045] p-1">
           <button
             type="button"
             onClick={() => setPreviewMode("before")}
@@ -265,14 +265,14 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
           <button
             type="button"
             onClick={handleMasterAnother}
-            className="inline-flex w-full justify-center rounded-lg border border-border-subtle bg-black/[0.03] px-4 py-3 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
+            className="inline-flex w-full justify-center rounded-lg border border-border-subtle bg-black/[0.045] px-4 py-3 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
           >
             {t("result.masterAnother")}
           </button>
           <button
             type="button"
             onClick={onViewAllMasters}
-            className="inline-flex w-full justify-center rounded-lg border border-border-subtle bg-black/[0.03] px-4 py-3 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
+            className="inline-flex w-full justify-center rounded-lg border border-border-subtle bg-black/[0.045] px-4 py-3 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
           >
             {t("result.viewAllMasters")}
           </button>

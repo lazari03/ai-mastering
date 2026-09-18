@@ -66,7 +66,7 @@ export default function AppSearch({ index, onSelect, className = "" }) {
                 key={item.id}
                 type="button"
                 onClick={() => select(item)}
-                className="block w-full px-3.5 py-2.5 text-left text-sm text-text-primary hover:bg-black/[0.03]"
+                className="block w-full px-3.5 py-2.5 text-left text-sm text-text-primary hover:bg-black/[0.045]"
               >
                 {t(item.labelKey)}
               </button>

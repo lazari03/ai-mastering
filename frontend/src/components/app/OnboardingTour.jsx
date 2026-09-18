@@ -89,7 +89,7 @@ export default function OnboardingTour({ onDone }) {
                 <button
                   type="button"
                   onClick={() => setStep((s) => s - 1)}
-                  className="rounded-lg border border-border-subtle bg-black/[0.03] px-3.5 py-2 text-xs text-text-secondary hover:border-text-primary/30"
+                  className="rounded-lg border border-border-subtle bg-black/[0.045] px-3.5 py-2 text-xs text-text-secondary hover:border-text-primary/30"
                 >
                   {t("onboarding.back")}
                 </button>
