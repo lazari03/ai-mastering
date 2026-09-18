@@ -254,12 +254,13 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
         }}
       >
         <canvas ref={canvasRef} className="h-full w-full" />
-        <div className="pointer-events-none absolute left-2.5 top-2 flex items-center gap-1.5">
-          {playing ? <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" aria-hidden="true" /> : null}
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-secondary">
-            {mode === "after" ? t("demoPlayer.after") : t("demoPlayer.before")}
-          </span>
-        </div>
+        {/* No text label here — the Before/After toggle above already
+            states the mode; repeating it here as well as this pulse dot
+            read as a duplicate line of the same words. Just the live
+            indicator remains. */}
+        {playing ? (
+          <span className="pointer-events-none absolute left-2.5 top-2 h-1.5 w-1.5 animate-pulse rounded-full bg-accent" aria-hidden="true" />
+        ) : null}
       </div>
 
       <div className={`flex items-center gap-3 ${large ? "mt-6" : "mt-4"}`}>
