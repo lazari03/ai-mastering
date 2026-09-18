@@ -222,9 +222,9 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
     ? t("console.masteringEllipsis")
     : masterQuota
       ? masterQuota.remaining > 0
-        ? t("console.masterTrackLeft", { remaining: masterQuota.remaining, limit: masterQuota.limit })
+        ? t("console.masterTrackDefault")
         : hasCredit
-          ? t("console.masterTrackCredit", { n: extraCredits })
+          ? t("console.masterTrackCredit")
           : t("console.masterTrackQuotaUsed")
       : t("console.masterTrackDefault");
 
@@ -748,7 +748,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 type="button"
                 onClick={() => submit(false)}
                 disabled={isSubmitting || isBootstrapping || !file || (masterQuota && !masterUnlocked)}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-4 text-sm font-bold uppercase tracking-[0.18em] text-bg transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-4 text-sm font-bold uppercase tracking-[0.18em] text-bg transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? <Spinner size={14} /> : null}
                 {masterButtonLabel}

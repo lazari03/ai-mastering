@@ -517,8 +517,7 @@ const DICT = {
   "console.rendering": { en: "Rendering…", sq: "Duke renderuar…" },
   "console.previewFree": { en: "Preview — Free", sq: "Parapamje — Falas" },
   "console.masteringEllipsis": { en: "Mastering…", sq: "Duke masterizuar…" },
-  "console.masterTrackLeft": { en: "Master Track — {remaining}/{limit} left", sq: "Masterizo — {remaining}/{limit} mbetur" },
-  "console.masterTrackCredit": { en: "Master Track — using 1 credit ({n} left)", sq: "Masterizo — duke përdorur 1 kredit ({n} mbetur)" },
+  "console.masterTrackCredit": { en: "Master Track — using 1 credit", sq: "Masterizo — duke përdorur 1 kredit" },
   "console.masterTrackQuotaUsed": { en: "Master Track — Quota used, upgrade", sq: "Masterizo — Kuota u përdor, përmirëso" },
   "console.masterTrackDefault": { en: "Master Track", sq: "Masterizo" },
   "console.previewNote": {
