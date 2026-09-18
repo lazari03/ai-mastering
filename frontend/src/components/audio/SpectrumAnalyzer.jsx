@@ -22,8 +22,12 @@ export default function SpectrumAnalyzer({
   className = "",
   bars = 48,
   barGap = 2,
-  colorFrom = "rgba(232, 93, 42, 0.9)",
-  colorTo = "rgba(223, 201, 90, 0.85)",
+  // Accent (#8275FF) is the one spot the color-system spec explicitly
+  // calls out an active waveform as a good use of it — monochrome
+  // gradient, not the old ember-to-brass two-tone, so it reads as "one
+  // small precise accent," not a colorful illustration.
+  colorFrom = "rgba(130, 117, 255, 0.9)",
+  colorTo = "rgba(130, 117, 255, 0.35)",
   idleOpacity = 0.12,
 }) {
   const canvasRef = useRef(null);

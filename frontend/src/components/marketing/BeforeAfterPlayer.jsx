@@ -167,8 +167,8 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
           ctx2d.clearRect(0, 0, width, height);
 
           const gradient = ctx2d.createLinearGradient(0, height, 0, 0);
-          gradient.addColorStop(0, "#e85d2a");
-          gradient.addColorStop(1, "#dfc95a");
+          gradient.addColorStop(0, "#8275ff");
+          gradient.addColorStop(1, "rgba(130, 117, 255, 0.4)");
           ctx2d.fillStyle = gradient;
 
           const barWidth = Math.max(2, (width - (bars - 1) * gap) / bars);
@@ -208,15 +208,12 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
   const progress = (scrubbing ? dragRatio : duration ? currentTime / duration : 0) * 100;
 
   return (
-    <div
-      className={`rounded-2xl border border-white/10 ${large ? "p-6 sm:p-8" : "p-5"}`}
-      style={{ background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))" }}
-    >
+    <div className={`rounded-2xl border border-border-subtle bg-bg ${large ? "p-6 sm:p-8" : "p-5"}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <p className={`m-0 min-w-0 truncate font-semibold text-white ${large ? "text-base sm:text-lg" : "text-sm"}`}>{label}</p>
+          <p className={`m-0 min-w-0 truncate font-semibold text-text-primary ${large ? "text-base sm:text-lg" : "text-sm"}`}>{label}</p>
           {genre ? (
-            <span className="shrink-0 rounded-full border border-white/15 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.1em] text-zinc-400">
+            <span className="shrink-0 rounded-full border border-border-subtle px-2.5 py-0.5 text-[10px] uppercase tracking-[0.1em] text-text-secondary">
               {genre}
             </span>
           ) : null}
@@ -225,13 +222,13 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
         {/* A/B switch, standard segmented-control shape — reads as one
             control with two states, not two separate buttons, and sits
             with the title instead of eating its own row below. */}
-        <div className="flex shrink-0 rounded-full border border-white/15 bg-black/25 p-0.5">
+        <div className="flex shrink-0 rounded-full border border-border-subtle p-0.5">
           <button
             type="button"
             onClick={() => swap("before")}
             aria-pressed={mode === "before"}
-            className={`rounded-full font-bold uppercase tracking-[0.08em] transition ${large ? "px-4 py-1.5 text-xs" : "px-3 py-1 text-[10px]"} ${
-              mode === "before" ? "bg-white/15 text-white" : "text-zinc-500 hover:text-zinc-300"
+            className={`rounded-full font-semibold uppercase tracking-[0.08em] transition ${large ? "px-4 py-1.5 text-xs" : "px-3 py-1 text-[10px]"} ${
+              mode === "before" ? "bg-black/[0.06] text-text-primary" : "text-text-secondary hover:text-text-primary"
             }`}
           >
             {t("demoPlayer.before")}
@@ -240,8 +237,8 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
             type="button"
             onClick={() => swap("after")}
             aria-pressed={mode === "after"}
-            className={`rounded-full font-bold uppercase tracking-[0.08em] transition ${large ? "px-4 py-1.5 text-xs" : "px-3 py-1 text-[10px]"} ${
-              mode === "after" ? "bg-brass/[0.22] text-brass" : "text-zinc-500 hover:text-zinc-300"
+            className={`rounded-full font-semibold uppercase tracking-[0.08em] transition ${large ? "px-4 py-1.5 text-xs" : "px-3 py-1 text-[10px]"} ${
+              mode === "after" ? "bg-accent/[0.14] text-accent" : "text-text-secondary hover:text-text-primary"
             }`}
           >
             {t("demoPlayer.after")}
@@ -250,17 +247,16 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
       </div>
 
       <div
-        className={`relative mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/30 ${large ? "h-32 sm:h-44" : "h-24"}`}
+        className={`relative mt-4 overflow-hidden rounded-xl border border-border-subtle bg-black/[0.02] ${large ? "h-32 sm:h-44" : "h-24"}`}
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px)",
+          backgroundImage: "linear-gradient(rgba(0,0,0,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.04) 1px, transparent 1px)",
           backgroundSize: "100% 25%, 8.33% 100%",
         }}
       >
         <canvas ref={canvasRef} className="h-full w-full" />
         <div className="pointer-events-none absolute left-2.5 top-2 flex items-center gap-1.5">
-          {playing ? <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ember" aria-hidden="true" /> : null}
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-500">
+          {playing ? <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" aria-hidden="true" /> : null}
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-secondary">
             {mode === "after" ? t("demoPlayer.after") : t("demoPlayer.before")}
           </span>
         </div>
@@ -271,7 +267,7 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
           type="button"
           onClick={togglePlay}
           aria-label={playing ? "Pause" : "Play"}
-          className={`flex shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-ember to-brass text-[#100b08] shadow-[0_0_0_1px_rgba(255,255,255,.12)_inset] transition hover:brightness-110 ${
+          className={`flex shrink-0 items-center justify-center rounded-2xl bg-text-primary text-bg transition hover:opacity-85 ${
             large ? "h-14 w-14 sm:h-16 sm:w-16" : "h-11 w-11"
           }`}
         >
@@ -297,17 +293,17 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
             onPointerDown={startScrub}
             className="group relative -my-2 flex cursor-pointer items-center py-2 touch-none"
           >
-            <div className={`w-full rounded-full bg-white/10 ${large ? "h-2.5" : "h-2"}`}>
-              <div className="h-full rounded-full bg-gradient-to-r from-ember to-brass" style={{ width: `${progress}%` }} />
+            <div className={`w-full rounded-full bg-black/10 ${large ? "h-2.5" : "h-2"}`}>
+              <div className="h-full rounded-full bg-accent" style={{ width: `${progress}%` }} />
             </div>
             <div
-              className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full bg-white shadow-md transition-opacity ${
+              className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full bg-text-primary shadow-md transition-opacity ${
                 large ? "h-4 w-4" : "h-3 w-3"
               } ${scrubbing ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
               style={{ left: `${progress}%` }}
             />
           </div>
-          <div className={`mt-1 flex justify-between font-mono text-zinc-500 ${large ? "text-xs" : "text-[10px]"}`}>
+          <div className={`mt-1 flex justify-between font-mono text-text-secondary ${large ? "text-xs" : "text-[10px]"}`}>
             <span>{formatTime(scrubbing ? dragRatio * duration : currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
@@ -317,7 +313,7 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
           type="button"
           onClick={toggleMute}
           aria-label={muted ? "Unmute" : "Mute"}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 transition hover:text-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition hover:text-text-primary"
         >
           {muted ? (
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

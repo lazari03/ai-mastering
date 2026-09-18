@@ -3,31 +3,38 @@
 @tailwind utilities;
 
 :root {
+  /* Auralith Forge — minimal premium palette. Light, editorial, one
+     accent used sparingly (see color-system spec: waveforms, playback
+     progress, active nav state, small status indicators — never large
+     gradients). Old dark/glassmorphic brand tokens (--ink/--coal/--ember/
+     --brass/--mist/--void/--copper/--cream) are kept below, unchanged in
+     value, ONLY so any file not yet migrated to this palette still
+     renders instead of breaking — new and updated work reaches for the
+     tokens in this block, not those. */
+  --bg: #f6f5f1;
+  --text-primary: #111111;
+  --text-secondary: #6b6b68;
+  --dark-bg: #0c0c0d;
+  --dark-surface: #151516;
+  --dark-text-primary: #f5f5f3;
+  --dark-text-secondary: #969696;
+  --border-subtle: rgba(0, 0, 0, 0.1);
+  --dark-border-subtle: rgba(255, 255, 255, 0.1);
+  --accent: #8275ff;
+
+  /* Legacy dark-theme tokens — superseded by the light palette above.
+     Left in place (same values as before) purely so components not yet
+     migrated off them still render correctly; do not use these in new
+     work, and remove once every consumer (see the styling audit) is
+     migrated. */
   --ink: #0f1113;
   --coal: #1b1e22;
   --ember: #e85d2a;
   --brass: #dfc95a;
   --mist: #e8ecef;
-
-  /* Semantic aliases on top of the 5 brand tokens above — additive only,
-     no new colors. Gives new components a vocabulary ("bg-surface",
-     "border-border-subtle") instead of each one reinventing its own
-     rgba(...) literal for "a slightly raised dark panel" or "a faint
-     border", the way .glass-panel and one-off inline styles already do
-     throughout the app. Existing classes (.glass-panel, .reveal*) are
-     untouched — this doesn't replace them, it's for new work. */
   --surface: var(--coal);
   --surface-elevated: rgba(27, 30, 34, 0.78);
-  --border-subtle: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.2);
-  --text-primary: var(--mist);
-  --text-secondary: rgba(232, 236, 239, 0.65);
-
-  /* Warmer studio-hardware tier, additive on top of the ink/coal/ember/
-     brass/mist set above — same rule as --surface etc: nothing existing
-     is renamed or removed, this just gives new work (the Three.js audio
-     field, its hero panel) a true near-black/copper/cream vocabulary
-     where ink/mist read a touch cool-blue for that purpose. */
   --void: #0a0908;
   --void-elevated: #14120f;
   --copper: #b96a43;
@@ -42,13 +49,10 @@
 body {
   margin: 0;
   font-family: var(--font-body), sans-serif;
-  color: var(--mist);
+  color: var(--text-primary);
   min-height: 100vh;
   overflow-x: clip;
-  background:
-    radial-gradient(circle at 5% 0%, rgba(232, 93, 42, 0.2), transparent 40%),
-    radial-gradient(circle at 90% 20%, rgba(223, 201, 90, 0.2), transparent 35%),
-    linear-gradient(145deg, #0b0d10 0%, #111419 35%, #121418 100%);
+  background: var(--bg);
 }
 
 main {

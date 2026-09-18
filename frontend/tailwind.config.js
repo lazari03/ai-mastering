@@ -4,20 +4,30 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Auralith Forge minimal-premium palette — see globals.css's
+        // :root comment. This is what new/migrated work uses.
+        bg: "var(--bg)",
+        "text-primary": "var(--text-primary)",
+        "text-secondary": "var(--text-secondary)",
+        "dark-bg": "var(--dark-bg)",
+        "dark-surface": "var(--dark-surface)",
+        "dark-text-primary": "var(--dark-text-primary)",
+        "dark-text-secondary": "var(--dark-text-secondary)",
+        "border-subtle": "var(--border-subtle)",
+        "dark-border-subtle": "var(--dark-border-subtle)",
+        accent: "var(--accent)",
+
+        // Legacy dark/glassmorphic brand tokens — kept only for
+        // components not yet migrated to the palette above (see
+        // globals.css's comment). Do not reach for these in new work.
         ink: "var(--ink)",
         coal: "var(--coal)",
         ember: "var(--ember)",
         brass: "var(--brass)",
         mist: "var(--mist)",
-        // Semantic aliases (globals.css) — see that file's comment. New
-        // work reaches for these; ink/coal/ember/brass/mist above stay
-        // for anything that wants the raw brand color directly.
         surface: "var(--surface)",
         "surface-elevated": "var(--surface-elevated)",
-        "border-subtle": "var(--border-subtle)",
         "border-strong": "var(--border-strong)",
-        "text-primary": "var(--text-primary)",
-        "text-secondary": "var(--text-secondary)",
         void: "var(--void)",
         "void-elevated": "var(--void-elevated)",
         copper: "var(--copper)",

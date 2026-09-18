@@ -124,17 +124,17 @@ export default function PromoPopup() {
           transition={{ duration: 0.22, ease: "easeOut" }}
           className="fixed inset-x-3 bottom-3 z-50 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:max-w-sm"
         >
-          <div className="glass-panel relative rounded-2xl border border-brass/25 p-4 sm:p-5">
+          <div className="relative rounded-2xl border border-border-subtle bg-bg p-4 shadow-[0_12px_32px_rgba(0,0,0,0.08)] sm:p-5">
             <button
               type="button"
               onClick={dismiss}
               aria-label={t("newsletter.dismiss")}
-              className="absolute right-3 top-3 text-zinc-500 hover:text-zinc-300"
+              className="absolute right-3 top-3 text-text-secondary hover:text-text-primary"
             >
               ✕
             </button>
-            <p className="m-0 pr-5 text-sm font-bold text-white">{t("newsletter.popup.title")}</p>
-            <p className="mt-1 text-xs text-zinc-400">{t("newsletter.popup.body")}</p>
+            <p className="m-0 pr-5 text-sm font-semibold text-text-primary">{t("newsletter.popup.title")}</p>
+            <p className="mt-1 text-xs text-text-secondary">{t("newsletter.popup.body")}</p>
             <div className="mt-3">
               <NewsletterWidget source="popup" size="sm" onSubscribed={handleSubscribed} />
             </div>

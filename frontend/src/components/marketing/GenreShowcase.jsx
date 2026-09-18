@@ -34,8 +34,8 @@ export default function GenreShowcase() {
             aria-pressed={active === g}
             className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
               active === g
-                ? "border-brass/60 bg-brass/[0.18] text-brass"
-                : "border-border-subtle bg-black/20 text-zinc-300 hover:border-brass/50 hover:text-brass"
+                ? "border-text-primary bg-text-primary text-bg"
+                : "border-border-subtle text-text-secondary hover:border-text-primary/40 hover:text-text-primary"
             }`}
           >
             {GENRE_PAGES[g].label}
@@ -50,15 +50,14 @@ export default function GenreShowcase() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
           className="mt-5 rounded-[20px] border border-border-subtle p-6"
-          style={{ background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))" }}
         >
-          <p className="m-0 text-sm leading-relaxed text-zinc-300">{activePage.intro}</p>
+          <p className="m-0 text-base leading-relaxed text-text-secondary">{activePage.intro}</p>
           {activeTarget ? (
             <LoudnessMeter className="mt-5 max-w-sm" targetLufs={activeTarget.targetLufs} />
           ) : null}
           <Link
             href={`/master/${active}`}
-            className="mt-5 inline-block rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
+            className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-text-primary hover:text-accent"
           >
             {t("genres.cta", { genre: activePage.label })}
           </Link>

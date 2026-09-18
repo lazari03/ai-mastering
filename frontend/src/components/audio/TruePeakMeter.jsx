@@ -28,17 +28,17 @@ export default function TruePeakMeter({ peakDb, ceilingDb = -1, label, className
   return (
     <div className={className}>
       {label ? <p className="m-0 mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">{label}</p> : null}
-      <div className="relative h-28 w-6 overflow-hidden rounded-md bg-white/10">
+      <div className="relative h-28 w-6 overflow-hidden rounded-md bg-black/10">
         {/* Ceiling line — everything above it is the "must never cross"
             zone a true-peak-safe limiter exists to prevent. */}
         <div
-          className="absolute inset-x-0 z-10 h-0.5 bg-white/70"
+          className="absolute inset-x-0 z-10 h-0.5 bg-text-primary/70"
           style={{ bottom: `${ceilingPct}%` }}
           title={`Ceiling: ${ceilingDb} dBTP`}
         />
         {peakPct != null ? (
           <motion.div
-            className={`absolute inset-x-0 bottom-0 rounded-b-md ${overCeiling ? "bg-red-500" : "bg-gradient-to-t from-brass to-ember"}`}
+            className={`absolute inset-x-0 bottom-0 rounded-b-md ${overCeiling ? "bg-red-500" : "bg-accent"}`}
             initial={{ height: 0 }}
             animate={{ height: `${peakPct}%` }}
             transition={{ duration: 0.6, ease: "easeOut" }}
@@ -46,8 +46,8 @@ export default function TruePeakMeter({ peakDb, ceilingDb = -1, label, className
         ) : null}
       </div>
       <p className="mt-1.5 text-center font-mono text-[11px] text-text-secondary">
-        {peakDb != null ? <span className={overCeiling ? "text-red-400" : "text-white"}>{peakDb} dBTP</span> : "—"}
-        <span className="block text-brass">ceiling {ceilingDb} dBTP</span>
+        {peakDb != null ? <span className={overCeiling ? "text-red-600" : "text-text-primary"}>{peakDb} dBTP</span> : "—"}
+        <span className="block text-text-primary">ceiling {ceilingDb} dBTP</span>
       </p>
     </div>
   );

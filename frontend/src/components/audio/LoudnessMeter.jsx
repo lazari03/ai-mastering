@@ -30,10 +30,10 @@ export default function LoudnessMeter({ targetLufs, currentLufs, label, classNam
   return (
     <div className={className}>
       {label ? <p className="m-0 mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">{label}</p> : null}
-      <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-white/10">
+      <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-black/10">
         {currentPct != null ? (
           <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-ember to-brass"
+            className="h-full rounded-full bg-accent"
             initial={{ width: 0 }}
             animate={{ width: `${currentPct}%` }}
             transition={{ duration: 0.6, ease: "easeOut" }}
@@ -42,16 +42,16 @@ export default function LoudnessMeter({ targetLufs, currentLufs, label, classNam
         {/* Target marker — a thin line, not part of the fill, so it stays
             visible whether or not a current value is also shown. */}
         <div
-          className="absolute top-0 h-full w-0.5 bg-white/70"
+          className="absolute top-0 h-full w-0.5 bg-text-primary/70"
           style={{ left: `${targetPct}%` }}
           title={`Target: ${targetLufs} LUFS`}
         />
       </div>
       <div className="mt-1.5 flex items-center justify-between font-mono text-[11px] text-text-secondary">
         <span>{SCALE_MIN} LUFS</span>
-        <span className="text-brass">
+        <span className="text-text-primary">
           target {targetLufs} LUFS
-          {currentPct != null ? <span className="text-white"> · {currentLufs} LUFS</span> : null}
+          {currentPct != null ? <span className="text-accent"> · {currentLufs} LUFS</span> : null}
         </span>
         <span>{SCALE_MAX} LUFS</span>
       </div>

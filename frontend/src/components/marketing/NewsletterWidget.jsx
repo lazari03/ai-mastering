@@ -46,26 +46,26 @@ export default function NewsletterWidget({ source = "footer", size = "sm", onSub
 
   if (status === "done") {
     return (
-      <div className={size === "lg" ? "rounded-2xl border border-brass/30 bg-brass/[0.06] p-6" : "rounded-xl border border-brass/25 bg-brass/[0.06] p-4"}>
-        <p className="m-0 text-sm font-semibold text-brass">{t("newsletter.subscribed.title")}</p>
+      <div className={size === "lg" ? "rounded-2xl border border-border-subtle p-6" : "rounded-xl border border-border-subtle p-4"}>
+        <p className="m-0 text-sm font-semibold text-text-primary">{t("newsletter.subscribed.title")}</p>
         {discountCode ? (
           <>
-            <p className="mt-1.5 text-xs text-zinc-300">{t("newsletter.subscribed.withCode")}</p>
+            <p className="mt-1.5 text-xs text-text-secondary">{t("newsletter.subscribed.withCode")}</p>
             <div className="mt-2 flex items-center gap-2">
-              <code className="rounded-lg border border-white/15 bg-black/30 px-3 py-1.5 text-sm font-bold tracking-[0.08em] text-white">
+              <code className="rounded-lg border border-border-subtle px-3 py-1.5 text-sm font-bold tracking-[0.08em] text-text-primary">
                 {discountCode}
               </code>
               <button
                 type="button"
                 onClick={copyCode}
-                className="rounded-lg border border-brass/40 bg-brass/[0.18] px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25"
+                className="rounded-lg border border-border-subtle px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-text-primary hover:bg-black/[0.03]"
               >
                 {copied ? t("newsletter.copied") : t("newsletter.copy")}
               </button>
             </div>
           </>
         ) : (
-          <p className="mt-1.5 text-xs text-zinc-400">{t("newsletter.subscribed.pending")}</p>
+          <p className="mt-1.5 text-xs text-text-secondary">{t("newsletter.subscribed.pending")}</p>
         )}
       </div>
     );
@@ -79,20 +79,20 @@ export default function NewsletterWidget({ source = "footer", size = "sm", onSub
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder={t("newsletter.emailPlaceholder")}
-        className={`min-w-0 flex-1 rounded-lg border border-white/15 bg-black/25 text-sm text-white placeholder:text-zinc-500 ${
+        className={`min-w-0 flex-1 rounded-lg border border-border-subtle bg-bg text-sm text-text-primary placeholder:text-text-secondary ${
           size === "lg" ? "px-4 py-3" : "px-3 py-2"
         }`}
       />
       <button
         type="submit"
         disabled={status === "busy"}
-        className={`shrink-0 rounded-lg bg-gradient-to-br from-ember to-brass font-bold uppercase tracking-[0.1em] text-[#100b08] transition hover:brightness-110 disabled:opacity-50 ${
+        className={`shrink-0 rounded-lg bg-text-primary font-semibold uppercase tracking-[0.1em] text-bg transition hover:opacity-85 disabled:opacity-50 ${
           size === "lg" ? "px-6 py-3 text-sm" : "px-4 py-2 text-[11px]"
         }`}
       >
         {status === "busy" ? t("newsletter.submitting") : t("newsletter.submit")}
       </button>
-      {error ? <p className="text-xs text-red-300 sm:basis-full">{error}</p> : null}
+      {error ? <p className="text-xs text-red-600 sm:basis-full">{error}</p> : null}
     </form>
   );
 }
