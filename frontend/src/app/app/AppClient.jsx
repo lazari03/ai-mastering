@@ -9,6 +9,7 @@ import ChordsPanel from "@/app/ui/ChordsPanel";
 import MasteringConsole from "@/app/ui/MasteringConsole";
 import MasterResultView from "@/app/ui/MasterResultView";
 import MyMastersPanel from "@/app/ui/MyMastersPanel";
+import ExplorePanel from "@/app/ui/ExplorePanel";
 import HelpSupportPanel from "@/app/ui/HelpSupportPanel";
 import SettingsPanel from "@/app/ui/SettingsPanel";
 import PlansPanel from "@/app/ui/PlansPanel";
@@ -16,11 +17,12 @@ import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
 import TopBanner from "@/components/app/TopBanner";
+import AppSearch from "@/components/app/AppSearch";
 import EntitlementsBadge from "@/components/app/EntitlementsBadge";
 import OnboardingTour from "@/components/app/OnboardingTour";
 import MasteringLoaderOverlay from "@/components/app/MasteringLoaderOverlay";
 import { LoadingBlock } from "@/components/ui/Spinner";
-import { IconMaster, IconChords, IconMyMasters, IconHelp, IconSettings, IconBilling, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
+import { IconMaster, IconChords, IconMyMasters, IconExplore, IconHelp, IconSettings, IconBilling, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
 import { getProfile, postProfile } from "@/network/http/client";
 import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
@@ -28,26 +30,100 @@ import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { useMasteringProgress } from "@/lib/useMasteringProgress";
 import { useLanguage } from "@/lib/i18n";
 
+// `group` sorts a tab under a small-caps section header in the sidebar
+// (CREATE / ANALYZE / LIBRARY, matching the reference dashboard's IA) —
+// tabs with no group (plans/help/settings) render in the fixed bottom
+// section instead, same as the reference's Settings/Help rows below the
+// main nav. This only reorganizes the 6 tabs that already exist; it
+// doesn't add tools (Reference Master, Stem Separation, etc.) that aren't
+// real features yet.
 const TABS = [
+  { key: "explore", labelKey: "app.tab.explore", icon: IconExplore, render: (ctx) => <ExplorePanel onNavigate={ctx.setActiveTab} /> },
   {
     key: "master",
     labelKey: "app.tab.master",
     icon: IconMaster,
+    group: "app.navGroup.create",
     render: (ctx) => <MasteringConsole onOpenHelp={() => ctx.setActiveTab("help")} onOpenBilling={() => ctx.setActiveTab("plans")} />,
   },
   {
     key: "chords",
     labelKey: "app.tab.chords",
     icon: IconChords,
+    group: "app.navGroup.analyze",
     render: (ctx) => <ChordsPanel onMasterThisSong={() => ctx.setActiveTab("master")} />,
   },
-  { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, render: () => <MyMastersPanel /> },
+  { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, group: "app.navGroup.library", render: () => <MyMastersPanel /> },
   { key: "plans", labelKey: "app.tab.plans", icon: IconBilling, render: () => <PlansPanel /> },
-  { key: "help", labelKey: "app.tab.help", icon: IconHelp, render: () => <HelpSupportPanel /> },
   { key: "settings", labelKey: "app.tab.settings", icon: IconSettings, render: (ctx) => <SettingsPanel onReplayTutorial={() => ctx.setShowTutorial(true)} onOpenBilling={() => ctx.setActiveTab("plans")} /> },
+  { key: "help", labelKey: "app.tab.help", icon: IconHelp, render: () => <HelpSupportPanel /> },
+];
+
+// Sidebar/mobile-menu nav renders Explore first, then grouped tabs under
+// their section header, then every settings/help tab as a flat trailing
+// list — `plans` is deliberately excluded here since the reference's own
+// nav doesn't list billing as a tab, only as the clickable usage widget
+// (EntitlementsBadge already does this).
+const TOP_TABS = TABS.filter((tab) => tab.key === "explore");
+const NAV_GROUPS = [
+  { key: "app.navGroup.create", tabs: TABS.filter((tab) => tab.group === "app.navGroup.create") },
+  { key: "app.navGroup.analyze", tabs: TABS.filter((tab) => tab.group === "app.navGroup.analyze") },
+  { key: "app.navGroup.library", tabs: TABS.filter((tab) => tab.group === "app.navGroup.library") },
+];
+const BOTTOM_TABS = TABS.filter((tab) => !tab.group && tab.key !== "plans" && tab.key !== "explore");
+
+// Real, working search — not a decorative box. Matches against the tabs
+// that actually exist (including the deep-link-only Explore cards for
+// Reference Mastering / Stem Separation, which live inside the Mastering
+// tab rather than as tabs of their own) and jumps straight there.
+const SEARCH_INDEX = [
+  { id: "master", labelKey: "app.tab.master", goTo: "master" },
+  { id: "reference", labelKey: "app.explore.reference.title", goTo: "master" },
+  { id: "stems", labelKey: "app.explore.stems.title", goTo: "master" },
+  { id: "chords", labelKey: "app.tab.chords", goTo: "chords" },
+  { id: "myMasters", labelKey: "app.tab.myMasters", goTo: "myMasters" },
+  { id: "explore", labelKey: "app.tab.explore", goTo: "explore" },
+  { id: "plans", labelKey: "app.tab.plans", goTo: "plans" },
+  { id: "settings", labelKey: "app.tab.settings", goTo: "settings" },
+  { id: "help", labelKey: "app.tab.help", goTo: "help" },
 ];
 
 const SIDEBAR_PREF_KEY = "sidebarOpen";
+
+function SidebarNavButton({ tab, isActive, sidebarOpen, t, onClick }) {
+  const Icon = tab.icon;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={isActive}
+      title={sidebarOpen ? undefined : t(tab.labelKey)}
+      className={`flex items-center rounded-lg text-[12.5px] font-medium transition ${
+        sidebarOpen ? "gap-2.5 px-2.5 py-2" : "h-9 w-9 justify-center"
+      } ${isActive ? "bg-black/[0.05] text-text-primary" : "text-text-secondary hover:bg-black/[0.03] hover:text-text-primary"}`}
+    >
+      <Icon />
+      {sidebarOpen ? <span className="truncate">{t(tab.labelKey)}</span> : null}
+    </button>
+  );
+}
+
+function MobileNavButton({ tab, isActive, t, onClick }) {
+  const Icon = tab.icon;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={isActive}
+      className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium transition ${
+        isActive ? "bg-black/[0.05] text-text-primary" : "text-text-secondary active:bg-black/[0.03]"
+      }`}
+    >
+      <Icon />
+      {t(tab.labelKey)}
+    </button>
+  );
+}
 
 export default function AppClient() {
   const router = useRouter();
@@ -236,27 +312,22 @@ export default function AppClient() {
       <TopBanner />
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
       {/* Mobile top bar — the sidebar below is hidden on small screens */}
-      <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-black/20 p-3.5 md:hidden">
-        <Link href="/" className="flex items-center gap-2.5">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-subtle bg-bg p-3.5 md:hidden">
+        <Link href="/" className="flex shrink-0 items-center gap-2 text-text-primary">
           <LogoMark size={22} />
-          <span className="font-[var(--font-title)] text-xs uppercase tracking-[0.18em] text-brass">
-            Auralith Forge
-          </span>
         </Link>
-        <div className="flex items-center gap-2">
-          <EntitlementsBadge compact onClick={() => goToTab("plans")} />
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-expanded={menuOpen}
-            aria-label={t("app.menu")}
-            className="flex h-9 w-9 shrink-0 flex-col items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-black/20"
-          >
-            <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "translate-y-[3px] rotate-45" : ""}`} />
-            <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "opacity-0" : ""}`} />
-            <span className={`h-px w-4 bg-zinc-200 transition ${menuOpen ? "-translate-y-[3px] -rotate-45" : ""}`} />
-          </button>
-        </div>
+        <AppSearch index={SEARCH_INDEX} onSelect={goToTab} className="min-w-0 flex-1" />
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-expanded={menuOpen}
+          aria-label={t("app.menu")}
+          className="flex h-9 w-9 shrink-0 flex-col items-center justify-center gap-1.5 rounded-lg border border-border-subtle"
+        >
+          <span className={`h-px w-4 bg-text-primary transition ${menuOpen ? "translate-y-[3px] rotate-45" : ""}`} />
+          <span className={`h-px w-4 bg-text-primary transition ${menuOpen ? "opacity-0" : ""}`} />
+          <span className={`h-px w-4 bg-text-primary transition ${menuOpen ? "-translate-y-[3px] -rotate-45" : ""}`} />
+        </button>
       </div>
 
       {/* Mobile menu — a real slide-in drawer (fixed overlay + backdrop +
@@ -270,68 +341,65 @@ export default function AppClient() {
         aria-hidden={!menuOpen}
       >
         <div
-          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
-            menuOpen ? "opacity-100" : "opacity-0"
-          }`}
+          className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${menuOpen ? "opacity-100" : "opacity-0"}`}
           onClick={() => setMenuOpen(false)}
         />
         <div
-          className={`absolute right-0 top-0 flex h-full w-[82%] max-w-[320px] flex-col border-l border-white/10 bg-[#14110f] p-5 shadow-2xl transition-transform duration-300 ease-out ${
+          className={`absolute right-0 top-0 flex h-full w-[82%] max-w-[320px] flex-col border-l border-border-subtle bg-bg p-5 shadow-2xl transition-transform duration-300 ease-out ${
             menuOpen ? "translate-x-0" : "translate-x-full"
           }`}
         >
           <div className="flex items-center justify-between pb-6">
-            <Link href="/" className="flex items-center gap-2.5" onClick={() => setMenuOpen(false)}>
+            <Link href="/" className="flex items-center gap-2.5 text-text-primary" onClick={() => setMenuOpen(false)}>
               <LogoMark size={22} />
-              <span className="font-[var(--font-title)] text-xs uppercase tracking-[0.18em] text-brass">
-                Auralith Forge
-              </span>
+              <span className="text-xs font-semibold uppercase tracking-[0.18em]">Auralith Forge</span>
             </Link>
             <button
               type="button"
               onClick={() => setMenuOpen(false)}
               aria-label={t("app.closeMenu")}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-black/20 text-lg text-zinc-300"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-subtle text-lg text-text-secondary"
             >
               ✕
             </button>
           </div>
 
-          <nav className="flex flex-col gap-1">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => {
-                    goToTab(tab.key);
-                    setMenuOpen(false);
-                  }}
-                  aria-pressed={isActive}
-                  className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-semibold transition ${
-                    isActive ? "bg-ember/[0.14] text-ember" : "text-zinc-300 active:bg-white/5"
-                  }`}
-                >
-                  <Icon />
-                  {t(tab.labelKey)}
-                </button>
-              );
-            })}
+          <div className="mb-4">
+            <EntitlementsBadge onClick={() => { goToTab("plans"); setMenuOpen(false); }} className="w-full justify-center" />
+          </div>
+
+          <nav className="flex flex-col gap-4 overflow-y-auto">
+            {TOP_TABS.map((tab) => (
+              <MobileNavButton key={tab.key} tab={tab} isActive={activeTab === tab.key} t={t} onClick={() => { goToTab(tab.key); setMenuOpen(false); }} />
+            ))}
+            {NAV_GROUPS.map((group) => (
+              <div key={group.key}>
+                <p className="mb-1.5 px-3.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary">{t(group.key)}</p>
+                <div className="flex flex-col gap-1">
+                  {group.tabs.map((tab) => (
+                    <MobileNavButton key={tab.key} tab={tab} isActive={activeTab === tab.key} t={t} onClick={() => { goToTab(tab.key); setMenuOpen(false); }} />
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="flex flex-col gap-1 border-t border-border-subtle pt-3">
+              {BOTTOM_TABS.map((tab) => (
+                <MobileNavButton key={tab.key} tab={tab} isActive={activeTab === tab.key} t={t} onClick={() => { goToTab(tab.key); setMenuOpen(false); }} />
+              ))}
+            </div>
           </nav>
 
           <div className="flex-1" />
 
-          <div className="border-t border-white/10 pt-4">
+          <div className="border-t border-border-subtle pt-4">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="min-w-0 flex-1 break-all text-xs text-zinc-500">{user.email}</p>
+              <p className="min-w-0 flex-1 break-all text-xs text-text-secondary">{user.email}</p>
               <LanguageSwitch lang={lang} setLang={setLang} />
             </div>
             <button
               type="button"
               onClick={signOut}
-              className="w-full rounded-lg border border-white/[0.12] bg-black/20 px-3 py-3 text-[11px] uppercase tracking-[0.1em] text-zinc-300 active:bg-white/5"
+              className="w-full rounded-lg border border-border-subtle px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-text-primary active:bg-black/[0.03]"
             >
               {t("app.signout")}
             </button>
@@ -343,64 +411,63 @@ export default function AppClient() {
           Collapsed state stays as a slim icon-only rail rather than vanishing
           entirely, so switching tabs never requires reopening it first. */}
       <aside
-        className={`hidden shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-black/20 transition-[width] duration-150 md:flex ${
-          sidebarOpen ? "w-[204px] p-3" : "w-[60px] items-center p-2"
+        className={`hidden shrink-0 flex-col overflow-y-auto border-r border-border-subtle bg-bg transition-[width] duration-150 md:flex ${
+          sidebarOpen ? "w-[220px] p-3" : "w-[60px] items-center p-2"
         }`}
       >
         <div className={`flex items-center pb-5 pt-1.5 ${sidebarOpen ? "justify-between px-1.5" : "flex-col gap-3"}`}>
-          <Link href="/" className="flex items-center gap-2" title="Auralith Forge">
+          <Link href="/" className="flex items-center gap-2 text-text-primary" title="Auralith Forge">
             <LogoMark size={20} />
-            {sidebarOpen ? (
-              <span className="font-[var(--font-title)] text-[11px] uppercase tracking-[0.16em] text-brass">
-                Auralith Forge
-              </span>
-            ) : null}
+            {sidebarOpen ? <span className="text-[11px] font-semibold uppercase tracking-[0.16em]">Auralith Forge</span> : null}
           </Link>
           <button
             type="button"
             onClick={toggleSidebar}
             aria-label={sidebarOpen ? t("app.collapseMenu") : t("app.expandMenu")}
             title={sidebarOpen ? t("app.collapseMenu") : t("app.expandMenu")}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-white/5 hover:text-zinc-200"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-text-secondary transition hover:bg-black/[0.04] hover:text-text-primary"
           >
             {sidebarOpen ? <IconChevronLeft /> : <IconChevronRight />}
           </button>
         </div>
 
         {sidebarOpen ? (
-          <div className="px-1.5 pb-4">
-            <EntitlementsBadge onClick={() => goToTab("plans")} className="w-full justify-center" />
+          <div className="mb-4 px-1.5">
+            <AppSearch index={SEARCH_INDEX} onSelect={goToTab} />
           </div>
         ) : null}
 
-        <nav className={`flex flex-col gap-0.5 ${sidebarOpen ? "" : "items-center"}`}>
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => goToTab(tab.key)}
-                aria-pressed={isActive}
-                title={sidebarOpen ? undefined : t(tab.labelKey)}
-                className={`flex items-center rounded-lg text-[12.5px] font-semibold transition ${
-                  sidebarOpen ? "gap-2.5 px-2.5 py-2" : "h-9 w-9 justify-center"
-                } ${isActive ? "bg-ember/[0.14] text-ember" : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"}`}
-              >
-                <Icon />
-                {sidebarOpen ? <span className="truncate">{t(tab.labelKey)}</span> : null}
-              </button>
-            );
-          })}
+        <nav className={`flex flex-col gap-4 ${sidebarOpen ? "" : "items-center"}`}>
+          {TOP_TABS.map((tab) => (
+            <SidebarNavButton key={tab.key} tab={tab} isActive={activeTab === tab.key} sidebarOpen={sidebarOpen} t={t} onClick={() => goToTab(tab.key)} />
+          ))}
+          {NAV_GROUPS.map((group) => (
+            <div key={group.key}>
+              {sidebarOpen ? <p className="mb-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary">{t(group.key)}</p> : null}
+              <div className={`flex flex-col gap-0.5 ${sidebarOpen ? "" : "items-center"}`}>
+                {group.tabs.map((tab) => (
+                  <SidebarNavButton key={tab.key} tab={tab} isActive={activeTab === tab.key} sidebarOpen={sidebarOpen} t={t} onClick={() => goToTab(tab.key)} />
+                ))}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="flex-1" />
 
+        <div className={`flex flex-col gap-0.5 border-t border-border-subtle pt-3 ${sidebarOpen ? "" : "items-center"}`}>
+          {BOTTOM_TABS.map((tab) => (
+            <SidebarNavButton key={tab.key} tab={tab} isActive={activeTab === tab.key} sidebarOpen={sidebarOpen} t={t} onClick={() => goToTab(tab.key)} />
+          ))}
+        </div>
+
         {sidebarOpen ? (
-          <div className="border-t border-white/10 px-0.5 pt-3">
+          <div className="mt-3 border-t border-border-subtle px-0.5 pt-3">
+            <div className="mb-2">
+              <EntitlementsBadge onClick={() => goToTab("plans")} className="w-full justify-center" />
+            </div>
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="min-w-0 flex-1 truncate text-[11px] text-zinc-500" title={user.email}>
+              <p className="min-w-0 flex-1 truncate text-[11px] text-text-secondary" title={user.email}>
                 {user.email}
               </p>
               <LanguageSwitch lang={lang} setLang={setLang} />
@@ -408,7 +475,7 @@ export default function AppClient() {
             <button
               type="button"
               onClick={signOut}
-              className="w-full rounded-lg border border-white/[0.1] bg-black/20 px-2.5 py-2 text-[10.5px] uppercase tracking-[0.1em] text-zinc-400 hover:border-white/25 hover:text-zinc-200"
+              className="w-full rounded-lg border border-border-subtle px-2.5 py-2 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30"
             >
               {t("app.signout")}
             </button>
@@ -419,7 +486,7 @@ export default function AppClient() {
             onClick={signOut}
             aria-label={t("app.signout")}
             title={t("app.signout")}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border-t border-white/10 text-zinc-500 hover:text-zinc-200"
+            className="mt-3 flex h-9 w-9 items-center justify-center rounded-lg border-t border-border-subtle text-text-secondary hover:text-text-primary"
           >
             ⏻
           </button>

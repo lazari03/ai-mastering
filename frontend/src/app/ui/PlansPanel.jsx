@@ -149,8 +149,8 @@ export default function PlansPanel() {
 
   return (
     <div className="mx-auto w-full max-w-[1280px]">
-      <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("billing.title")}</h1>
-      <p className="mt-2 text-sm text-zinc-400">{t("plans.subtitle")}</p>
+      <h1 className="m-0 text-[26px]">{t("billing.title")}</h1>
+      <p className="mt-2 text-sm text-text-secondary">{t("plans.subtitle")}</p>
 
       {!loaded ? (
         <LoadingBlock />
@@ -166,21 +166,21 @@ export default function PlansPanel() {
               return (
                 <div
                   key={key}
-                  className={`rounded-xl border p-4 ${isCurrent ? "border-brass/50 bg-brass/[0.06]" : "border-white/10 bg-black/20"}`}
+                  className={`rounded-xl border p-4 ${isCurrent ? "border-border-subtle bg-black/[0.03]" : "border-border-subtle bg-black/[0.03]"}`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="m-0 text-sm font-semibold text-white">{plan.label}</p>
+                    <p className="m-0 text-sm font-semibold text-text-primary">{plan.label}</p>
                     {isCurrent ? (
-                      <span className="shrink-0 rounded-full border border-brass/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-brass">
+                      <span className="shrink-0 rounded-full border border-border-subtle px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-accent">
                         {t("billing.current")}
                       </span>
                     ) : null}
                   </div>
-                  <p className="m-0 mt-1 text-lg font-bold text-white">
+                  <p className="m-0 mt-1 text-lg font-bold text-text-primary">
                     {plan.price}
-                    <span className="text-xs font-normal text-zinc-500">{plan.period}</span>
+                    <span className="text-xs font-normal text-text-secondary">{plan.period}</span>
                   </p>
-                  <ul className="m-0 mt-2 flex flex-col gap-1 pl-4 text-xs text-zinc-400">
+                  <ul className="m-0 mt-2 flex flex-col gap-1 pl-4 text-xs text-text-secondary">
                     {plan.features.map((f) => (
                       <li key={f}>{f}</li>
                     ))}
@@ -191,7 +191,7 @@ export default function PlansPanel() {
                       type="button"
                       onClick={openPortal}
                       disabled={Boolean(busyItem)}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-brass/50 bg-brass/[0.18] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-border-subtle bg-black/[0.05] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-accent hover:bg-black/[0.06] disabled:opacity-50"
                     >
                       {busyItem === "portal" ? (
                         <>
@@ -202,7 +202,7 @@ export default function PlansPanel() {
                       )}
                     </button>
                   ) : isPendingTarget ? (
-                    <p className="mt-3 rounded-full border border-white/10 bg-black/20 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
+                    <p className="mt-3 rounded-full border border-border-subtle bg-black/[0.03] px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
                       {pendingAppliesAt ? t("billing.scheduledFor", { date: pendingAppliesAt.toLocaleDateString() }) : t("billing.scheduled")}
                     </p>
                   ) : (
@@ -210,7 +210,7 @@ export default function PlansPanel() {
                       type="button"
                       onClick={() => buy(plan.item, plan.key, plan.price)}
                       disabled={Boolean(busyItem)}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-black/20 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-border-subtle bg-black/[0.03] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
                     >
                       {busyItem === plan.item ? (
                         <>
@@ -229,13 +229,13 @@ export default function PlansPanel() {
           </div>
 
           {/* Feature comparison table */}
-          <div className="mt-6 overflow-x-auto rounded-xl border border-white/10">
+          <div className="mt-6 overflow-x-auto rounded-xl border border-border-subtle">
             <table className="w-full min-w-[560px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-white/10 bg-black/30">
-                  <th className="p-3 text-left text-xs uppercase tracking-[0.1em] text-zinc-400">{t("plans.feature")}</th>
+                <tr className="border-b border-border-subtle bg-black/[0.03]">
+                  <th className="p-3 text-left text-xs uppercase tracking-[0.1em] text-text-secondary">{t("plans.feature")}</th>
                   {PLAN_ORDER.map((key) => (
-                    <th key={key} className="p-3 text-left text-xs uppercase tracking-[0.1em] text-zinc-300">
+                    <th key={key} className="p-3 text-left text-xs uppercase tracking-[0.1em] text-text-secondary">
                       {PLANS[key].label}
                     </th>
                   ))}
@@ -243,14 +243,14 @@ export default function PlansPanel() {
               </thead>
               <tbody>
                 {COMPARISON_ROWS.map((row) => (
-                  <tr key={row.label} className="border-b border-white/5 last:border-0">
-                    <td className="p-3 text-zinc-300">{row.label}</td>
+                  <tr key={row.label} className="border-b border-border-subtle last:border-0">
+                    <td className="p-3 text-text-secondary">{row.label}</td>
                     {row.values.map((value, i) => (
-                      <td key={PLAN_ORDER[i]} className="p-3 text-zinc-400">
+                      <td key={PLAN_ORDER[i]} className="p-3 text-text-secondary">
                         {value === true ? (
-                          <IconCheck className="text-brass" />
+                          <IconCheck className="text-accent" />
                         ) : value === false ? (
-                          <span className="text-zinc-600">—</span>
+                          <span className="text-text-secondary">—</span>
                         ) : (
                           value
                         )}
@@ -263,9 +263,9 @@ export default function PlansPanel() {
           </div>
 
           {masterQuota ? (
-            <div className="mt-6 rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="m-0 text-sm text-white">{masterQuota.resets ? t("billing.mastersThisMonth") : t("billing.freeTrialMasters")}</p>
-              <p className="m-0 text-xs text-zinc-500">
+            <div className="mt-6 rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+              <p className="m-0 text-sm text-text-primary">{masterQuota.resets ? t("billing.mastersThisMonth") : t("billing.freeTrialMasters")}</p>
+              <p className="m-0 text-xs text-text-secondary">
                 {t("billing.leftOf", { remaining: masterQuota.remaining, limit: masterQuota.limit })}
                 {" · "}
                 {masterQuota.resets ? t("billing.resetsNextMonth") : t("billing.oneTimeNoRenew")}
@@ -275,12 +275,12 @@ export default function PlansPanel() {
           ) : null}
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border-subtle bg-black/10 p-3">
               <div className="min-w-0">
-                <p className="m-0 text-sm text-white">
+                <p className="m-0 text-sm text-text-primary">
                   {SINGLE_MASTER.label} — {SINGLE_MASTER.price}
                 </p>
-                <p className="m-0 mt-0.5 text-xs text-zinc-500">
+                <p className="m-0 mt-0.5 text-xs text-text-secondary">
                   {SINGLE_MASTER.blurb} {t("billing.noSubNote")}
                 </p>
               </div>
@@ -288,7 +288,7 @@ export default function PlansPanel() {
                 type="button"
                 onClick={() => buyOneTime(SINGLE_MASTER, "single_master")}
                 disabled={Boolean(busyItem)}
-                className="flex shrink-0 items-center gap-2 rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
+                className="flex shrink-0 items-center gap-2 rounded-full border border-border-subtle bg-black/[0.03] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
               >
                 {busyItem === SINGLE_MASTER.item ? (
                   <>
@@ -300,12 +300,12 @@ export default function PlansPanel() {
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-black/10 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border-subtle bg-black/10 p-3">
               <div className="min-w-0">
-                <p className="m-0 text-sm text-white">
+                <p className="m-0 text-sm text-text-primary">
                   {STEM_SEPARATION.label} — {STEM_SEPARATION.price}
                 </p>
-                <p className="m-0 mt-0.5 text-xs text-zinc-500">
+                <p className="m-0 mt-0.5 text-xs text-text-secondary">
                   {currentPlan === "pro" ? t("billing.stemNoteAllAccess") : `${STEM_SEPARATION.blurb} ${t("billing.stemNoteOther")}`}
                 </p>
               </div>
@@ -313,7 +313,7 @@ export default function PlansPanel() {
                 type="button"
                 onClick={() => buyOneTime(STEM_SEPARATION, "stem_separation")}
                 disabled={Boolean(busyItem)}
-                className="flex shrink-0 items-center gap-2 rounded-full border border-white/15 bg-black/20 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 disabled:opacity-50"
+                className="flex shrink-0 items-center gap-2 rounded-full border border-border-subtle bg-black/[0.03] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
               >
                 {busyItem === STEM_SEPARATION.item ? (
                   <>
@@ -327,9 +327,9 @@ export default function PlansPanel() {
           </div>
 
           {currentPlan === "pro" && stemQuota ? (
-            <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
-              <p className="m-0 text-sm text-white">{t("billing.stemsThisMonth")}</p>
-              <p className="m-0 text-xs text-zinc-500">
+            <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+              <p className="m-0 text-sm text-text-primary">{t("billing.stemsThisMonth")}</p>
+              <p className="m-0 text-xs text-text-secondary">
                 {t("billing.leftOf", { remaining: stemQuota.remaining, limit: stemQuota.limit })} · {t("billing.resetsNextMonth")}
                 {extraStemCredits > 0 ? ` · ${t("billing.plusCreditsStem", { n: extraStemCredits, s: extraStemCredits === 1 ? "" : "s" })}` : ""}
               </p>
@@ -337,7 +337,7 @@ export default function PlansPanel() {
           ) : null}
         </>
       )}
-      {changeStatus ? <p className="mt-3 text-sm text-brass">{changeStatus}</p> : null}
+      {changeStatus ? <p className="mt-3 text-sm text-accent">{changeStatus}</p> : null}
       {checkoutError ? <p className="mt-3 text-sm text-red-300">{checkoutError}</p> : null}
     </div>
   );

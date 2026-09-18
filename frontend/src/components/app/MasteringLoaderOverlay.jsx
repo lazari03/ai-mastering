@@ -60,20 +60,8 @@ export default function MasteringLoaderOverlay({ visible, progress = 0, phaseMes
     <div
       role="status"
       aria-live="polite"
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-[#0b0d10]"
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-bg"
     >
-      {/* Same radial-gradient brand wash as the page background (globals.css)
-          so the overlay reads as continuous with the app, not a foreign modal. */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(circle at 8% 6%, rgba(232, 93, 42, 0.22), transparent 42%)," +
-            "radial-gradient(circle at 92% 18%, rgba(223, 201, 90, 0.18), transparent 38%)," +
-            "radial-gradient(circle at 50% 100%, rgba(232, 93, 42, 0.12), transparent 45%)",
-        }}
-      />
-
       {/* min-h-0 + overflow-y-auto: on short phone viewports the full
           stack (rings + bar + quote + log box) can exceed the screen —
           scroll inside the overlay rather than clipping the log box. */}
@@ -81,26 +69,26 @@ export default function MasteringLoaderOverlay({ visible, progress = 0, phaseMes
         {/* Pulsing ring stack around the logo — three staggered rings, pure
             CSS (pulseRing keyframe in globals.css), no per-frame JS cost. */}
         <div className="relative mb-8 flex h-24 w-24 shrink-0 items-center justify-center">
-          <span className="pulse-ring absolute inset-0 rounded-full border border-ember/60" />
-          <span className="pulse-ring absolute inset-0 rounded-full border border-brass/50" style={{ animationDelay: "0.6s" }} />
-          <span className="pulse-ring absolute inset-0 rounded-full border border-ember/40" style={{ animationDelay: "1.2s" }} />
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-white/15 bg-black/40 backdrop-blur-sm">
+          <span className="pulse-ring absolute inset-0 rounded-full border border-accent/60" />
+          <span className="pulse-ring absolute inset-0 rounded-full border border-border-subtle" style={{ animationDelay: "0.6s" }} />
+          <span className="pulse-ring absolute inset-0 rounded-full border border-accent/40" style={{ animationDelay: "1.2s" }} />
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-border-subtle bg-black/[0.04] backdrop-blur-sm">
             <LogoMark size={28} />
           </div>
         </div>
 
-        <p className="mb-1 text-[11px] uppercase tracking-[0.22em] text-brass">Mastering in progress</p>
-        <p className="mb-7 text-xs text-zinc-400">{phaseMessage || "Analyzing the source signal…"}</p>
+        <p className="mb-1 text-[11px] uppercase tracking-[0.22em] text-accent">Mastering in progress</p>
+        <p className="mb-7 text-xs text-text-secondary">{phaseMessage || "Analyzing the source signal…"}</p>
 
         {/* Progress bar — same underlying number MasteringConsole already
             computes, just presented at full-screen scale. */}
-        <div className="mb-2 h-1.5 w-full shrink-0 overflow-hidden rounded-full bg-white/10">
+        <div className="mb-2 h-1.5 w-full shrink-0 overflow-hidden rounded-full bg-black/[0.05]">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-ember to-brass transition-[width] duration-500 ease-out"
+            className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
             style={{ width: `${clampedProgress}%` }}
           />
         </div>
-        <p className="mb-8 text-[11px] text-zinc-500">{clampedProgress}%</p>
+        <p className="mb-8 text-[11px] text-text-secondary">{clampedProgress}%</p>
 
         {/* Rotating quote — mode="wait" guarantees the outgoing quote is
             fully gone before the next appears. Fixed min-height so the
@@ -113,7 +101,7 @@ export default function MasteringLoaderOverlay({ visible, progress = 0, phaseMes
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.4, ease: "easeOut" }}
-              className="m-0 max-w-[38ch] font-[var(--font-title)] text-[15px] italic leading-relaxed text-zinc-200"
+              className="m-0 max-w-[38ch] text-[15px] italic leading-relaxed text-text-primary"
             >
               "{quotes[quoteIndex]}"
             </motion.p>
@@ -125,8 +113,8 @@ export default function MasteringLoaderOverlay({ visible, progress = 0, phaseMes
             caps it at the last 8) so a long render shows visible forward
             motion, not just one line replacing itself. */}
         {logs.length ? (
-          <div className="mt-6 w-full shrink-0 rounded-xl border border-white/10 bg-black/40 p-3.5 text-left backdrop-blur-sm">
-            <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.16em] text-zinc-500">Engine log</p>
+          <div className="mt-6 w-full shrink-0 rounded-xl border border-border-subtle bg-black/[0.04] p-3.5 text-left backdrop-blur-sm">
+            <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.16em] text-text-secondary">Engine log</p>
             <div className="flex flex-col gap-1 font-mono text-[11px] leading-relaxed">
               {logs.map((entry, i) => (
                 <motion.p
@@ -134,7 +122,7 @@ export default function MasteringLoaderOverlay({ visible, progress = 0, phaseMes
                   initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.25, ease: "easeOut" }}
-                  className={`m-0 break-words ${i === logs.length - 1 ? "text-brass" : "text-zinc-500"}`}
+                  className={`m-0 break-words ${i === logs.length - 1 ? "text-accent" : "text-text-secondary"}`}
                 >
                   {entry.text}
                 </motion.p>

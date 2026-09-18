@@ -39,9 +39,12 @@ export default function OnboardingTour({ onDone }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-brass/30 bg-[#161311] shadow-2xl">
+      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border-subtle bg-bg shadow-2xl">
         {/* Fixed-height image box, same on every step — nothing about the
-            modal's size ever changes as you click through it. */}
+            modal's size ever changes as you click through it. Text
+            overlaying the photo stays explicitly white regardless of the
+            site's light/dark theme — it's sitting on a real photo behind a
+            dark scrim, not on the page background. */}
         <div className="relative h-44 w-full shrink-0">
           <Image
             key={current.image}
@@ -52,20 +55,20 @@ export default function OnboardingTour({ onDone }) {
             className="object-cover"
             priority={step === 0}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#161311] via-[#161311]/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0d] via-[#0c0c0d]/20 to-transparent" />
           <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
-            <span className="rounded-full bg-black/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-zinc-200 backdrop-blur-sm">
+            <span className="rounded-full bg-black/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-white backdrop-blur-sm">
               {step + 1} / {STEPS.length}
             </span>
             <button
               type="button"
               onClick={onDone}
-              className="rounded-full bg-black/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-zinc-200 backdrop-blur-sm hover:bg-black/70"
+              className="rounded-full bg-black/50 px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] text-white backdrop-blur-sm hover:bg-black/70"
             >
               {t("onboarding.skip")}
             </button>
           </div>
-          <h2 className="absolute inset-x-0 bottom-0 p-4 font-[var(--font-title)] text-xl text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
+          <h2 className="absolute inset-x-0 bottom-0 p-4 text-xl text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
             {current.title}
           </h2>
         </div>
@@ -73,12 +76,12 @@ export default function OnboardingTour({ onDone }) {
         <div className="flex flex-1 flex-col p-5">
           {/* Fixed min-height so shorter/longer body copy across steps
               doesn't shift the footer/buttons up and down either. */}
-          <p className="min-h-[64px] text-sm leading-relaxed text-zinc-300">{current.body}</p>
+          <p className="min-h-[64px] text-sm leading-relaxed text-text-secondary">{current.body}</p>
 
           <div className="mt-4 flex items-center justify-between gap-2">
             <div className="flex gap-1.5">
               {STEPS.map((s, i) => (
-                <span key={s.title} className={`h-1.5 w-1.5 rounded-full ${i === step ? "bg-brass" : "bg-white/15"}`} />
+                <span key={s.title} className={`h-1.5 w-1.5 rounded-full ${i === step ? "bg-accent" : "bg-black/[0.05]"}`} />
               ))}
             </div>
             <div className="flex gap-2">
@@ -86,7 +89,7 @@ export default function OnboardingTour({ onDone }) {
                 <button
                   type="button"
                   onClick={() => setStep((s) => s - 1)}
-                  className="rounded-lg border border-white/15 bg-black/20 px-3.5 py-2 text-xs text-zinc-300 hover:border-white/30"
+                  className="rounded-lg border border-border-subtle bg-black/[0.03] px-3.5 py-2 text-xs text-text-secondary hover:border-text-primary/30"
                 >
                   {t("onboarding.back")}
                 </button>
@@ -94,7 +97,7 @@ export default function OnboardingTour({ onDone }) {
               <button
                 type="button"
                 onClick={() => (isLast ? onDone() : setStep((s) => s + 1))}
-                className="rounded-lg border border-brass/40 bg-brass/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-brass hover:bg-brass/30"
+                className="rounded-lg border border-border-subtle bg-black/[0.05] px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-accent hover:bg-accent/30"
               >
                 {isLast ? t("onboarding.getStarted") : t("onboarding.next")}
               </button>

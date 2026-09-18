@@ -6,7 +6,7 @@ export function Spinner({ size = 16, className = "" }) {
     <span
       role="status"
       aria-label="Loading"
-      className={`inline-block shrink-0 animate-spin rounded-full border-2 border-brass/25 border-t-brass ${className}`}
+      className={`inline-block shrink-0 animate-spin rounded-full border-2 border-border-subtle border-t-brass ${className}`}
       style={{ width: size, height: size }}
     />
   );
@@ -16,7 +16,7 @@ export function Spinner({ size = 16, className = "" }) {
 // ("Loading…" text alone, with nothing else on screen).
 export function LoadingBlock({ label = "Loading…", className = "" }) {
   return (
-    <div className={`flex items-center justify-center gap-2.5 py-6 text-sm text-zinc-400 ${className}`}>
+    <div className={`flex items-center justify-center gap-2.5 py-6 text-sm text-text-secondary ${className}`}>
       <Spinner size={18} />
       <span>{label}</span>
     </div>

@@ -53,12 +53,12 @@ Here is the sound I want:
 function Item({ q, a }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+    <div className="rounded-xl border border-border-subtle bg-black/[0.03] p-4">
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center justify-between gap-3 text-left">
-        <span className="text-sm font-semibold text-white">{q}</span>
-        <span className={`shrink-0 text-brass transition-transform ${open ? "rotate-45" : ""}`}>+</span>
+        <span className="text-sm font-semibold text-text-primary">{q}</span>
+        <span className={`shrink-0 text-accent transition-transform ${open ? "rotate-45" : ""}`}>+</span>
       </button>
-      {open ? <p className="mt-2 text-sm leading-relaxed text-zinc-300">{a}</p> : null}
+      {open ? <p className="mt-2 text-sm leading-relaxed text-text-secondary">{a}</p> : null}
     </div>
   );
 }
@@ -73,7 +73,7 @@ function CopyButton({ text, label, copiedLabel }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
-      className="rounded-lg border border-brass/40 bg-brass/[0.12] px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/20"
+      className="rounded-lg border border-border-subtle bg-accent/[0.12] px-3 py-1.5 text-[11px] uppercase tracking-[0.1em] text-accent hover:bg-black/[0.05]"
     >
       {copied ? copiedLabel : label}
     </button>
@@ -85,36 +85,36 @@ export default function HelpSupportPanel() {
 
   return (
     <div id="help-import-preset" className="mx-auto w-full max-w-[900px]">
-      <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("help.title")}</h1>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-300">{t("help.subtitle")}</p>
+      <h1 className="m-0 text-[26px]">{t("help.title")}</h1>
+      <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t("help.subtitle")}</p>
 
-      <div className="mt-6 rounded-2xl border border-brass/25 bg-brass/[0.06] p-5">
-        <h2 className="m-0 text-sm font-semibold text-white">{t("help.chatgptTitle")}</h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-zinc-300">{t("help.chatgptBody")}</p>
-        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-zinc-300">
+      <div className="mt-6 rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+        <h2 className="m-0 text-sm font-semibold text-text-primary">{t("help.chatgptTitle")}</h2>
+        <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">{t("help.chatgptBody")}</p>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-text-secondary">
           <li>
-            <a href="/artist-preset-template.json" download className="text-brass hover:text-ember">
+            <a href="/artist-preset-template.json" download className="text-accent hover:text-accent">
               {t("help.step1")}
             </a>{" "}
             {t("help.step1tail")}
           </li>
           <li>{t("help.step2")}</li>
           <li>
-            {t("help.step3")} <code className="text-zinc-200">.json</code> {t("help.step3tail")}
+            {t("help.step3")} <code className="text-text-primary">.json</code> {t("help.step3tail")}
           </li>
           <li>
-            {t("help.step4pre")} <span className="text-zinc-200">{t("help.step4path")}</span>
+            {t("help.step4pre")} <span className="text-text-primary">{t("help.step4path")}</span>
             {t("help.step4tail")}
           </li>
         </ol>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[11px] uppercase tracking-[0.14em] text-zinc-400">{t("help.masterPrompt")}</span>
+          <span className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">{t("help.masterPrompt")}</span>
           <CopyButton text={MASTER_PROMPT} label={t("help.copyPrompt")} copiedLabel={t("help.copied")} />
         </div>
         {/* MASTER_PROMPT stays English-only — it's fed verbatim to an LLM
             and must match the app's real JSON schema/enum values exactly;
             translating it would break the thing it's for. */}
-        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-3 text-[11px] leading-relaxed text-zinc-300">
+        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-border-subtle bg-black/[0.03] p-3 text-[11px] leading-relaxed text-text-secondary">
           {MASTER_PROMPT}
         </pre>
       </div>
@@ -125,20 +125,20 @@ export default function HelpSupportPanel() {
         ))}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-brass/25 bg-brass/[0.06] p-5">
-        <h2 className="m-0 text-sm font-semibold text-white">{t("help.stillStuck")}</h2>
-        <p className="mt-1.5 text-sm text-zinc-300">
+      <div className="mt-6 rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+        <h2 className="m-0 text-sm font-semibold text-text-primary">{t("help.stillStuck")}</h2>
+        <p className="mt-1.5 text-sm text-text-secondary">
           {t("help.emailIntro")}{" "}
-          <a href="mailto:studio@auralithforge.app" className="text-brass hover:text-ember">
+          <a href="mailto:studio@auralithforge.app" className="text-accent hover:text-accent">
             studio@auralithforge.app
           </a>{" "}
           {t("help.emailTail")}
         </p>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-zinc-400">
-          <Link href="/blog" target="_blank" className="hover:text-zinc-200">{t("help.guides")}</Link>
-          <Link href="/terms" target="_blank" className="hover:text-zinc-200">{t("help.terms")}</Link>
-          <Link href="/privacy" target="_blank" className="hover:text-zinc-200">{t("help.privacy")}</Link>
-          <Link href="/refund" target="_blank" className="hover:text-zinc-200">{t("help.refund")}</Link>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-text-secondary">
+          <Link href="/blog" target="_blank" className="hover:text-text-primary">{t("help.guides")}</Link>
+          <Link href="/terms" target="_blank" className="hover:text-text-primary">{t("help.terms")}</Link>
+          <Link href="/privacy" target="_blank" className="hover:text-text-primary">{t("help.privacy")}</Link>
+          <Link href="/refund" target="_blank" className="hover:text-text-primary">{t("help.refund")}</Link>
         </div>
       </div>
     </div>

@@ -28,11 +28,11 @@ export default function EntitlementsBadge({ onClick, compact = false, className 
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[11px] font-semibold text-zinc-200 transition hover:border-brass/40 ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-black/[0.03] px-3 py-1.5 text-[11px] font-semibold text-text-primary transition hover:border-border-subtle ${className}`}
     >
-      <span className={plan === "free" ? "text-zinc-400" : "text-brass"}>{label}</span>
+      <span className={plan === "free" ? "text-text-secondary" : "text-accent"}>{label}</span>
       {!compact && masterQuota ? (
-        <span className="text-zinc-500">
+        <span className="text-text-secondary">
           · {masterQuota.remaining}/{masterQuota.limit} {t("badge.masters")}
         </span>
       ) : null}

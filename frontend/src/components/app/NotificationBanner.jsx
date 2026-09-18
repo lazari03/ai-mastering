@@ -59,35 +59,35 @@ export default function NotificationBanner({ activeTab, onView }) {
       transition={{ duration: 0.22, ease: "easeOut" }}
       className="fixed inset-x-3 bottom-3 z-50 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:max-w-sm"
     >
-      <div className="glass-panel flex items-start gap-3 rounded-2xl border border-white/10 p-4">
+      <div className="glass-panel flex items-start gap-3 rounded-2xl border border-border-subtle p-4">
         {isSubmitting ? (
           <>
-            <span className="mt-0.5 h-2 w-2 shrink-0 animate-pulse rounded-full bg-brass" />
+            <span className="mt-0.5 h-2 w-2 shrink-0 animate-pulse rounded-full bg-accent" />
             <div className="min-w-0 flex-1">
-              <p className="m-0 text-sm font-semibold text-white">{t("notif.inProgress")}</p>
-              <p className="mt-0.5 text-xs text-zinc-400">{t("notif.takesAWhile")}</p>
+              <p className="m-0 text-sm font-semibold text-text-primary">{t("notif.inProgress")}</p>
+              <p className="mt-0.5 text-xs text-text-secondary">{t("notif.takesAWhile")}</p>
             </div>
           </>
         ) : error ? (
           <>
             <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />
             <div className="min-w-0 flex-1">
-              <p className="m-0 text-sm font-semibold text-white">{t("notif.failed")}</p>
-              <p className="mt-0.5 truncate text-xs text-zinc-400">{error}</p>
+              <p className="m-0 text-sm font-semibold text-text-primary">{t("notif.failed")}</p>
+              <p className="mt-0.5 truncate text-xs text-text-secondary">{error}</p>
             </div>
           </>
         ) : (
           <>
-            <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-ember" />
+            <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
             <div className="min-w-0 flex-1">
-              <p className="m-0 text-sm font-semibold text-white">{t("notif.masterReady")}</p>
+              <p className="m-0 text-sm font-semibold text-text-primary">{t("notif.masterReady")}</p>
               <button
                 type="button"
                 onClick={() => {
                   onView();
                   setDismissed(true);
                 }}
-                className="mt-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-brass hover:text-ember"
+                className="mt-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-accent hover:text-accent"
               >
                 {t("notif.viewResult")}
               </button>
@@ -98,7 +98,7 @@ export default function NotificationBanner({ activeTab, onView }) {
           type="button"
           onClick={() => setDismissed(true)}
           aria-label={t("notif.dismiss")}
-          className="shrink-0 text-zinc-500 hover:text-zinc-300"
+          className="shrink-0 text-text-secondary hover:text-text-secondary"
         >
           ✕
         </button>

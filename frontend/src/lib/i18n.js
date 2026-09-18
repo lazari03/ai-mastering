@@ -258,9 +258,39 @@ const DICT = {
   "app.tab.master": { en: "Master Audio", sq: "Masterizo Audio" },
   "app.tab.chords": { en: "Show Chords", sq: "Shfaq Akordet" },
   "app.tab.myMasters": { en: "My Masters", sq: "Masterat e Mia" },
+  "app.tab.explore": { en: "Explore", sq: "Eksploro" },
   "app.tab.help": { en: "Help & Support", sq: "Ndihmë & Asistencë" },
   "app.tab.settings": { en: "Settings", sq: "Cilësimet" },
   "app.signout": { en: "Sign out", sq: "Dil" },
+
+  "app.navGroup.create": { en: "Create", sq: "Krijo" },
+  "app.navGroup.analyze": { en: "Analyze", sq: "Analizo" },
+  "app.navGroup.library": { en: "Library", sq: "Biblioteka" },
+
+  "app.search.placeholder": { en: "Search tools or help…", sq: "Kërko mjete ose ndihmë…" },
+  "app.search.noResults": { en: "No matches", sq: "Asnjë përputhje" },
+
+  "app.explore.title": { en: "Explore tools", sq: "Eksploro mjetet" },
+  "app.explore.subtitle": {
+    en: "Everything Auralith Forge can do for a track, in one place.",
+    sq: "Gjithçka që Auralith Forge mund të bëjë për një këngë, në një vend.",
+  },
+  "app.explore.master.title": { en: "Mastering", sq: "Masterizim" },
+  "app.explore.master.body": { en: "Professional automated mastering with genre-aware presets.", sq: "Masterizim profesional automatik me presete sipas zhanrit." },
+  "app.explore.reference.title": { en: "Reference Mastering", sq: "Masterizim me Referencë" },
+  "app.explore.reference.body": {
+    en: "Upload a reference track from the Mastering tab to match its sound.",
+    sq: "Ngarko një këngë referimi nga skeda Masterizim për të përputhur tingullin.",
+  },
+  "app.explore.stems.title": { en: "Stem Separation", sq: "Ndarja e Stemave" },
+  "app.explore.stems.body": {
+    en: "Enable stem-aware processing from the Mastering tab for independent control over vocals, drums, and bass.",
+    sq: "Aktivizo përpunimin me stema nga skeda Masterizim për kontroll të pavarur mbi zërin, daullet dhe bas.",
+  },
+  "app.explore.chords.title": { en: "Chord Detection", sq: "Zbulimi i Akordeve" },
+  "app.explore.chords.body": { en: "Get the key, BPM, and full chord progression of any track.", sq: "Merr tonalitetin, BPM-në dhe progresionin e plotë të akordeve të çdo kënge." },
+  "app.explore.myMasters.title": { en: "My Masters", sq: "Masterat e Mia" },
+  "app.explore.myMasters.body": { en: "Revisit and download every master you've rendered.", sq: "Rishiko dhe shkarko çdo master që ke krijuar." },
 
   "newsletter.subscribed.title": { en: "You're on the list.", sq: "Je regjistruar." },
   "newsletter.subscribed.withCode": {

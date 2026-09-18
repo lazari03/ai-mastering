@@ -18,7 +18,7 @@ import { trackEvent } from "@/lib/analytics";
 // uploading/configuring on the Master tab.
 const WebGLMasterPreview = dynamic(() => import("@/components/audio/WebGLMasterPreview"), {
   ssr: false,
-  loading: () => <div className="h-64 w-full animate-pulse rounded-2xl border border-white/10 bg-black/40 sm:h-80" />,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-2xl border border-border-subtle bg-black/[0.04] sm:h-80" />,
 });
 
 /**
@@ -99,12 +99,12 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
   if (loadError || !job) {
     return (
       <div className="mx-auto w-full max-w-[1040px] py-16 text-center">
-        <h1 className="m-0 font-[var(--font-title)] text-2xl">{t("result.loadFailed")}</h1>
-        <p className="mt-2 text-sm text-zinc-400">{loadError || t("result.notFound")}</p>
+        <h1 className="m-0 text-2xl">{t("result.loadFailed")}</h1>
+        <p className="mt-2 text-sm text-text-secondary">{loadError || t("result.notFound")}</p>
         <button
           type="button"
           onClick={onViewAllMasters}
-          className="mt-5 rounded-lg border border-white/15 bg-black/20 px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30"
+          className="mt-5 rounded-lg border border-border-subtle bg-black/[0.03] px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30"
         >
           {t("result.backToMasters")}
         </button>
@@ -159,15 +159,15 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
   if (job.expired) {
     return (
       <div className="mx-auto w-full max-w-[1040px] py-16 text-center">
-        <h1 className="m-0 font-[var(--font-title)] text-2xl">{t("result.expiredTitle")}</h1>
-        <p className="mx-auto mt-2 max-w-md text-sm text-zinc-400">{t("result.expiredBody")}</p>
+        <h1 className="m-0 text-2xl">{t("result.expiredTitle")}</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-text-secondary">{t("result.expiredBody")}</p>
         <div className="mt-6">
           <ProcessingSummary result={job} />
         </div>
         <button
           type="button"
           onClick={onViewAllMasters}
-          className="mt-6 rounded-lg border border-white/15 bg-black/20 px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30"
+          className="mt-6 rounded-lg border border-border-subtle bg-black/[0.03] px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30"
         >
           {t("result.backToMasters")}
         </button>
@@ -185,44 +185,44 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
       <button
         type="button"
         onClick={onViewAllMasters}
-        className="mb-4 inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200"
+        className="mb-4 inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary"
       >
         ← {t("result.backToMasters")}
       </button>
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="m-0 text-[11px] uppercase tracking-[0.2em] text-brass">{t("result.eyebrow")}</p>
-          <h1 className="m-0 mt-1 font-[var(--font-title)] text-[22px] sm:text-[26px]">{t("result.title")}</h1>
+          <p className="m-0 text-[11px] uppercase tracking-[0.2em] text-accent">{t("result.eyebrow")}</p>
+          <h1 className="m-0 mt-1 text-[22px] sm:text-[26px]">{t("result.title")}</h1>
           {job.original_filename ? (
             // Shortened at the JS level (not just CSS truncate) so the
             // extension and trailing part of a long filename stay visible
             // instead of being clipped off blind — see lib/format.js. Full
             // name is still one hover/long-press away via title=.
-            <p className="mt-1 truncate text-sm text-zinc-400" title={job.original_filename}>
+            <p className="mt-1 truncate text-sm text-text-secondary" title={job.original_filename}>
               {shortenFilename(job.original_filename)}
             </p>
           ) : null}
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
-          {target.genre ? <span className="rounded-lg border border-white/15 bg-black/20 px-3 py-1.5 text-xs capitalize">{target.genre}</span> : null}
+          {target.genre ? <span className="rounded-lg border border-border-subtle bg-black/[0.03] px-3 py-1.5 text-xs capitalize">{target.genre}</span> : null}
           {target.category ? (
-            <span className="rounded-lg border border-brass/40 bg-brass/10 px-3 py-1.5 text-xs capitalize text-brass">
+            <span className="rounded-lg border border-border-subtle bg-accent/10 px-3 py-1.5 text-xs capitalize text-accent">
               {target.category.replaceAll("_", " ")}
               {target.flavour ? ` · ${target.flavour}` : ""}
             </span>
           ) : null}
-          {applied.tier ? <span className="rounded-lg border border-white/15 bg-black/20 px-3 py-1.5 text-xs uppercase tracking-[0.08em]">{applied.tier}</span> : null}
+          {applied.tier ? <span className="rounded-lg border border-border-subtle bg-black/[0.03] px-3 py-1.5 text-xs uppercase tracking-[0.08em]">{applied.tier}</span> : null}
         </div>
       </div>
 
       <div className="glass-panel rounded-[20px] p-4 sm:p-[22px]">
-        <div className="mb-4 flex items-center justify-center gap-1 rounded-full border border-white/10 bg-black/30 p-1">
+        <div className="mb-4 flex items-center justify-center gap-1 rounded-full border border-border-subtle bg-black/[0.03] p-1">
           <button
             type="button"
             onClick={() => setPreviewMode("before")}
             className={`flex-1 rounded-full px-4 py-2 text-xs uppercase tracking-[0.1em] transition ${
-              previewMode === "before" ? "bg-white/10 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
+              previewMode === "before" ? "bg-black/[0.05] text-text-primary" : "text-text-secondary hover:text-text-secondary"
             }`}
           >
             {t("result.before")}
@@ -231,7 +231,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
             type="button"
             onClick={() => setPreviewMode("after")}
             className={`flex-1 rounded-full px-4 py-2 text-xs uppercase tracking-[0.1em] transition ${
-              previewMode === "after" ? "bg-gradient-to-r from-ember to-brass text-black" : "text-zinc-500 hover:text-zinc-300"
+              previewMode === "after" ? "bg-accent text-black" : "text-text-secondary hover:text-text-secondary"
             }`}
           >
             {t("result.after")}
@@ -258,21 +258,21 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
             type="button"
             onClick={handleDownload}
             disabled={downloading || !urls}
-            className="inline-flex w-full justify-center rounded-lg border border-brass/40 bg-brass/[0.18] px-4 py-3 text-xs uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50 sm:w-auto sm:flex-1 sm:min-w-[180px]"
+            className="inline-flex w-full justify-center rounded-lg border border-border-subtle bg-black/[0.05] px-4 py-3 text-xs uppercase tracking-[0.1em] text-accent hover:bg-black/[0.06] disabled:opacity-50 sm:w-auto sm:flex-1 sm:min-w-[180px]"
           >
             {downloading ? t("console.downloading") : t("console.downloadMaster")}
           </button>
           <button
             type="button"
             onClick={handleMasterAnother}
-            className="inline-flex w-full justify-center rounded-lg border border-white/15 bg-black/20 px-4 py-3 text-xs uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
+            className="inline-flex w-full justify-center rounded-lg border border-border-subtle bg-black/[0.03] px-4 py-3 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
           >
             {t("result.masterAnother")}
           </button>
           <button
             type="button"
             onClick={onViewAllMasters}
-            className="inline-flex w-full justify-center rounded-lg border border-white/15 bg-black/20 px-4 py-3 text-xs uppercase tracking-[0.1em] text-zinc-200 hover:border-white/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
+            className="inline-flex w-full justify-center rounded-lg border border-border-subtle bg-black/[0.03] px-4 py-3 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
           >
             {t("result.viewAllMasters")}
           </button>
@@ -287,7 +287,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
       </div>
 
       <div className="mt-6">
-        <h2 className="m-0 mb-3 font-[var(--font-title)] text-base">{t("result.detailsHeading")}</h2>
+        <h2 className="m-0 mb-3 text-base">{t("result.detailsHeading")}</h2>
         <div className="glass-panel rounded-[20px] p-4 sm:p-[22px]">
           <ProcessingSummary result={job} />
         </div>

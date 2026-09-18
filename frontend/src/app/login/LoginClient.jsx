@@ -55,7 +55,7 @@ export default function LoginClient() {
   };
 
   const fieldStyle =
-    "w-full box-border rounded-xl border border-white/15 bg-black/20 px-3.5 py-3 text-sm text-white outline-none focus:border-brass/60";
+    "w-full box-border rounded-xl border border-border-subtle bg-black/[0.03] px-3.5 py-3 text-sm text-text-primary outline-none focus:border-text-primary/30";
   const isSignup = mode === "signup";
   const googleDisabled = busy || (isSignup && !termsAccepted);
   const passwordStrength = scorePassword(password);
@@ -63,24 +63,18 @@ export default function LoginClient() {
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">
       <div className="w-full max-w-[420px]">
-        <Link href="/" className="mb-4 inline-block text-[13px] text-zinc-400 hover:text-zinc-200">
+        <Link href="/" className="mb-4 inline-block text-[13px] text-text-secondary hover:text-text-primary">
           ← {t("login.back")}
         </Link>
 
-        <div
-          className="reveal rounded-3xl border border-white/10 p-9"
-          style={{
-            background: "linear-gradient(145deg, rgba(27,30,34,.78), rgba(15,17,19,.92))",
-            boxShadow: "0 20px 60px rgba(0,0,0,.35)",
-          }}
-        >
-          <p className="m-0 text-[11px] uppercase tracking-[0.22em] text-brass">{t("login.brand")}</p>
-          <h1 className="mt-2.5 font-[var(--font-title)] text-2xl">
+        <div className="reveal rounded-3xl border border-border-subtle bg-bg p-9">
+          <p className="m-0 text-[11px] uppercase tracking-[0.22em] text-accent">{t("login.brand")}</p>
+          <h1 className="mt-2.5 text-2xl">
             {isSignup ? t("login.signup") : t("login.signin")}
           </h1>
 
           {sessionExpired ? (
-            <p className="mt-3 rounded-lg border border-brass/30 bg-brass/[0.08] px-3 py-2.5 text-sm text-brass">
+            <p className="mt-3 rounded-lg border border-border-subtle bg-accent/[0.08] px-3 py-2.5 text-sm text-accent">
               {t("login.sessionExpired")}
             </p>
           ) : null}
@@ -89,7 +83,7 @@ export default function LoginClient() {
             {isSignup ? (
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-zinc-300">{t("login.firstName")}</span>
+                  <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-text-secondary">{t("login.firstName")}</span>
                   <input
                     type="text"
                     required
@@ -100,7 +94,7 @@ export default function LoginClient() {
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-zinc-300">{t("login.lastName")}</span>
+                  <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-text-secondary">{t("login.lastName")}</span>
                   <input
                     type="text"
                     required
@@ -114,7 +108,7 @@ export default function LoginClient() {
             ) : null}
 
             <label className="block">
-              <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-zinc-300">{t("login.email")}</span>
+              <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-text-secondary">{t("login.email")}</span>
               <input
                 type="email"
                 required
@@ -128,7 +122,7 @@ export default function LoginClient() {
 
             {isSignup ? (
               <label className="block">
-                <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-zinc-300">{t("login.phone")}</span>
+                <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-text-secondary">{t("login.phone")}</span>
                 <input
                   type="tel"
                   required
@@ -142,7 +136,7 @@ export default function LoginClient() {
             ) : null}
 
             <label className="block">
-              <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-zinc-300">{t("login.password")}</span>
+              <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-text-secondary">{t("login.password")}</span>
               <input
                 type="password"
                 required
@@ -155,7 +149,7 @@ export default function LoginClient() {
               />
               {isSignup && password ? (
                 <div className="mt-2">
-                  <div className="flex h-1 w-full overflow-hidden rounded-full bg-white/10">
+                  <div className="flex h-1 w-full overflow-hidden rounded-full bg-black/[0.05]">
                     <div
                       className="h-full rounded-full transition-all duration-200"
                       style={{ width: `${passwordStrength.percent}%`, background: passwordStrength.color }}
@@ -169,7 +163,7 @@ export default function LoginClient() {
             </label>
 
             {isSignup ? (
-              <label className="flex items-start gap-2.5 text-xs leading-relaxed text-zinc-300">
+              <label className="flex items-start gap-2.5 text-xs leading-relaxed text-text-secondary">
                 <input
                   type="checkbox"
                   required
@@ -179,23 +173,23 @@ export default function LoginClient() {
                 />
                 <span>
                   {t("login.termsPrefix")}{" "}
-                  <Link href="/terms" target="_blank" className="text-brass hover:text-ember">
+                  <Link href="/terms" target="_blank" className="text-accent hover:text-accent">
                     {t("login.termsLink")}
                   </Link>{" "}
                   {t("login.termsAnd")}{" "}
-                  <Link href="/privacy" target="_blank" className="text-brass hover:text-ember">
+                  <Link href="/privacy" target="_blank" className="text-accent hover:text-accent">
                     {t("login.privacyLink")}
                   </Link>
                 </span>
               </label>
             ) : null}
 
-            {error ? <p className="m-0 text-sm text-red-300">{error}</p> : null}
+            {error ? <p className="m-0 text-sm text-red-600">{error}</p> : null}
 
             <button
               type="submit"
               disabled={busy || (isSignup && !termsAccepted)}
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-brass/50 bg-brass/[0.18] px-4 py-3.5 text-[13px] font-bold uppercase tracking-[0.14em] text-brass transition hover:bg-brass/25 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-border-subtle bg-black/[0.05] px-4 py-3.5 text-[13px] font-bold uppercase tracking-[0.14em] text-accent transition hover:bg-black/[0.06] disabled:opacity-50"
             >
               {busy ? (
                 <>
@@ -209,17 +203,17 @@ export default function LoginClient() {
             </button>
           </form>
 
-          <div className="my-5 flex items-center gap-3 text-xs text-zinc-500">
-            <div className="h-px flex-1 bg-white/10" />
+          <div className="my-5 flex items-center gap-3 text-xs text-text-secondary">
+            <div className="h-px flex-1 bg-black/[0.05]" />
             {t("login.or")}
-            <div className="h-px flex-1 bg-white/10" />
+            <div className="h-px flex-1 bg-black/[0.05]" />
           </div>
 
           <button
             type="button"
             onClick={() => signInWithGoogle(termsAccepted)}
             disabled={googleDisabled}
-            className="w-full rounded-full border border-white/15 bg-black/20 px-4 py-3.5 text-[13px] font-semibold uppercase tracking-[0.14em] text-zinc-100 transition hover:border-white/30 disabled:opacity-50"
+            className="w-full rounded-full border border-border-subtle bg-black/[0.03] px-4 py-3.5 text-[13px] font-semibold uppercase tracking-[0.14em] text-text-primary transition hover:border-text-primary/30 disabled:opacity-50"
           >
             {t("login.google")}
           </button>
@@ -230,7 +224,7 @@ export default function LoginClient() {
               clearError();
               setMode(isSignup ? "signin" : "signup");
             }}
-            className="mt-5 block w-full bg-transparent text-center text-xs text-zinc-400 hover:text-zinc-200"
+            className="mt-5 block w-full bg-transparent text-center text-xs text-text-secondary hover:text-text-primary"
           >
             {isSignup ? t("login.toSignin") : t("login.toSignup")}
           </button>

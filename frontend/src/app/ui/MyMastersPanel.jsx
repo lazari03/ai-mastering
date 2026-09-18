@@ -144,12 +144,12 @@ export default function MyMastersPanel() {
 
   return (
     <div className="mx-auto w-full max-w-[1280px]">
-      <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("myMasters.title")}</h1>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-300">{t("myMasters.subtitle")}</p>
+      <h1 className="m-0 text-[26px]">{t("myMasters.title")}</h1>
+      <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t("myMasters.subtitle")}</p>
 
       {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
       {jobs === null && !error ? <LoadingBlock /> : null}
-      {jobs?.length === 0 ? <p className="mt-4 text-xs text-zinc-400">{t("myMasters.empty")}</p> : null}
+      {jobs?.length === 0 ? <p className="mt-4 text-xs text-text-secondary">{t("myMasters.empty")}</p> : null}
 
       {jobs?.length > 0 ? (
         <div className="mt-5 flex gap-2">
@@ -163,7 +163,7 @@ export default function MyMastersPanel() {
               type="button"
               onClick={() => changeFilter(key)}
               className={`rounded-full border px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] transition ${
-                filter === key ? "border-brass bg-brass/[0.18] text-brass" : "border-white/15 bg-black/20 text-zinc-300 hover:border-white/30"
+                filter === key ? "border-accent bg-black/[0.05] text-accent" : "border-border-subtle bg-black/[0.03] text-text-secondary hover:border-text-primary/30"
               }`}
             >
               {t(labelKey)}
@@ -173,7 +173,7 @@ export default function MyMastersPanel() {
       ) : null}
 
       {jobs?.length > 0 && filteredJobs.length === 0 ? (
-        <p className="mt-4 text-xs text-zinc-400">
+        <p className="mt-4 text-xs text-text-secondary">
           {filter === "expired" ? t("myMasters.emptyExpired") : t("myMasters.emptyActive")}
         </p>
       ) : null}
@@ -193,7 +193,7 @@ export default function MyMastersPanel() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: jobIndex * 0.03, ease: "easeOut" }}
-              className="rounded-2xl border border-white/10 bg-black/20 p-4"
+              className="rounded-2xl border border-border-subtle bg-black/[0.03] p-4"
             >
               {/* The clickable "cell" — opens the same dedicated preview
                   view a fresh render lands on (WebGL before/after,
@@ -206,24 +206,24 @@ export default function MyMastersPanel() {
                   A sibling of the action buttons below, not a wrapper
                   around them — nesting <button> inside <a> is invalid
                   HTML and would double-fire on every click. */}
-              <Link href={`/app?job=${job.job_id}`} className="-m-1 flex flex-wrap items-center justify-between gap-2 rounded-xl p-1 transition hover:bg-white/[0.03]">
+              <Link href={`/app?job=${job.job_id}`} className="-m-1 flex flex-wrap items-center justify-between gap-2 rounded-xl p-1 transition hover:bg-black/[0.03]">
                 <div className="min-w-0">
-                  <p className="m-0 truncate text-sm font-semibold text-white" title={job.original_filename || undefined}>
+                  <p className="m-0 truncate text-sm font-semibold text-text-primary" title={job.original_filename || undefined}>
                     {shortenFilename(job.original_filename) || job.job_id}
                   </p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
+                  <p className="mt-0.5 text-xs text-text-secondary">
                     {job.genre || t("myMasters.custom")} · {job.tier || t("myMasters.standard")} ·{" "}
                     {job.created_at ? new Date(job.created_at).toLocaleString() : ""}
                   </p>
                 </div>
-                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${expired ? "border-red-400/30 text-red-300" : "border-white/15 text-zinc-400"}`}>
+                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${expired ? "border-red-400/30 text-red-300" : "border-border-subtle text-text-secondary"}`}>
                   {formatExpiry(t, job.expires_at)}
                 </span>
               </Link>
 
               {job.before_lufs != null || job.after_lufs != null ? (
                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-lg border border-white/10 px-2.5 py-1 text-zinc-300">
+                  <span className="rounded-lg border border-border-subtle px-2.5 py-1 text-text-secondary">
                     {job.before_lufs ?? "—"} → {job.after_lufs ?? "—"} LUFS
                   </span>
                 </div>
@@ -235,7 +235,7 @@ export default function MyMastersPanel() {
                     type="button"
                     onClick={() => handleDownload(job)}
                     disabled={isBusy}
-                    className="rounded-lg border border-brass/40 bg-brass/[0.15] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25 disabled:opacity-50"
+                    className="rounded-lg border border-border-subtle bg-accent/[0.15] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-accent hover:bg-black/[0.06] disabled:opacity-50"
                   >
                     {isBusy ? "…" : t("myMasters.download")}
                   </button>
@@ -244,11 +244,11 @@ export default function MyMastersPanel() {
                     onClick={() => handleShare(job.job_id)}
                     disabled={isBusy || !shareUnlocked}
                     title={shareUnlocked ? undefined : t("myMasters.shareTitle")}
-                    className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-black/[0.03] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30 disabled:opacity-50"
                   >
                     {isBusy ? "…" : t("myMasters.share")}
                     {!shareUnlocked ? (
-                      <span className="rounded-full border border-brass/40 bg-brass/[0.12] px-1.5 py-0.5 text-[9px] normal-case text-brass">
+                      <span className="rounded-full border border-border-subtle bg-accent/[0.12] px-1.5 py-0.5 text-[9px] normal-case text-accent">
                         {t("myMasters.shareAllAccess")}
                       </span>
                     ) : null}
@@ -266,7 +266,7 @@ export default function MyMastersPanel() {
                       <button
                         type="button"
                         onClick={() => setConfirmDeleteId("")}
-                        className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300"
+                        className="rounded-lg border border-border-subtle bg-black/[0.03] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary"
                       >
                         {t("myMasters.cancel")}
                       </button>
@@ -287,9 +287,9 @@ export default function MyMastersPanel() {
               {downloadErrors[job.job_id] ? <p className="mt-2 text-xs text-red-300">⚠ {downloadErrors[job.job_id]}</p> : null}
 
               {share ? (
-                <div className="mt-3 rounded-xl border border-brass/25 bg-brass/[0.06] p-3">
-                  <p className="m-0 text-[11px] uppercase tracking-[0.1em] text-brass">{t("myMasters.shareLinkTitle")}</p>
-                  <p className="mt-1 text-[11px] text-zinc-400">
+                <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.03] p-3">
+                  <p className="m-0 text-[11px] uppercase tracking-[0.1em] text-accent">{t("myMasters.shareLinkTitle")}</p>
+                  <p className="mt-1 text-[11px] text-text-secondary">
                     {t("myMasters.shareLinkBody")} ({formatExpiry(t, share.expires_at)}) {t("myMasters.shareLinkTail")}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -297,12 +297,12 @@ export default function MyMastersPanel() {
                       readOnly
                       value={share.url}
                       onFocus={(e) => e.target.select()}
-                      className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/30 px-2.5 py-2 text-[11px] text-zinc-200"
+                      className="min-w-0 flex-1 rounded-lg border border-border-subtle bg-black/[0.03] px-2.5 py-2 text-[11px] text-text-primary"
                     />
                     <button
                       type="button"
                       onClick={() => copyShareLink(job.job_id, share.url)}
-                      className="shrink-0 rounded-lg border border-brass/40 bg-brass/[0.18] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-brass hover:bg-brass/25"
+                      className="shrink-0 rounded-lg border border-border-subtle bg-black/[0.05] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-accent hover:bg-black/[0.06]"
                     >
                       {copiedJobId === job.job_id ? t("myMasters.copied") : t("myMasters.copy")}
                     </button>
@@ -320,18 +320,18 @@ export default function MyMastersPanel() {
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={safePage <= 1}
-            className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-40"
+            className="rounded-lg border border-border-subtle bg-black/[0.03] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30 disabled:opacity-40"
           >
             {t("myMasters.pagePrev")}
           </button>
-          <span className="text-[11px] text-zinc-500">
+          <span className="text-[11px] text-text-secondary">
             {t("myMasters.pageOf", { page: safePage, count: pageCount, total: filteredJobs.length })}
           </span>
           <button
             type="button"
             onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
             disabled={safePage >= pageCount}
-            className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30 disabled:opacity-40"
+            className="rounded-lg border border-border-subtle bg-black/[0.03] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30 disabled:opacity-40"
           >
             {t("myMasters.pageNext")}
           </button>

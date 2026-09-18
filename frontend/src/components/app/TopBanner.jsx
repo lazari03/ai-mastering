@@ -49,13 +49,13 @@ export default function TopBanner({ skipAppRoute = false }) {
   if (!banner?.enabled || !banner.message || dismissed) return null;
 
   return (
-    <div className="relative flex items-center justify-center gap-3 border-b border-brass/25 bg-brass/[0.08] px-4 py-2 text-center text-xs text-zinc-200 sm:text-sm">
+    <div className="relative flex items-center justify-center gap-3 border-b border-border-subtle bg-accent/[0.08] px-4 py-2 text-center text-xs text-text-primary sm:text-sm">
       <p className="m-0">{banner.message}</p>
       <button
         type="button"
         onClick={() => setDismissed(true)}
         aria-label="Dismiss"
-        className="absolute right-3 text-zinc-500 hover:text-zinc-300"
+        className="absolute right-3 text-text-secondary hover:text-text-secondary"
       >
         ✕
       </button>

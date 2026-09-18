@@ -12,7 +12,7 @@ import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
 const fieldStyle =
-  "w-full box-border rounded-xl border border-white/15 bg-black/20 px-3.5 py-3 text-sm text-white outline-none focus:border-brass/60";
+  "w-full box-border rounded-xl border border-border-subtle bg-black/[0.03] px-3.5 py-3 text-sm text-text-primary outline-none focus:border-border-subtle";
 
 export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
   const { t } = useLanguage();
@@ -81,20 +81,20 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
 
   return (
     <div className="mx-auto w-full max-w-[1040px]">
-      <h1 className="m-0 font-[var(--font-title)] text-[26px]">{t("settings.title")}</h1>
-      <p className="mt-2 text-sm text-zinc-300">{user?.email}</p>
+      <h1 className="m-0 text-[26px]">{t("settings.title")}</h1>
+      <p className="mt-2 text-sm text-text-secondary">{user?.email}</p>
 
       <div className="mt-2 grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
       <div className="flex flex-col gap-5">
       {!loaded ? (
         <LoadingBlock />
       ) : (
-        <form onSubmit={saveProfile} className="mt-6 flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/20 p-5">
-          <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("settings.profile")}</h2>
+        <form onSubmit={saveProfile} className="mt-6 flex flex-col gap-4 rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+          <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-accent">{t("settings.profile")}</h2>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.firstName")}</span>
+              <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-text-secondary">{t("settings.firstName")}</span>
               <input
                 type="text"
                 value={profile.firstName}
@@ -103,7 +103,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
               />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.lastName")}</span>
+              <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-text-secondary">{t("settings.lastName")}</span>
               <input
                 type="text"
                 value={profile.lastName}
@@ -114,7 +114,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
           </div>
 
           <label className="block">
-            <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.studioName")}</span>
+            <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-text-secondary">{t("settings.studioName")}</span>
             <input
               type="text"
               placeholder={t("settings.optional")}
@@ -125,7 +125,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.phone")}</span>
+            <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-text-secondary">{t("settings.phone")}</span>
             <input
               type="tel"
               value={profile.phone}
@@ -136,23 +136,23 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
 
           <button
             type="submit"
-            className="self-start rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
+            className="self-start rounded-full border border-border-subtle bg-black/[0.05] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-accent hover:bg-black/[0.06]"
           >
             {t("settings.saveProfile")}
           </button>
-          {saveStatus ? <p className="m-0 text-xs text-zinc-400">{saveStatus}</p> : null}
+          {saveStatus ? <p className="m-0 text-xs text-text-secondary">{saveStatus}</p> : null}
         </form>
       )}
 
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("billing.title")}</h2>
+      <div className="rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-accent">{t("billing.title")}</h2>
         {!entitlementsLoaded ? (
           <LoadingBlock />
         ) : (
           <>
-            <p className="m-0 mt-2 text-sm text-white">{PLANS[currentPlan]?.label || PLANS.free.label}</p>
+            <p className="m-0 mt-2 text-sm text-text-primary">{PLANS[currentPlan]?.label || PLANS.free.label}</p>
             {masterQuota ? (
-              <p className="m-0 mt-0.5 text-xs text-zinc-500">
+              <p className="m-0 mt-0.5 text-xs text-text-secondary">
                 {t("billing.leftOf", { remaining: masterQuota.remaining, limit: masterQuota.limit })}
                 {" · "}
                 {masterQuota.resets ? t("billing.resetsNextMonth") : t("billing.oneTimeNoRenew")}
@@ -164,18 +164,18 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
           <button
             type="button"
             onClick={onOpenBilling}
-            className="mt-3 rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
+            className="mt-3 rounded-full border border-border-subtle bg-black/[0.05] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-accent hover:bg-black/[0.06]"
           >
             {t("settings.managePlans")}
           </button>
         ) : null}
       </div>
 
-      <form onSubmit={submitPasswordChange} className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/20 p-5">
-        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("settings.changePassword")}</h2>
+      <form onSubmit={submitPasswordChange} className="flex flex-col gap-4 rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-accent">{t("settings.changePassword")}</h2>
 
         <label className="block">
-          <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.currentPassword")}</span>
+          <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-text-secondary">{t("settings.currentPassword")}</span>
           <input
             type="password"
             required
@@ -187,7 +187,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.newPassword")}</span>
+          <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-text-secondary">{t("settings.newPassword")}</span>
           <input
             type="password"
             required
@@ -199,7 +199,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
           />
           {newPassword ? (
             <div className="mt-2">
-              <div className="flex h-1 w-full overflow-hidden rounded-full bg-white/10">
+              <div className="flex h-1 w-full overflow-hidden rounded-full bg-black/[0.05]">
                 <div
                   className="h-full rounded-full transition-all duration-200"
                   style={{ width: `${passwordStrength.percent}%`, background: passwordStrength.color }}
@@ -213,12 +213,12 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
         </label>
 
         {error ? <p className="m-0 text-sm text-red-300">{error}</p> : null}
-        {passwordStatus ? <p className="m-0 text-sm text-brass">{passwordStatus}</p> : null}
+        {passwordStatus ? <p className="m-0 text-sm text-accent">{passwordStatus}</p> : null}
 
         <button
           type="submit"
           disabled={busy}
-          className="flex items-center gap-2 self-start rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-brass hover:bg-brass/25 disabled:opacity-50"
+          className="flex items-center gap-2 self-start rounded-full border border-border-subtle bg-black/[0.05] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-accent hover:bg-black/[0.06] disabled:opacity-50"
         >
           {busy ? (
             <>
@@ -233,23 +233,23 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
 
       <div className="flex flex-col gap-5">
       {onReplayTutorial ? (
-        <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-          <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("settings.help")}</h2>
-          <p className="mt-2 text-sm text-zinc-400">{t("settings.wantRefresher")}</p>
+        <div className="rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+          <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-accent">{t("settings.help")}</h2>
+          <p className="mt-2 text-sm text-text-secondary">{t("settings.wantRefresher")}</p>
           <button
             type="button"
             onClick={onReplayTutorial}
-            className="mt-3 rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35"
+            className="mt-3 rounded-full border border-border-subtle bg-black/[0.03] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text-primary hover:border-text-primary/30"
           >
             {t("settings.replayTutorial")}
           </button>
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("settings.sessions")}</h2>
-        <p className="mt-2 text-sm text-zinc-400">{t("settings.sessionsBody")}</p>
-        {signOutEverywhereStatus ? <p className="mt-2 text-sm text-brass">{signOutEverywhereStatus}</p> : null}
+      <div className="rounded-2xl border border-border-subtle bg-black/[0.03] p-5">
+        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-accent">{t("settings.sessions")}</h2>
+        <p className="mt-2 text-sm text-text-secondary">{t("settings.sessionsBody")}</p>
+        {signOutEverywhereStatus ? <p className="mt-2 text-sm text-accent">{signOutEverywhereStatus}</p> : null}
         <button
           type="button"
           disabled={busy}
@@ -261,7 +261,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
               router.push("/login");
             }
           }}
-          className="mt-3 flex items-center gap-2 rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35 disabled:opacity-50"
+          className="mt-3 flex items-center gap-2 rounded-full border border-border-subtle bg-black/[0.03] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-text-primary hover:border-text-primary/30 disabled:opacity-50"
         >
           {busy ? (
             <>
@@ -275,7 +275,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
 
       <div className="rounded-2xl border border-red-500/25 bg-red-500/[0.04] p-5">
         <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-red-300">{t("settings.dangerZone")}</h2>
-        <p className="mt-2 text-sm text-zinc-400">{t("settings.dangerBody")}</p>
+        <p className="mt-2 text-sm text-text-secondary">{t("settings.dangerBody")}</p>
 
         {!deleteOpen ? (
           <button
@@ -292,7 +292,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
           <form onSubmit={submitDeleteAccount} className="mt-3 flex flex-col gap-3">
             {isPasswordAccount ? (
               <label className="block">
-                <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("settings.currentPassword")}</span>
+                <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-text-secondary">{t("settings.currentPassword")}</span>
                 <input
                   type="password"
                   required
@@ -303,11 +303,11 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
                 />
               </label>
             ) : (
-              <p className="m-0 text-xs text-zinc-500">{t("settings.googleConfirm")}</p>
+              <p className="m-0 text-xs text-text-secondary">{t("settings.googleConfirm")}</p>
             )}
 
             <label className="block">
-              <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">
+              <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-text-secondary">
                 {t("settings.typeDelete")}
               </span>
               <input
@@ -343,7 +343,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
                   setDeletePassword("");
                   clearError();
                 }}
-                className="rounded-full border border-white/15 bg-black/20 px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-zinc-300 hover:border-white/30"
+                className="rounded-full border border-border-subtle bg-black/[0.03] px-5 py-2.5 text-xs uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30"
               >
                 {t("settings.cancel")}
               </button>
