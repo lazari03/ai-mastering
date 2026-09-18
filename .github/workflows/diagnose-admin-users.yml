@@ -1,0 +1,25 @@
+name: Diagnose admin users list
+
+# Manual, one-off, read-only — prints what Firebase Auth's listUsers()
+# actually returns in production, to answer "why is the admin Users page
+# empty/missing emails" with ground truth instead of guesswork. Deleted
+# once its job is done, same as the earlier migrate-analytics workflow.
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    name: Print Firebase Auth users on VPS
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and diagnose
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            git pull
+            make diagnose-admin-users
