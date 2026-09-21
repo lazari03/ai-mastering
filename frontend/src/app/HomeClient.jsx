@@ -206,7 +206,14 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section className="reveal mt-32 border-t border-border-subtle pt-20">
+      {/* Full-bleed background tint, not a bordered "card" — a real zone
+          change reads as separation at a glance, where the hairline
+          border-t elsewhere is easy to miss entirely. Breaks out of
+          <main>'s max-w-[1280px] via the classic 100vw + translate-x
+          trick; valid here specifically because every section is
+          horizontally centered in the viewport (main is mx-auto). */}
+      <section className="reveal relative mt-32 pt-20 pb-20">
+        <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-black/[0.03]" aria-hidden="true" />
         <SectionHeading eyebrow={t("gallery.eyebrow")} title={t("gallery.title")} />
         <div className="mt-8 grid gap-6 sm:grid-cols-3">
           {GALLERY.map((img) => (
@@ -286,7 +293,8 @@ export default function HomeClient() {
         </Link>
       </section>
 
-      <section id="how-to" className="reveal reveal-delay-2 mt-32 scroll-mt-24 border-t border-border-subtle pt-20">
+      <section id="how-to" className="reveal reveal-delay-2 relative mt-32 scroll-mt-24 pt-20 pb-20">
+        <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-black/[0.03]" aria-hidden="true" />
         <SectionHeading eyebrow={t("howTo.eyebrow")} title={t("howTo.title")} subtitle={t("howTo.subtitle")} />
 
         {/* Signal-chain layout — a thin connecting rule behind the steps,
@@ -321,9 +329,7 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <div className="border-t border-border-subtle pt-20">
-        <GenreShowcase />
-      </div>
+      <GenreShowcase />
 
       <section id="faq" className="reveal mt-32 scroll-mt-24 border-t border-border-subtle pt-20">
         <SectionHeading eyebrow={t("faq.eyebrow")} title={t("faq.title")} />

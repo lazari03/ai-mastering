@@ -22,7 +22,12 @@ export default function GenreShowcase() {
   const activeTarget = LOUDNESS_TARGETS.find((g) => g.genre === active);
 
   return (
-    <section className="reveal mt-24 scroll-mt-24">
+    <section className="reveal relative mt-32 scroll-mt-24 pt-20 pb-20">
+      {/* Full-bleed tint, same technique as HomeClient.jsx's Gallery/How-to
+          sections — a real background-zone change instead of a hairline,
+          valid here because this section is centered in the viewport
+          same as every other homepage section. */}
+      <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-black/[0.03]" aria-hidden="true" />
       <SectionHeading eyebrow={t("genres.eyebrow")} title={t("genres.title")} subtitle={t("genres.body")} />
 
       <div className="mt-8 flex flex-wrap gap-2">
@@ -49,7 +54,7 @@ export default function GenreShowcase() {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
-          className="mt-5 rounded-[20px] border border-border-subtle p-6"
+          className="mt-5 rounded-[20px] border border-border-subtle bg-bg p-6"
         >
           <p className="m-0 text-base leading-relaxed text-text-secondary">{activePage.intro}</p>
           {activeTarget ? (
