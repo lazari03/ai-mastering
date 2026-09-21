@@ -85,6 +85,11 @@ services:
       # BREVO_LIST_ID defaults to 4 ("Auralith Forge Newsletter") if unset.
       BREVO_API_KEY: ${BREVO_API_KEY}
       BREVO_LIST_ID: ${BREVO_LIST_ID:-4}
+      # TelemetryDeck — mirrors analytics events alongside the existing
+      # SQLite store (see services/telemetryDeckService.js). Unset means
+      # every signal silently no-ops.
+      TELEMETRYDECK_APP_ID: ${TELEMETRYDECK_APP_ID}
+      TELEMETRYDECK_SALT: ${TELEMETRYDECK_SALT}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
       interval: 30s
