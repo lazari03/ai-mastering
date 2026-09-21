@@ -4,7 +4,7 @@
 // known-crawler denylist, no IP stored to dedupe on), so the only way to
 // answer this is to actually look at what's in the DB. Deleted once the
 // question is answered — see this session's established one-off pattern.
-import { analyticsDb } from "../src/config/analyticsDb.js";
+import analyticsDb from "../src/config/analyticsDb.js";
 
 const sinceIso = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
 
