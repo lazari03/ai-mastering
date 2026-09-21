@@ -263,6 +263,14 @@ const DICT = {
   "app.tab.settings": { en: "Settings", sq: "Cilësimet" },
   "app.signout": { en: "Sign out", sq: "Dil" },
 
+  "app.verifyEmail.message": {
+    en: "Verify your email address to master tracks or purchase a plan.",
+    sq: "Verifiko adresën tënde të email-it për të masterizuar këngë ose për të blerë një plan.",
+  },
+  "app.verifyEmail.resend": { en: "Resend email", sq: "Ridërgo email-in" },
+  "app.verifyEmail.resent": { en: "Sent — check your inbox.", sq: "U dërgua — kontrollo inbox-in." },
+  "app.verifyEmail.refresh": { en: "I've verified", sq: "E kam verifikuar" },
+
   "app.navGroup.create": { en: "Create", sq: "Krijo" },
   "app.navGroup.analyze": { en: "Analyze", sq: "Analizo" },
   "app.navGroup.library": { en: "Library", sq: "Biblioteka" },

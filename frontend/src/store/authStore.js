@@ -11,6 +11,7 @@ import {
   updateProfile,
   updatePassword,
   reauthenticateWithCredential,
+  sendEmailVerification,
   EmailAuthProvider,
   GoogleAuthProvider,
   getAdditionalUserInfo,
@@ -140,6 +141,15 @@ export const useAuthStore = create((set) => ({
       const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
       if (displayName) {
         await updateProfile(credential.user, { displayName });
+      }
+
+      // Best-effort: the account already exists regardless of whether this
+      // send succeeds — see requiresEmailVerification (backend auth.js) for
+      // where an unsent/unclicked link actually gets enforced.
+      try {
+        await sendEmailVerification(credential.user);
+      } catch (verifyError) {
+        console.error("Failed to send verification email:", verifyError);
       }
 
       // Best-effort: the account already exists at this point regardless of
@@ -275,6 +285,14 @@ export const useAuthStore = create((set) => ({
         await createUserWithEmailAndPassword(auth, email, password);
       }
 
+      if (auth.currentUser && !auth.currentUser.emailVerified) {
+        try {
+          await sendEmailVerification(auth.currentUser);
+        } catch (verifyError) {
+          console.error("Failed to send verification email:", verifyError);
+        }
+      }
+
       const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
       try {
         await postProfile({
@@ -352,6 +370,39 @@ export const useAuthStore = create((set) => ({
 
   async signOut() {
     await firebaseSignOut(getFirebaseAuth());
+  },
+
+  // Firebase's client SDK never updates `user.emailVerified` on its own
+  // just because the link was clicked in another tab — the ID token (and
+  // the cached user object built from it) only refreshes on its own
+  // schedule. Called from the verification banner's "I've verified" button
+  // so clicking it reflects immediately instead of needing a full sign-out.
+  async refreshUser() {
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) return;
+    await auth.currentUser.reload();
+    await auth.currentUser.getIdToken(true);
+    set({ user: auth.currentUser });
+  },
+
+  // Manual re-send for Settings / the verification banner — the automatic
+  // send on signup can land in spam, get missed, or expire (Firebase
+  // verification links are time-limited).
+  async resendVerificationEmail() {
+    const user = getFirebaseAuth()?.currentUser;
+    if (!user) {
+      set({ error: "You need to be signed in to resend a verification email." });
+      return false;
+    }
+    set({ busy: true, error: "" });
+    try {
+      await sendEmailVerification(user);
+      set({ busy: false });
+      return true;
+    } catch (error) {
+      set({ busy: false, error: readableAuthError(error) });
+      return false;
+    }
   },
 
   // Revokes every refresh token Firebase has issued for this account, then

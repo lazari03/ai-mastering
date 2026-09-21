@@ -18,6 +18,7 @@ import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
 import TopBanner from "@/components/app/TopBanner";
+import VerifyEmailBanner from "@/components/app/VerifyEmailBanner";
 import AppSearch from "@/components/app/AppSearch";
 import AppNotificationsBell from "@/components/app/AppNotificationsBell";
 import EntitlementsBadge from "@/components/app/EntitlementsBadge";
@@ -317,6 +318,7 @@ export default function AppClient() {
     // not as its normal behavior.
     <div className="flex h-screen flex-col overflow-hidden" style={{ height: "100dvh" }}>
       <TopBanner />
+      <VerifyEmailBanner />
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
       {/* Mobile top bar — the sidebar below is hidden on small screens */}
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-subtle bg-bg p-3.5 md:hidden">

@@ -8,7 +8,7 @@ import multer from "multer";
 
 import { GENRES, STYLES, TAGS, CATEGORIES, FLAVOURS_BY_CATEGORY, AUDIO_DECODE_EXTS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
-import { invalidateCachedSession } from "../middleware/auth.js";
+import { invalidateCachedSession, requiresEmailVerification } from "../middleware/auth.js";
 import { processMastering, execFileAsync, deleteJobFiles, postMultipartToPython } from "../services/masteringService.js";
 import { analyzeChords, previewCodec } from "../services/chordCleanService.js";
 import { listMixPresets } from "../services/presetsService.js";
@@ -347,6 +347,12 @@ const CHECKOUT_ITEM_TO_PRODUCT_KEY = {
 };
 
 router.post("/billing/checkout", async (req, res) => {
+  if (requiresEmailVerification(req.user)) {
+    return res.status(403).json({
+      detail: "Please verify your email address before purchasing — check your inbox for the verification link, or resend it from Settings.",
+      code: "EMAIL_NOT_VERIFIED",
+    });
+  }
   const productKey = CHECKOUT_ITEM_TO_PRODUCT_KEY[req.body?.item];
   if (!productKey) {
     return res.status(400).json({ detail: `Unknown item "${req.body?.item}"` });
@@ -555,6 +561,16 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
   const preview = req.body.preview === "true";
   const tier = !preview && req.body.tier === "professional" ? "professional" : "standard";
   const useStemSeparation = !preview && req.body.use_stem_separation === "true";
+
+  // Only a real, final render is gated — previews are free to try even on
+  // an unverified account, same "browsing stays frictionless" principle
+  // requiresEmailVerification's own comment describes.
+  if (!preview && requiresEmailVerification(req.user)) {
+    return res.status(403).json({
+      detail: "Please verify your email address before mastering a track — check your inbox for the verification link, or resend it from Settings.",
+      code: "EMAIL_NOT_VERIFIED",
+    });
+  }
 
   // Backend-authoritative mastering outcome (spec section 1/9) — the
   // frontend's own master_started/completed/failed (masteringStore.js)
