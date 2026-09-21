@@ -3,6 +3,7 @@ import geoip from "geoip-lite";
 
 import { getFirestore } from "../config/firebase.js";
 import analyticsDb from "../config/analyticsDb.js";
+import { sendSignal } from "./telemetryDeckService.js";
 
 // ---------------------------------------------------------------------
 // First-party analytics: visitors, sessions, events — stored in a local
@@ -453,6 +454,8 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
         runningActiveMs += activeMsForEvent;
         sessionPatch.active_ms = runningActiveMs;
       }
+
+      sendSignal(evt.name, { uid, visitorId, props: { ...props, path: path || undefined, country } });
     }
 
     const patchKeys = Object.keys(sessionPatch);
@@ -487,6 +490,7 @@ export async function recordServerEvent(name, { uid = null, sessionId = null, vi
       activeMs: null,
       source: "backend",
     });
+    sendSignal(name, { uid, visitorId, props: sanitizeProps(props) });
     if (sessionId) {
       const patch = {};
       if (name === "master_completed") patch.has_mastered = 1;

@@ -17,6 +17,11 @@ export const settings = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT || 8000),
   masteringEngine: process.env.MASTERING_ENGINE || "adaptive_python",
+  // TelemetryDeck (telemetrydeck.com) — a second, external analytics
+  // destination events are mirrored to alongside the existing SQLite store
+  // (see telemetryDeckService.js). Unset means "not integrated yet": every
+  // send becomes a silent no-op rather than breaking analytics ingestion.
+  telemetryDeckAppId: process.env.TELEMETRYDECK_APP_ID || null,
   corsOrigins: (process.env.CORS_ORIGINS || "*").split(",").map((v) => v.trim()).filter(Boolean),
   // The real frontend's public origin (e.g. https://auralithforge.app) —
   // same var CORS_ORIGINS is seeded from in docker-compose.yml. Used to
