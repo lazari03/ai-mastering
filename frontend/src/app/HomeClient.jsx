@@ -106,7 +106,7 @@ export default function HomeClient() {
           waveform, real playback, real before/after toggle) plus the real
           LUFS/true-peak readouts used elsewhere on this page — the actual
           software, not a mockup or an illustration. */}
-      <section className="reveal mt-10 grid gap-12 lg:grid-cols-[0.85fr_1fr] lg:items-center lg:gap-16">
+      <section id="demo" className="reveal mt-10 scroll-mt-24 grid gap-12 lg:grid-cols-[0.85fr_1fr] lg:items-center lg:gap-16">
         <div>
           <p className="m-0 mb-5 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.26em] text-text-secondary">
             <span className="h-px w-6 bg-accent" aria-hidden="true" />
@@ -157,30 +157,38 @@ export default function HomeClient() {
         ) : null}
       </section>
 
-      <section id="demo" className="reveal mt-24 scroll-mt-24 border-t border-border-subtle pt-16">
-        <SectionHeading eyebrow={t("demo.eyebrow")} title={t("demo.title")} subtitle={t("demo.body")} />
-        <div className={`mt-8 grid gap-4 ${BEFORE_AFTER_DEMOS.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : ""}`}>
-          {BEFORE_AFTER_DEMOS.map((demo) => {
-            // Real per-genre target, same table the DSP engine itself is
-            // built from — not a fabricated number attached to the demo.
-            const target = LOUDNESS_TARGETS.find((g) => g.genre === demo.genre.toLowerCase());
-            return (
-              <div key={demo.label}>
-                <BeforeAfterPlayer large={BEFORE_AFTER_DEMOS.length === 1} {...demo} />
-                {target ? (
-                  <LoudnessMeter
-                    className="mt-3"
-                    label={t("demo.target")}
-                    targetLufs={target.targetLufs}
-                  />
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      {/* The hero above already shows BEFORE_AFTER_DEMOS[0] — this section
+          is for ADDITIONAL genre examples only (slice(1)), never a repeat
+          of the hero's own demo. Renders nothing at all while only one
+          demo exists (see beforeAfterDemos.js's own comment: "add more
+          entries once more real mastered pairs exist") rather than
+          duplicating it or showing an empty heading with no players. */}
+      {BEFORE_AFTER_DEMOS.length > 1 ? (
+        <section className="reveal mt-32 border-t border-border-subtle pt-20">
+          <SectionHeading eyebrow={t("demo.eyebrow")} title={t("demo.title")} subtitle={t("demo.body")} />
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {BEFORE_AFTER_DEMOS.slice(1).map((demo) => {
+              // Real per-genre target, same table the DSP engine itself is
+              // built from — not a fabricated number attached to the demo.
+              const target = LOUDNESS_TARGETS.find((g) => g.genre === demo.genre.toLowerCase());
+              return (
+                <div key={demo.label}>
+                  <BeforeAfterPlayer {...demo} />
+                  {target ? (
+                    <LoudnessMeter
+                      className="mt-3"
+                      label={t("demo.target")}
+                      targetLufs={target.targetLufs}
+                    />
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
-      <section id="features" className="reveal reveal-delay-1 mt-24 scroll-mt-24 border-t border-border-subtle pt-16">
+      <section id="features" className="reveal reveal-delay-1 mt-32 scroll-mt-24 border-t border-border-subtle pt-20">
         <SectionHeading eyebrow={t("features.eyebrow")} title={t("features.title")} />
         {/* Editorial list, not six illustrated cards — a thin divider
             between rows carries the structure, typography carries the
@@ -198,7 +206,7 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section className="reveal mt-24 border-t border-border-subtle pt-16">
+      <section className="reveal mt-32 border-t border-border-subtle pt-20">
         <SectionHeading eyebrow={t("gallery.eyebrow")} title={t("gallery.title")} />
         <div className="mt-8 grid gap-6 sm:grid-cols-3">
           {GALLERY.map((img) => (
@@ -220,7 +228,7 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section id="pricing" ref={pricingSectionRef} className="reveal mt-24 scroll-mt-24 border-t border-border-subtle pt-16">
+      <section id="pricing" ref={pricingSectionRef} className="reveal mt-32 scroll-mt-24 border-t border-border-subtle pt-20">
         <SectionHeading eyebrow={t("pricing.eyebrow")} title={t("pricing.title")} subtitle={t("pricing.subtitle")} />
 
         {/* Thin borders + typography, no colorful glowing cards — the
@@ -278,7 +286,7 @@ export default function HomeClient() {
         </Link>
       </section>
 
-      <section id="how-to" className="reveal reveal-delay-2 mt-24 scroll-mt-24 border-t border-border-subtle pt-16">
+      <section id="how-to" className="reveal reveal-delay-2 mt-32 scroll-mt-24 border-t border-border-subtle pt-20">
         <SectionHeading eyebrow={t("howTo.eyebrow")} title={t("howTo.title")} subtitle={t("howTo.subtitle")} />
 
         {/* Signal-chain layout — a thin connecting rule behind the steps,
@@ -297,7 +305,7 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section className="reveal mt-24 scroll-mt-24 border-t border-border-subtle pt-16">
+      <section className="reveal mt-32 border-t border-border-subtle pt-20">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <p className="m-0 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
@@ -313,11 +321,11 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <div className="border-t border-border-subtle pt-16">
+      <div className="border-t border-border-subtle pt-20">
         <GenreShowcase />
       </div>
 
-      <section id="faq" className="reveal mt-24 scroll-mt-24 border-t border-border-subtle pt-16">
+      <section id="faq" className="reveal mt-32 scroll-mt-24 border-t border-border-subtle pt-20">
         <SectionHeading eyebrow={t("faq.eyebrow")} title={t("faq.title")} />
         <div className="mt-8 columns-1 sm:columns-2 sm:gap-12">
           {FAQ_KEYS.map((k) => (
@@ -326,7 +334,7 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section id="contact" className="reveal mt-24 scroll-mt-24 border-t border-border-subtle pt-16">
+      <section id="contact" className="reveal mt-32 scroll-mt-24 border-t border-border-subtle pt-20">
         <SectionHeading eyebrow={t("contact.eyebrow")} title={t("contact.title")} />
         <p className="mt-4 max-w-xl text-base leading-relaxed text-text-secondary">{t("contact.body")}</p>
         <p className="mt-4 text-sm text-text-primary">
