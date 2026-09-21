@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 
+import TelemetryDeck from "@telemetrydeck/sdk";
+
 import { settings } from "../config/settings.js";
 
 // Mirrors every analytics event to TelemetryDeck (telemetrydeck.com)
@@ -10,52 +12,42 @@ import { settings } from "../config/settings.js";
 // all-or-nothing cutover. Whether/when to swap the admin UI over to read
 // from TelemetryDeck's Query API instead is a separate, later decision.
 //
-// clientUser is TelemetryDeck's per-user identifier for funnels/retention
-// — sent as a SHA-256 hash of our own uid/visitorId, never the raw id
-// itself, matching this app's existing privacy discipline (see
-// requireAuth's hashToken and analyticsService's "coarse geography only,
-// never the raw IP" comment).
-function hashId(value) {
-  return crypto.createHash("sha256").update(value).digest("hex");
+// Uses the official @telemetrydeck/sdk rather than hand-rolling the v2
+// ingest request — it handles clientUser hashing (SHA-256 + salt),
+// sessionID, and the wire format itself, per TelemetryDeck's own Node.js
+// setup guide (globalThis.crypto.subtle doesn't exist in Node, hence
+// passing crypto.webcrypto.subtle explicitly).
+let client = null;
+function getClient() {
+  if (client) return client;
+  if (!settings.telemetryDeckAppId) return null;
+  client = new TelemetryDeck({
+    appID: settings.telemetryDeckAppId,
+    clientUser: "unset", // always overridden per-call below — see sendSignal
+    salt: settings.telemetryDeckSalt || undefined,
+    testMode: settings.nodeEnv !== "production",
+    subtleCrypto: crypto.webcrypto.subtle,
+  });
+  return client;
 }
-
-const INGEST_URL_BASE = "https://nom.telemetrydeck.com/v2/namespace";
 
 // Best-effort, fire-and-forget — analytics must never slow down or break
 // a real user-facing request just because a third-party ingestion call is
-// slow or down. Every call site below already does the same for the
-// SQLite write path (recordServerEvent's own try/catch, ingestBatch's
-// "must never look like a real API error" comment); this follows the
-// identical discipline for the new destination.
-export function sendSignal(type, { uid = null, visitorId = null, floatValue = null, props = {} } = {}) {
-  if (!settings.telemetryDeckAppId) return; // not configured yet — silent no-op, not an error
+// slow or down. Every call site already does the same for the SQLite
+// write path (recordServerEvent's own try/catch, ingestBatch's "must
+// never look like a real API error" comment); this follows the identical
+// discipline for the new destination.
+export function sendSignal(type, { uid = null, visitorId = null, props = {} } = {}) {
+  const td = getClient();
+  if (!td) return; // not configured yet — silent no-op, not an error
 
-  const clientUser = hashId(uid || visitorId || "anonymous");
   const payload = {};
   for (const [key, value] of Object.entries(props)) {
     if (value == null) continue;
-    // TelemetryDeck payload values must be strings (or the reserved
-    // floatValue field below) — numbers/booleans get stringified rather
-    // than dropped, so nothing silently disappears from the signal.
     payload[key] = typeof value === "string" ? value : String(value);
   }
 
-  const body = [
-    {
-      appID: settings.telemetryDeckAppId,
-      clientUser,
-      type: type.slice(0, 200),
-      isTestMode: settings.nodeEnv !== "production",
-      ...(typeof floatValue === "number" && Number.isFinite(floatValue) ? { floatValue } : {}),
-      payload,
-    },
-  ];
-
-  fetch(`${INGEST_URL_BASE}/${settings.telemetryDeckAppId}/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }).catch((error) => {
+  td.signal(type.slice(0, 200), payload, { clientUser: uid || visitorId || "anonymous" }).catch((error) => {
     console.error(`TelemetryDeck signal "${type}" failed (non-fatal):`, error.message);
   });
 }

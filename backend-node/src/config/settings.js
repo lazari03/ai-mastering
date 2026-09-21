@@ -22,6 +22,9 @@ export const settings = {
   // (see telemetryDeckService.js). Unset means "not integrated yet": every
   // send becomes a silent no-op rather than breaking analytics ingestion.
   telemetryDeckAppId: process.env.TELEMETRYDECK_APP_ID || null,
+  // Optional extra salt mixed into the SDK's clientUser hash (on top of
+  // the SHA-256 it already applies) — unset is fine, the SDK still hashes.
+  telemetryDeckSalt: process.env.TELEMETRYDECK_SALT || null,
   corsOrigins: (process.env.CORS_ORIGINS || "*").split(",").map((v) => v.trim()).filter(Boolean),
   // The real frontend's public origin (e.g. https://auralithforge.app) —
   // same var CORS_ORIGINS is seeded from in docker-compose.yml. Used to
