@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { AnimatePresence, motion } from "motion/react";
 
 import SiteHeader from "@/components/marketing/SiteHeader";
 import Footer from "@/components/Footer";
@@ -62,31 +61,17 @@ const GALLERY = POSTS.map((post) => ({
   slug: post.slug,
 }));
 
+// Plain, always-visible Q&A rather than an accordion — every question's
+// answer is short enough (see i18n.js's faq.* copy) that hiding it behind
+// a click costs a real tap/click for no real space saved, and an
+// always-open list reads as content, not as a hidden-until-clicked
+// interaction pattern.
 function FaqItem({ t, qKey }) {
-  const [open, setOpen] = useState(false);
   const aKey = qKey.replace("q", "a");
   return (
     <div className="break-inside-avoid border-b border-border-subtle py-4">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center justify-between gap-3 text-left">
-        <span className="text-[15px] font-medium text-text-primary">{t(`faq.${qKey}`)}</span>
-        <span className={`shrink-0 text-text-secondary transition-transform duration-200 ${open ? "rotate-45" : ""}`}>+</span>
-      </button>
-      {/* Animated height expand/collapse instead of an instant appear/
-          vanish — overflow-hidden on the animating wrapper is what makes
-          a height animation actually clip during the transition. */}
-      <AnimatePresence initial={false}>
-        {open ? (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t(`faq.${aKey}`)}</p>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      <p className="text-[15px] font-medium text-text-primary">{t(`faq.${qKey}`)}</p>
+      <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t(`faq.${aKey}`)}</p>
     </div>
   );
 }
@@ -101,60 +86,82 @@ export default function HomeClient() {
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
       <SiteHeader />
 
-      {/* ~45% text / 55% product visualization, asymmetric — not
-          centered. The visualization is the real BeforeAfterPlayer (real
-          waveform, real playback, real before/after toggle) plus the real
-          LUFS/true-peak readouts used elsewhere on this page — the actual
-          software, not a mockup or an illustration. */}
-      <section id="demo" className="reveal mt-10 scroll-mt-24 grid gap-12 lg:grid-cols-[0.85fr_1fr] lg:items-center lg:gap-16">
-        <div>
-          <p className="m-0 mb-5 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.26em] text-text-secondary">
-            <span className="h-px w-6 bg-accent" aria-hidden="true" />
-            {t("hero.eyebrow")}
-          </p>
-          <h1 className="m-0 max-w-[560px] text-[44px] font-semibold leading-[1.02] tracking-tight text-text-primary sm:text-6xl md:text-[72px]">
-            {t("hero.title1")}
-            <span className="block">{t("hero.title2")}</span>
-          </h1>
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-text-secondary sm:text-lg">{t("hero.body")}</p>
-          <div className="mt-10 flex flex-wrap items-center gap-6">
-            <Link
-              href={CTA.signup}
-              onClick={() => handleCtaClick("master_a_track_free", "homepage_hero")}
-              className="rounded-full bg-text-primary px-8 py-4 text-sm font-semibold text-bg transition hover:opacity-85"
-            >
-              {t("hero.ctaPrimary")}
-            </Link>
-            <a href="#demo" className="inline-flex items-center gap-1.5 text-sm font-medium text-text-primary hover:text-accent">
-              {t("hero.ctaSecondary")} <span aria-hidden="true">→</span>
-            </a>
-          </div>
-          <p className="m-0 mt-3 text-xs text-text-secondary">{t("hero.ctaReassurance")}</p>
-
-          <div className="mt-12 flex flex-wrap gap-x-10 gap-y-6 border-t border-border-subtle pt-8">
-            {["stat1", "stat2", "stat3"].map((s) => (
-              <div key={s}>
-                <p className="m-0 font-mono text-3xl text-text-primary">{t(`hero.${s}.value`)}</p>
-                <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-text-secondary">{t(`hero.${s}.label`)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {BEFORE_AFTER_DEMOS[0] ? (
+      {/* The hero is the first "visible" band in the page's alternating
+          visible/white rhythm (see the tinted full-bleed sections further
+          down) — a real dark zone-change right at the top, not just a
+          hairline, so the page reads as designed instead of "all white"
+          from the first screen. Full-bleed via the same 100vw breakout
+          trick the tinted sections below use; --dark-* are the existing
+          dark-palette tokens (globals.css), not a new color introduced
+          for this. The product visualization stays on the light tokens
+          (bg-bg/text-primary etc.) and floats on the dark band as a
+          panel — cheaper and lower-risk than teaching every meter/track
+          color (several are hardcoded bg-black/NN overlays, not tokens)
+          to invert for a dark backdrop. */}
+      <section id="demo" className="reveal relative -mx-4 scroll-mt-24 px-4 pb-24 pt-14 sm:-mx-6 sm:px-6 sm:pb-28 sm:pt-16">
+        <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-dark-bg" aria-hidden="true" />
+        {/* Fades to --bg at the bottom edge instead of cutting straight to
+            white — a hard dark-to-light seam reads as an accidental
+            copy-paste, a gradient reads as an intentional zone change. */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 left-1/2 -z-10 h-24 w-screen -translate-x-1/2 bg-gradient-to-b from-transparent to-bg sm:h-32"
+          aria-hidden="true"
+        />
+        <div className="relative mx-auto grid max-w-[1280px] gap-12 lg:grid-cols-[0.85fr_1fr] lg:items-center lg:gap-16">
           <div>
-            <BeforeAfterPlayer large {...BEFORE_AFTER_DEMOS[0]} />
-            {(() => {
-              const heroTarget = LOUDNESS_TARGETS.find((g) => g.genre === BEFORE_AFTER_DEMOS[0].genre.toLowerCase());
-              return heroTarget ? (
-                <div className="mt-4 flex flex-col gap-5 rounded-2xl border border-border-subtle p-5 sm:flex-row sm:items-end sm:gap-6">
-                  <LoudnessMeter className="sm:flex-1" label={t("hero.consoleLoudness")} targetLufs={heroTarget.targetLufs} />
-                  <TruePeakMeter label={t("hero.consoleCeiling")} />
+            <p className="m-0 mb-5 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.26em] text-dark-text-secondary">
+              <span className="h-px w-6 bg-accent" aria-hidden="true" />
+              {t("hero.eyebrow")}
+            </p>
+            <h1 className="m-0 max-w-[560px] text-[44px] font-semibold leading-[1.02] tracking-tight text-dark-text-primary sm:text-6xl md:text-[72px]">
+              {t("hero.title1")}
+              <span className="block">{t("hero.title2")}</span>
+            </h1>
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-dark-text-secondary sm:text-lg">{t("hero.body")}</p>
+            <div className="mt-10 flex flex-wrap items-center gap-6">
+              <Link
+                href={CTA.signup}
+                onClick={() => handleCtaClick("master_a_track_free", "homepage_hero")}
+                className="rounded-full bg-dark-text-primary px-8 py-4 text-sm font-semibold text-dark-bg transition hover:scale-[1.02] hover:opacity-85 active:scale-[0.98]"
+              >
+                {t("hero.ctaPrimary")}
+              </Link>
+              <a href="#demo" className="inline-flex items-center gap-1.5 text-sm font-medium text-dark-text-primary hover:text-accent">
+                {t("hero.ctaSecondary")} <span aria-hidden="true">→</span>
+              </a>
+            </div>
+            <p className="m-0 mt-3 text-xs text-dark-text-secondary">{t("hero.ctaReassurance")}</p>
+
+            <div className="mt-12 flex flex-wrap gap-x-10 gap-y-6 border-t border-dark-border-subtle pt-8">
+              {["stat1", "stat2", "stat3"].map((s) => (
+                <div key={s}>
+                  <p className="m-0 font-mono text-3xl text-dark-text-primary">{t(`hero.${s}.value`)}</p>
+                  <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-dark-text-secondary">{t(`hero.${s}.label`)}</p>
                 </div>
-              ) : null;
-            })()}
+              ))}
+            </div>
           </div>
-        ) : null}
+
+          {BEFORE_AFTER_DEMOS[0] ? (
+            // Overlaps the section's own bottom edge on large screens
+            // instead of sitting flush inside it — a real depth cue
+            // (the panel physically breaks the dark/light seam) rather
+            // than two flat zones stacked next to each other. Plenty of
+            // clearance below: #features starts at mt-32.
+            <div className="relative z-10 rounded-3xl bg-bg p-3 shadow-2xl sm:p-4 lg:-mb-16">
+              <BeforeAfterPlayer large {...BEFORE_AFTER_DEMOS[0]} />
+              {(() => {
+                const heroTarget = LOUDNESS_TARGETS.find((g) => g.genre === BEFORE_AFTER_DEMOS[0].genre.toLowerCase());
+                return heroTarget ? (
+                  <div className="mt-4 flex flex-col gap-5 rounded-2xl border border-border-subtle p-5 sm:flex-row sm:items-end sm:gap-6">
+                    <LoudnessMeter className="sm:flex-1" label={t("hero.consoleLoudness")} targetLufs={heroTarget.targetLufs} />
+                    <TruePeakMeter label={t("hero.consoleCeiling")} />
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          ) : null}
+        </div>
       </section>
 
       {/* The hero above already shows BEFORE_AFTER_DEMOS[0] — this section
@@ -276,7 +283,7 @@ export default function HomeClient() {
                 <Link
                   href={CTA.signup}
                   onClick={() => handleCtaClick(key === "free" ? "pricing_free_cta" : `pricing_${key}_cta`, "homepage_pricing")}
-                  className={`mt-6 block rounded-full px-6 py-3.5 text-center text-sm font-semibold transition ${
+                  className={`mt-6 block rounded-full px-6 py-3.5 text-center text-sm font-semibold transition hover:scale-[1.02] active:scale-[0.98] ${
                     isFeatured ? "bg-text-primary text-bg hover:opacity-85" : "border border-border-subtle text-text-primary hover:border-text-primary/40"
                   }`}
                 >
@@ -340,7 +347,12 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section id="contact" className="reveal mt-32 scroll-mt-24 border-t border-border-subtle pt-20">
+      {/* Closes the visible/white rhythm on a visible band (faq above is
+          the last white section) instead of ending on two whites in a
+          row — same full-bleed tint technique as Gallery/How-to/Genre
+          Showcase. */}
+      <section id="contact" className="reveal relative mt-32 scroll-mt-24 pt-20 pb-20">
+        <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-black/[0.03]" aria-hidden="true" />
         <SectionHeading eyebrow={t("contact.eyebrow")} title={t("contact.title")} />
         <p className="mt-4 max-w-xl text-base leading-relaxed text-text-secondary">{t("contact.body")}</p>
         <p className="mt-4 text-sm text-text-primary">

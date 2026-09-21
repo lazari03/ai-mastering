@@ -1,4 +1,4 @@
-import { Space_Grotesk, Inter } from "next/font/google";
+import { Space_Grotesk, Outfit } from "next/font/google";
 
 import Analytics from "@/components/Analytics";
 import CookieBanner from "@/components/CookieBanner";
@@ -15,7 +15,11 @@ const titleFont = Space_Grotesk({
   variable: "--font-title",
 });
 
-const bodyFont = Inter({
+// Inter is the single most common "default AI/SaaS" body font — swapped
+// for Outfit, which has more character at the same weights and legibility,
+// without touching the title font (Space Grotesk already reads as
+// intentional, not generic).
+const bodyFont = Outfit({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   variable: "--font-body",

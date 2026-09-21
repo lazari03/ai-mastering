@@ -81,6 +81,22 @@ main {
   animation: reveal 0.6s ease-out both;
 }
 
+/* One consistent focus-visible ring for every interactive element,
+   instead of leaving it to whatever the browser default happens to be
+   (usually a mismatched blue) against the site's own accent-colored,
+   pill-shaped buttons/links. :focus-visible so mouse clicks don't show a
+   ring, only keyboard/AT navigation — an accessibility baseline, not a
+   cosmetic optional. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .reveal-delay-1 {
   animation-delay: 0.08s;
 }
