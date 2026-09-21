@@ -2,7 +2,8 @@
         logs-python logs-node logs-frontend logs-caddy \
         rebuild-python rebuild-node rebuild-frontend \
         shell-python shell-node \
-        dev-python dev-node dev-frontend
+        dev-python dev-node dev-frontend \
+        diagnose-traffic-quality
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -98,6 +99,10 @@ shell-python: ## Open a shell inside the running Python container
 
 shell-node: ## Open a shell inside the running Node container
 	docker compose exec node-api sh
+
+diagnose-traffic-quality: ## One-off: read-only look at recent analytics sessions (bot-vs-real check)
+	docker compose build node-api
+	docker compose run --rm node-api node scripts/diagnoseTrafficQuality.js
 
 # --- Local dev (no Docker) — one terminal tab each -------------------------
 # The Python service MUST be on 8001, never bare `uvicorn app.main:app`
