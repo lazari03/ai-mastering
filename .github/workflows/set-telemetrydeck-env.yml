@@ -1,0 +1,29 @@
+name: Set TelemetryDeck App ID (one-off)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  set-env:
+    name: Add TELEMETRYDECK_APP_ID to the VPS .env and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and update .env
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            git pull
+            # Idempotent: replaces the line if it already exists, appends
+            # it if it doesn't — safe to re-run without duplicating or
+            # touching anything else in .env.
+            if grep -q '^TELEMETRYDECK_APP_ID=' .env 2>/dev/null; then
+              sed -i 's|^TELEMETRYDECK_APP_ID=.*|TELEMETRYDECK_APP_ID=DED0377B-4479-42F3-8CE5-81821B0E31E2|' .env
+            else
+              echo 'TELEMETRYDECK_APP_ID=DED0377B-4479-42F3-8CE5-81821B0E31E2' >> .env
+            fi
+            make deploy
