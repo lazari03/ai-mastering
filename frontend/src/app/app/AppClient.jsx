@@ -17,7 +17,6 @@ import PlansPanel from "@/app/ui/PlansPanel";
 import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import NotificationBanner from "@/components/app/NotificationBanner";
-import TopBanner from "@/components/app/TopBanner";
 import VerifyEmailBanner from "@/components/app/VerifyEmailBanner";
 import AppSearch from "@/components/app/AppSearch";
 import AppNotificationsBell from "@/components/app/AppNotificationsBell";
@@ -317,7 +316,6 @@ export default function AppClient() {
     // overflow-y-auto as a safety valve for short windows with many tabs,
     // not as its normal behavior.
     <div className="flex h-screen flex-col overflow-hidden" style={{ height: "100dvh" }}>
-      <TopBanner />
       <VerifyEmailBanner />
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
       {/* Mobile top bar — the sidebar below is hidden on small screens */}

@@ -95,8 +95,19 @@ export const settings = {
   polarWebhookSecret: process.env.POLAR_WEBHOOK_SECRET || null,
   polarServer: process.env.POLAR_ENVIRONMENT === "production" ? "production" : "sandbox",
   polarProducts: {
+    planIndie: process.env.POLAR_PLAN_INDIE_PRODUCT_ID || null,
     planStudio: process.env.POLAR_PLAN_STUDIO_PRODUCT_ID || null,
     planPro: process.env.POLAR_PLAN_PRO_PRODUCT_ID || null,
+    // Annual variants. In Polar these are separate products with a
+    // yearly recurring interval, not a "billing period" toggle on the
+    // monthly product — so each needs its own ID here, and each maps
+    // back to the same internal plan key (see polarService.js's
+    // planKeyForProductId). Leaving any of these unset simply makes that
+    // one checkout fail with a clear "not configured" error rather than
+    // silently charging the wrong thing.
+    planIndieAnnual: process.env.POLAR_PLAN_INDIE_ANNUAL_PRODUCT_ID || null,
+    planStudioAnnual: process.env.POLAR_PLAN_STUDIO_ANNUAL_PRODUCT_ID || null,
+    planProAnnual: process.env.POLAR_PLAN_PRO_ANNUAL_PRODUCT_ID || null,
     // One-time purchase, not a subscription — "master this one track"
     // for someone who doesn't want a recurring plan. Create this as a
     // one-time (not recurring) product in Polar's dashboard and set its

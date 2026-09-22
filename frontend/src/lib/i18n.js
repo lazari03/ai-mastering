@@ -244,16 +244,24 @@ const DICT = {
   "gallery.img3.caption": { en: "Built for people who mix for a living", sq: "Ndërtuar për njerëz që miksojnë për jetesë" },
 
   "pricing.eyebrow": { en: "Pricing", sq: "Çmimet" },
-  "pricing.title": { en: "Three plans. No confusing add-ons.", sq: "Tre plane. Pa shtesa konfuze." },
+  "pricing.title": { en: "Four plans. No confusing add-ons.", sq: "Katër plane. Pa shtesa konfuze." },
   "pricing.subtitle": {
     en: "Start free with 3 full masters, no card required — a one-time trial, not a monthly allowance. Upgrade only when you actually need more.",
     sq: "Fillo falas me 3 masterë të plotë, pa kartë — një provë një-herëshe, jo një kuotë mujore. Përmirëso vetëm kur të nevojitet më shumë.",
   },
   "pricing.badge": { en: "Best Value", sq: "Vlera më e Mirë" },
+  "pricing.billingLabel": { en: "Billing period", sq: "Periudha e faturimit" },
+  "pricing.billing.monthly": { en: "Monthly", sq: "Mujore" },
+  "pricing.billing.annual": { en: "Annual", sq: "Vjetore" },
+  "pricing.annualSaving": { en: "Annual billing — 2 months free", sq: "Faturim vjetor — 2 muaj falas" },
+  // "{price}" is substituted at the call site rather than templated here:
+  // the dictionary stays plain strings, which keeps it readable and means
+  // a missing key degrades to the key name instead of throwing.
+  "pricing.perMonthEquivalent": { en: "{price}/mo billed yearly", sq: "{price}/muaj faturuar vjetor" },
   "pricing.freeCta": { en: "Start Free", sq: "Fillo Falas" },
   "pricing.subCta": { en: "Get Started", sq: "Fillo Tani" },
   "pricing.subReassurance": { en: "Cancel anytime, no questions asked.", sq: "Anulo kur të duash, pa pyetje." },
-  "pricing.compareLink": { en: "Comparing tools? See how this stacks up against LANDR & eMastered →", sq: "Po krahason mjete? Shiko si krahasohet me LANDR & eMastered →" },
+  "pricing.compareLink": { en: "Comparing tools? See how this stacks up against LANDR & eMastered", sq: "Po krahason mjete? Shiko si krahasohet me LANDR & eMastered" },
 
   "app.tab.master": { en: "Master Audio", sq: "Masterizo Audio" },
   "app.tab.chords": { en: "Show Chords", sq: "Shfaq Akordet" },

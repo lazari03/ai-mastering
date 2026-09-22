@@ -1,27 +1,30 @@
-import { Space_Grotesk, Outfit } from "next/font/google";
+import { Space_Grotesk, Plus_Jakarta_Sans } from "next/font/google";
 
 import Analytics from "@/components/Analytics";
 import CookieBanner from "@/components/CookieBanner";
 import PromoPopup from "@/components/marketing/PromoPopup";
-import TopBanner from "@/components/app/TopBanner";
 import ClientOnlyMounts from "./ClientOnlyMounts";
 import { LanguageProvider } from "@/lib/i18n";
 import { SITE_URL, SITE_NAME, DEFAULT_DESCRIPTION, DEFAULT_KEYWORDS } from "@/lib/seo";
 import "./globals.css";
 
+// Display face. A wide geometric grotesk carries the massive headline
+// sizes this layout leans on without the headline turning into texture,
+// which is what happens when body-proportioned type is scaled to 80px.
 const titleFont = Space_Grotesk({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   variable: "--font-title",
 });
 
-// Inter is the single most common "default AI/SaaS" body font — swapped
-// for Outfit, which has more character at the same weights and legibility,
-// without touching the title font (Space Grotesk already reads as
-// intentional, not generic).
-const bodyFont = Outfit({
+// Body face. Inter — the default on roughly every AI-generated
+// marketing page — is out; Plus Jakarta Sans holds the same legibility
+// at small sizes while having actual character in its terminals and
+// its single-storey 'a'. Five weights, not two, so hierarchy can be
+// carried by weight (400/500/600) instead of only by size and color.
+const bodyFont = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-body",
 });
 
@@ -68,10 +71,13 @@ export default function RootLayout({ children }) {
         <LanguageProvider>
           <ClientOnlyMounts />
           <Analytics />
-          <TopBanner skipAppRoute />
           {children}
           <CookieBanner />
           <PromoPopup />
+          {/* Fixed, pointer-events-none, one composite layer — see
+              .grain-overlay in globals.css. Last in <body> so it paints
+              above content without needing a z-index of its own. */}
+          <div className="grain-overlay" aria-hidden="true" />
         </LanguageProvider>
       </body>
     </html>

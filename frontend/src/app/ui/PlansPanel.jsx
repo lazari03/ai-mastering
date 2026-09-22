@@ -10,20 +10,33 @@ import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 import { IconCheck } from "@/components/app/icons";
 
-// Feature-by-feature comparison rows — Free/Studio/All-Access columns,
-// in PLAN_ORDER. "—" means not included, everything else is the actual
-// value for that plan. Hand-written rather than derived from PLANS'
-// prose `features` arrays since those are marketing bullet points (not
-// every plan lists every axis, and the wording differs), while a
-// comparison table needs one consistent row per axis across all three.
+// Feature-by-feature comparison rows — Free/Indie/Studio/All-Access
+// columns, in PLAN_ORDER. "—" means not included, everything else is the
+// actual value for that plan. Hand-written rather than derived from
+// PLANS' prose `features` arrays since those are marketing bullet points
+// (not every plan lists every axis, and the wording differs), while a
+// comparison table needs one consistent row per axis across all columns.
+//
+// Every row must have exactly PLAN_ORDER.length values, in that order —
+// there's an assertion below rather than a comment alone, because a row
+// that's one short doesn't fail loudly, it silently shifts every value
+// after it into the wrong column and misprices the table.
 const COMPARISON_ROWS = [
-  { label: "Masters", values: ["3 total (one-time)", "50 / month", "250 / month"] },
-  { label: "Standard engine", values: [true, true, true] },
-  { label: "Professional engine", values: [false, true, true] },
-  { label: "Stem separation", values: ["Pay per use", "Pay per use", "20 / month included"] },
-  { label: "Chord detection", values: ["Free, unlimited", "Free, unlimited", "Free, unlimited"] },
-  { label: "Shareable download links", values: [false, false, true] },
+  { label: "Masters", values: ["3 total (one-time)", "15 / month", "50 / month", "250 / month"] },
+  { label: "Standard engine", values: [true, true, true, true] },
+  { label: "Professional engine", values: [false, true, true, true] },
+  { label: "Stem separation", values: ["Pay per use", "Pay per use", "Pay per use", "20 / month included"] },
+  { label: "Chord detection", values: ["Free, unlimited", "Free, unlimited", "Free, unlimited", "Free, unlimited"] },
+  { label: "Shareable download links", values: [false, false, false, true] },
 ];
+
+const misalignedRow = COMPARISON_ROWS.find((row) => row.values.length !== PLAN_ORDER.length);
+if (misalignedRow) {
+  throw new Error(
+    `COMPARISON_ROWS "${misalignedRow.label}" has ${misalignedRow.values.length} values but PLAN_ORDER has ` +
+      `${PLAN_ORDER.length} plans — every row needs one value per plan or the table silently shows the wrong column.`,
+  );
+}
 
 /**
  * The dedicated in-app Plans page — a real comparison table plus the

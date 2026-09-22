@@ -4,12 +4,21 @@
 // instead of each hardcoding its own copy. EUR — matches the Polar
 // organization's default presentment currency.
 //
-// Two paid plans + Free, plus one one-time purchase (SINGLE_MASTER below):
-//   Free    — 3 masters TOTAL (one-time trial, never resets), Standard only, no stems
-//   Studio  — 50 masters/month (resets monthly), Standard + Professional, stems included
+// Three paid plans + Free, plus one one-time purchase (SINGLE_MASTER below):
+//   Free       — 3 masters TOTAL (one-time trial, never resets), Standard only
+//   Indie      — 15 masters/month (resets monthly), Standard + Professional
+//   Studio     — 50 masters/month (resets monthly), Standard + Professional
 //   All-Access — 250 masters/month (5x Studio, resets monthly), everything
 // Chord detection is unconditionally free for everyone (see
 // /chord-detector) — it's not part of any plan's paywall.
+//
+// Annual billing is twelve months for the price of ten (the two-months-
+// free convention). Every annual figure below is exactly monthly × 10, so
+// the saving is real and reconciles against the invoice rather than being
+// a rounded marketing number.
+export const BILLING_PERIODS = ["monthly", "annual"];
+export const ANNUAL_MONTHS_CHARGED = 10;
+
 export const PLANS = {
   free: {
     key: "free",
@@ -20,6 +29,26 @@ export const PLANS = {
     masterLimit: 3,
     blurb: "Try 3 full masters, on the house — no card required.",
     features: ["3 full-length masters, one-time trial", "Unlimited 30s mastering previews"],
+    // No annual variant — there's nothing to bill yearly at €0, and a
+    // "€0/yr" column next to real prices is just noise.
+    annual: null,
+  },
+  // Entry paid tier. The jump from Free (3 masters, ever) straight to
+  // Studio at €9.99 is the sharpest drop-off in the funnel: someone who
+  // puts out one track a month has no reason to pay for 50, so they sit
+  // on Free indefinitely and convert to nothing. This is priced to be an
+  // easy first payment rather than a considered subscription decision,
+  // which is the entire job of a first paid tier.
+  indie: {
+    key: "indie",
+    item: "plan_indie",
+    label: "Indie",
+    price: "€4.99",
+    period: "/mo",
+    masterLimit: 15,
+    blurb: "For one release a month, not fifty.",
+    features: ["15 masters / month", "Standard & Professional engines", "Codec preview & instant A/B"],
+    annual: { item: "plan_indie_annual", price: "€49.90", period: "/yr", perMonth: "€4.16" },
   },
   studio: {
     key: "studio",
@@ -30,6 +59,7 @@ export const PLANS = {
     masterLimit: 50,
     blurb: "For anyone mastering regularly.",
     features: ["50 masters / month", "Standard & Professional engines"],
+    annual: { item: "plan_studio_annual", price: "€99.90", period: "/yr", perMonth: "€8.33" },
   },
   pro: {
     key: "pro",
@@ -40,10 +70,24 @@ export const PLANS = {
     masterLimit: 250,
     blurb: "The full toolkit, 5x Studio's headroom.",
     features: ["250 masters / month", "Everything in Studio", "Stem separation, 20/month included", "Shareable download links"],
+    annual: { item: "plan_pro_annual", price: "€199.90", period: "/yr", perMonth: "€16.66" },
   },
 };
 
-export const PLAN_ORDER = ["free", "studio", "pro"];
+export const PLAN_ORDER = ["free", "indie", "studio", "pro"];
+
+// The one place that resolves "which plan, billed how often" into the
+// price, period and checkout item to actually use — so the homepage grid,
+// the in-app Plans panel and the checkout call can't drift into
+// disagreeing about what a plan costs. Falls back to the monthly figures
+// for any plan without an annual variant (Free), which keeps call sites
+// free of `plan.annual ? … : …` branching.
+export function planPricing(plan, billing = "monthly") {
+  if (billing !== "annual" || !plan.annual) {
+    return { price: plan.price, period: plan.period, item: plan.item, perMonth: null, isAnnual: false };
+  }
+  return { price: plan.annual.price, period: plan.annual.period, item: plan.annual.item, perMonth: plan.annual.perMonth, isAnnual: true };
+}
 
 // Low-commitment top-up, not a plan — "master this one track" for
 // someone whose actual need is a single release, not a recurring

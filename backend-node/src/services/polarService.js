@@ -74,8 +74,12 @@ function userDoc(uid) {
 // Telegram purchase notification (see announcePurchase below) should read
 // "Studio plan", not a raw Polar product UUID.
 const PRODUCT_LABELS = {
+  planIndie: "Indie plan",
   planStudio: "Studio plan",
   planPro: "All-Access plan",
+  planIndieAnnual: "Indie plan (annual)",
+  planStudioAnnual: "Studio plan (annual)",
+  planProAnnual: "All-Access plan (annual)",
   singleMaster: "Single Master (one-time)",
   chordDetection: "Chord Detection (one-time)",
   chordsMonthly: "Chords Monthly",
@@ -187,12 +191,22 @@ export async function createCheckoutUrl(uid, email, productKey, successUrl) {
 // upgrade vs downgrade below. Free isn't in here; changeSubscriptionPlan
 // is only ever called for an already-paid user switching between paid
 // tiers (see the "no active subscription" guard above).
-const PLAN_RANK = { planStudio: 1, planPro: 2 };
+// Ranked by entitlement level, NOT by amount billed: an annual plan
+// charges more up front than a monthly one but grants the same access,
+// so they share a rank. Without that, switching Studio-monthly ->
+// Studio-annual would be scored as an "upgrade" and Studio-annual ->
+// Studio-monthly as a "downgrade", when neither changes what the user
+// can do — only how often they're billed.
+const PLAN_RANK = { planIndie: 1, planIndieAnnual: 1, planStudio: 2, planStudioAnnual: 2, planPro: 3, planProAnnual: 3 };
+
+// Every plan product (monthly and annual alike) mapped back to its
+// settings key, so the rank lookup and the change-plan flow both work
+// regardless of which billing period the user currently holds.
+const PLAN_PRODUCT_KEYS = ["planIndie", "planStudio", "planPro", "planIndieAnnual", "planStudioAnnual", "planProAnnual"];
 
 function currentProductKey(sub) {
-  if (sub?.productId === settings.polarProducts.planPro) return "planPro";
-  if (sub?.productId === settings.polarProducts.planStudio) return "planStudio";
-  return null;
+  if (!sub?.productId) return null;
+  return PLAN_PRODUCT_KEYS.find((key) => settings.polarProducts[key] === sub.productId) || null;
 }
 
 export async function changeSubscriptionPlan(uid, productKey) {
@@ -293,11 +307,23 @@ export async function getSubscriptionStatus(uid) {
 // for, not just whether one exists — an active subscription against an
 // unrecognized product ID (shouldn't happen outside manual Polar dashboard
 // fiddling) falls back to "free" rather than granting access by accident.
+// Both billing periods of a plan collapse to the same internal key —
+// "studio" is one entitlement level whether it was bought monthly or
+// annually. entitlementsService.js's PLAN_MASTER_LIMITS is keyed on
+// exactly these values.
+const PRODUCT_KEY_TO_PLAN = {
+  planIndie: "indie",
+  planIndieAnnual: "indie",
+  planStudio: "studio",
+  planStudioAnnual: "studio",
+  planPro: "pro",
+  planProAnnual: "pro",
+};
+
 function planKeyForProductId(productId) {
   if (!productId) return null;
-  if (productId === settings.polarProducts.planPro) return "pro";
-  if (productId === settings.polarProducts.planStudio) return "studio";
-  return null;
+  const productKey = PLAN_PRODUCT_KEYS.find((key) => settings.polarProducts[key] === productId);
+  return productKey ? PRODUCT_KEY_TO_PLAN[productKey] : null;
 }
 
 export async function getPlan(uid) {
@@ -383,7 +409,12 @@ function subscriptionRecord(sub) {
 // single-field design that worked fine back when there was only ever one
 // possible subscription per customer.
 function subscriptionFieldForProduct(productId) {
-  if (productId === settings.polarProducts.planStudio || productId === settings.polarProducts.planPro) {
+  // Any plan product — Indie/Studio/All-Access, monthly or annual — is
+  // the user's one main mastering subscription. Derived from the product
+  // key list rather than an explicit OR chain so adding a plan or a
+  // billing period can't silently miss this function and leave a real
+  // paid subscription unrecorded.
+  if (PLAN_PRODUCT_KEYS.some((key) => settings.polarProducts[key] === productId)) {
     return "subscription";
   }
   if (productId === settings.polarProducts.chordsMonthly) {

@@ -340,8 +340,12 @@ router.get("/billing/entitlements", async (req, res) => {
 // handling, this just stops new purchases of a product with no gate behind
 // it anymore.
 const CHECKOUT_ITEM_TO_PRODUCT_KEY = {
+  plan_indie: "planIndie",
   plan_studio: "planStudio",
   plan_pro: "planPro",
+  plan_indie_annual: "planIndieAnnual",
+  plan_studio_annual: "planStudioAnnual",
+  plan_pro_annual: "planProAnnual",
   single_master: "singleMaster",
   stem_separation: "stemSeparation",
 };

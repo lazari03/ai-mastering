@@ -29,6 +29,41 @@
   --dark-border-subtle: rgba(255, 255, 255, 0.1);
   --accent: #8275ff;
 
+  /* ── Motion ────────────────────────────────────────────────────────
+     One easing curve for the whole site. Deliberately NOT ease-in-out
+     or linear: this curve decelerates hard and late, which is what
+     makes motion read as having physical mass rather than as a CSS
+     default. Every transition/animation below references it. */
+  --ease-premium: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ── Elevation ─────────────────────────────────────────────────────
+     Layered, warm-tinted ambient shadow instead of one hard black
+     drop. Three stacked layers (contact / mid / ambient spread) is
+     what reads as a physically lit object; the rgb is the cream bg's
+     own hue darkened, not pure black, so nothing looks like a sticker
+     pasted on the page. */
+  --shadow-ambient:
+    0 1px 2px rgba(36, 32, 26, 0.035),
+    0 8px 20px -6px rgba(36, 32, 26, 0.055),
+    0 32px 64px -24px rgba(36, 32, 26, 0.14);
+  --shadow-ambient-lifted:
+    0 2px 4px rgba(36, 32, 26, 0.04),
+    0 14px 32px -8px rgba(36, 32, 26, 0.08),
+    0 48px 96px -28px rgba(36, 32, 26, 0.2);
+
+  /* ── Z-index scale ─────────────────────────────────────────────────
+     Two rungs, and nothing else in the codebase should add a third
+     without a reason that can be written down here:
+       40  full-screen menu overlay
+       50  sticky site header, cookie banner, promo
+     Everything else layers by DOM order and stacking context instead.
+     The grain overlay is last in <body>, so it paints above content
+     without needing a z-index; the header scrim lives inside <header>
+     and inherits its context, painting under the nav pill for the same
+     reason. The header outranks its own menu overlay on purpose: the
+     hamburger morphs into the X that dismisses the menu, so it has to
+     stay above it or the control vanishes exactly when it's needed. */
+
   /* Legacy dark-theme tokens — superseded by the light palette above.
      Left in place (same values as before) purely so components not yet
      migrated off them still render correctly; do not use these in new
@@ -66,6 +101,23 @@ main {
   min-height: 100vh;
 }
 
+/* ── Scroll-entry choreography ────────────────────────────────────────
+   Progressive enhancement, deliberately: the default state of .reveal is
+   fully VISIBLE. Only once ScrollReveal.jsx has mounted and set
+   data-reveal="on" on <html> does the hidden-then-animate state apply.
+   Getting this backwards (hidden by default, revealed by JS) is how a
+   page ends up permanently blank when JS is slow, blocked, or throws —
+   an entrance animation is never worth risking the content itself.
+
+   The motion is a heavy fade-up with a blur resolve rather than a 12px
+   nudge: transform + filter + opacity only, all GPU-composited, no
+   layout-triggering properties.
+
+   The plain .reveal rule below is the ORIGINAL mount-time fade, left
+   exactly as it was: /login and the in-app result view (MasterResultView)
+   both use this class and never mount ScrollReveal, so they keep the
+   behaviour they already had. Only a page that mounts the controller
+   opts into the scroll-driven version. */
 @keyframes reveal {
   from {
     opacity: 0;
@@ -79,6 +131,87 @@ main {
 
 .reveal {
   animation: reveal 0.6s ease-out both;
+}
+
+html[data-reveal="on"] .reveal {
+  animation: none;
+  opacity: 0;
+  transform: translate3d(0, 44px, 0);
+  filter: blur(7px);
+  transition:
+    opacity 0.9s var(--ease-premium),
+    transform 0.9s var(--ease-premium),
+    filter 0.9s var(--ease-premium);
+  will-change: transform, opacity;
+}
+
+html[data-reveal="on"] .reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  filter: blur(0);
+  will-change: auto;
+}
+
+/* Anyone who has asked their OS for less motion gets the content, not
+   the choreography — the observer still runs, it just has nothing left
+   to animate. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-reveal="on"] .reveal,
+  html[data-reveal="on"] .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+}
+
+/* ── Film grain ───────────────────────────────────────────────────────
+   Fixed, pointer-events-none, painted once — never attached to a
+   scrolling container, so it costs one composite layer and no repaints.
+   Breaks the flatness of large empty cream areas the way paper stock
+   does in print; at this opacity it is felt rather than seen. */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  /* No z-index on purpose — it's the last element in <body>, so as a
+     positioned element it already paints above page content, while the
+     header/menu/banner (which do carry one) stay above it. */
+  pointer-events: none;
+  opacity: 0.032;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Double-bezel (nested enclosure) ──────────────────────────────────
+   A premium panel is never one flat box on the page: it is an inner core
+   seated in an outer tray, the way a glass plate sits in a milled
+   aluminium frame. The inner radius is the outer radius minus the tray
+   padding so the two curves stay concentric — mismatched radii are the
+   single most common tell of a nested box that was eyeballed. */
+.bezel {
+  padding: 0.5rem;
+  border-radius: 2rem;
+  background: rgba(36, 32, 26, 0.045);
+  box-shadow: inset 0 0 0 1px rgba(36, 32, 26, 0.05);
+}
+
+.bezel-core {
+  border-radius: calc(2rem - 0.5rem);
+  background: var(--bg);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.6),
+    var(--shadow-ambient);
+}
+
+/* Same construction, seated on the dark hero band instead of cream. */
+.bezel-on-dark {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.bezel-on-dark > .bezel-core {
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    var(--shadow-ambient-lifted);
 }
 
 /* One consistent focus-visible ring for every interactive element,
@@ -97,12 +230,17 @@ select:focus-visible,
   outline-offset: 2px;
 }
 
+/* Both properties set so the delay applies on either path — the
+   mount-animation one (/login, result view) and the scroll-transition
+   one (pages that mount ScrollReveal). */
 .reveal-delay-1 {
   animation-delay: 0.08s;
+  transition-delay: 0.09s;
 }
 
 .reveal-delay-2 {
   animation-delay: 0.16s;
+  transition-delay: 0.18s;
 }
 
 .glass-panel {

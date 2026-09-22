@@ -11,7 +11,10 @@ import { getFirestore } from "../config/firebase.js";
 // resets:true/false flag on the returned status is what the frontend
 // uses to decide whether to say "resets next month" at all. See
 // PRICING.md.
-export const PLAN_MASTER_LIMITS = { free: 3, studio: 50, pro: 250 };
+// Keyed by internal plan key, not by Polar product — the monthly and
+// annual variants of a plan are two Polar products but one entitlement
+// level, so both resolve to the same key before reaching this map.
+export const PLAN_MASTER_LIMITS = { free: 3, indie: 15, studio: 50, pro: 250 };
 
 function currentMonthKey() {
   const now = new Date();

@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
 import SiteHeader from "@/components/marketing/SiteHeader";
+import ScrollReveal from "@/components/marketing/ScrollReveal";
 import Footer from "@/components/Footer";
 import { POSTS } from "@/content/posts";
 import { useLanguage } from "@/lib/i18n";
-import { PLANS, PLAN_ORDER } from "@/lib/pricing";
+import { PLANS, PLAN_ORDER, BILLING_PERIODS, planPricing } from "@/lib/pricing";
 import { IconCheck } from "@/components/app/icons";
 import { CTA } from "@/lib/internalLinks";
 import { BEFORE_AFTER_DEMOS } from "@/lib/beforeAfterDemos";
@@ -20,8 +21,12 @@ import SectionHeading from "@/components/marketing/SectionHeading";
 import TruePeakMeter from "@/components/audio/TruePeakMeter";
 import { trackEvent } from "@/lib/analytics";
 
-function handleCtaClick(ctaId, location) {
-  trackEvent("cta_click", { cta_id: ctaId, location });
+// extra carries whatever is worth segmenting a CTA click by — for the
+// pricing grid that's the billing period and the exact checkout item, so
+// "which plan did people click" and "did the annual toggle change what
+// they picked" are answerable without a second event type.
+function handleCtaClick(ctaId, location, extra = {}) {
+  trackEvent("cta_click", { cta_id: ctaId, location, ...extra });
 }
 
 // Fires pricing_view once the homepage's #pricing section actually enters
@@ -69,9 +74,11 @@ const GALLERY = POSTS.map((post) => ({
 function FaqItem({ t, qKey }) {
   const aKey = qKey.replace("q", "a");
   return (
-    <div className="break-inside-avoid border-b border-border-subtle py-4">
-      <p className="text-[15px] font-medium text-text-primary">{t(`faq.${qKey}`)}</p>
-      <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t(`faq.${aKey}`)}</p>
+    <div className="break-inside-avoid border-b border-black/[0.07] py-6">
+      <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-text-primary">{t(`faq.${qKey}`)}</p>
+      <p className="mt-2.5 text-[15px] leading-[1.6] text-text-secondary" style={{ textWrap: "pretty" }}>
+        {t(`faq.${aKey}`)}
+      </p>
     </div>
   );
 }
@@ -80,85 +87,138 @@ export default function HomeClient() {
   const { t } = useLanguage();
   const pricingSectionRef = useRef(null);
   usePricingSectionView(pricingSectionRef);
+  const [billing, setBilling] = useState("monthly");
 
   return (
     <>
-    <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
+    <ScrollReveal />
+    <main className="mx-auto w-full max-w-[1280px] px-4 pb-32 pt-4 sm:px-6">
       <SiteHeader />
 
-      {/* The hero is the first "visible" band in the page's alternating
-          visible/white rhythm (see the tinted full-bleed sections further
-          down) — a real dark zone-change right at the top, not just a
-          hairline, so the page reads as designed instead of "all white"
-          from the first screen. Full-bleed via the same 100vw breakout
-          trick the tinted sections below use; --dark-* are the existing
-          dark-palette tokens (globals.css), not a new color introduced
-          for this. The product visualization stays on the light tokens
-          (bg-bg/text-primary etc.) and floats on the dark band as a
-          panel — cheaper and lower-risk than teaching every meter/track
-          color (several are hardcoded bg-black/NN overlays, not tokens)
-          to invert for a dark backdrop. */}
-      <section id="demo" className="reveal relative -mx-4 scroll-mt-24 px-4 pb-24 pt-14 sm:-mx-6 sm:px-6 sm:pb-28 sm:pt-16">
-        <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-dark-bg" aria-hidden="true" />
-        {/* Fades to --bg at the bottom edge instead of cutting straight to
-            white — a hard dark-to-light seam reads as an accidental
-            copy-paste, a gradient reads as an intentional zone change. */}
+      {/* Editorial Split: the type block owns the left, the real product
+          owns the right. The dark band is the page's one high-contrast
+          zone — a radial wash rather than a flat fill, so the corners
+          fall off and the panel has something to sit in. The product
+          visualization stays on the light tokens and floats on the band
+          as a panel, rather than teaching every meter and track colour
+          (several are hardcoded bg-black/NN overlays, not tokens) to
+          invert for a dark backdrop. */}
+      <section id="demo" className="reveal relative -mx-4 scroll-mt-28 px-4 pb-20 pt-12 sm:-mx-6 sm:px-6 sm:pb-[4.5rem] sm:pt-16">
+        {/* The band starts far above this section's own top edge so it
+            runs up behind the floating nav island to the top of the
+            page. A cream strip holding the nav, with the black starting
+            underneath it, reads as two mismatched pieces rather than one
+            hero. Over-extending upward is safe: above <main> is the top
+            of the page, so the excess is simply off-screen.
+
+            It ends on a hard edge — no gradient fade. The fade was doing
+            the job the overlapping panel below already does better, and
+            a soft dissolve into cream looked like a rendering artifact
+            rather than an edge anyone chose. */}
+        <div className="absolute -top-[420px] bottom-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-dark-bg" aria-hidden="true" />
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 left-1/2 -z-10 h-24 w-screen -translate-x-1/2 bg-gradient-to-b from-transparent to-bg sm:h-32"
+          className="pointer-events-none absolute -top-[420px] bottom-0 left-1/2 -z-10 w-screen -translate-x-1/2"
           aria-hidden="true"
+          style={{
+            background:
+              "radial-gradient(1000px 620px at 66% 38%, rgba(130,117,255,0.18), transparent 66%), radial-gradient(760px 460px at 10% 92%, rgba(255,255,255,0.055), transparent 70%)",
+          }}
         />
-        <div className="relative mx-auto grid max-w-[1280px] gap-12 lg:grid-cols-[0.85fr_1fr] lg:items-center lg:gap-16">
+
+        <div className="relative mx-auto grid max-w-[1280px] gap-14 lg:grid-cols-[0.92fr_1fr] lg:items-center lg:gap-20">
           <div>
-            <p className="m-0 mb-5 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.26em] text-dark-text-secondary">
-              <span className="h-px w-6 bg-accent" aria-hidden="true" />
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.07] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-dark-text-secondary ring-1 ring-inset ring-white/10">
+              <span className="h-1 w-1 rounded-full bg-accent" aria-hidden="true" />
               {t("hero.eyebrow")}
-            </p>
-            <h1 className="m-0 max-w-[560px] text-[44px] font-semibold leading-[1.02] tracking-tight text-dark-text-primary sm:text-6xl md:text-[72px]">
+            </span>
+
+            {/* Capped at 4.25rem, not the 5.75rem the type scale would
+                happily allow: above that this headline wraps to five
+                lines at 1440×900 and pushes the primary CTA below the
+                fold. A hero that looks impressive and buries its own
+                call to action is a worse hero. */}
+            <h1
+              className="m-0 mt-7 font-[var(--font-title)] text-[clamp(2.5rem,5vw,4.25rem)] font-semibold leading-[0.98] tracking-[-0.035em] text-dark-text-primary"
+              style={{ textWrap: "balance" }}
+            >
               {t("hero.title1")}
-              <span className="block">{t("hero.title2")}</span>
+              <span className="block text-dark-text-primary/50">{t("hero.title2")}</span>
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-dark-text-secondary sm:text-lg">{t("hero.body")}</p>
-            <div className="mt-10 flex flex-wrap items-center gap-6">
+
+            <p className="mt-7 max-w-[50ch] text-[17px] leading-[1.6] text-dark-text-secondary" style={{ textWrap: "pretty" }}>
+              {t("hero.body")}
+            </p>
+
+            <div className="mt-9 flex flex-wrap items-center gap-5">
               <Link
                 href={CTA.signup}
                 onClick={() => handleCtaClick("master_a_track_free", "homepage_hero")}
-                className="rounded-full bg-dark-text-primary px-8 py-4 text-sm font-semibold text-dark-bg transition hover:scale-[1.02] hover:opacity-85 active:scale-[0.98]"
+                className="group flex items-center gap-3 rounded-full bg-dark-text-primary py-2 pl-7 pr-2 text-sm font-semibold text-dark-bg transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
               >
                 {t("hero.ctaPrimary")}
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-dark-bg/10 text-base transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px group-hover:scale-105"
+                >
+                  ↗
+                </span>
               </Link>
-              <a href="#demo" className="inline-flex items-center gap-1.5 text-sm font-medium text-dark-text-primary hover:text-accent">
-                {t("hero.ctaSecondary")} <span aria-hidden="true">→</span>
+              <a
+                href="#demo"
+                className="group inline-flex items-center gap-2 text-sm font-medium text-dark-text-primary transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:text-accent"
+              >
+                {t("hero.ctaSecondary")}
+                <span
+                  aria-hidden="true"
+                  className="transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-1"
+                >
+                  →
+                </span>
               </a>
             </div>
-            <p className="m-0 mt-3 text-xs text-dark-text-secondary">{t("hero.ctaReassurance")}</p>
+            <p className="m-0 mt-4 text-xs text-dark-text-secondary">{t("hero.ctaReassurance")}</p>
 
-            <div className="mt-12 flex flex-wrap gap-x-10 gap-y-6 border-t border-dark-border-subtle pt-8">
+            <div className="mt-14 flex flex-wrap gap-x-12 gap-y-6 border-t border-dark-border-subtle pt-9">
               {["stat1", "stat2", "stat3"].map((s) => (
                 <div key={s}>
-                  <p className="m-0 font-mono text-3xl text-dark-text-primary">{t(`hero.${s}.value`)}</p>
-                  <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-dark-text-secondary">{t(`hero.${s}.label`)}</p>
+                  <p
+                    className="m-0 font-mono text-[34px] leading-none tracking-[-0.02em] text-dark-text-primary"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {t(`hero.${s}.value`)}
+                  </p>
+                  <p className="mt-2.5 text-[10px] uppercase tracking-[0.2em] text-dark-text-secondary">{t(`hero.${s}.label`)}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {BEFORE_AFTER_DEMOS[0] ? (
-            // Overlaps the section's own bottom edge on large screens
-            // instead of sitting flush inside it — a real depth cue
-            // (the panel physically breaks the dark/light seam) rather
-            // than two flat zones stacked next to each other. Plenty of
-            // clearance below: #features starts at mt-32.
-            <div className="relative z-10 rounded-3xl bg-bg p-3 shadow-2xl sm:p-4 lg:-mb-16">
-              <BeforeAfterPlayer large {...BEFORE_AFTER_DEMOS[0]} />
-              {(() => {
-                const heroTarget = LOUDNESS_TARGETS.find((g) => g.genre === BEFORE_AFTER_DEMOS[0].genre.toLowerCase());
-                return heroTarget ? (
-                  <div className="mt-4 flex flex-col gap-5 rounded-2xl border border-border-subtle p-5 sm:flex-row sm:items-end sm:gap-6">
-                    <LoudnessMeter className="sm:flex-1" label={t("hero.consoleLoudness")} targetLufs={heroTarget.targetLufs} />
-                    <TruePeakMeter label={t("hero.consoleCeiling")} />
-                  </div>
-                ) : null;
-              })()}
+            // Double-bezel: the real player is the inner core, seated in
+            // an outer tray with a concentric radius.
+            //
+            // Sits fully inside the band. An earlier version pushed it
+            // past the bottom edge (negative margin to control reserved
+            // space, transform to control where it actually sat) so it
+            // broke the dark/cream seam as a depth cue — but a panel
+            // hanging out of the section it belongs to reads as a
+            // layout escaping its container, not as deliberate
+            // layering, so the band simply contains it now. Keeping it
+            // in flow also means no magic numbers to retune whenever
+            // the hero copy changes length.
+            <div className="bezel bezel-on-dark relative z-10">
+              <div className="bezel-core p-3 sm:p-4">
+                <BeforeAfterPlayer large {...BEFORE_AFTER_DEMOS[0]} />
+                {(() => {
+                  const heroTarget = LOUDNESS_TARGETS.find((g) => g.genre === BEFORE_AFTER_DEMOS[0].genre.toLowerCase());
+                  return heroTarget ? (
+                    <div className="mt-3 flex flex-col gap-5 rounded-[1.25rem] bg-black/[0.03] p-5 sm:flex-row sm:items-end sm:gap-6">
+                      <LoudnessMeter className="sm:flex-1" label={t("hero.consoleLoudness")} targetLufs={heroTarget.targetLufs} />
+                      <TruePeakMeter label={t("hero.consoleCeiling")} />
+                    </div>
+                  ) : null;
+                })()}
+              </div>
             </div>
           ) : null}
         </div>
@@ -195,21 +255,39 @@ export default function HomeClient() {
         </section>
       ) : null}
 
-      <section id="features" className="reveal reveal-delay-1 mt-32 scroll-mt-24 border-t border-border-subtle pt-20">
+      <section id="features" className="reveal reveal-delay-1 mt-24 scroll-mt-28 pt-4">
         <SectionHeading eyebrow={t("features.eyebrow")} title={t("features.title")} />
-        {/* Editorial list, not six illustrated cards — a thin divider
-            between rows carries the structure, typography carries the
-            hierarchy. */}
-        <div className="mt-8 grid divide-y divide-border-subtle border-t border-border-subtle sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-3">
-          {FEATURE_KEYS.map((k, idx) => (
-            <article key={k} className="py-7 pr-6 sm:px-6 sm:first:pl-0">
-              <p className="relative m-0 font-mono text-[11px] uppercase tracking-[0.16em] text-text-secondary">
-                {String(idx + 1).padStart(2, "0")} — {t(`features.${k}.eyebrow`)}
-              </p>
-              <h3 className="relative mt-2.5 text-xl font-semibold text-text-primary">{t(`features.${k}.title`)}</h3>
-              <p className="relative mt-2.5 text-sm leading-relaxed text-text-secondary">{t(`features.${k}.body`)}</p>
-            </article>
-          ))}
+
+        {/* Asymmetrical bento rather than six equal cards in a 3×2 grid:
+            the first and fourth entries take a double-width cell, so the
+            eye moves in a Z rather than scanning a uniform table. Every
+            span resets to a single column below md — an asymmetric grid
+            that survives to phone width is just a broken layout. */}
+        <div className="mt-10 grid grid-cols-1 gap-3 md:grid-cols-6">
+          {FEATURE_KEYS.map((k, idx) => {
+            const wide = idx === 0 || idx === 3;
+            return (
+              <article
+                key={k}
+                className={`group flex flex-col rounded-[1.75rem] bg-black/[0.035] p-7 ring-1 ring-inset ring-black/[0.05] transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-black/[0.055] sm:p-9 ${
+                  wide ? "md:col-span-4" : "md:col-span-2"
+                }`}
+              >
+                <p
+                  className="m-0 font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary"
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                >
+                  {String(idx + 1).padStart(2, "0")} — {t(`features.${k}.eyebrow`)}
+                </p>
+                <h3 className="mt-5 font-[var(--font-title)] text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] text-text-primary">
+                  {t(`features.${k}.title`)}
+                </h3>
+                <p className="mt-3.5 max-w-[46ch] text-[15px] leading-[1.6] text-text-secondary" style={{ textWrap: "pretty" }}>
+                  {t(`features.${k}.body`)}
+                </p>
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -219,128 +297,232 @@ export default function HomeClient() {
           <main>'s max-w-[1280px] via the classic 100vw + translate-x
           trick; valid here specifically because every section is
           horizontally centered in the viewport (main is mx-auto). */}
-      <section className="reveal relative mt-32 pt-20 pb-20">
-        <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-black/[0.03]" aria-hidden="true" />
+      <section className="reveal relative mt-24 pb-[4.5rem] pt-[4.5rem]">
+        <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-black/[0.035]" aria-hidden="true" />
         <SectionHeading eyebrow={t("gallery.eyebrow")} title={t("gallery.title")} />
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+        <div className="mt-10 grid gap-4 sm:grid-cols-3">
           {GALLERY.map((img) => (
             <Link key={img.slug} href={`/blog/${img.slug}`} className="group relative block">
-              <div className="relative h-56 w-full overflow-hidden rounded-xl">
-                <Image
-                  src={img.src}
-                  alt={t(img.captionKey)}
-                  fill
-                  sizes="(max-width: 640px) 100vw, 33vw"
-                  loading="lazy"
-                  className="object-cover transition duration-500 group-hover:scale-105"
-                />
+              {/* The image is a seated core, not a bare rectangle — same
+                  tray construction as the panels elsewhere. */}
+              <div className="bezel !p-1.5">
+                <div className="relative h-64 w-full overflow-hidden rounded-[calc(2rem-0.375rem)]">
+                  <Image
+                    src={img.src}
+                    alt={t(img.captionKey)}
+                    fill
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                    loading="lazy"
+                    className="object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[1.06]"
+                  />
+                </div>
               </div>
-              <p className="mt-3 text-sm font-medium text-text-primary">{t(img.captionKey)}</p>
-              <span className="mt-0.5 block text-xs text-text-secondary group-hover:text-accent">Read the guide →</span>
+              <p className="mt-5 text-[15px] font-medium leading-snug text-text-primary">{t(img.captionKey)}</p>
+              <span className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors group-hover:text-accent">
+                Read the guide
+                <span
+                  aria-hidden="true"
+                  className="transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-1"
+                >
+                  →
+                </span>
+              </span>
             </Link>
           ))}
         </div>
       </section>
 
-      <section id="pricing" ref={pricingSectionRef} className="reveal mt-32 scroll-mt-24 border-t border-border-subtle pt-20">
+      <section id="pricing" ref={pricingSectionRef} className="reveal mt-24 scroll-mt-28 pt-4">
         <SectionHeading eyebrow={t("pricing.eyebrow")} title={t("pricing.title")} subtitle={t("pricing.subtitle")} />
 
-        {/* Thin borders + typography, no colorful glowing cards — the
-            featured plan gets a heavier (2px, full-height) border instead
-            of a gradient/glow treatment. */}
-        <div className="mt-9 grid gap-px overflow-hidden rounded-2xl border border-border-subtle bg-border-subtle lg:grid-cols-3">
+        {/* Monthly / annual switch. Segmented control rather than an
+            on-off toggle: a toggle leaves "which side is which" to a
+            label the user has to read anyway, while two labelled
+            segments make the current state and the alternative both
+            visible at once. role=radiogroup (not two buttons) so it is
+            announced and arrow-key navigable as one control. */}
+        <div className="mt-10 flex flex-wrap items-center gap-4">
+          <div
+            role="radiogroup"
+            aria-label={t("pricing.billingLabel")}
+            className="inline-flex rounded-full bg-black/[0.055] p-1"
+          >
+            {BILLING_PERIODS.map((period) => (
+              <button
+                key={period}
+                type="button"
+                role="radio"
+                aria-checked={billing === period}
+                onClick={() => setBilling(period)}
+                className={`rounded-full px-5 py-2 text-[13px] font-semibold transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+                  billing === period ? "bg-bg text-text-primary shadow-[0_1px_2px_rgba(36,32,26,0.06),0_6px_16px_-8px_rgba(36,32,26,0.2)]" : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {t(`pricing.billing.${period}`)}
+              </button>
+            ))}
+          </div>
+          <span className="text-[13px] text-text-secondary">{t("pricing.annualSaving")}</span>
+        </div>
+
+        {/* Each plan is its own seated panel rather than four cells
+            sharing one hairline table. Fixed-height header and blurb
+            blocks mean the feature lists all start at the same Y across
+            columns, and the CTA is pinned to the bottom (mt-auto) so the
+            buttons form one clean line no matter how many features a
+            plan lists. */}
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {PLAN_ORDER.map((key) => {
             const plan = PLANS[key];
-            const isFeatured = key === "pro";
+            const isFeatured = key === "studio";
+            const pricingFor = planPricing(plan, billing);
             return (
-              <div key={key} className={`relative bg-bg p-8 ${isFeatured ? "ring-1 ring-inset ring-text-primary" : ""}`}>
-                {isFeatured ? (
-                  <span className="absolute right-6 top-6 rounded-full bg-text-primary px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-bg">
-                    {t("pricing.badge")}
-                  </span>
-                ) : null}
+              <div key={key} className={`bezel ${isFeatured ? "bg-text-primary/[0.08]" : ""}`}>
+                <div className="bezel-core relative flex h-full flex-col p-7 sm:p-8">
+                  {isFeatured ? (
+                    <span className="absolute right-6 top-7 rounded-full bg-text-primary px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-bg">
+                      {t("pricing.badge")}
+                    </span>
+                  ) : null}
 
-                <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary">{plan.label}</p>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-5xl font-semibold text-text-primary">{plan.price}</span>
-                  {plan.period ? <span className="text-sm text-text-secondary">{plan.period}</span> : null}
-                </div>
-                <p className="mt-3 text-sm leading-relaxed text-text-secondary">{plan.blurb}</p>
+                  <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary">{plan.label}</p>
 
-                <div className="mt-6 border-t border-border-subtle" />
+                  <div className="mt-5 flex h-[52px] items-baseline gap-2">
+                    <span
+                      className="font-[var(--font-title)] text-[42px] font-semibold leading-none tracking-[-0.04em] text-text-primary"
+                      style={{ fontVariantNumeric: "tabular-nums" }}
+                    >
+                      {pricingFor.price}
+                    </span>
+                    {pricingFor.period ? <span className="text-sm text-text-secondary">{pricingFor.period}</span> : null}
+                  </div>
 
-                <ul className="mt-5 flex flex-col gap-2.5">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2.5 text-sm text-text-primary">
-                      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-text-primary">
-                        <IconCheck />
+                  {/* Fixed height whether or not a per-month line exists,
+                      so the blurb and feature list below stay on the same
+                      baseline across all four columns — and so nothing
+                      shifts vertically when the billing toggle flips. */}
+                  <p className="m-0 h-[18px] text-[12px] text-text-secondary">
+                    {pricingFor.perMonth ? t("pricing.perMonthEquivalent").replace("{price}", pricingFor.perMonth) : ""}
+                  </p>
+
+                  <p className="mt-3 h-[44px] text-[14px] leading-[1.5] text-text-secondary">{plan.blurb}</p>
+
+                  <ul className="mt-6 flex flex-col gap-3">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-3 text-[14px] leading-[1.45] text-text-primary">
+                        <span className="mt-[3px] flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+                          <IconCheck />
+                        </span>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="mt-auto pt-8">
+                    <Link
+                      href={CTA.signup}
+                      onClick={() =>
+                        handleCtaClick(key === "free" ? "pricing_free_cta" : `pricing_${key}_cta`, "homepage_pricing", {
+                          billing,
+                          item: pricingFor.item,
+                        })
+                      }
+                      className={`group flex items-center justify-between rounded-full py-2 pl-6 pr-2 text-sm font-semibold transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] ${
+                        isFeatured ? "bg-text-primary text-bg" : "bg-black/[0.055] text-text-primary"
+                      }`}
+                    >
+                      {key === "free" ? t("pricing.freeCta") : t("pricing.subCta")}
+                      <span
+                        aria-hidden="true"
+                        className={`flex h-9 w-9 items-center justify-center rounded-full text-sm transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px ${
+                          isFeatured ? "bg-bg/15" : "bg-black/[0.06]"
+                        }`}
+                      >
+                        ↗
                       </span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  href={CTA.signup}
-                  onClick={() => handleCtaClick(key === "free" ? "pricing_free_cta" : `pricing_${key}_cta`, "homepage_pricing")}
-                  className={`mt-6 block rounded-full px-6 py-3.5 text-center text-sm font-semibold transition hover:scale-[1.02] active:scale-[0.98] ${
-                    isFeatured ? "bg-text-primary text-bg hover:opacity-85" : "border border-border-subtle text-text-primary hover:border-text-primary/40"
-                  }`}
-                >
-                  {key === "free" ? t("pricing.freeCta") : t("pricing.subCta")}
-                </Link>
-                {key !== "free" ? <p className="mt-2.5 text-center text-[11px] text-text-secondary">{t("pricing.subReassurance")}</p> : null}
+                    </Link>
+                    {key !== "free" ? (
+                      <p className="mt-3 text-center text-[11px] text-text-secondary">{t("pricing.subReassurance")}</p>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             );
           })}
         </div>
 
-        <Link href="/ai-mastering-online" className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-text-primary hover:text-accent">
+        <Link
+          href="/ai-mastering-online"
+          className="group mt-8 inline-flex items-center gap-2 text-sm font-medium text-text-primary transition-colors hover:text-accent"
+        >
           {t("pricing.compareLink")}
+          <span aria-hidden="true" className="transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-1">
+            →
+          </span>
         </Link>
       </section>
 
-      <section id="how-to" className="reveal reveal-delay-2 relative mt-32 scroll-mt-24 pt-20 pb-20">
-        <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-black/[0.03]" aria-hidden="true" />
+      <section id="how-to" className="reveal reveal-delay-2 relative mt-24 scroll-mt-28 pb-[4.5rem] pt-[4.5rem]">
+        <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-black/[0.035]" aria-hidden="true" />
         <SectionHeading eyebrow={t("howTo.eyebrow")} title={t("howTo.title")} subtitle={t("howTo.subtitle")} />
 
         {/* Signal-chain layout — a thin connecting rule behind the steps,
             a pipeline rather than a disconnected checklist. */}
-        <div className="relative mt-9 grid grid-cols-2 gap-x-2.5 gap-y-6 sm:grid-cols-3 lg:grid-cols-5">
-          <div className="pointer-events-none absolute inset-x-0 top-[18px] hidden h-px bg-border-subtle lg:block" aria-hidden="true" />
+        <div className="relative mt-10 grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="pointer-events-none absolute inset-x-0 top-[21px] hidden h-px bg-black/[0.09] lg:block" aria-hidden="true" />
           {STEP_KEYS.map((k, idx) => (
             <div key={k} className="relative">
-              <div className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle bg-bg font-mono text-xs font-semibold text-text-primary">
+              <div
+                className="relative flex h-11 w-11 items-center justify-center rounded-full bg-bg font-mono text-[13px] font-semibold text-text-primary shadow-[0_1px_2px_rgba(36,32,26,0.05),0_8px_20px_-8px_rgba(36,32,26,0.18)] ring-1 ring-inset ring-black/[0.06]"
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
                 {idx + 1}
               </div>
-              <h3 className="m-0 mt-3 text-[13px] font-semibold text-text-primary">{t(`howTo.${k}.title`)}</h3>
-              <p className="mt-1 text-xs leading-snug text-text-secondary">{t(`howTo.${k}.body`)}</p>
+              <h3 className="m-0 mt-5 text-[15px] font-semibold leading-snug text-text-primary">{t(`howTo.${k}.title`)}</h3>
+              <p className="mt-2 text-[13px] leading-[1.55] text-text-secondary" style={{ textWrap: "pretty" }}>
+                {t(`howTo.${k}.body`)}
+              </p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="reveal mt-32 border-t border-border-subtle pt-20">
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <p className="m-0 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-              <span className="h-px w-5 bg-accent" aria-hidden="true" />
-              {t("crossPromo.eyebrow")}
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-text-primary sm:text-3xl">{t("crossPromo.title")}</h2>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-text-secondary">{t("crossPromo.body")}</p>
+      <section className="reveal mt-24">
+        <div className="bezel">
+          <div className="bezel-core flex flex-col items-start justify-between gap-7 p-9 sm:flex-row sm:items-center sm:p-12">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full bg-black/[0.045] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary">
+                <span className="h-1 w-1 rounded-full bg-accent" aria-hidden="true" />
+                {t("crossPromo.eyebrow")}
+              </span>
+              <h2 className="mt-5 font-[var(--font-title)] text-[30px] font-semibold leading-[1.08] tracking-[-0.03em] text-text-primary sm:text-[38px]">
+                {t("crossPromo.title")}
+              </h2>
+              <p className="mt-3 max-w-[48ch] text-[15px] leading-[1.6] text-text-secondary" style={{ textWrap: "pretty" }}>
+                {t("crossPromo.body")}
+              </p>
+            </div>
+            <Link
+              href="/chord-detector"
+              className="group flex shrink-0 items-center gap-3 rounded-full bg-black/[0.055] py-2 pl-6 pr-2 text-sm font-semibold text-text-primary transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+            >
+              {t("crossPromo.cta")}
+              <span
+                aria-hidden="true"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.06] text-sm transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px"
+              >
+                ↗
+              </span>
+            </Link>
           </div>
-          <Link href="/chord-detector" className="shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-text-primary hover:text-accent">
-            {t("crossPromo.cta")}
-          </Link>
         </div>
       </section>
 
       <GenreShowcase />
 
-      <section id="faq" className="reveal mt-32 scroll-mt-24 border-t border-border-subtle pt-20">
+      <section id="faq" className="reveal mt-24 scroll-mt-28">
         <SectionHeading eyebrow={t("faq.eyebrow")} title={t("faq.title")} />
-        <div className="mt-8 columns-1 sm:columns-2 sm:gap-12">
+        <div className="mt-10 columns-1 sm:columns-2 sm:gap-14">
           {FAQ_KEYS.map((k) => (
             <FaqItem key={k} t={t} qKey={k} />
           ))}
@@ -351,13 +533,15 @@ export default function HomeClient() {
           the last white section) instead of ending on two whites in a
           row — same full-bleed tint technique as Gallery/How-to/Genre
           Showcase. */}
-      <section id="contact" className="reveal relative mt-32 scroll-mt-24 pt-20 pb-20">
-        <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-black/[0.03]" aria-hidden="true" />
-        <SectionHeading eyebrow={t("contact.eyebrow")} title={t("contact.title")} />
-        <p className="mt-4 max-w-xl text-base leading-relaxed text-text-secondary">{t("contact.body")}</p>
-        <p className="mt-4 text-sm text-text-primary">
+      <section id="contact" className="reveal relative mt-24 scroll-mt-28 pb-[4.5rem] pt-[4.5rem]">
+        <div className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-black/[0.035]" aria-hidden="true" />
+        <SectionHeading eyebrow={t("contact.eyebrow")} title={t("contact.title")} subtitle={t("contact.body")} />
+        <p className="mt-8 text-[15px] text-text-primary">
           {t("contact.emailLabel")}:{" "}
-          <a href="mailto:studio@auralithforge.app" className="text-text-primary underline decoration-border-subtle underline-offset-4 hover:text-accent">
+          <a
+            href="mailto:studio@auralithforge.app"
+            className="text-text-primary underline decoration-black/20 underline-offset-[5px] transition-colors hover:text-accent hover:decoration-accent/40"
+          >
             studio@auralithforge.app
           </a>
         </p>
