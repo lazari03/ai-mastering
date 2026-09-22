@@ -155,7 +155,7 @@ export default function ProcessingSummary({ result }) {
         {qc ? (
           <span
             className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${
-              qc.passed ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-accent/50 bg-accent/10 text-accent"
+              qc.passed ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700" : "border-accent/50 bg-accent/10 text-accent"
             }`}
           >
             QC: {qc.passed ? "Passed" : `${qc.fail_count} failing`}
@@ -181,7 +181,7 @@ export default function ProcessingSummary({ result }) {
             ))}
           </div>
           {ab ? (
-            <p className={`mt-2.5 text-[11px] ${ab.improved ? "text-emerald-300" : "text-accent"}`}>
+            <p className={`mt-2.5 text-[11px] ${ab.improved ? "text-emerald-700" : "text-accent"}`}>
               {ab.improved ? "✓ This master measurably improved on the source." : "⚠ "}
               {!ab.improved && ab.verdict_reasons?.length ? ab.verdict_reasons.join(" ") : null}
             </p>

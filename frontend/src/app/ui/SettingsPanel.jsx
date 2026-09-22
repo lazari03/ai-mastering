@@ -212,7 +212,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
           ) : null}
         </label>
 
-        {error ? <p className="m-0 text-sm text-red-300">{error}</p> : null}
+        {error ? <p className="m-0 text-sm text-red-700">{error}</p> : null}
         {passwordStatus ? <p className="m-0 text-sm text-accent">{passwordStatus}</p> : null}
 
         <button
@@ -274,7 +274,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
       </div>
 
       <div className="rounded-2xl border border-red-500/25 bg-red-500/[0.04] p-5">
-        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-red-300">{t("settings.dangerZone")}</h2>
+        <h2 className="m-0 text-xs uppercase tracking-[0.14em] text-red-700">{t("settings.dangerZone")}</h2>
         <p className="mt-2 text-sm text-text-secondary">{t("settings.dangerBody")}</p>
 
         {!deleteOpen ? (
@@ -284,7 +284,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
               clearError();
               setDeleteOpen(true);
             }}
-            className="mt-3 rounded-full border border-red-500/40 bg-red-500/10 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-red-300 hover:bg-red-500/20"
+            className="mt-3 rounded-full border border-red-500/40 bg-red-500/10 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-red-700 hover:bg-red-500/20"
           >
             {t("settings.deleteAccount")}
           </button>
@@ -319,13 +319,13 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
               />
             </label>
 
-            {error ? <p className="m-0 text-sm text-red-300">{error}</p> : null}
+            {error ? <p className="m-0 text-sm text-red-700">{error}</p> : null}
 
             <div className="flex flex-wrap gap-2">
               <button
                 type="submit"
                 disabled={!canDelete || busy}
-                className="flex items-center gap-2 rounded-full border border-red-500/50 bg-red-500/20 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-red-200 hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex items-center gap-2 rounded-full border border-red-500/50 bg-red-500/20 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-red-700 hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {busy ? (
                   <>

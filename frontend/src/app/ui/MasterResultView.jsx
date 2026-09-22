@@ -277,10 +277,10 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
             {t("result.viewAllMasters")}
           </button>
         </div>
-        {downloadError ? <p className="mt-2 text-xs text-red-300">⚠ {downloadError}</p> : null}
+        {downloadError ? <p className="mt-2 text-xs text-red-700">⚠ {downloadError}</p> : null}
 
         {(job.source_warnings || []).map((warning) => (
-          <div key={warning} className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200">
+          <div key={warning} className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-900">
             ⚠ {warning}
           </div>
         ))}

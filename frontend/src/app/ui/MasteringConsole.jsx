@@ -603,7 +603,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                         <button
                           type="button"
                           onClick={() => deletePreset(selectedPreset)}
-                          className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-300 hover:border-red-400/50"
+                          className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-700 hover:border-red-400/50"
                         >
                           {t("console.remove")}
                         </button>
@@ -680,7 +680,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                           </button>
                         ) : null}
                       </div>
-                      {importError ? <span className="mt-2 block text-[11px] text-red-300">⚠ {importError}</span> : null}
+                      {importError ? <span className="mt-2 block text-[11px] text-red-700">⚠ {importError}</span> : null}
                     </div>
                   </div>
                 </section>
@@ -812,7 +812,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
           </p>
         ) : null}
         {status ? <p className="mt-3 text-sm text-accent">{status}</p> : null}
-        {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+        {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
       </div>
 
       {/* sticky only from lg: up, where this sits beside the wizard in the
@@ -838,7 +838,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
         {!isSubmitting && result ? (
           <div className="mt-4 flex flex-col gap-3.5">
             {(result.source_warnings || []).map((warning) => (
-              <div key={warning} className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200">
+              <div key={warning} className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-900">
                 ⚠ {warning}
               </div>
             ))}
@@ -892,7 +892,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
               >
                 {downloading ? t("console.downloading") : t("console.downloadMaster")}
               </button>
-              {downloadError ? <p className="mt-2 text-xs text-red-300">⚠ {downloadError}</p> : null}
+              {downloadError ? <p className="mt-2 text-xs text-red-700">⚠ {downloadError}</p> : null}
             </div>
 
             <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
@@ -926,7 +926,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 </button>
               </div>
 
-              {codecPreviewError ? <p className="mt-2 text-xs text-red-300">{codecPreviewError}</p> : null}
+              {codecPreviewError ? <p className="mt-2 text-xs text-red-700">{codecPreviewError}</p> : null}
 
               {codecPreview ? (
                 <div className="mt-3 space-y-3">

@@ -147,7 +147,7 @@ export default function MyMastersPanel() {
       <h1 className="m-0 text-[26px]">{t("myMasters.title")}</h1>
       <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t("myMasters.subtitle")}</p>
 
-      {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
+      {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
       {jobs === null && !error ? <LoadingBlock /> : null}
       {jobs?.length === 0 ? <p className="mt-4 text-xs text-text-secondary">{t("myMasters.empty")}</p> : null}
 
@@ -216,7 +216,7 @@ export default function MyMastersPanel() {
                     {job.created_at ? new Date(job.created_at).toLocaleString() : ""}
                   </p>
                 </div>
-                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${expired ? "border-red-400/30 text-red-300" : "border-border-subtle text-text-secondary"}`}>
+                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${expired ? "border-red-400/30 text-red-700" : "border-border-subtle text-text-secondary"}`}>
                   {formatExpiry(t, job.expires_at)}
                 </span>
               </Link>
@@ -259,7 +259,7 @@ export default function MyMastersPanel() {
                         type="button"
                         onClick={() => handleDelete(job.job_id)}
                         disabled={isBusy}
-                        className="rounded-lg border border-red-400/50 bg-red-500/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-200 disabled:opacity-50"
+                        className="rounded-lg border border-red-400/50 bg-red-500/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-700 disabled:opacity-50"
                       >
                         {isBusy ? t("myMasters.deleting") : t("myMasters.confirmDelete")}
                       </button>
@@ -275,7 +275,7 @@ export default function MyMastersPanel() {
                     <button
                       type="button"
                       onClick={() => setConfirmDeleteId(job.job_id)}
-                      className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-300 hover:border-red-400/50"
+                      className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-700 hover:border-red-400/50"
                     >
                       {t("myMasters.delete")}
                     </button>
@@ -283,8 +283,8 @@ export default function MyMastersPanel() {
                 </div>
               ) : null}
 
-              {shareErrors[job.job_id] ? <p className="mt-2 text-xs text-red-300">{shareErrors[job.job_id]}</p> : null}
-              {downloadErrors[job.job_id] ? <p className="mt-2 text-xs text-red-300">⚠ {downloadErrors[job.job_id]}</p> : null}
+              {shareErrors[job.job_id] ? <p className="mt-2 text-xs text-red-700">{shareErrors[job.job_id]}</p> : null}
+              {downloadErrors[job.job_id] ? <p className="mt-2 text-xs text-red-700">⚠ {downloadErrors[job.job_id]}</p> : null}
 
               {share ? (
                 <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.045] p-3">

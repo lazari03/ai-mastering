@@ -104,7 +104,7 @@ export default function PublicLufsMeter() {
       </button>
       <p className="mt-1.5 text-[11px] text-zinc-500">{t("lufsMeter.alwaysFree")}</p>
 
-      {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
 
       <LufsMeterResult analysis={analysis} />
 

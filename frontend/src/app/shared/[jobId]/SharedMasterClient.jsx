@@ -92,7 +92,7 @@ export default function SharedMasterClient({ jobId, token }) {
               t("shared.download")
             )}
           </button>
-          {downloadError ? <p className="mt-2 text-xs text-red-300">⚠ {downloadError}</p> : null}
+          {downloadError ? <p className="mt-2 text-xs text-red-700">⚠ {downloadError}</p> : null}
 
           <p className="mt-3 text-[11px] text-zinc-500">
             {remaining ? t("shared.expiresIn", { remaining }) : t("shared.aboutToExpire")}

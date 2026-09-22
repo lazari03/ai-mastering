@@ -48,4 +48,38 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_jobs_uid_created_at ON jobs(uid, created_at DESC);
 `);
 
+// Additive column migrations.
+//
+// The CREATE TABLE above is `IF NOT EXISTS`, which means that on any
+// database that already exists — i.e. every deployed one — adding a
+// column to that statement does absolutely nothing. The column would
+// appear on a fresh dev machine and be silently missing in production,
+// where the first INSERT naming it fails at runtime rather than at
+// deploy. So new columns have to be added here instead, guarded against
+// the ones already present.
+//
+// Deliberately additive only: no drops, no type changes, no backfill of
+// destructive defaults. Existing rows get NULL for a new column, which
+// every reader below already tolerates (fromJson(null) -> null).
+const EXPECTED_COLUMNS = {
+  // What the user actually chose, so a finished master can be reopened
+  // and adjusted with their settings intact. Without these, "tweak this
+  // master" can only ever guess at the slider positions that produced it.
+  tweaks: "TEXT",
+  category: "TEXT",
+  flavour: "TEXT",
+  // Absolute-dB input/output band levels, matched deltas and guardrail
+  // results (see backend/ai_mastering/band_levels.py). Persisted so the
+  // adjust flow can show what the master actually did to the track
+  // instead of asking the user to guess from listening alone.
+  level_diagnostics: "TEXT",
+};
+
+const existingColumns = new Set(db.prepare("PRAGMA table_info(jobs)").all().map((c) => c.name));
+for (const [column, type] of Object.entries(EXPECTED_COLUMNS)) {
+  if (!existingColumns.has(column)) {
+    db.exec(`ALTER TABLE jobs ADD COLUMN ${column} ${type}`);
+  }
+}
+
 export default db;

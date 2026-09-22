@@ -151,7 +151,7 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
             </label>
           ) : null}
 
-          {error ? <p className="m-0 text-sm text-red-300">{error}</p> : null}
+          {error ? <p className="m-0 text-sm text-red-700">{error}</p> : null}
 
           <button
             type="submit"

@@ -82,7 +82,7 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
               type="button"
               onClick={onRemove}
               aria-label={`Remove ${label}`}
-              className="shrink-0 rounded-full border border-border-subtle bg-black/[0.045] px-2 py-1 text-xs text-text-secondary hover:border-red-400/50 hover:text-red-300"
+              className="shrink-0 rounded-full border border-border-subtle bg-black/[0.045] px-2 py-1 text-xs text-text-secondary hover:border-red-400/50 hover:text-red-700"
             >
               ✕
             </button>
@@ -103,7 +103,7 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
             <button
               type="button"
               onClick={onRemove}
-              className="rounded-full border border-border-subtle bg-black/[0.045] px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-red-400/50 hover:text-red-300"
+              className="rounded-full border border-border-subtle bg-black/[0.045] px-3 py-1 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-red-400/50 hover:text-red-700"
             >
               Remove
             </button>

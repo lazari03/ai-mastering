@@ -351,7 +351,7 @@ export default function PlansPanel() {
         </>
       )}
       {changeStatus ? <p className="mt-3 text-sm text-accent">{changeStatus}</p> : null}
-      {checkoutError ? <p className="mt-3 text-sm text-red-300">{checkoutError}</p> : null}
+      {checkoutError ? <p className="mt-3 text-sm text-red-700">{checkoutError}</p> : null}
     </div>
   );
 }

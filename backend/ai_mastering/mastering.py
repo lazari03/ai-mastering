@@ -20,6 +20,8 @@ from .audio_utils import (
 from .bus_processing import _bus_process, _bus_process_pro
 from .dsp_filters import _build_stereo_from_ms, _deess, _lr4_highpass, _lr4_lowpass, _oversampled_distortion, _process_band, _split_bands, _split_bands_pro
 from .mastering_params import _apply_user_tweaks, compute_processing_params
+from .band_levels import band_levels_db, loudness_matched_band_deltas
+from .output_validation import validate_render
 from .quality_control import InvalidAudioError, rebalance_channels, run_quality_control, validate_input_signal
 from .section_detection import _db_to_lin, _detect_song_sections, _section_gain_db_envelope
 from .stem_separation import _is_stem_separation_requested, _process_accompaniment_stem, _process_vocal_stem, _separate_vocal_stems
@@ -571,9 +573,64 @@ def master_track(
 
     decision_report = build_decision_report(processing_params, limiter_report, overshoot_corrections, transient_qc)
 
+    # ---------------------------------------------------------------------
+    # Absolute-level diagnostics (internal; not part of the customer flow).
+    #
+    # Measured on the ACTUAL rendered signal with the same function used on
+    # the input, at matched loudness. This exists because every other band
+    # measurement in this pipeline is a SHARE of total energy, and shares
+    # are coupled: they sum to 1.0, so a render that only cuts bass
+    # mechanically inflates every other band's number. Measured on a
+    # synthetic case where only the low end moved, the share metric
+    # reported +15.03 dB of "presence boost" that did not happen, while the
+    # absolute metric correctly reported 0.00 dB. The share-based overshoot
+    # check above (PRESENCE_VERIFY_BANDS) is therefore known to mis-fire in
+    # exactly that situation and is left in place only because replacing it
+    # changes rendered audio; this block is the correct measurement running
+    # alongside it, reported but not yet acted upon.
+    #
+    # Read-only: nothing here alters the exported signal.
+    # ---------------------------------------------------------------------
+    try:
+        guardrail_deltas = loudness_matched_band_deltas(
+            source_audio=audio_stereo,
+            rendered_audio=stereo_processed,
+            sr=sr,
+            source_lufs=float(analysis_before["integrated_lufs"]),
+            rendered_lufs=float(analysis_after["integrated_lufs"]),
+        )
+        guardrail_result = validate_render(
+            band_deltas_db=guardrail_deltas,
+            # Keyed strictly, NOT with a permissive default. An earlier
+            # version read "true_peak_dbtp" (the wrong name — the analysis
+            # dict calls it "true_peak_db") and silently fell back to
+            # -99.0, which meant the true-peak guardrail could never fire
+            # and always reported a pass. A dead guardrail that reports
+            # success is worse than no guardrail, so a missing key now
+            # raises into the except below and shows up as
+            # status="unavailable" instead of as a false pass.
+            true_peak_dbtp=float(analysis_after["true_peak_db"]),
+            rendered_lufs=float(analysis_after["integrated_lufs"]),
+            # This track's own target, not a fixed platform number.
+            target_lufs=float(processing_params["target_lufs"]),
+            transient_delta=float(transient_score_delta),
+        )
+        level_diagnostics = {
+            "status": "ok",
+            "method": "STFT n_fft=4096 hop=1024, mean gated frame power per band, dB; render gain-matched to source LUFS",
+            "input_band_levels_db": {k: round(v, 2) for k, v in band_levels_db(audio_stereo, sr).items()},
+            "output_band_levels_db": {k: round(v, 2) for k, v in band_levels_db(stereo_processed, sr).items()},
+            "loudness_matched_band_deltas_db": guardrail_deltas,
+            "guardrails": guardrail_result.as_dict(),
+            "stages_to_reduce_if_rerendering": guardrail_result.blamed_stages(),
+        }
+    except Exception as exc:  # never let diagnostics break a real render
+        level_diagnostics = {"status": "unavailable", "reason": str(exc)[:300]}
+
     return {
         "analysis_before": analysis_before,
         "analysis_after": analysis_after,
+        "level_diagnostics": level_diagnostics,
         "processing_applied": processing_applied,
         "ab_gain_match": _ab_gain_match(analysis_before["integrated_lufs"], analysis_after["integrated_lufs"]),
         "ab_analysis": ab_analysis,
