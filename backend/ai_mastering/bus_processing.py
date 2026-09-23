@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import numpy as np
-import pyloudnorm as pyln
-from pedalboard import Compressor, Limiter, Pedalboard
+from pedalboard import Compressor, Pedalboard
 from scipy.ndimage import minimum_filter1d
 from scipy.signal import lfilter, resample_poly
 
-from .audio_utils import EPS, _db, _true_peak_db
+from .analysis.loudness import FastMeter
+from .audio_utils import EPS, _db, _oversample4, _true_peak_db
 
 
 def _soft_clip(stereo: np.ndarray, ceiling_db: float = -0.3, oversample: int = 4, drive_db: float = 0.0) -> np.ndarray:
@@ -94,51 +94,49 @@ def _recover_undershot_loudness(
 def _true_peak_limiter(
     stereo: np.ndarray, sr: int, ceiling_db: float = -1.0, lookahead_ms: float = 3.0, release_ms: float = 60.0, oversample: int = 4
 ) -> np.ndarray:
-    """Gain-only lookahead true-peak limiter. Unlike pedalboard.Limiter (which
-    applies makeup gain toward its threshold — see preset_dsp_engine.py for
-    where that bit us), this can only ever turn gain
-    down, and it works on an oversampled signal so inter-sample peaks are
-    actually caught, not just the peak of the sampled points. Professional
-    tier only — the free tier's pedalboard.Limiter-based path is untouched."""
+    """Gain-only lookahead true-peak limiter. Unlike pedalboard.Limiter,
+    this can only ever turn gain down. Peaks are DETECTED on a 4x
+    oversampled signal (inter-sample peaks are caught), but the gain curve
+    is computed and applied at the base rate: each base-rate gain is the
+    minimum required over its 4 oversampled sub-samples, which is at least
+    as conservative as applying it at 4x and avoids resampling the audio
+    back down (and 4x-rate filtering) on every call. Used by both tiers
+    (see _bus_process for why pedalboard.Limiter was retired).
+    `oversample` is kept for signature compatibility (fixed at 4)."""
     ceiling = float(10.0 ** (ceiling_db / 20.0))
-    up = resample_poly(stereo, oversample, 1, axis=0)
-    up_sr = sr * oversample
-
-    # Linked stereo detection: one gain curve for both channels, from
-    # whichever channel is louder at each instant.
+    stereo = np.asarray(stereo, dtype=np.float32)
+    up = _oversample4(stereo)
     abs_up = np.max(np.abs(up), axis=1)
-    required_gain = np.minimum(1.0, ceiling / (abs_up + EPS))
+    if float(abs_up.max()) <= ceiling:
+        # Nothing to limit: return the input untouched.
+        return stereo
+    required_up = np.minimum(1.0, ceiling / (abs_up + EPS))
+    n = stereo.shape[0]
+    required = required_up[: n * 4].reshape(n, 4).min(axis=1)
 
-    lookahead_samples = max(1, int(up_sr * lookahead_ms / 1000.0))
-    # Anticipate the peak: gain at sample i is the minimum required over the
-    # NEXT lookahead_samples, so reduction starts slightly before the peak
-    # arrives instead of reacting after the fact.
-    gain_lookahead = minimum_filter1d(required_gain, size=lookahead_samples, origin=-(lookahead_samples // 2))
-
-    # Smooth the recovery (release) side only. Taking the elementwise minimum
-    # of the raw lookahead gain and its release-smoothed version can only make
-    # the result more conservative, never less — the true-peak ceiling can't
-    # be violated by this smoothing step.
-    release_alpha = float(np.exp(-1.0 / (up_sr * release_ms / 1000.0)))
+    # Linked stereo: one gain curve for both channels. Anticipate the peak:
+    # gain at sample i is the minimum required over the NEXT lookahead
+    # window, so reduction starts before the peak arrives.
+    lookahead = max(1, int(sr * lookahead_ms / 1000.0))
+    gain_lookahead = minimum_filter1d(required, size=lookahead, origin=-(lookahead // 2))
+    # Smooth the recovery (release) side only; the elementwise minimum can
+    # only be more conservative, never violate the ceiling.
+    release_alpha = float(np.exp(-1.0 / (sr * release_ms / 1000.0)))
     released = lfilter([1 - release_alpha], [1, -release_alpha], gain_lookahead)
-    final_gain = np.minimum(gain_lookahead, released)
+    final_gain = np.minimum(gain_lookahead, released).astype(np.float32)
+    limited = stereo * final_gain[:, np.newaxis]
 
-    limited_up = up * final_gain[:, np.newaxis]
-    down = resample_poly(limited_up, 1, oversample, axis=0)[: stereo.shape[0]]
-
-    # Downsampling can reintroduce a hair of overshoot from filter ringing —
-    # one last scalar safety trim, same pattern used everywhere else in this
-    # codebase for exactly that reason.
-    true_peak_db = _true_peak_db(down)
+    # Final scalar safety trim for any residual inter-sample overshoot.
+    true_peak_db = _true_peak_db(limited)
     if true_peak_db > ceiling_db:
-        down = down * (10.0 ** ((ceiling_db - true_peak_db) / 20.0))
-    return down.astype(np.float32)
+        limited = limited * (10.0 ** ((ceiling_db - true_peak_db) / 20.0))
+    return limited.astype(np.float32)
 
 
 def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compression: bool = True) -> tuple[np.ndarray, float, dict, dict]:
-    """Professional-tier bus stage: same glue-compression/gain-staging as
-    _bus_process, but true-peak limiting via _true_peak_limiter instead of
-    pedalboard.Limiter."""
+    """Professional-tier bus stage: glue-compression/gain-staging, clipper,
+    true-peak limiting and loudness recovery (the standard tier's
+    _bus_process now uses the same gain-only limiter)."""
     stereo_pb = np.ascontiguousarray(stereo.T, dtype=np.float32)
 
     if apply_glue_compression and bool(params.get("glue_enabled", True)):
@@ -154,7 +152,7 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
         )
         stereo_pb = bus_board(stereo_pb, sr)
 
-    meter = pyln.Meter(sr)
+    meter = FastMeter(sr)
     lufs_pre = float(meter.integrated_loudness(stereo_pb.T))
     gain_db = float(params["target_lufs"] - lufs_pre)
     gain_lin = float(10.0 ** (gain_db / 20.0))
@@ -251,7 +249,7 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
         )
         stereo_pb = bus_board(stereo_pb, sr)
 
-    meter = pyln.Meter(sr)
+    meter = FastMeter(sr)
     lufs_pre = float(meter.integrated_loudness(stereo_pb.T))
     gain_db = float(params["target_lufs"] - lufs_pre)
     gain_lin = float(10.0 ** (gain_db / 20.0))
@@ -264,8 +262,17 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
     clipped = _soft_clip(pre_limiter.T, ceiling_db=-0.3).T if clipper_enabled else pre_limiter
     clipper_gain_reduction_db = float(max(0.0, _db(pre_clip_peak) - _db(float(np.max(np.abs(clipped)) + EPS)))) if clipper_enabled else 0.0
 
+    # Gain-only true-peak limiter on BOTH tiers. pedalboard.Limiter (JUCE)
+    # is not a transparent peak limiter: it contains a fixed first-stage
+    # 4:1 compressor at -10 dBFS (2 ms attack) plus make-up gain. On a
+    # -14 LUFS master that stage alone measured -4 dB at 55-120 Hz and a
+    # ~38% loss of drum punch while "limiter gain reduction" read ~0 dB —
+    # a hidden source of lost low end and softened transients.
     limiter_release_ms = float(params.get("limiter_release_ms", 120.0))
-    limiter = Pedalboard([Limiter(threshold_db=-1.0, release_ms=limiter_release_ms)])
+
+    def limiter(buf: np.ndarray, _sr: int) -> np.ndarray:
+        return _true_peak_limiter(np.asarray(buf, dtype=np.float32).T, _sr, ceiling_db=-1.0, release_ms=limiter_release_ms).T
+
     stereo_pb = limiter(np.ascontiguousarray(clipped, dtype=np.float32), sr)
 
     pre_peak = pre_clip_peak

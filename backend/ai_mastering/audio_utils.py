@@ -5,9 +5,12 @@ from pathlib import Path
 
 import librosa
 import numpy as np
-import pyloudnorm as pyln
 import soundfile as sf
-from scipy.signal import butter, resample_poly, sosfiltfilt
+from scipy.signal import butter, firwin, sosfiltfilt, upfirdn
+
+from .analysis.dynamics import bpm_confidence, clipping_evidence, peak_percentile_db
+from .analysis.loudness import FastMeter, full_loudness_analysis, loudness_series
+from .analysis.spectral import analyze_spectrum, sibilance_evidence
 
 EPS = 1e-9
 MASTER_SR = 44100
@@ -146,88 +149,48 @@ def _ab_gain_match(before_lufs: float, after_lufs: float) -> dict:
     }
 
 
+# 4x oversampling for true-peak detection: a 48-tap windowed-sinc
+# interpolator (12 taps per phase, the structure ITU-R BS.1770 Annex 2
+# describes) applied to all channels in one vectorised polyphase pass.
+# ~2x cheaper than resample_poly's default 81-tap design with the same
+# purpose; the limiter's final true-peak guard uses the same meter.
+_TP_OVERSAMPLE = 4
+_TP_TAPS = firwin(48, 0.94 / _TP_OVERSAMPLE, window=("kaiser", 7.0)) * _TP_OVERSAMPLE
+_TP_DELAY = (len(_TP_TAPS) - 1) // 2
+
+
+def _oversample4(audio: np.ndarray) -> np.ndarray:
+    """(n, ch) -> (4n, ch) interpolated, delay-compensated."""
+    x = np.asarray(audio, dtype=np.float32)
+    if x.ndim == 1:
+        x = x[:, np.newaxis]
+    up = upfirdn(_TP_TAPS.astype(np.float32), x, up=_TP_OVERSAMPLE, axis=0)
+    return up[_TP_DELAY : _TP_DELAY + x.shape[0] * _TP_OVERSAMPLE]
+
+
 def _true_peak_db(audio_stereo: np.ndarray, oversample_factor: int = 4) -> float:
-    """
-    Approximate true peak with oversampling to better capture inter-sample peaks.
-    """
-    max_peak = 0.0
-    for ch in range(audio_stereo.shape[1]):
-        channel = np.asarray(audio_stereo[:, ch], dtype=np.float32)
-        upsampled = resample_poly(channel, oversample_factor, 1)
-        ch_peak = float(np.max(np.abs(upsampled)))
-        if ch_peak > max_peak:
-            max_peak = ch_peak
-    return _db(max_peak)
+    """Approximate true peak with 4x oversampling to capture inter-sample
+    peaks (oversample_factor kept for signature compatibility)."""
+    return _db(float(np.max(np.abs(_oversample4(audio_stereo)))))
 
 
 def _short_term_lufs_series(audio_stereo: np.ndarray, sr: int) -> list[float]:
-    """
-    Compute a short-term LUFS series using 3s windows and 1s hop.
-    """
-    meter = pyln.Meter(sr)
-    window = int(3.0 * sr)
-    hop = int(1.0 * sr)
-    if audio_stereo.shape[0] < window:
+    """Short-term LUFS series: 3 s windows, 1 s hop (vectorised; see
+    analysis/loudness.py)."""
+    if audio_stereo.shape[0] < int(3.0 * sr):
         try:
-            return [float(meter.integrated_loudness(audio_stereo))]
-        except Exception:
-            mono = np.mean(audio_stereo, axis=1)
-            return [float(meter.integrated_loudness(mono))]
-
-    series: list[float] = []
-    for start in range(0, audio_stereo.shape[0] - window + 1, hop):
-        chunk = audio_stereo[start : start + window]
-        try:
-            val = float(meter.integrated_loudness(chunk))
-        except Exception:
-            val = float(meter.integrated_loudness(np.mean(chunk, axis=1)))
-        if np.isfinite(val):
-            series.append(val)
-
-    if not series:
-        try:
-            series = [float(meter.integrated_loudness(audio_stereo))]
-        except Exception:
-            series = [float(meter.integrated_loudness(np.mean(audio_stereo, axis=1)))]
-
-    return series
+            return [float(FastMeter(sr).integrated_loudness(audio_stereo))]
+        except ValueError:
+            return []
+    return loudness_series(audio_stereo, sr)[1]
 
 
 def _momentary_lufs_series(audio_stereo: np.ndarray, sr: int) -> list[float]:
-    """
-    Spec-correct momentary LUFS per ITU-R BS.1770 / EBU R128: 400ms window,
-    updated every 100ms. Distinct from _short_term_lufs_series above (that's
-    the "S" 3s-window meter also defined by the same spec) — momentary is
-    the fast-responding one mastering engineers watch for individual hits/
-    transients, short-term is the slower one for phrase-level loudness.
-    """
-    meter = pyln.Meter(sr)
-    window = int(0.4 * sr)
-    hop = int(0.1 * sr)
-    if audio_stereo.shape[0] < window:
-        try:
-            return [float(meter.integrated_loudness(audio_stereo))]
-        except Exception:
-            mono = np.mean(audio_stereo, axis=1)
-            return [float(meter.integrated_loudness(mono))]
-
-    series: list[float] = []
-    for start in range(0, audio_stereo.shape[0] - window + 1, hop):
-        chunk = audio_stereo[start : start + window]
-        try:
-            val = float(meter.integrated_loudness(chunk))
-        except Exception:
-            val = float(meter.integrated_loudness(np.mean(chunk, axis=1)))
-        if np.isfinite(val):
-            series.append(val)
-
-    if not series:
-        try:
-            series = [float(meter.integrated_loudness(audio_stereo))]
-        except Exception:
-            series = [float(meter.integrated_loudness(np.mean(audio_stereo, axis=1)))]
-
-    return series
+    """Momentary LUFS per ITU-R BS.1770 / EBU R128: 400 ms window every
+    100 ms (vectorised; see analysis/loudness.py)."""
+    if audio_stereo.shape[0] < int(0.4 * sr):
+        return []
+    return loudness_series(audio_stereo, sr)[0]
 
 
 def _smooth_envelope(signal: np.ndarray, sr: int, window_ms: float = 60.0) -> np.ndarray:
@@ -235,68 +198,6 @@ def _smooth_envelope(signal: np.ndarray, sr: int, window_ms: float = 60.0) -> np
     kernel = np.ones(window, dtype=np.float32) / float(window)
     env = np.convolve(np.abs(signal).astype(np.float32), kernel, mode="same")
     return np.maximum(env, EPS)
-
-
-def _spectral_balance_only(audio_stereo: np.ndarray, sr: int) -> dict:
-    """Just the 7-band spectral_balance share computation — same STFT/band
-    loop _analysis_from_audio uses internally, factored out so callers that
-    only need spectral shape (e.g. reference-track matching) don't pay for
-    LUFS series, tempo detection, and true-peak measurement they'll never
-    look at. See _mono_compatibility_risk_only/_loudness_range_only below
-    for the same pattern applied to two other single-field call sites."""
-    audio_stereo = _ensure_stereo(audio_stereo).astype(np.float32)
-    mono = (audio_stereo[:, 0] + audio_stereo[:, 1]) * 0.5
-
-    n_fft = 4096
-    hop = 1024
-    stft = librosa.stft(mono, n_fft=n_fft, hop_length=hop)
-    power = np.abs(stft) ** 2
-    freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
-
-    # Sum, not mean, over each band's bins — this has to be each band's
-    # *share of total spectral energy* (what every genre's
-    # target_spectral_balance in params.py is authored as: proportions that
-    # sum to ~1.0, weighted toward the mid-range for a typical commercial
-    # mix). np.mean(power[idx, :]) previously computed "average power per
-    # FFT bin" instead: since FFT bins are linearly spaced, a narrow band
-    # like sub_bass_20_60hz (4 bins at n_fft=4096/44.1kHz) gets only a
-    # handful of bins right where real music's natural spectral tilt is
-    # loudest, while brilliance_6000_20000hz (1300+ bins, mostly quiet)
-    # drags its own mean down — so the mean-per-bin metric reported sub-bass
-    # as ~80%+ of "the spectrum" on ordinary program material regardless of
-    # the actual mix, silently defeating every downstream consumer that
-    # assumes a real energy proportion: the per-band EQ correction in
-    # mastering_params.py (comparing this against target_spectral_balance),
-    # vocal_presence_estimate, _tilt_from_band_shares, and the
-    # rock_low_end_protection / upper_mid_energy gates all measured a
-    # near-constant "everything is bass" fingerprint instead of each
-    # track's actual balance. Confirmed against a real source file: this
-    # bug reported 84% sub-bass share where the correct sum-based
-    # computation gives 36%.
-    band_energy = {}
-    total_energy = 0.0
-    for band, (lo, hi) in ANALYSIS_BANDS.items():
-        idx = np.where((freqs >= lo) & (freqs < min(hi, sr / 2.0)))[0]
-        energy = float(np.sum(power[idx, :])) if idx.size else 0.0
-        band_energy[band] = energy
-        total_energy += energy
-
-    if total_energy <= EPS:
-        return {k: 0.0 for k in ANALYSIS_BANDS.keys()}
-    return {k: float(v / total_energy) for k, v in band_energy.items()}
-
-
-def _mono_compatibility_risk_only(audio_stereo: np.ndarray) -> bool:
-    """Same formula _analysis_from_audio uses for mono_compatibility_risk,
-    without the rest of a full analysis — for call sites (like
-    master_track()'s post-processing mono recheck) that only need this one
-    boolean, not LUFS series/tempo/true-peak/spectral shape too."""
-    audio_stereo = _ensure_stereo(audio_stereo).astype(np.float32)
-    left, right = audio_stereo[:, 0], audio_stereo[:, 1]
-    mono_rms = _rms((left + right) * 0.5)
-    lr_avg_rms = 0.5 * (_rms(left) + _rms(right))
-    mono_drop_db = _db(mono_rms) - _db(lr_avg_rms)
-    return bool(mono_drop_db < -3.0)
 
 
 def _transient_metrics(audio_stereo: np.ndarray, sr: int) -> dict:
@@ -388,30 +289,18 @@ def _transient_metrics(audio_stereo: np.ndarray, sr: int) -> dict:
     }
 
 
-def _loudness_range_only(audio_stereo: np.ndarray, sr: int) -> float:
-    """Same loudness_range_lu pyloudnorm call _analysis_from_audio makes,
-    without the rest of a full analysis — for call sites (like
-    master_track()'s dynamics-recovery check) that only need this one
-    number."""
-    audio_stereo = _ensure_stereo(audio_stereo).astype(np.float32)
-    meter = pyln.Meter(sr)
-    try:
-        return float(meter.loudness_range(audio_stereo))
-    except Exception:
-        return 0.0
-
-
 def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
     audio_stereo = _ensure_stereo(audio_stereo).astype(np.float32)
     left = audio_stereo[:, 0]
     right = audio_stereo[:, 1]
     mono = (left + right) * 0.5
 
-    meter = pyln.Meter(sr)
-    try:
-        integrated_lufs = float(meter.integrated_loudness(audio_stereo))
-    except Exception:
-        integrated_lufs = float(meter.integrated_loudness(mono))
+    # One K-weighting pass + one cumulative sum for integrated loudness,
+    # LRA and the momentary/short-term series (analysis/loudness.py).
+    loud = full_loudness_analysis(audio_stereo, sr)
+    integrated_lufs = float(loud["integrated_lufs"])
+    if not np.isfinite(integrated_lufs):
+        integrated_lufs = float(full_loudness_analysis(mono, sr)["integrated_lufs"])
 
     sample_peak = float(np.max(np.abs(audio_stereo)))
     peak_level_db = _db(sample_peak)
@@ -422,7 +311,11 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
     crest_factor_db = max(0.0, peak_level_db - rms_db)
     dynamic_range_db = crest_factor_db
 
-    spectral_balance = _spectral_balance_only(audio_stereo, sr)
+    # One shared STFT pass (analysis/spectral.py) supplies the legacy
+    # 7-band shares, the centroid, and the hi-res spectrum used by the
+    # SourceProfile — instead of three separate transforms.
+    spectral = analyze_spectrum(audio_stereo, sr)
+    spectral_balance = spectral["legacy_shares"]
     spectral_tilt_db_per_octave = _tilt_from_band_shares(spectral_balance)
 
     # PLR (peak-to-loudness ratio) — true peak against *integrated* loudness,
@@ -431,17 +324,8 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
     # A very low PLR (<6dB) is the classic brickwalled-master signature.
     plr_db = float(round(true_peak_db - integrated_lufs, 3))
 
-    # Spectral centroid — the "center of mass" of the spectrum in Hz, a
-    # standard single-number brightness/darkness summary distinct from
-    # spectral_tilt_db_per_octave (a fitted slope across the 7 fixed
-    # bands): centroid is unbounded and driven by exactly where energy
-    # concentrates, tilt is a broader-strokes shape descriptor.
-    try:
-        spectral_centroid_hz = float(np.mean(librosa.feature.spectral_centroid(y=mono, sr=sr)))
-        if not np.isfinite(spectral_centroid_hz):
-            spectral_centroid_hz = 0.0
-    except Exception:
-        spectral_centroid_hz = 0.0
+    # Spectral centroid — energy-weighted mean frequency over active frames.
+    spectral_centroid_hz = float(spectral["spectral_centroid_hz"])
 
     mid = (left + right) * 0.5
     side = (left - right) * 0.5
@@ -461,10 +345,11 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
             lr_correlation = 0.0
     lr_correlation = float(np.clip(lr_correlation, -1.0, 1.0))
 
-    tempo, _ = librosa.beat.beat_track(y=mono, sr=sr)
+    tempo, beat_frames = librosa.beat.beat_track(y=mono, sr=sr)
     tempo_arr = np.asarray(tempo).reshape(-1)
     tempo_val = float(tempo_arr[0]) if tempo_arr.size else 0.0
     tempo_bpm = tempo_val if np.isfinite(tempo_val) else 0.0
+    tempo_confidence = bpm_confidence(librosa.frames_to_time(beat_frames, sr=sr)) if tempo_bpm > 0 else 0.0
 
     clipping_detected = bool(np.any(np.abs(audio_stereo) >= 0.9999))
 
@@ -473,22 +358,24 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
 
     transient_metrics = _transient_metrics(audio_stereo, sr)
 
-    short_term_series = _short_term_lufs_series(audio_stereo, sr)
+    short_term_series = loud["short_term"] if audio_stereo.shape[0] >= int(3.0 * sr) else _short_term_lufs_series(audio_stereo, sr)
     short_term_lufs = float(np.mean(short_term_series)) if short_term_series else integrated_lufs
     short_term_lufs_max = float(np.max(short_term_series)) if short_term_series else integrated_lufs
     short_term_lufs_min = float(np.min(short_term_series)) if short_term_series else integrated_lufs
 
-    momentary_series = _momentary_lufs_series(audio_stereo, sr)
+    momentary_series = loud["momentary"]
     momentary_lufs = float(np.mean(momentary_series)) if momentary_series else integrated_lufs
     momentary_lufs_max = float(np.max(momentary_series)) if momentary_series else integrated_lufs
     momentary_lufs_min = float(np.min(momentary_series)) if momentary_series else integrated_lufs
 
     try:
-        loudness_range_lu = float(meter.loudness_range(audio_stereo))
+        loudness_range_lu = float(loud["loudness_range_lu"])
+        if not np.isfinite(loudness_range_lu):
+            raise ValueError("LRA undefined")
     except Exception:
         loudness_range_lu = float(np.percentile(short_term_series, 95) - np.percentile(short_term_series, 10))
 
-    return {
+    result = {
         "integrated_lufs": float(round(integrated_lufs, 3)),
         "short_term_lufs": float(round(_safe_float(short_term_lufs, integrated_lufs), 3)),
         "short_term_lufs_max": float(round(_safe_float(short_term_lufs_max, integrated_lufs), 3)),
@@ -522,8 +409,33 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
         "tempo_bpm": float(round(tempo_bpm, 2)),
         "clipping_detected": clipping_detected,
         "vocal_presence_estimate": float(round(vocal_presence_estimate, 6)),
+        "tempo_confidence": float(round(tempo_confidence, 3)),
         **transient_metrics,
     }
+    # Additive: the full measurement set the plan-driven engine decides
+    # from (analysis/profile.py). JSON-serialisable so it survives the
+    # /analyze -> /preview-params round trip through the frontend.
+    from .analysis.profile import build_source_profile
+
+    result["source_profile"] = build_source_profile(
+        analysis=result,
+        spectral=spectral,
+        sibilance=sibilance_evidence(audio_stereo, sr),
+        peak_p995_db=peak_percentile_db(audio_stereo, sr),
+        clipping=clipping_evidence(audio_stereo),
+        bpm_conf=tempo_confidence,
+        sr=sr,
+        duration_s=audio_stereo.shape[0] / float(sr),
+    ).to_dict()
+    return result
+
+
+def reference_spectrum_only(audio_stereo: np.ndarray, sr: int) -> dict:
+    """Hi-res relative spectrum of a reference track (plus the legacy
+    7-band shares) from one STFT pass — the reference's loudness/dynamics
+    are deliberately not measured, they must not leak into the render."""
+    spectral = analyze_spectrum(_ensure_stereo(audio_stereo).astype(np.float32), sr)
+    return {"relative_db": spectral["relative_db"], "legacy_shares": spectral["legacy_shares"]}
 
 
 def analyze_track(path: str | Path, sr: int = MASTER_SR) -> dict:

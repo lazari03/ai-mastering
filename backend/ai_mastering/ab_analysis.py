@@ -61,7 +61,7 @@ def _summarize_decisions(processing_params: dict, limiter_report: dict | None) -
 
     return {
         "eq_correction": eq_decision,
-        "compression": "engaged" if bool(processing_params.get("glue_enabled", False)) else "bypassed",
+        "compression": "engaged" if bool(processing_params.get("compression_enabled", processing_params.get("glue_enabled", False))) else "bypassed",
         "saturation": saturation_decision,
         "stereo_width": stereo_decision,
         "limiting": limiter_decision,
@@ -81,108 +81,91 @@ _BAND_LABELS = {
 }
 
 
-def build_decision_report(processing_params: dict, limiter_report: dict | None, overshoot_corrections: list, transient_qc: dict | None = None) -> dict:
-    """A plain-language engineering log of what this render actually
-    decided and why — not another parameter dump (those already exist
-    elsewhere in the response). Built entirely from data other stages
-    already computed (band_diagnosis, mix_diagnosis, vocal_presence_
-    disabled_reason, the limiter's own report, the post-render overshoot
-    check) — this module only narrates it."""
-    band_diagnosis = processing_params.get("band_diagnosis", {}) or {}
+def build_decision_report(
+    processing_params: dict,
+    limiter_report: dict | None,
+    overshoot_corrections: list,
+    transient_qc: dict | None = None,
+    plan: dict | None = None,
+    evaluation: dict | None = None,
+    backoff: dict | None = None,
+) -> dict:
+    """A plain-language engineering log of what this render decided and
+    WHY — narrated from the MasteringPlan (every decision carries its
+    measured reason and confidence; every skipped stage carries why it was
+    skipped) and the post-render evaluation. Nothing here is re-measured."""
+    plan = plan or processing_params.get("mastering_plan") or {}
+    rejected = plan.get("rejected_decisions", [])
+
     eq_lines = []
-    for band_key, diag in band_diagnosis.items():
-        label = _BAND_LABELS.get(band_key, band_key)
-        gain_db = float(processing_params.get("per_band_gain_changes_db", {}).get(band_key, 0.0))
-        if diag.get("decision") == "within_target_window":
-            eq_lines.append(f"{label}: within target window, bypassed (raw deviation {diag['raw_delta_db']:+.1f}dB, below the 1.0dB deadband).")
-        else:
-            direction = "boost" if gain_db >= 0 else "cut"
-            eq_lines.append(
-                f"{label}: {direction} {gain_db:+.2f}dB (raw deviation {diag['raw_delta_db']:+.1f}dB, "
-                f"confidence {diag.get('confidence', 0.0):.0%})."
-            )
+    for d in plan.get("eq_decisions", []):
+        why = d["reason"].replace("_", " ")
+        extra = f" [{'; '.join(d['notes'])}]" if d.get("notes") else ""
+        eq_lines.append(f"{d['filter_type']} {d['frequency_hz']:.0f} Hz {d['gain_db']:+.2f} dB (Q {d['q']:.2f}) — {why}, confidence {d['confidence']:.0%}{extra}.")
+    for r in rejected:
+        if r["stage"] == "eq":
+            eq_lines.append(f"No EQ for {r['problem']}: {r['reason']}.")
+    if not eq_lines:
+        eq_lines.append("No EQ: no tonal deviation outside the acceptable window for this genre/style/reference.")
+    for d in plan.get("dynamic_eq_decisions", []):
+        eq_lines.append(f"Dynamic EQ {d['frequency_hz']:.0f} Hz up to -{d['max_reduction_db']:.2f} dB — {d['reason']}.")
 
-    vocal_gain_db = float(processing_params.get("vocal_presence_gain_db", 0.0))
-    vocal_disabled = processing_params.get("vocal_presence_disabled_reason")
-    if vocal_disabled == "source_upper_mid_already_at_or_above_target":
-        vocal_line = "Vocal presence: disabled — source's 2-6kHz region is already at/above target, would only brighten the whole mix."
-    elif vocal_disabled == "shared_presence_budget_exhausted_by_static_eq":
-        vocal_line = f"Vocal presence: reduced to {vocal_gain_db:+.2f}dB — shared presence budget already spent by static EQ above."
-    elif abs(vocal_gain_db) < 0.05:
-        vocal_line = "Vocal presence: bypassed, no meaningful correction needed."
+    comp = plan.get("compression", {})
+    if comp.get("enabled"):
+        parts = []
+        if comp.get("multiband", {}).get("enabled"):
+            parts.append(f"multiband: {comp['multiband']['reason']}")
+        if comp.get("glue", {}).get("enabled"):
+            parts.append(f"glue: {comp['glue']['reason']}")
+        compression_line = "Compression: engaged — " + "; ".join(parts) + "."
     else:
-        vocal_line = f"Vocal presence: {vocal_gain_db:+.2f}dB."
+        why = [r["reason"] for r in rejected if r["stage"] in ("compression", "glue_compression")]
+        compression_line = "Compression: disabled — " + ("; ".join(why) if why else "no measured need") + "."
 
-    budgets = processing_params.get("transient_budgets", {}) or {}
-    compression_engaged = bool(processing_params.get("glue_enabled", False))
-    if compression_engaged:
-        compression_line = (
-            f"Glue compression: engaged, ratio {float(processing_params.get('glue_ratio', 1.0)):.2f}:1 at "
-            f"{float(processing_params.get('glue_threshold_db', 0.0)):.1f}dB threshold "
-            f"(compression budget {budgets.get('compression_budget', 1.0):.2f})."
-        )
-    elif budgets.get("compression_budget", 1.0) <= 0.15:
-        compression_line = "Glue compression: bypassed — source has strong, healthy transients this genre prioritizes preserving, little compression budget available."
-    else:
-        compression_line = "Glue compression: bypassed — dynamics already controlled or input already clipping/limited."
+    clipper = plan.get("clipper", {})
+    clipper_line = f"Clipper: {'engaged — ' + clipper.get('reason', '') if clipper.get('enabled') else 'disabled — ' + clipper.get('reason', 'not needed')}."
 
-    clipper_applied = bool((limiter_report or {}).get("clipper_applied", True))
-    clipper_line = (
-        f"Clipper: engaged (clipper budget {budgets.get('clipper_budget', 1.0):.2f})."
-        if clipper_applied
-        else f"Clipper: bypassed — reduced transient preservation beyond the source's budget (clipper budget {budgets.get('clipper_budget', 0.0):.2f})."
-    )
+    stereo = plan.get("stereo", {})
+    stereo_line = "Stereo: " + ("; ".join(stereo.get("reasons", [])) or "unchanged") + (f"; low end made mono below {stereo['lf_mono']['cutoff_hz']:.0f} Hz ({stereo['lf_mono']['reason']})" if stereo.get("lf_mono", {}).get("enabled") else "") + "."
 
-    side_gain = float(processing_params.get("side_gain", 1.0))
-    if abs(side_gain - 1.0) < 0.01:
-        stereo_line = "Stereo width: unchanged."
-    else:
-        stereo_line = f"Stereo width: {'widened' if side_gain > 1.0 else 'narrowed'} (side gain {side_gain:.3f}x)."
-
-    saturation_amount = float(processing_params.get("saturation_amount", 0.0))
-    saturation_line = "Saturation: bypassed." if saturation_amount < 0.01 else f"Saturation: {saturation_amount:.3f} drive amount."
+    sat = plan.get("saturation", {})
+    saturation_line = f"Saturation: {'drive ' + format(sat.get('drive_db', 0.0), '.2f') + ' dB — ' + sat.get('reason', '') if sat.get('enabled') else sat.get('reason', 'disabled')} (factors {sat.get('factors', {})})."
+    deess = plan.get("deesser", {})
+    vocal_line = f"De-esser: {'engaged at ' + format(deess.get('center_hz', 0), '.0f') + ' Hz, strength ' + format(deess.get('strength', 0), '.2f') + ' — ' + deess.get('reason', '') if deess.get('enabled') else deess.get('reason', 'disabled')}."
 
     limiter_gr_db = float((limiter_report or {}).get("limiter_gain_reduction_db", 0.0))
-    recovery_db = float((limiter_report or {}).get("loudness_recovery_db", 0.0))
-    limiter_line = f"Limiter: {limiter_gr_db:.2f}dB max gain reduction"
-    if recovery_db > 0.05:
-        limiter_line += f", +{recovery_db:.2f}dB loudness recovered from unused headroom"
-    limiter_line += f", output ceiling {(limiter_report or {}).get('post_limiter_peak_db', -1.0):.2f}dBTP."
+    loud = plan.get("loudness", {})
+    limiter_line = (
+        f"Limiter: {float((limiter_report or {}).get('gr_at_p995_peaks_db', limiter_gr_db)):.2f} dB on the loud hits "
+        f"(budget {plan.get('limiter', {}).get('budget_db', 0.0):.2f} dB), max {limiter_gr_db:.2f} dB. "
+        f"Loudness target {loud.get('target_lufs', 0.0):.2f} LUFS within range "
+        f"[{loud.get('acceptable_min_lufs', 0.0):.1f}, {loud.get('acceptable_max_lufs', 0.0):.1f}]"
+        + (f"; {'; '.join(loud.get('notes', []))}" if loud.get("notes") else "")
+        + "."
+    )
 
     verification_lines = []
-    if overshoot_corrections:
-        for c in overshoot_corrections:
-            label = _BAND_LABELS.get(c["band"], c["band"])
-            verification_lines.append(
-                f"{label}: {c['kind']} detected post-render (landed {c['after_delta_db']:+.1f}dB vs target) — "
-                f"applied a {c['trim_applied_db']:+.2f}dB corrective trim."
-            )
-    else:
-        verification_lines.append("No post-render spectral overshoot detected on the presence bands — one pass was sufficient.")
-
-    mix_diagnosis = processing_params.get("mix_diagnosis", []) or []
+    if evaluation:
+        regions = evaluation.get("regions", {})
+        for key in ("low_end_40_120", "hf_4k_14k"):
+            r = regions.get(key, {})
+            verification_lines.append(f"{key}: planned {r.get('planned_db', 0):+.2f} dB, actual {r.get('actual_db', 0):+.2f} dB (collateral {r.get('collateral_db', 0):+.2f} dB).")
+        for f in evaluation.get("flags", []):
+            verification_lines.append(f"Flag {f['kind']} (severity {f['severity']:.2f}, stage {f.get('blamed_stage')}): {f['detail']}.")
+        if not evaluation.get("flags"):
+            verification_lines.append("No collateral damage detected — the chain did what the plan intended.")
+    if backoff and backoff.get("attempted"):
+        verification_lines.append(f"Backoff render: {'applied' if backoff.get('applied') else 'rejected'} — {backoff.get('reason', '')}; actions: {'; '.join(backoff.get('actions', []))}.")
 
     transient_decision = None
     if transient_qc is not None:
-        if transient_qc.get("passed", True):
-            transient_decision = (
-                f"Transient preservation: within budget (source score {transient_qc.get('source_transient_score', 0):.2f}, "
-                f"master {transient_qc.get('master_transient_score', 0):.2f}, delta {transient_qc.get('delta', 0):+.3f}, "
-                f"allowed {-transient_qc.get('allowed_loss', 0):.3f})."
-            )
-        else:
-            action = transient_qc.get("corrective_action") or {}
-            if action.get("applied"):
-                transient_decision = (
-                    f"Transient preservation: regression detected and corrected — reduced clipper/limiter and re-rendered once "
-                    f"(score {action.get('score_before_correction', 0):.2f} -> {action.get('score_after_correction', 0):.2f})."
-                )
-            else:
-                transient_decision = (
-                    f"Transient preservation: regression detected (delta {transient_qc.get('delta', 0):+.3f}, "
-                    f"allowed {-transient_qc.get('allowed_loss', 0):.3f}) — one corrective pass was attempted but did not improve the result, kept the original render."
-                )
+        transient_decision = (
+            f"Transient preservation: {'within budget' if transient_qc.get('passed', True) else 'regression'} "
+            f"(source {transient_qc.get('source_transient_score', 0):.2f}, master {transient_qc.get('master_transient_score', 0):.2f}, "
+            f"delta {transient_qc.get('delta', 0):+.3f}, allowed {-transient_qc.get('allowed_loss', 0):.3f})."
+        )
 
+    mix_diagnosis = processing_params.get("mix_diagnosis", []) or []
     return {
         "eq_decisions": eq_lines,
         "vocal_presence_decision": vocal_line,
