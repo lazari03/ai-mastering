@@ -46,10 +46,10 @@ export const LOUDNESS_TARGETS = [
   },
   {
     genre: "rock",
-    targetLufs: -9.5,
+    targetLufs: -10.5,
     dynamicRangeDb: 9.0,
     maxStereoWidth: 1.12,
-    note: "More dynamic range than pop at a similar loudness — drum transients are the point, and squashing them costs more than the extra 0.5 dB is worth.",
+    note: "More dynamic range than pop and deliberately a notch quieter — drum transients are the point, and squashing them costs more than the extra loudness is worth.",
   },
   {
     genre: "lofi",
@@ -83,7 +83,7 @@ export const LOUDNESS_TARGETS = [
 
 // MASTERING_STYLE_PROFILES' target_lufs_delta — applied on top of the
 // genre baseline above, so a rock track mastered in the rock_90s style
-// targets -9.5 + -2.0 = -11.5 LUFS.
+// targets -10.5 + -2.0 = -12.5 LUFS.
 export const STYLE_DELTAS = [
   { style: "electronic_modern", label: "Electronic Modern", deltaLufs: 0.8, note: "The only style that pushes louder than the genre baseline." },
   { style: "rock_modern", label: "Rock Modern", deltaLufs: 0.0, note: "Takes the genre target as-is." },
@@ -98,19 +98,22 @@ export const LIMITER_SPEC = [
   { label: "True-peak ceiling", value: "-1.0 dBTP", note: "Applied regardless of genre or style." },
   { label: "Oversampling", value: "4x", note: "Catches inter-sample peaks a sample-peak limiter misses." },
   { label: "Lookahead", value: "3 ms", note: "Enough to catch transients without a hearable pre-response." },
-  { label: "Release", value: "60 ms", note: "Fast enough to stay transparent, slow enough not to distort bass." },
+  { label: "Release", value: "40–250 ms", note: "Set per track from its tempo and crest factor — about a fifth of a beat, longer for dynamic material, so the limiter breathes with the groove." },
 ];
 
-// The loudness-raise caps (max_lufs_raise_db per style, plus the
-// current-loudness clamps in mastering_params.py). Stated on the page
-// because they contradict what most people assume an automatic engine
-// does, and because "it refused to make my track louder" is otherwise a
-// support question rather than a documented design decision.
-export const RAISE_CAPS = {
-  minDb: 0.9,
-  maxDb: 4.5,
-  clampNote:
-    "Tighter still on material already loud: a mix arriving above -12 LUFS is capped at 0.5 dB of raise, above -10.7 LUFS at 0.2 dB.",
+// How the engine treats a target (ai_mastering/planning/target_model.py
+// build_target_context and plan.py's loudness plan, constants in
+// planning/config.py). A target is a preferred point inside an acceptable
+// window, and how far the engine may move toward it is set by the source's
+// own limiter damage budget — not a fixed per-style raise cap. Stated on the
+// page because "it didn't make my track louder" is otherwise a support
+// question rather than a documented design decision.
+export const LOUDNESS_WINDOW = {
+  aboveLu: 1.0, // LOUDNESS_WINDOW_ABOVE_LU
+  belowMinLu: 2.5, // LOUDNESS_WINDOW_BELOW_LU
+  belowMaxLu: 5.5, // + dynamic-priority extra (<=1.5) + restrained-style extra (<=1.5)
+  limiterBudgetMinDb: 0.5, // LIMITER_BUDGET_MIN_DB
+  limiterBudgetMaxDb: 6.0, // LIMITER_BUDGET_MAX_DB
 };
 
 export const STREAMING_REFERENCE_LUFS = -14;

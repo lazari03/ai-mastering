@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import Footer from "@/components/Footer";
+import RelatedTools from "@/components/site/RelatedTools";
+import { Breadcrumbs, CtaBand, Faq, LinkList, PageHero, PageShell, Section } from "@/components/site/Page";
 import { COMPARISON_PAGES, COMPARISON_KEYS } from "@/content/comparisonPages";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { buildMetadata, JsonLd, faqJsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
@@ -32,102 +33,122 @@ export default async function ComparisonPage({ params }) {
   const otherComparisons = COMPARISON_KEYS.filter((k) => k !== competitor);
 
   return (
-    <>
-    <main className="mx-auto w-full max-w-[840px] px-4 pb-24 pt-8 sm:px-6">
+    <PageShell>
       <JsonLd data={faqJsonLd(page.faq)} />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
+            { "@type": "ListItem", position: 2, name: "AI Mastering", item: absoluteUrl("/ai-mastering-online") },
+            { "@type": "ListItem", position: 3, name: `vs ${page.label}`, item: absoluteUrl(`/vs/${competitor}`) },
+          ],
+        }}
+      />
 
-      <Link href="/" className="text-[13px] text-zinc-400 hover:text-zinc-200">
-        ← Back to home
-      </Link>
+      <Breadcrumbs
+        items={[
+          { name: "Home", href: "/" },
+          { name: "AI Mastering", href: "/ai-mastering-online" },
+          { name: `vs ${page.label}`, href: `/vs/${competitor}` },
+        ]}
+      />
 
-      <p className="m-0 mt-6 text-[11px] uppercase tracking-[0.18em] text-brass">Comparison</p>
-      <h1 className="mt-2 font-[var(--font-title)] text-3xl leading-[1.15] text-white sm:text-4xl">{page.headline}</h1>
-      <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-300">{page.intro}</p>
+      <PageHero
+        eyebrow="Comparison"
+        title={page.headline}
+        lead={page.intro}
+        actions={
+          <>
+            <Link href={CTA.signup} className="btn-primary">
+              Master a track free <span aria-hidden="true">→</span>
+            </Link>
+            <Link href={CTA.pricing} className="btn-secondary">
+              See all plans
+            </Link>
+          </>
+        }
+      />
 
-      <section className="mt-10">
-        <div className="overflow-x-auto rounded-2xl border border-white/10">
-          <table className="w-full min-w-[560px] border-collapse text-left text-sm">
+      <Section title={`Auralith Forge vs ${page.label}, side by side`}>
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <table className="w-full min-w-[560px] border-collapse text-left text-[15px]">
             <thead>
-              <tr className="border-b border-white/10 bg-black/30">
-                <th className="p-4 font-semibold text-zinc-400">&nbsp;</th>
-                <th className="p-4 font-semibold text-brass">Auralith Forge</th>
-                <th className="p-4 font-semibold text-zinc-400">{page.label}</th>
+              <tr className="border-b border-text-primary/80">
+                <th scope="col" className="w-[22%] py-3 pr-4 font-medium text-text-secondary">
+                  <span className="sr-only">Aspect</span>
+                </th>
+                <th scope="col" className="py-3 pr-4 font-semibold text-text-primary">
+                  Auralith Forge
+                </th>
+                <th scope="col" className="py-3 font-semibold text-text-secondary">
+                  {page.label}
+                </th>
               </tr>
             </thead>
             <tbody>
               {page.positioningPoints.map((row) => (
-                <tr key={row.title} className="border-b border-white/10 last:border-0">
-                  <td className="p-4 align-top font-semibold text-white">{row.title}</td>
-                  <td className="p-4 align-top text-zinc-200">{row.auralith}</td>
-                  <td className="p-4 align-top text-zinc-400">{row.competitor}</td>
+                <tr key={row.title} className="border-b border-border-subtle">
+                  <th scope="row" className="py-4 pr-4 align-top font-semibold text-text-primary">
+                    {row.title}
+                  </th>
+                  <td className="py-4 pr-4 align-top leading-[1.6] text-text-primary">{row.auralith}</td>
+                  <td className="py-4 align-top leading-[1.6] text-text-secondary">{row.competitor}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="mt-3 text-xs text-zinc-500">
-          {page.label}'s current pricing and feature set can change — check{" "}
-          <a href={page.externalUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-brass hover:text-ember">
+        <p className="mt-4 text-[13px] text-text-secondary">
+          {page.label}&apos;s current pricing and feature set can change — check{" "}
+          <a href={page.externalUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-link">
             {page.externalUrl.replace(/^https?:\/\//, "")}
           </a>{" "}
           for their latest plans rather than relying on any snapshot of it here.
         </p>
-      </section>
+      </Section>
 
-      <section className="mt-10 rounded-2xl border border-brass/25 bg-brass/[0.06] p-6">
-        <h2 className="m-0 font-[var(--font-title)] text-xl text-white">Hear it on your own track</h2>
-        <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-300">
-          The honest way to compare two mastering tools is to actually listen — not read a feature table. 3 full-length
-          masters are free, no card required, so you can run your own A/B before deciding anything.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-2.5">
-          <Link
-            href={CTA.signup}
-            className="inline-block rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
-          >
+      <Section title="Hear it on your own track" tone="band">
+        <div className="af-prose">
+          <p>
+            The honest way to compare two mastering tools is to actually listen — not read a feature table. 3 full-length masters are free,
+            no card required, so you can run your own A/B before deciding anything.
+          </p>
+        </div>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href={CTA.signup} className="btn-primary">
             Master a track free
           </Link>
-          <Link
-            href={CTA.pricing}
-            className="inline-block rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35"
-          >
-            See all plans →
+          <Link href={CTA.pricing} className="btn-secondary">
+            See all plans
           </Link>
         </div>
-      </section>
+      </Section>
 
-      <section className="mt-10">
-        <h2 className="m-0 font-[var(--font-title)] text-xl text-white">Questions</h2>
-        <div className="mt-4 flex flex-col gap-3">
-          {page.faq.map((item) => (
-            <div key={item.question} className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <p className="m-0 text-sm font-semibold text-white">{item.question}</p>
-              <p className="mt-1.5 text-sm text-zinc-400">{item.answer}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <Section title="Questions">
+        <Faq items={page.faq} />
+      </Section>
 
-      <section className="mt-10 border-t border-white/10 pt-8">
-        <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">More ways to master</p>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
-          {otherComparisons.map((key) => (
-            <Link key={key} href={`/vs/${key}`} className="text-sm text-brass hover:text-ember">
-              vs {COMPARISON_PAGES[key].label} →
-            </Link>
-          ))}
-          {GENRE_KEYS.slice(0, 3).map((g) => (
-            <Link key={g} href={`/master/${g}`} className="text-sm text-brass hover:text-ember">
-              {GENRE_PAGES[g].label} mastering →
-            </Link>
-          ))}
-          <Link href="/ai-mastering-online" className="text-sm text-brass hover:text-ember">
-            AI mastering online →
-          </Link>
-        </div>
-      </section>
-    </main>
-    <Footer />
-    </>
+      <Section>
+        <LinkList
+          title="More ways to master"
+          links={[
+            ...otherComparisons.map((key) => ({ href: `/vs/${key}`, label: `Auralith Forge vs ${COMPARISON_PAGES[key].label}` })),
+            ...GENRE_KEYS.slice(0, 3).map((g) => ({ href: `/master/${g}`, label: `${GENRE_PAGES[g].label} mastering` })),
+            { href: "/ai-mastering-online", label: "AI mastering online" },
+          ]}
+        />
+      </Section>
+
+      <RelatedTools current="adaptive-mastering" />
+
+      <CtaBand
+        title="Run your own A/B"
+        body="Master the same track in both tools and compare at matched loudness. The free tier covers it."
+        primary={{ href: CTA.signup, label: "Master a track free" }}
+        secondary={{ href: "/ai-mastering-online", label: "How Auralith masters" }}
+      />
+    </PageShell>
   );
 }

@@ -1,12 +1,13 @@
 import Link from "next/link";
 
-import Footer from "@/components/Footer";
+import RelatedTools from "@/components/site/RelatedTools";
+import { Breadcrumbs, Callout, CtaBand, Faq, LinkList, PageHero, PageShell, Section } from "@/components/site/Page";
 import { GENRE_PAGES } from "@/content/genrePages";
 import {
   LOUDNESS_TARGETS,
   STYLE_DELTAS,
   LIMITER_SPEC,
-  RAISE_CAPS,
+  LOUDNESS_WINDOW,
   STREAMING_REFERENCE_LUFS,
 } from "@/content/loudnessTargets";
 import { CTA, CHORD_DETECTOR_URL } from "@/lib/internalLinks";
@@ -42,7 +43,7 @@ const FAQ_ITEMS = [
   {
     question: "How loud should I master my track?",
     answer:
-      "It depends on genre and destination. Roughly: EDM around -7 LUFS integrated, hip-hop -8, pop -9, rock -9.5, lo-fi -12, acoustic -14, podcast -16, classical -18. If streaming is the only destination, the quieter end of your genre's range translates better, because platform loudness normalisation removes any advantage from going louder.",
+      "It depends on genre and destination. Roughly: EDM around -7 LUFS integrated, hip-hop -8, pop -9, rock -10.5, lo-fi -12, acoustic -14, podcast -16, classical -18. If streaming is the only destination, the quieter end of your genre's range translates better, because platform loudness normalisation removes any advantage from going louder.",
   },
   {
     question: "What LUFS should I master to for Spotify and other streaming services?",
@@ -87,202 +88,219 @@ function articleJsonLd() {
 
 const fmtLufs = (n) => `${n > 0 ? "+" : ""}${n.toFixed(1)}`;
 
+const TOC = [
+  ["targets", "LUFS targets by genre"],
+  ["why", "Why each genre sits where it does"],
+  ["streaming", "What streaming normalisation does"],
+  ["style", "Mastering style shifts the target"],
+  ["window", "A target is a window, not a cliff"],
+  ["limiter", "Limiter settings"],
+  ["faq", "Common questions"],
+];
+
+const TableWrap = ({ children }) => <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">{children}</div>;
+const num = { textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
+
 export default function LoudnessTargetsPage() {
+  const rock = LOUDNESS_TARGETS.find((t) => t.genre === "rock").targetLufs;
+  const rock90s = STYLE_DELTAS.find((s) => s.style === "rock_90s").deltaLufs;
   return (
-    <>
-      <main className="mx-auto w-full max-w-[860px] px-4 pb-24 pt-8 sm:px-6">
-        <JsonLd data={articleJsonLd()} />
-        <JsonLd data={faqJsonLd(FAQ_ITEMS)} />
+    <PageShell>
+      <JsonLd data={articleJsonLd()} />
+      <JsonLd data={faqJsonLd(FAQ_ITEMS)} />
 
-        <Link href="/" className="text-[13px] text-zinc-400 hover:text-zinc-200">
-          ← Back to home
-        </Link>
+      <Breadcrumbs items={[{ name: "Home", href: "/" }, { name: "Loudness targets", href: "/mastering-loudness-targets" }]} />
 
-        <p className="mt-5 text-[11px] uppercase tracking-[0.12em] text-zinc-500">Mastering reference</p>
-        <h1 className="mt-2 font-[var(--font-title)] text-3xl text-white sm:text-4xl">
-          Mastering Loudness Targets — LUFS by Genre
-        </h1>
-        <p className="mt-4 text-base leading-relaxed text-zinc-300">
-          How loud a master should be is a genre question before it is a taste question. The table below is the actual set of
-          targets this site&apos;s mastering engine works to — integrated loudness in LUFS, the dynamic range it aims to
-          preserve, and how wide it will let the stereo image go. They double as a reasonable general reference for what each
-          genre is typically mastered to, whatever tool you use.
-        </p>
+      <PageHero
+        eyebrow="Mastering reference"
+        title="Mastering Loudness Targets — LUFS by Genre"
+        lead="How loud a master should be is a genre question before it is a taste question. The table below is the actual set of targets this site's mastering engine works to — integrated loudness in LUFS, the dynamic range it aims to preserve, and how wide it will let the stereo image go. They double as a reasonable general reference for what each genre is typically mastered to, whatever tool you use."
+      />
 
-        {/* The table is the reason anyone lands here. It goes first, above
-            any explanation and well above any CTA. */}
-        <div className="mt-8 overflow-x-auto rounded-2xl border border-white/10 bg-black/25 p-4">
-          <table className="w-full min-w-[560px] text-sm">
-            <thead>
-              <tr className="border-b border-white/10 text-[10px] uppercase tracking-[0.1em] text-zinc-500">
-                <th className="pb-2 text-left font-medium">Genre</th>
-                <th className="pb-2 text-right font-medium">Target LUFS</th>
-                <th className="pb-2 text-right font-medium">Dynamic range</th>
-                <th className="pb-2 text-right font-medium">Max width</th>
-              </tr>
-            </thead>
-            <tbody>
-              {LOUDNESS_TARGETS.map(({ genre, targetLufs, dynamicRangeDb, maxStereoWidth }) => (
-                <tr key={genre} className="border-b border-white/5 last:border-0">
-                  <td className="py-2.5 pr-3">
-                    <Link href={`/master/${genre}`} className="text-brass hover:text-ember">
-                      {GENRE_PAGES[genre].label}
-                    </Link>
-                  </td>
-                  <td className="py-2.5 pr-3 text-right tabular-nums text-zinc-100">{targetLufs.toFixed(1)}</td>
-                  <td className="py-2.5 pr-3 text-right tabular-nums text-zinc-400">{dynamicRangeDb.toFixed(1)} dB</td>
-                  <td className="py-2.5 text-right tabular-nums text-zinc-400">{maxStereoWidth.toFixed(2)}</td>
+      <nav aria-label="On this page" className="mt-10 rounded-2xl border border-border-subtle bg-white/55 p-5">
+        <p className="m-0 text-[12px] font-semibold uppercase tracking-[0.14em] text-text-secondary">On this page</p>
+        <ol className="m-0 mt-3 grid list-none gap-x-8 gap-y-2 p-0 sm:grid-cols-2">
+          {TOC.map(([id, label], i) => (
+            <li key={id} className="text-[15px]">
+              <a href={`#${id}`} className="text-text-primary transition hover:text-accent">
+                <span className="mr-2 font-mono text-xs text-text-secondary">{String(i + 1).padStart(2, "0")}</span>
+                {label}
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+
+      {/* The table is the reason anyone lands here. It goes first, above
+          any explanation and well above any CTA. */}
+      <Section id="targets" title="LUFS targets by genre">
+        <div className="af-prose" style={{ maxWidth: "none" }}>
+          <TableWrap>
+            <table style={{ minWidth: 520 }}>
+              <thead>
+                <tr>
+                  <th scope="col">Genre</th>
+                  <th scope="col" style={num}>Target LUFS</th>
+                  <th scope="col" style={num}>Dynamic range</th>
+                  <th scope="col" style={num}>Max width</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {LOUDNESS_TARGETS.map(({ genre, targetLufs, dynamicRangeDb, maxStereoWidth }) => (
+                  <tr key={genre}>
+                    <td>
+                      <Link href={`/master/${genre}`}>{GENRE_PAGES[genre].label}</Link>
+                    </td>
+                    <td style={{ ...num, fontWeight: 600 }}>{targetLufs.toFixed(1)}</td>
+                    <td style={num}>{dynamicRangeDb.toFixed(1)} dB</td>
+                    <td style={num}>{maxStereoWidth.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+          <p className="text-[14px] text-text-secondary">
+            True peak is held at -1.0 dBTP for every genre. Each genre name links to how the rest of the chain shifts for that material.
+          </p>
         </div>
+      </Section>
 
-        <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-          True peak is held at -1.0 dBTP for every genre. Each genre name links to how the rest of the chain shifts for that
-          material.
-        </p>
-
-        <h2 className="mt-12 font-[var(--font-title)] text-2xl text-white">Why each genre sits where it does</h2>
-        <ul className="mt-5 flex flex-col gap-2.5">
+      <Section id="why" title="Why each genre sits where it does">
+        <ul className="m-0 grid list-none gap-px overflow-hidden rounded-2xl border border-border-subtle bg-border-subtle p-0 md:grid-cols-2">
           {LOUDNESS_TARGETS.map(({ genre, targetLufs, note }) => (
-            <li
-              key={genre}
-              className="rounded-xl border border-white/10 bg-black/20 p-3.5 text-sm leading-relaxed text-zinc-300"
-            >
-              <span className="font-semibold text-zinc-100">
+            <li key={genre} className="bg-bg p-5 text-[15px] leading-[1.65]">
+              <span className="block font-semibold text-text-primary">
                 {GENRE_PAGES[genre].label} · {targetLufs.toFixed(1)} LUFS
               </span>
-              <span className="text-zinc-400"> — {note}</span>
+              <span className="mt-1 block text-text-secondary">{note}</span>
             </li>
           ))}
         </ul>
+      </Section>
 
-        <h2 className="mt-12 font-[var(--font-title)] text-2xl text-white">What streaming normalisation does to all of this</h2>
-        <p className="mt-4 text-[15px] leading-relaxed text-zinc-300">
-          Streaming services normalise playback loudness to a reference around {STREAMING_REFERENCE_LUFS} LUFS integrated —
-          the exact figure and behaviour vary by platform and by the listener&apos;s own settings. The consequence is the
-          single most misunderstood thing about modern mastering: a track mastered to -6 LUFS and one mastered to -12 LUFS
-          play back at the same perceived level. The louder master does not win. It simply arrives having already given up
-          dynamic range to get there, and that trade is permanent.
-        </p>
-        <p className="mt-4 text-[15px] leading-relaxed text-zinc-300">
-          This is why the targets above are best read as genre character rather than as scores. The club-oriented genres are
-          set louder than the streaming reference on purpose — that is what they sound like off-platform, on a DJ system or a
-          download. If streaming is your only destination, the quieter end of your genre&apos;s range translates better.
-        </p>
-        <p className="mt-4 text-[15px] leading-relaxed text-zinc-300">
-          True-peak headroom is the part that is not optional. Lossy encoding can push inter-sample peaks above the value a
-          sample-peak meter reports, so a master limited to exactly 0 dBFS can distort after transcoding even though the file
-          never technically clips. That is what the -1.0 dBTP ceiling protects against.
-        </p>
-
-        <h2 className="mt-12 font-[var(--font-title)] text-2xl text-white">Mastering style shifts the target</h2>
-        <p className="mt-4 text-[15px] leading-relaxed text-zinc-300">
-          Style is selectable independently of genre, and moves the loudness target on top of the genre baseline. A rock track
-          in the <span className="text-zinc-100">Rock 90s</span> style targets -9.5 + -2.0 = -11.5 LUFS.
-        </p>
-        <div className="mt-5 overflow-x-auto rounded-2xl border border-white/10 bg-black/25 p-4">
-          <table className="w-full min-w-[520px] text-sm">
-            <thead>
-              <tr className="border-b border-white/10 text-[10px] uppercase tracking-[0.1em] text-zinc-500">
-                <th className="pb-2 text-left font-medium">Style</th>
-                <th className="pb-2 pr-3 text-right font-medium">LUFS delta</th>
-                <th className="pb-2 text-left font-medium">Character</th>
-              </tr>
-            </thead>
-            <tbody>
-              {STYLE_DELTAS.map(({ style, label, deltaLufs, note }) => (
-                <tr key={style} className="border-b border-white/5 last:border-0">
-                  <td className="py-2.5 pr-3 text-zinc-100">{label}</td>
-                  <td className="py-2.5 pr-3 text-right tabular-nums text-brass">{fmtLufs(deltaLufs)}</td>
-                  <td className="py-2.5 text-zinc-400">{note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <h2 className="mt-12 font-[var(--font-title)] text-2xl text-white">The engine will not chase a target off a cliff</h2>
-        <p className="mt-4 text-[15px] leading-relaxed text-zinc-300">
-          A target is not a promise to hit it. The chain caps how far it will move loudness in a single pass — between{" "}
-          {RAISE_CAPS.minDb} and {RAISE_CAPS.maxDb} dB of raise depending on style. {RAISE_CAPS.clampNote} A quiet, dynamic
-          mix will not be slammed to -8 LUFS just because its genre target says so, and a mix that arrives already crushed
-          will be left alone rather than pushed further.
-        </p>
-        <p className="mt-4 text-[15px] leading-relaxed text-zinc-300">
-          This is a deliberate design decision rather than a limitation. An automatic engine that always hits its number
-          regardless of the source material is one that will happily destroy a well-mixed track to satisfy an arbitrary
-          figure.
-        </p>
-
-        <h2 className="mt-12 font-[var(--font-title)] text-2xl text-white">Limiter settings</h2>
-        <div className="mt-5 overflow-x-auto rounded-2xl border border-white/10 bg-black/25 p-4">
-          <table className="w-full min-w-[520px] text-sm">
-            <tbody>
-              {LIMITER_SPEC.map(({ label, value, note }) => (
-                <tr key={label} className="border-b border-white/5 last:border-0">
-                  <td className="py-2.5 pr-3 text-zinc-100">{label}</td>
-                  <td className="py-2.5 pr-3 text-right tabular-nums text-brass">{value}</td>
-                  <td className="py-2.5 text-zinc-400">{note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <h2 className="mt-12 font-[var(--font-title)] text-2xl text-white">Common questions</h2>
-        <div className="mt-5 flex flex-col gap-4">
-          {FAQ_ITEMS.map(({ question, answer }) => (
-            <div key={question} className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <p className="m-0 text-sm font-semibold text-zinc-100">{question}</p>
-              <p className="m-0 mt-2 text-sm leading-relaxed text-zinc-400">{answer}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-12 rounded-2xl border border-brass/30 bg-brass/[0.08] p-5">
-          <p className="m-0 text-sm text-zinc-200">
-            Hear these targets applied to your own track — 3 masters free, no card required.
+      <Section id="streaming" title="What streaming normalisation does to all of this">
+        <div className="af-prose">
+          <p>
+            Streaming services normalise playback loudness to a reference around {STREAMING_REFERENCE_LUFS} LUFS integrated — the exact
+            figure and behaviour vary by platform and by the listener&apos;s own settings. The consequence is the single most misunderstood
+            thing about modern mastering: a track mastered to -6 LUFS and one mastered to -12 LUFS play back at the same perceived level.
+            The louder master does not win. It simply arrives having already given up dynamic range to get there, and that trade is
+            permanent.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2.5">
-            <Link
-              href={CTA.signup}
-              className="inline-block rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
-            >
-              Start free
-            </Link>
-            <Link
-              href="/ai-mastering-online"
-              className="inline-block rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-200 hover:border-white/35"
-            >
-              How online mastering works →
-            </Link>
-          </div>
+          <p>
+            This is why the targets above are best read as genre character rather than as scores. The club-oriented genres are set louder
+            than the streaming reference on purpose — that is what they sound like off-platform, on a DJ system or a download. If streaming
+            is your only destination, the quieter end of your genre&apos;s range translates better.
+          </p>
+          <p>
+            True-peak headroom is the part that is not optional. Lossy encoding can push inter-sample peaks above the value a sample-peak
+            meter reports, so a master limited to exactly 0 dBFS can distort after transcoding even though the file never technically
+            clips. That is what the -1.0 dBTP ceiling protects against.
+          </p>
         </div>
+      </Section>
 
-        <div className="mt-8">
-          <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Also useful</p>
-          <Link href="/lufs-meter" className="mt-2 block text-sm text-brass hover:text-ember">
-            Measure your own track's LUFS, True Peak and Loudness Range — try the free LUFS Meter →
-          </Link>
-          <Link href={CHORD_DETECTOR_URL} className="mt-2 block text-sm text-brass hover:text-ember">
-            Know the chords, key and BPM before you master — try Chord Detector →
-          </Link>
+      <Section id="style" title="Mastering style shifts the target">
+        <div className="af-prose" style={{ maxWidth: "none" }}>
+          <p style={{ maxWidth: "68ch" }}>
+            Style is selectable independently of genre, and moves the loudness target on top of the genre baseline. A rock track in the{" "}
+            <strong>Rock 90s</strong> style targets {rock.toFixed(1)} + {rock90s.toFixed(1)} = {(rock + rock90s).toFixed(1)} LUFS. The default
+            style, Modern, steps back 1 LU from every genre baseline.
+          </p>
+          <TableWrap>
+            <table style={{ minWidth: 520 }}>
+              <thead>
+                <tr>
+                  <th scope="col">Style</th>
+                  <th scope="col" style={num}>LUFS delta</th>
+                  <th scope="col">Character</th>
+                </tr>
+              </thead>
+              <tbody>
+                {STYLE_DELTAS.map(({ style, label, deltaLufs, note }) => (
+                  <tr key={style}>
+                    <td style={{ whiteSpace: "nowrap" }}>{label}</td>
+                    <td style={{ ...num, fontWeight: 600 }}>{fmtLufs(deltaLufs)}</td>
+                    <td>{note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
         </div>
+      </Section>
 
-        <div className="mt-8 border-t border-white/10 pt-8">
-          <p className="m-0 text-xs uppercase tracking-[0.12em] text-zinc-500">Mastering by genre</p>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
-            {LOUDNESS_TARGETS.map(({ genre }) => (
-              <Link key={genre} href={`/master/${genre}`} className="text-sm text-brass hover:text-ember">
-                {GENRE_PAGES[genre].label} mastering
-              </Link>
-            ))}
-          </div>
+      <Section id="window" title="The engine will not chase a target off a cliff">
+        <div className="af-prose">
+          <p>
+            A target is not a promise to hit it. The genre-and-style figure is a preferred point inside an acceptable window — up to{" "}
+            {LOUDNESS_WINDOW.aboveLu.toFixed(1)} LU above it and between {LOUDNESS_WINDOW.belowMinLu} and {LOUDNESS_WINDOW.belowMaxLu} LU below
+            it, wider below for genres that prize dynamics and for deliberately restrained styles. A mix that already sits inside that window
+            at or above the preferred level is left where it is.
+          </p>
+          <p>
+            How far the engine may raise a quieter mix is set by the mix itself: each track gets a limiter budget of {LOUDNESS_WINDOW.limiterBudgetMinDb}{" "}
+            to {LOUDNESS_WINDOW.limiterBudgetMaxDb} dB of peak reduction, smaller when the transients are healthy and in a genre that values them,
+            and smaller again when the mix arrives already limited. A quiet, dynamic mix will not be slammed to -8 LUFS just because its genre
+            target says so, and a mix that arrives already crushed will be left alone rather than pushed further.
+          </p>
+          <p>
+            This is a deliberate design decision rather than a limitation. An automatic engine that always hits its number regardless of the
+            source material is one that will happily destroy a well-mixed track to satisfy an arbitrary figure.
+          </p>
+          <Callout title="In practice">
+            Landing a little under your genre&apos;s number on a dynamic mix is the engine protecting the drums, not failing.
+          </Callout>
         </div>
-      </main>
-      <Footer />
-    </>
+      </Section>
+
+      <Section id="limiter" title="Limiter settings">
+        <div className="af-prose" style={{ maxWidth: "none" }}>
+          <TableWrap>
+            <table style={{ minWidth: 520 }}>
+              <tbody>
+                {LIMITER_SPEC.map(({ label, value, note }) => (
+                  <tr key={label}>
+                    <th scope="row" style={{ whiteSpace: "nowrap" }}>{label}</th>
+                    <td style={{ ...num, fontWeight: 600 }}>{value}</td>
+                    <td>{note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        </div>
+      </Section>
+
+      <Section id="faq" title="Common questions">
+        <Faq items={FAQ_ITEMS} />
+      </Section>
+
+      <Section>
+        <div className="grid gap-10 sm:grid-cols-2">
+          <LinkList
+            title="Mastering by genre"
+            links={LOUDNESS_TARGETS.map(({ genre }) => ({ href: `/master/${genre}`, label: `${GENRE_PAGES[genre].label} mastering` }))}
+          />
+          <LinkList
+            title="Also useful"
+            links={[
+              { href: "/lufs-meter", label: "Measure your own track's LUFS, True Peak and Loudness Range — free LUFS Meter" },
+              { href: CHORD_DETECTOR_URL, label: "Know the chords, key and BPM before you master — Chord Detector" },
+              { href: "/ai-mastering-online", label: "How online mastering works" },
+            ]}
+          />
+        </div>
+      </Section>
+
+      <RelatedTools current="lufs-meter" keys={["lufs-meter", "adaptive-mastering", "reference-mastering", "codec-preview"]} />
+
+      <CtaBand
+        title="Hear these targets applied to your own track"
+        body="3 masters free, no card required. The engine measures your mix first and moves only as far as the audio allows."
+        primary={{ href: CTA.signup, label: "Start free" }}
+        secondary={{ href: "/ai-mastering-online", label: "How online mastering works" }}
+      />
+    </PageShell>
   );
 }
