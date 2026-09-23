@@ -38,9 +38,10 @@ import {
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { subscribeToNewsletter } from "../services/newsletterService.js";
 import { getAuth } from "../config/firebase.js";
-import { expensiveLimiter } from "../middleware/rateLimit.js";
+import { expensiveLimiter, shareAccessLimiter } from "../middleware/rateLimit.js";
 import { recordServerEvent, normalizeMasteringFailure } from "../services/analyticsService.js";
-import { mintDownloadToken, mintShareToken, verifyShareToken, isShareJobExpired } from "../services/downloadTokenService.js";
+import { mintDownloadToken, verifyShareToken, isShareJobExpired } from "../services/downloadTokenService.js";
+import { shareLinks, ShareLinkError } from "../services/shareLinkService.js";
 
 const router = express.Router();
 
@@ -228,42 +229,157 @@ router.delete("/jobs/:jobId", async (req, res) => {
     return res.status(404).json({ detail: "Job not found" });
   }
   await deleteJobFiles(req.params.jobId);
+  shareLinks.revokeAllForJob(req.user.uid, req.params.jobId);
   await deleteJob(req.user.uid, req.params.jobId);
   return res.json({ ok: true });
 });
 
-// Mints a public, no-login-required link to exactly one job's mastered
-// file — "the share button," scoped tighter than a WeTransfer link in one
-// way (only ever this one file, never a folder) and looser in another
-// (no separate delete-the-link step; it just stops working once the file
-// itself expires or is deleted, same as everything else in this app's
-// 48h-retention model). expiresAt is capped at the job's own expiry so a
-// share link can never promise access longer than the file will exist.
-// All-Access only — same reasoning as chord detection, a real plan
-// feature, not something Free/Studio can reach around a purchase.
-router.post("/jobs/:jobId/share", async (req, res) => {
+// --- Share links -------------------------------------------------------
+//
+// Owner side (signed in): create, list, revoke. Recipient side (public,
+// no account): /shared/link/info and /shared/link/download, authenticated
+// only by the X-Share-Token header. See shareLinkService.js for the token
+// model. All-Access only — a real plan feature.
+
+function shareUrlFor(req, token) {
+  // The token goes in the URL FRAGMENT: browsers never send it to any
+  // server, so it never lands in access logs, analytics or Referer.
+  const base = settings.frontendOrigin || `${req.protocol}://${req.get("host")}`;
+  return `${base.replace(/\/+$/, "")}/share#${token}`;
+}
+
+function parseOptionalInt(value) {
+  if (value === undefined || value === null || value === "") return null;
+  return Number(value);
+}
+
+async function createShareLinkHandler(req, res) {
   const plan = await getPlan(req.user.uid).catch(() => "free");
   if (plan !== "pro") {
     return res.status(402).json({ detail: "Share links are an All-Access feature (€19.99/mo). Upgrade in Settings → Billing." });
   }
   const job = await getJob(req.user.uid, req.params.jobId);
-  if (!job) {
+  if (!job || job.preview) {
     return res.status(404).json({ detail: "Job not found" });
   }
-  const expiresAt = job.expires_at?.toDate ? job.expires_at.toDate() : new Date(job.expires_at);
-  if (!expiresAt || expiresAt.getTime() <= Date.now()) {
-    return res.status(410).json({ detail: "This master has already expired and can't be shared anymore." });
+  try {
+    const { token, link } = shareLinks.create({
+      uid: req.user.uid,
+      jobId: req.params.jobId,
+      jobExpiresAt: job.expires_at?.toDate ? job.expires_at.toDate().toISOString() : job.expires_at,
+      expiresInSeconds: parseOptionalInt(req.body?.expires_in_seconds),
+      maxDownloads: parseOptionalInt(req.body?.max_downloads),
+    });
+    recordServerEvent("share_created", {
+      uid: req.user.uid,
+      props: { jobId: req.params.jobId, limited: link.max_downloads != null },
+    });
+    res.setHeader("Cache-Control", "no-store");
+    // `url` is the only time the raw token is ever returned.
+    return res.status(201).json({ ...link, url: shareUrlFor(req, token) });
+  } catch (error) {
+    if (error instanceof ShareLinkError) {
+      return res.status(error.status).json({ detail: error.message });
+    }
+    throw error;
   }
-  const token = mintShareToken(req.user.uid, req.params.jobId, expiresAt);
-  recordServerEvent("share_created", { uid: req.user.uid, props: { jobId: req.params.jobId } });
-  // Points at the frontend's own simple download page (SharedMasterClient),
-  // not straight at this API — a plain file response has no branding, no
-  // "invalid/expired" explanation, nothing but a bare download. The page
-  // calls GET /shared/:jobId/info with the same token to render itself,
-  // then links to the actual file (this API's /shared/:jobId) to download it.
-  const base = settings.frontendOrigin || `${req.protocol}://${req.get("host")}`;
-  const url = `${base}/shared/${req.params.jobId}?token=${encodeURIComponent(token)}`;
-  return res.json({ url, expires_at: expiresAt.toISOString() });
+}
+
+router.post("/jobs/:jobId/share-links", createShareLinkHandler);
+// Original endpoint, kept so already-deployed clients keep working; same
+// behaviour (no body = link valid until the master expires).
+router.post("/jobs/:jobId/share", createShareLinkHandler);
+
+router.get("/jobs/:jobId/share-links", async (req, res) => {
+  if (!(await ownsJob(req.user.uid, req.params.jobId))) {
+    return res.status(404).json({ detail: "Job not found" });
+  }
+  res.setHeader("Cache-Control", "no-store");
+  return res.json({ links: shareLinks.list(req.user.uid, req.params.jobId) });
+});
+
+router.delete("/share-links/:linkId", (req, res) => {
+  if (!shareLinks.revoke(req.user.uid, req.params.linkId)) {
+    return res.status(404).json({ detail: "Share link not found or already revoked." });
+  }
+  recordServerEvent("share_revoked", { uid: req.user.uid, props: {} });
+  return res.status(204).end();
+});
+
+const SHARE_UNAVAILABLE = {
+  not_found: [404, "This link is invalid."],
+  expired: [410, "This link has expired."],
+  revoked: [410, "This link was turned off by the person who shared it."],
+  exhausted: [410, "This link has reached its download limit."],
+  master_gone: [410, "This master is no longer available."],
+};
+
+function shareHeaders(res) {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+}
+
+function sendShareError(res, code) {
+  const [status, detail] = SHARE_UNAVAILABLE[code];
+  return res.status(status).json({ detail, code });
+}
+
+// Resolves X-Share-Token to { link, job } or sends the error response.
+async function resolveShare(req, res) {
+  shareHeaders(res);
+  const resolved = shareLinks.resolve(req.get("X-Share-Token"));
+  if (resolved.status !== "active") {
+    sendShareError(res, resolved.status);
+    return null;
+  }
+  const job = await getJob(resolved.row.uid, resolved.row.job_id);
+  if (!job || isShareJobExpired(job)) {
+    sendShareError(res, "master_gone");
+    return null;
+  }
+  return { link: resolved.link, row: resolved.row, job };
+}
+
+function sharedFilename(job, jobId) {
+  const ext = job.output_format || "wav";
+  const base = (job.original_filename || `master_${jobId}`).replace(/\.[^./\\]+$/, "").replace(/[^\w\s.-]+/g, "_").trim();
+  return `${base || "master"}_mastered.${ext}`;
+}
+
+router.get("/shared/link/info", shareAccessLimiter, async (req, res) => {
+  const share = await resolveShare(req, res);
+  if (!share) return undefined;
+  shareLinks.touch(share.row.id);
+  const { job, link } = share;
+  return res.json({
+    filename: sharedFilename(job, share.row.job_id),
+    genre: job.genre || null,
+    before_lufs: job.before_lufs ?? null,
+    after_lufs: job.after_lufs ?? null,
+    expires_at: link.expires_at,
+    downloads_remaining: link.max_downloads == null ? null : Math.max(0, link.max_downloads - link.download_count),
+  });
+});
+
+router.get("/shared/link/download", shareAccessLimiter, async (req, res) => {
+  const share = await resolveShare(req, res);
+  if (!share) return undefined;
+  // Counted before streaming, atomically: a 1-download link can't be
+  // raced by two parallel requests.
+  if (!shareLinks.consumeDownload(share.row.id)) {
+    return sendShareError(res, "exhausted");
+  }
+  const jobId = share.row.job_id;
+  const ext = share.job.output_format || "wav";
+  const filename = sharedFilename(share.job, jobId);
+  recordServerEvent("share_downloaded", { uid: share.row.uid, props: {} });
+  const localPath = path.join(settings.outputDir, `${jobId}_mastered.${ext}`);
+  if (fs.existsSync(localPath)) {
+    return res.download(localPath, filename);
+  }
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  return proxyFromPython(`/download/${jobId}.${ext}`, res, SHARE_UNAVAILABLE.master_gone[1]);
 });
 
 // Wipes everything this app stored in Firestore for the caller (profile,
@@ -982,11 +1098,17 @@ router.get("/preview/:jobId", async (req, res) => {
   return proxyFromPython(`/preview/${req.params.jobId}`, res, "Preview not found");
 });
 
+// LEGACY share links (HMAC-signed ?token=, minted before opaque share
+// links existed). No new ones are issued; these two routes only keep
+// already-sent links working until they expire (at most 48h after the
+// deploy that introduced shareLinkService.js), after which they can be
+// deleted along with verifyShareToken/mintShareToken.
+//
 // Public metadata for the frontend's simple /shared/:jobId page — just
 // enough to render "here's the file, want it?" without exposing anything
 // else about the account that shared it. Same public/token-only auth as
 // the file route right below.
-router.get("/shared/:jobId/info", async (req, res) => {
+router.get("/shared/:jobId/info", shareAccessLimiter, async (req, res) => {
   const claim = verifyShareToken(req.query.token);
   if (!claim || claim.jobId !== req.params.jobId) {
     return res.status(404).json({ detail: "This link is invalid or has expired." });
@@ -1014,7 +1136,7 @@ router.get("/shared/:jobId/info", async (req, res) => {
 // both checks the signature/expiry AND that the token's embedded jobId
 // matches this URL's :jobId — a token can't be replayed against a
 // different job's share link.
-router.get("/shared/:jobId", async (req, res) => {
+router.get("/shared/:jobId", shareAccessLimiter, async (req, res) => {
   const claim = verifyShareToken(req.query.token);
   if (!claim || claim.jobId !== req.params.jobId) {
     return res.status(404).json({ detail: "This link is invalid or has expired." });

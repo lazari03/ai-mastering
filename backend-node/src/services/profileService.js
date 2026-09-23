@@ -4,6 +4,7 @@ import { sendWelcomeEmail } from "./brevoService.js";
 import { recordServerEvent } from "./analyticsService.js";
 import { writeNotification } from "./adminNotificationService.js";
 import { deleteAllJobsForUser } from "./jobsService.js";
+import { shareLinks } from "./shareLinkService.js";
 
 // User profile lives in Firestore at users/{uid} — the same document whose
 // "artists" subcollection holds Saved Artists (see customPresetsService.js).
@@ -129,5 +130,6 @@ export async function deleteAllUserData(uid) {
   const doc = userDoc(uid);
   await deleteSubcollection(doc, "artists");
   await deleteAllJobsForUser(uid);
+  shareLinks.deleteAllForUser(uid);
   await doc.delete();
 }

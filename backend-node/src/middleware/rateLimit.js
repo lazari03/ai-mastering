@@ -57,3 +57,17 @@ export const analyticsCollectLimiter = rateLimit({
   keyGenerator: (req) => ipKeyGenerator(req.ip),
   message: { detail: "Too many analytics requests." },
 });
+
+// Public share-link endpoints (/shared/*) — no account, so IP-keyed.
+// Tokens are 256-bit random values, so this isn't what stops guessing
+// (that's computationally impossible regardless); it caps how hard one
+// client can hammer the info/download endpoints, e.g. a leaked link
+// posted somewhere public being scraped in a loop.
+export const shareAccessLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.ip),
+  message: { detail: "Too many requests for shared files — try again in a few minutes.", code: "rate_limited" },
+});

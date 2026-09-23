@@ -79,6 +79,7 @@ async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     const detail = isJson ? payload?.detail || JSON.stringify(payload) : payload;
     const requestError = new Error(detail || `HTTP ${response.status}`);
     requestError.status = response.status;
+    requestError.code = isJson ? payload?.code : undefined;
     throw requestError;
   }
 
@@ -190,8 +191,33 @@ export async function deleteJobRecord(jobId) {
   return request(`/jobs/${jobId}`, { method: "DELETE" });
 }
 
-export async function postShareJob(jobId) {
-  return request(`/jobs/${jobId}/share`, { method: "POST" });
+// Share links (see backend-node/src/services/shareLinkService.js). The raw
+// link (with its token) is returned ONLY by createShareLink — the server
+// keeps just a hash, so listShareLinks returns metadata, never URLs.
+export async function createShareLink(jobId, { expiresInSeconds = null, maxDownloads = null } = {}) {
+  return request(`/jobs/${jobId}/share-links`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ expires_in_seconds: expiresInSeconds, max_downloads: maxDownloads }),
+  });
+}
+
+export async function listShareLinks(jobId) {
+  return request(`/jobs/${jobId}/share-links`);
+}
+
+export async function revokeShareLink(linkId) {
+  return request(`/share-links/${encodeURIComponent(linkId)}`, { method: "DELETE" });
+}
+
+// Public (recipient side). The token travels in a header, never in a URL,
+// so it can't end up in server access logs or Referer headers.
+export async function getShareLinkInfo(token) {
+  return request("/shared/link/info", { public: true, headers: { "X-Share-Token": token } });
+}
+
+export async function downloadSharedFile(token, filename) {
+  return downloadFileSafely(`${API_BASE}/shared/link/download`, filename, { "X-Share-Token": token });
 }
 
 // Public — no signed-in user needed (or expected). Backs the simple
@@ -392,10 +418,10 @@ export async function toAuthedDownloadUrl(path) {
 // response actually succeeded and isn't HTML, and only then saves it —
 // throwing a real error otherwise instead of silently handing the user a
 // broken file that looks like it worked.
-export async function downloadFileSafely(url, filename) {
+export async function downloadFileSafely(url, filename, headers = undefined) {
   let response;
   try {
-    response = await fetch(url);
+    response = await fetch(url, headers ? { headers, cache: "no-store" } : undefined);
   } catch (error) {
     throw new Error(`Could not reach the download — ${error.message}`);
   }
@@ -403,11 +429,16 @@ export async function downloadFileSafely(url, filename) {
   const contentType = response.headers.get("content-type") || "";
   if (!response.ok || contentType.includes("text/html")) {
     let detail = `Download failed (HTTP ${response.status})`;
+    let code;
     if (contentType.includes("application/json")) {
       const payload = await response.json().catch(() => null);
       if (payload?.detail) detail = payload.detail;
+      code = payload?.code;
     }
-    throw new Error(detail);
+    const downloadError = new Error(detail);
+    downloadError.status = response.status;
+    downloadError.code = code;
+    throw downloadError;
   }
 
   const blob = await response.blob();

@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 
-import { getJobs, toAuthedDownloadUrl, deleteJobRecord, postShareJob, downloadFileSafely } from "@/network/http/client";
+import { getJobs, toAuthedDownloadUrl, deleteJobRecord, downloadFileSafely } from "@/network/http/client";
 import { useEntitlementsStore, planUnlocksShare } from "@/store/entitlementsStore";
 import { LoadingBlock } from "@/components/ui/Spinner";
 import { shortenFilename } from "@/lib/format";
 import { useLanguage } from "@/lib/i18n";
 import { trackEvent } from "@/lib/analytics";
+import ShareLinkManager from "./ShareLinkManager";
 
 // Internal token, not display text — "expired" is compared against
 // elsewhere in this file (filtering, conditional rendering), so it stays
@@ -46,9 +47,7 @@ export default function MyMastersPanel() {
   const [error, setError] = useState("");
   const [busyJobId, setBusyJobId] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState("");
-  const [shareLinks, setShareLinks] = useState({}); // job_id -> { url, expires_at }
-  const [shareErrors, setShareErrors] = useState({});
-  const [copiedJobId, setCopiedJobId] = useState("");
+  const [openShareJobId, setOpenShareJobId] = useState(""); // whose share panel is open
   const [downloadErrors, setDownloadErrors] = useState({});
   const [filter, setFilter] = useState("active"); // "active" | "expired" | "all"
   const [page, setPage] = useState(1);
@@ -89,18 +88,11 @@ export default function MyMastersPanel() {
     }
   };
 
-  const handleShare = async (jobId) => {
+  // Opens the share panel (expiry, download limit, existing links) rather
+  // than minting a link straight away — see ShareLinkManager.jsx.
+  const handleShare = (jobId) => {
     if (!shareUnlocked) return;
-    setBusyJobId(jobId);
-    setShareErrors((prev) => ({ ...prev, [jobId]: "" }));
-    try {
-      const { url, expires_at } = await postShareJob(jobId);
-      setShareLinks((prev) => ({ ...prev, [jobId]: { url, expires_at } }));
-    } catch (err) {
-      setShareErrors((prev) => ({ ...prev, [jobId]: err?.message || t("myMasters.shareFailed") }));
-    } finally {
-      setBusyJobId("");
-    }
+    setOpenShareJobId((current) => (current === jobId ? "" : jobId));
   };
 
   const handleDownload = async (job) => {
@@ -129,17 +121,6 @@ export default function MyMastersPanel() {
   const changeFilter = (next) => {
     setFilter(next);
     setPage(1);
-  };
-
-  const copyShareLink = async (jobId, url) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedJobId(jobId);
-      setTimeout(() => setCopiedJobId(""), 2000);
-    } catch {
-      // Clipboard API unavailable (non-HTTPS, permissions) — the link is
-      // still visible and selectable in the box, just not one-click.
-    }
   };
 
   return (
@@ -182,7 +163,6 @@ export default function MyMastersPanel() {
         {pageJobs.map((job, jobIndex) => {
           const expiry = timeUntil(job.expires_at);
           const expired = expiry === "expired";
-          const share = shareLinks[job.job_id];
           const isBusy = busyJobId === job.job_id;
           return (
             // Staggered fade-in per card — 30ms apart reads as one smooth
@@ -243,6 +223,7 @@ export default function MyMastersPanel() {
                     type="button"
                     onClick={() => handleShare(job.job_id)}
                     disabled={isBusy || !shareUnlocked}
+                    aria-expanded={openShareJobId === job.job_id}
                     title={shareUnlocked ? undefined : t("myMasters.shareTitle")}
                     className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30 disabled:opacity-50"
                   >
@@ -283,32 +264,9 @@ export default function MyMastersPanel() {
                 </div>
               ) : null}
 
-              {shareErrors[job.job_id] ? <p className="mt-2 text-xs text-red-700">{shareErrors[job.job_id]}</p> : null}
               {downloadErrors[job.job_id] ? <p className="mt-2 text-xs text-red-700">⚠ {downloadErrors[job.job_id]}</p> : null}
 
-              {share ? (
-                <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.045] p-3">
-                  <p className="m-0 text-[11px] uppercase tracking-[0.1em] text-accent">{t("myMasters.shareLinkTitle")}</p>
-                  <p className="mt-1 text-[11px] text-text-secondary">
-                    {t("myMasters.shareLinkBody")} ({formatExpiry(t, share.expires_at)}) {t("myMasters.shareLinkTail")}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <input
-                      readOnly
-                      value={share.url}
-                      onFocus={(e) => e.target.select()}
-                      className="min-w-0 flex-1 rounded-lg border border-border-subtle bg-black/[0.045] px-2.5 py-2 text-[11px] text-text-primary"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => copyShareLink(job.job_id, share.url)}
-                      className="shrink-0 rounded-lg border border-border-subtle bg-black/[0.05] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-accent hover:bg-black/[0.06]"
-                    >
-                      {copiedJobId === job.job_id ? t("myMasters.copied") : t("myMasters.copy")}
-                    </button>
-                  </div>
-                </div>
-              ) : null}
+              {!expired && openShareJobId === job.job_id ? <ShareLinkManager jobId={job.job_id} t={t} /> : null}
             </motion.div>
           );
         })}

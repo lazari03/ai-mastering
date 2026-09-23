@@ -33,7 +33,7 @@ import { SITE_URL } from "@/lib/seo";
 // account, and every /analytics/admin/* API it calls independently
 // verifies role === "admin" server-side (requireAdmin.js). A crawler that
 // ignored this file entirely would still get nothing without both of those.
-const DISALLOW = ["/app", "/thank-you", "/shared/", "/admin"];
+const DISALLOW = ["/app", "/thank-you", "/share", "/admin"]; // "/share" also covers /shared/
 
 // Explicitly named so a future tightening of the "*" group can't silently
 // take AI answer engines with it. Being cited by ChatGPT/Perplexity/Claude

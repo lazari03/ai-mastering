@@ -97,6 +97,8 @@ export const SERVER_ONLY_EVENT_NAMES = new Set([
   "subscription_expired",
   "checkout_abandoned", // derived at query time, never written directly either — see computeAbandonedCheckouts below
   "share_created", // the /jobs/:jobId/share route observes this directly; a client claiming it created a share link proves nothing
+  "share_revoked",
+  "share_downloaded",
 ]);
 
 const SENSITIVE_QUERY_KEY_PATTERNS = [
