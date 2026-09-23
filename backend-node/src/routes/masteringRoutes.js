@@ -40,7 +40,7 @@ import { subscribeToNewsletter } from "../services/newsletterService.js";
 import { getAuth } from "../config/firebase.js";
 import { expensiveLimiter } from "../middleware/rateLimit.js";
 import { recordServerEvent, normalizeMasteringFailure } from "../services/analyticsService.js";
-import { mintDownloadToken, mintShareToken, verifyShareToken } from "../services/downloadTokenService.js";
+import { mintDownloadToken, mintShareToken, verifyShareToken, isShareJobExpired } from "../services/downloadTokenService.js";
 
 const router = express.Router();
 
@@ -992,7 +992,7 @@ router.get("/shared/:jobId/info", async (req, res) => {
     return res.status(404).json({ detail: "This link is invalid or has expired." });
   }
   const job = await getJob(claim.uid, req.params.jobId);
-  if (!job) {
+  if (!job || isShareJobExpired(job)) {
     return res.status(404).json({ detail: "This link is invalid or has expired." });
   }
   const ext = job.output_format || "wav";
@@ -1020,7 +1020,7 @@ router.get("/shared/:jobId", async (req, res) => {
     return res.status(404).json({ detail: "This link is invalid or has expired." });
   }
   const job = await getJob(claim.uid, req.params.jobId);
-  if (!job) {
+  if (!job || isShareJobExpired(job)) {
     return res.status(404).json({ detail: "This link is invalid or has expired." });
   }
   const ext = job.output_format || "wav";

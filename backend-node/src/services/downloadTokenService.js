@@ -71,3 +71,15 @@ export function verifyShareToken(token) {
   if (!uid || !jobId || !Number.isFinite(exp) || Date.now() > exp) return null;
   return { uid, jobId };
 }
+
+// A share link lives exactly as long as the master. The token already
+// carries the job's expiry from when it was minted; the public /shared/
+// routes ALSO check the job's current expires_at on every request, so the
+// link dies the moment the master does even if the sweep hasn't removed the
+// file yet or the job's expiry changed after the link was created. A job
+// with no readable expiry counts as expired rather than shared forever.
+export function isShareJobExpired(job, now = Date.now()) {
+  const raw = job?.expires_at?.toDate ? job.expires_at.toDate() : job?.expires_at;
+  const ms = raw ? new Date(raw).getTime() : NaN;
+  return !Number.isFinite(ms) || ms <= now;
+}
