@@ -33,8 +33,9 @@ function ParagraphBody({ paragraph }) {
   );
 }
 
-export function generateMetadata({ params }) {
-  const post = getPostBySlug(params.slug);
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  const post = getPostBySlug(slug);
   if (!post) return buildMetadata({ title: "Not found", description: "This post doesn't exist.", path: "/blog", noindex: true });
 
   return buildMetadata({
@@ -46,8 +47,9 @@ export function generateMetadata({ params }) {
   });
 }
 
-export default function BlogPostPage({ params }) {
-  const post = getPostBySlug(params.slug);
+export default async function BlogPostPage({ params }) {
+  const { slug } = await params;
+  const post = getPostBySlug(slug);
   if (!post) notFound();
 
   const otherPosts = POSTS.filter((p) => p.slug !== post.slug);

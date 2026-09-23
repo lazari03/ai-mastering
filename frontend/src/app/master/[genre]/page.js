@@ -10,14 +10,15 @@ export function generateStaticParams() {
   return GENRE_KEYS.map((genre) => ({ genre }));
 }
 
-export function generateMetadata({ params }) {
-  const page = GENRE_PAGES[params.genre];
+export async function generateMetadata({ params }) {
+  const { genre } = await params;
+  const page = GENRE_PAGES[genre];
   if (!page) return buildMetadata({ title: "Not found", description: "This page doesn't exist.", path: "/", noindex: true });
 
   return buildMetadata({
     title: `${page.headline} | ${SITE_NAME}`,
     description: page.description,
-    path: `/master/${params.genre}`,
+    path: `/master/${genre}`,
     keywords: page.keywords,
   });
 }
@@ -36,17 +37,18 @@ function serviceJsonLd(genre, page) {
   };
 }
 
-export default function GenreMasteringPage({ params }) {
-  const page = GENRE_PAGES[params.genre];
+export default async function GenreMasteringPage({ params }) {
+  const { genre } = await params;
+  const page = GENRE_PAGES[genre];
   if (!page) notFound();
 
-  const otherGenres = GENRE_KEYS.filter((g) => g !== params.genre);
-  const relatedPost = relatedPostForGenre(params.genre);
+  const otherGenres = GENRE_KEYS.filter((g) => g !== genre);
+  const relatedPost = relatedPostForGenre(genre);
 
   return (
     <>
     <main className="mx-auto w-full max-w-[760px] px-4 pb-24 pt-8 sm:px-6">
-      <JsonLd data={serviceJsonLd(params.genre, page)} />
+      <JsonLd data={serviceJsonLd(genre, page)} />
 
       <Link href="/" className="text-[13px] text-zinc-400 hover:text-zinc-200">
         ← Back to home

@@ -8,6 +8,7 @@ export const metadata = buildMetadata({
   noindex: true,
 });
 
-export default function ThankYouPage({ searchParams }) {
-  return <ThankYouPageClient plan={searchParams?.plan} item={searchParams?.item} price={searchParams?.price} />;
+export default async function ThankYouPage({ searchParams }) {
+  const { plan, item, price } = (await searchParams) || {};
+  return <ThankYouPageClient plan={plan} item={item} price={price} />;
 }

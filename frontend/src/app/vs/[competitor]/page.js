@@ -11,23 +11,25 @@ export function generateStaticParams() {
   return COMPARISON_KEYS.map((competitor) => ({ competitor }));
 }
 
-export function generateMetadata({ params }) {
-  const page = COMPARISON_PAGES[params.competitor];
+export async function generateMetadata({ params }) {
+  const { competitor } = await params;
+  const page = COMPARISON_PAGES[competitor];
   if (!page) return buildMetadata({ title: "Not found", description: "This page doesn't exist.", path: "/", noindex: true });
 
   return buildMetadata({
     title: `${page.headline} | ${SITE_NAME}`,
     description: page.description,
-    path: `/vs/${params.competitor}`,
+    path: `/vs/${competitor}`,
     keywords: page.keywords,
   });
 }
 
-export default function ComparisonPage({ params }) {
-  const page = COMPARISON_PAGES[params.competitor];
+export default async function ComparisonPage({ params }) {
+  const { competitor } = await params;
+  const page = COMPARISON_PAGES[competitor];
   if (!page) notFound();
 
-  const otherComparisons = COMPARISON_KEYS.filter((k) => k !== params.competitor);
+  const otherComparisons = COMPARISON_KEYS.filter((k) => k !== competitor);
 
   return (
     <>

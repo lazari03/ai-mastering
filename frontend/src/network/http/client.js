@@ -19,8 +19,13 @@ async function authHeader(forceRefresh = false) {
 async function doFetch(path, options, timeoutMs, forceRefresh) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const { public: isPublic, ...fetchOptions } = options;
+  options = fetchOptions;
   try {
-    const headers = { ...(options.headers || {}), ...(await authHeader(forceRefresh)) };
+    // Public endpoints (share links) never carry the viewer's session, so
+    // they behave identically for the owner and for a recipient with no
+    // account.
+    const headers = { ...(options.headers || {}), ...(isPublic ? {} : await authHeader(forceRefresh)) };
     return await fetch(`${API_BASE}${path}`, {
       ...options,
       headers,
@@ -47,7 +52,7 @@ async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   // after sign-up (confirmed: reproduced once in testing, gone on retry).
   // One retry with a force-refreshed token, only when we actually have a
   // user to refresh for, covers it without masking a real "not logged in".
-  if (response.status === 401 && getFirebaseAuth()?.currentUser) {
+  if (response.status === 401 && !options.public && getFirebaseAuth()?.currentUser) {
     response = await doFetch(path, options, timeoutMs, true);
   }
 
@@ -62,7 +67,7 @@ async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     // requireAuth.js). That's a real logout, not a transient error: clear
     // the stale local Firebase session and send the user back to /login
     // instead of leaving them stuck re-hitting the same 401 forever.
-    if (response.status === 401 && isJson && payload?.code === "SESSION_EXPIRED") {
+    if (response.status === 401 && !options.public && isJson && payload?.code === "SESSION_EXPIRED") {
       getFirebaseAuth()
         ?.signOut()
         .finally(() => {
@@ -192,7 +197,7 @@ export async function postShareJob(jobId) {
 // Public — no signed-in user needed (or expected). Backs the simple
 // /shared/[jobId] page a share link points recipients at.
 export async function getSharedJobInfo(jobId, token) {
-  return request(`/shared/${jobId}/info?token=${encodeURIComponent(token)}`);
+  return request(`/shared/${jobId}/info?token=${encodeURIComponent(token)}`, { public: true });
 }
 
 export async function deleteAccountData() {
