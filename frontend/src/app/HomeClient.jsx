@@ -14,11 +14,14 @@ import { IconCheck } from "@/components/app/icons";
 import { CTA } from "@/lib/internalLinks";
 import { BEFORE_AFTER_DEMOS } from "@/lib/beforeAfterDemos";
 import BeforeAfterPlayer from "@/components/marketing/BeforeAfterPlayer";
-import LoudnessMeter from "@/components/audio/LoudnessMeter";
-import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
 import GenreShowcase from "@/components/marketing/GenreShowcase";
 import SectionHeading from "@/components/marketing/SectionHeading";
-import TruePeakMeter from "@/components/audio/TruePeakMeter";
+import MasteringDecisions from "@/components/audio/MasteringDecisions";
+import LoudnessMeter from "@/components/audio/LoudnessMeter";
+import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
+import { summarizeDecisions } from "@/lib/masteringDecisions";
+import { DEMO_MASTER } from "@/content/demoMaster";
+import { STUDIO_GROUPS, loc } from "@/lib/studio";
 import { trackEvent } from "@/lib/analytics";
 
 // extra carries whatever is worth segmenting a CTA click by — for the
@@ -83,8 +86,12 @@ function FaqItem({ t, qKey }) {
   );
 }
 
+// Counts for the hero strip, from the same real decisions the
+// "how it listens" section renders.
+const DEMO_COUNTS = summarizeDecisions(DEMO_MASTER)?.counts || { corrections: 0, untouched: 0 };
+
 export default function HomeClient() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const pricingSectionRef = useRef(null);
   usePricingSectionView(pricingSectionRef);
   const [billing, setBilling] = useState("monthly");
@@ -178,19 +185,17 @@ export default function HomeClient() {
             </div>
             <p className="m-0 mt-4 text-xs text-dark-text-secondary">{t("hero.ctaReassurance")}</p>
 
-            <div className="mt-14 flex flex-wrap gap-x-12 gap-y-6 border-t border-dark-border-subtle pt-9">
-              {["stat1", "stat2", "stat3"].map((s) => (
-                <div key={s}>
-                  <p
-                    className="m-0 font-mono text-[34px] leading-none tracking-[-0.02em] text-dark-text-primary"
-                    style={{ fontVariantNumeric: "tabular-nums" }}
-                  >
-                    {t(`hero.${s}.value`)}
-                  </p>
-                  <p className="mt-2.5 text-[10px] uppercase tracking-[0.2em] text-dark-text-secondary">{t(`hero.${s}.label`)}</p>
-                </div>
+            {/* Analyze → Correct → Preserve → Verify: what the engine does,
+                instead of spec counts (presets, engines) in the hero. */}
+            <ol className="m-0 mt-14 grid list-none grid-cols-2 gap-x-8 gap-y-5 border-t border-dark-border-subtle p-0 pt-9 sm:grid-cols-4">
+              {["analyze", "correct", "preserve", "verify"].map((k, i) => (
+                <li key={k}>
+                  <p className="m-0 font-mono text-[11px] text-dark-text-secondary">{String(i + 1).padStart(2, "0")}</p>
+                  <p className="m-0 mt-1.5 text-[15px] font-semibold text-dark-text-primary">{t(`hero.pillar.${k}`)}</p>
+                  <p className="m-0 mt-1 text-[12px] leading-snug text-dark-text-secondary">{t(`hero.pillar.${k}.body`)}</p>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
 
           {BEFORE_AFTER_DEMOS[0] ? (
@@ -209,18 +214,58 @@ export default function HomeClient() {
             <div className="bezel bezel-on-dark relative z-10">
               <div className="bezel-core p-3 sm:p-4">
                 <BeforeAfterPlayer large {...BEFORE_AFTER_DEMOS[0]} />
-                {(() => {
-                  const heroTarget = LOUDNESS_TARGETS.find((g) => g.genre === BEFORE_AFTER_DEMOS[0].genre.toLowerCase());
-                  return heroTarget ? (
-                    <div className="mt-3 flex flex-col gap-5 rounded-[1.25rem] bg-black/[0.03] p-5 sm:flex-row sm:items-end sm:gap-6">
-                      <LoudnessMeter className="sm:flex-1" label={t("hero.consoleLoudness")} targetLufs={heroTarget.targetLufs} />
-                      <TruePeakMeter label={t("hero.consoleCeiling")} />
-                    </div>
-                  ) : null;
-                })()}
+                {/* Real numbers from this demo's own master (content/demoMaster.js),
+                    not a genre target dressed up as a measurement. */}
+                <dl className="m-0 mt-3 grid grid-cols-3 gap-2 rounded-[1.25rem] bg-black/[0.03] p-4 text-left sm:p-5">
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-[0.14em] text-text-secondary">{t("hero.demo.loudness")}</dt>
+                    <dd className="m-0 mt-1 font-mono text-[13px] text-text-primary sm:text-[15px]">
+                      {DEMO_MASTER.before_lufs.toFixed(1)} → {DEMO_MASTER.after_lufs.toFixed(1)}
+                      <span className="text-text-secondary"> LUFS</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-[0.14em] text-text-secondary">{t("hero.demo.truePeak")}</dt>
+                    <dd className="m-0 mt-1 font-mono text-[13px] text-text-primary sm:text-[15px]">
+                      {DEMO_MASTER.analysis_before.true_peak_db.toFixed(1)} → {DEMO_MASTER.analysis_after.true_peak_db.toFixed(1)}
+                      <span className="text-text-secondary"> dBTP</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-[0.14em] text-text-secondary">{t("hero.demo.decisions")}</dt>
+                    <dd className="m-0 mt-1 text-[13px] text-text-primary sm:text-[15px]">
+                      {t("hero.demo.counts", { c: DEMO_COUNTS.corrections, u: DEMO_COUNTS.untouched })}
+                    </dd>
+                  </div>
+                </dl>
               </div>
             </div>
           ) : null}
+        </div>
+      </section>
+
+      <section id="how-it-listens" className="reveal mt-24 scroll-mt-28">
+        <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+          <div>
+            <p className="eyebrow m-0">{t("listens.eyebrow")}</p>
+            <h2 className="mt-4 font-[var(--font-title)] text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] text-text-primary sm:text-[44px]" style={{ textWrap: "balance" }}>
+              {t("listens.title")}
+            </h2>
+            <p className="mt-5 max-w-[46ch] text-[16px] leading-[1.7] text-text-secondary">{t("listens.body", { c: DEMO_COUNTS.corrections, u: DEMO_COUNTS.untouched })}</p>
+            <ol className="m-0 mt-8 flex list-none flex-col gap-4 p-0">
+              {["analyze", "master", "verify"].map((k, i) => (
+                <li key={k} className="flex gap-4">
+                  <span className="font-mono text-[12px] text-text-secondary">{String(i + 1).padStart(2, "0")}</span>
+                  <div>
+                    <h3 className="m-0 text-[16px] font-semibold text-text-primary">{t(`listens.${k}.title`)}</h3>
+                    <p className="m-0 mt-1 text-[14px] leading-[1.6] text-text-secondary">{t(`listens.${k}.body`)}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-8 text-[13px] text-text-secondary">{t("listens.note")}</p>
+          </div>
+          <MasteringDecisions result={DEMO_MASTER} source="homepage_demo" />
         </div>
       </section>
 
@@ -487,34 +532,30 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <section className="reveal mt-24">
-        <div className="bezel">
-          <div className="bezel-core flex flex-col items-start justify-between gap-7 p-9 sm:flex-row sm:items-center sm:p-12">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-black/[0.045] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary">
-                <span className="h-1 w-1 rounded-full bg-accent" aria-hidden="true" />
-                {t("crossPromo.eyebrow")}
-              </span>
-              <h2 className="mt-5 font-[var(--font-title)] text-[30px] font-semibold leading-[1.08] tracking-[-0.03em] text-text-primary sm:text-[38px]">
-                {t("crossPromo.title")}
-              </h2>
-              <p className="mt-3 max-w-[48ch] text-[15px] leading-[1.6] text-text-secondary" style={{ textWrap: "pretty" }}>
-                {t("crossPromo.body")}
-              </p>
+      {/* Auralith Studio — every real tool, grouped by what the musician is
+          doing, with descriptive anchors (also the clearest map of the
+          site's hierarchy for search engines). From lib/studio.js. */}
+      <section id="studio" className="reveal mt-24 scroll-mt-28">
+        <SectionHeading eyebrow={t("studioHome.eyebrow")} title={t("studioHome.title")} subtitle={t("studioHome.body")} />
+        <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {STUDIO_GROUPS.map((group) => (
+            <div key={group.key}>
+              <h3 className="m-0 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary">{loc(group.label, lang)}</h3>
+              <ul className="m-0 mt-4 flex list-none flex-col gap-3 p-0">
+                {group.tools.map((tool) => (
+                  <li key={tool.key}>
+                    <Link href={tool.href} className="group block rounded-xl border border-border-subtle bg-white/55 p-4 transition hover:border-text-primary/30 hover:bg-white">
+                      <span className="flex items-center justify-between gap-2 text-[15px] font-semibold text-text-primary">
+                        {loc(tool.name, lang)}
+                        {tool.appOnly ? <span className="shrink-0 rounded-full border border-border-subtle px-2 py-0.5 text-[10px] font-medium text-text-secondary">{t("nav.appOnly")}</span> : null}
+                      </span>
+                      <span className="mt-1 block text-[13px] leading-snug text-text-secondary">{loc(tool.blurb, lang)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <Link
-              href="/chord-detector"
-              className="group flex shrink-0 items-center gap-3 rounded-full bg-black/[0.055] py-2 pl-6 pr-2 text-sm font-semibold text-text-primary transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
-            >
-              {t("crossPromo.cta")}
-              <span
-                aria-hidden="true"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.06] text-sm transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px"
-              >
-                ↗
-              </span>
-            </Link>
-          </div>
+          ))}
         </div>
       </section>
 

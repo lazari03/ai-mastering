@@ -51,7 +51,8 @@ export function summarizeDecisions(result) {
       .map((d) => ({
         hz: Number(d.frequency_hz ?? d.center_hz),
         gainDb: round1(Number(d.gain_db ?? -(d.max_reduction_db || 0))),
-        problem: d.problem || String(d.reason || "").replace(/^measured_/, ""),
+        // Dynamic-EQ decisions carry a prose reason, not a problem key.
+        problem: d.problem || (d.dynamic ? "intermittent_build_up" : String(d.reason || "").replace(/^measured_/, "")),
         dynamic: Boolean(d.dynamic),
         confidence: d.confidence ?? null,
       }));

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { PLANS, SINGLE_MASTER } from "./pricing.js";
+import { HOME_FAQ } from "../content/homeFaq.js";
 
 // Single source of truth for every user-facing string on the site —
 // English + Albanian. Nothing under src/app or src/components should have
@@ -39,6 +40,31 @@ const DICT = {
   "hero.ctaPrimary": { en: "Master a Track Free", sq: "Masterizo Falas" },
   "hero.ctaSecondary": { en: "Hear a Before / After", sq: "Dëgjo Para / Pas" },
   "hero.ctaReassurance": { en: "3 free masters · No credit card", sq: "3 masterë falas · Pa kartë krediti" },
+  "hero.pillar.analyze": { en: "Analyze", sq: "Analizo" },
+  "hero.pillar.analyze.body": { en: "Measures loudness, tone, dynamics and stereo first.", sq: "Mat së pari zërin, tonin, dinamikën dhe stereon." },
+  "hero.pillar.correct": { en: "Correct", sq: "Korrigjo" },
+  "hero.pillar.correct.body": { en: "Fixes only what the measurements justify.", sq: "Rregullon vetëm atë që justifikojnë matjet." },
+  "hero.pillar.preserve": { en: "Preserve", sq: "Ruaj" },
+  "hero.pillar.preserve.body": { en: "Leaves what already works alone.", sq: "E lë të paprekur atë që funksionon." },
+  "hero.pillar.verify": { en: "Verify", sq: "Verifiko" },
+  "hero.pillar.verify.body": { en: "Re-measures the result and backs off if needed.", sq: "Rimat rezultatin dhe zbut nëse duhet." },
+  "hero.demo.loudness": { en: "Loudness", sq: "Zëri" },
+  "hero.demo.truePeak": { en: "True peak", sq: "Kulmi" },
+  "hero.demo.decisions": { en: "Decisions", sq: "Vendime" },
+  "hero.demo.counts": { en: "{c} fixed · {u} kept", sq: "{c} rregulluar · {u} ruajtur" },
+  "listens.eyebrow": { en: "Your mix decides", sq: "Miksi yt vendos" },
+  "listens.title": { en: "It listens before it touches anything.", sq: "Dëgjon para se të prekë gjë." },
+  "listens.body": { en: "This is the engine's own report for the demo above — the same panel you get with every master. It made {c} corrections, deliberately left {u} areas alone, and checked its own result.", sq: "Ky është raporti i vetë motorit për demon më lart — i njëjti panel që merr me çdo master. Bëri {c} korrigjime, la qëllimisht {u} zona të paprekura dhe kontrolloi rezultatin e vet." },
+  "listens.analyze.title": { en: "Analyze", sq: "Analizo" },
+  "listens.analyze.body": { en: "Loudness, tonal balance, dynamics, transients and stereo are measured before a single sample changes.", sq: "Zëri, balanca tonale, dinamika, transientet dhe stereo maten para se të ndryshojë ndonjë mostër." },
+  "listens.master.title": { en: "Master", sq: "Masterizo" },
+  "listens.master.body": { en: "Only confident problems get a correction, sized to what your mix needs. Genre and style set the destination, not a fixed chain.", sq: "Vetëm problemet e sigurta korrigjohen, sa i nevojitet miksit. Zhanri dhe stili caktojnë destinacionin, jo një zinxhir fiks." },
+  "listens.verify.title": { en: "Verify", sq: "Verifiko" },
+  "listens.verify.body": { en: "The result is re-measured. If a move overshot, a gentler version is rendered instead.", sq: "Rezultati rimatet. Nëse një lëvizje e tejkaloi, krijohet një version më i butë." },
+  "listens.note": { en: "Numbers are from the full-resolution master of the demo track.", sq: "Numrat janë nga masteri me rezolucion të plotë i këngës demo." },
+  "studioHome.eyebrow": { en: "Auralith Studio", sq: "Auralith Studio" },
+  "studioHome.title": { en: "Every tool, one engine", sq: "Çdo mjet, një motor" },
+  "studioHome.body": { en: "Master, analyze, prepare and deliver — the free analysis tools work without an account.", sq: "Masterizo, analizo, përgatit dhe dorëzo — mjetet falas të analizës punojnë pa llogari." },
   "hero.stat1.value": { en: "8", sq: "8" },
   "hero.stat1.label": { en: "Genre engines", sq: "Motorë zhanri" },
   "hero.stat2.value": { en: "21+", sq: "21+" },
@@ -108,8 +134,8 @@ const DICT = {
   "features.f6.eyebrow": { en: "Separation", sq: "Ndarje" },
   "features.f6.title": { en: "Stem-Aware Mastering", sq: "Masterizim me Ndarje Instrumentesh" },
   "features.f6.body": {
-    en: "Optionally split vocals, drums, bass, and other elements for independent, more targeted processing before the final mix-down.",
-    sq: "Opsionalisht ndaj vokalet, daullet, basin, dhe elementë të tjerë për përpunim të pavarur dhe më të synuar para përzierjes finale.",
+    en: "Optionally separate the vocal from the accompaniment and rebalance them independently before the final master.",
+    sq: "Opsionalisht ndaj vokalin nga shoqërimi dhe ribalancoji veçmas para masterit përfundimtar.",
   },
 
   "howTo.eyebrow": { en: "How It Works", sq: "Si Funksionon" },
@@ -146,42 +172,42 @@ const DICT = {
 
   "faq.eyebrow": { en: "FAQ", sq: "Pyetje të Shpeshta" },
   "faq.title": { en: "Frequently asked questions", sq: "Pyetjet më të shpeshta" },
-  "faq.q1": { en: "What file formats are supported?", sq: "Cilat formate skedarësh mbështeten?" },
+  "faq.q1": { en: HOME_FAQ[0].q, sq: "Cilat formate skedarësh mbështeten?" },
   "faq.a1": {
-    en: "Common audio formats (WAV, MP3, FLAC, AIFF, and more) are accepted on upload and decoded automatically before processing. Final export is WAV or MP3.",
+    en: HOME_FAQ[0].a,
     sq: "Formate të zakonshme audio (WAV, MP3, FLAC, AIFF, e më shumë) pranohen në ngarkim dhe dekodohen automatikisht para përpunimit. Eksportimi final është WAV ose MP3.",
   },
-  "faq.q2": { en: "What's the difference between Standard and Professional?", sq: "Cili është ndryshimi midis Standard dhe Professional?" },
+  "faq.q2": { en: HOME_FAQ[1].q, sq: "Cili është ndryshimi midis Standard dhe Professional?" },
   "faq.a2": {
-    en: "Standard applies fast, safe adaptive mastering — it's what your 3 free full-length masters (a one-time trial, not renewed monthly) run on. Professional adds oversampled true-peak limiting, finer dynamic EQ, and tempo-aware compression timing for release-grade results, unlocked (along with a much higher monthly limit) on the Studio plan or higher. Free previews use the Standard engine.",
-    sq: "Standard aplikon masterizim adaptiv të shpejtë dhe të sigurt — mbi të funksionojnë 3 masterët e tu falas (një provë një-herëshe, nuk rinovohet çdo muaj). Professional shton kufizim true-peak me oversampling, EQ dinamik më të hollësishëm, dhe kohëzgjatje kompresimi të ndjeshme ndaj tempos, i zhbllokuar (bashkë me një limit mujor shumë më të lartë) me planin Studio ose më lart. Parapamjet falas përdorin motorin Standard.",
+    en: HOME_FAQ[1].a,
+    sq: "Të dy përdorin të njëjtën analizë, të njëjtën logjikë korrigjimi, të njëjtin limitues të kulmit dhe të njëjtin verifikim. Professional shton kontroll më të imët të bazave — breza të veçantë sub dhe punch — dhe një clipper që ruan transientet para limituesit. Standard përdoret nga masterat falas dhe plani Indie; Professional vjen me Studio dhe All-Access.",
   },
-  "faq.q3": { en: "Can I save an artist's exact mastering chain?", sq: "Mund ta ruaj zinxhirin e saktë të masterizimit të një artisti?" },
+  "faq.q3": { en: HOME_FAQ[2].q, sq: "Mund ta ruaj zinxhirin e saktë të masterizimit të një artisti?" },
   "faq.a3": {
-    en: "Yes — import a full preset JSON under Saved Artists (genre, style, and a processing spec), and apply it to any future track from a dropdown, run exactly as written. It's private to your account.",
+    en: HOME_FAQ[2].a,
     sq: "Po — importo një JSON preseti të plotë tek Saved Artists (zhanri, stili, dhe një specifikim përpunimi), dhe aplikoje në çdo këngë të ardhshme nga një menu, ekzekutuar saktësisht siç është shkruar. Është privat për llogarinë tënde.",
   },
-  "faq.q4": { en: "Why does my mono source sound mono after mastering?", sq: "Pse burimi mono tingëllon mono edhe pas masterizimit?" },
+  "faq.q4": { en: HOME_FAQ[3].q, sq: "Pse burimi mono tingëllon mono edhe pas masterizimit?" },
   "faq.a4": {
-    en: "If the uploaded file itself is mono (or near-mono), the output is mathematically mono too — mastering doesn't fabricate stereo information that was never there. The app detects and flags this so it's never a surprise.",
+    en: HOME_FAQ[3].a,
     sq: "Nëse skedari i ngarkuar është vetë mono (ose pothuajse mono), edhe rezultati është matematikisht mono — masterizimi nuk shpik informacion stereo që s'ka ekzistuar kurrë. Aplikacioni e zbulon dhe e sinjalizon këtë.",
   },
-  "faq.q5": { en: "Is stem separation available?", sq: "A ofrohet ndarja e instrumenteve (stems)?" },
+  "faq.q5": { en: HOME_FAQ[4].q, sq: "A ofrohet ndarja e instrumenteve (stems)?" },
   "faq.a5": {
-    en: "Yes — enable stem-aware processing to master vocals, drums, bass, and other elements with independent, more targeted control. It's included free with the Studio plan or higher — not available on Free.",
-    sq: "Po — aktivizo përpunimin me ndarje instrumentesh për të masterizuar vokalet, daullet, basin, dhe elementë të tjerë me kontroll të pavarur. Është e përfshirë falas me planin Studio ose më lart — nuk ofrohet në planin Free.",
+    en: HOME_FAQ[4].a,
+    sq: "Po — masterizimi me stema ndan vokalin nga shoqërimi që secili të ribalancohet para masterit përfundimtar. All-Access përfshin 20 në muaj; në planet e tjera mund të blesh një master me stema më vete.",
   },
-  "faq.q6": { en: "Can I hear how it'll sound on Spotify or Instagram before downloading?", sq: "Mund të dëgjoj si do tingëllojë në Spotify apo Instagram para se ta shkarkoj?" },
+  "faq.q6": { en: HOME_FAQ[5].q, sq: "Mund të dëgjoj si do tingëllojë në Spotify apo Instagram para se ta shkarkoj?" },
   "faq.a6": {
-    en: "Yes — Codec Preview runs a real MP3/AAC/Opus encode-decode round-trip on your mastered file and reports the true-peak, loudness, and high-frequency changes it caused.",
+    en: HOME_FAQ[5].a,
     sq: "Po — Codec Preview kryen një cikël real kodimi/dekodimi MP3/AAC/Opus mbi skedarin tënd të masterizuar dhe raporton ndryshimet në true-peak, volum, dhe frekuenca të larta.",
   },
-  "faq.q7": { en: "Is my music private?", sq: "A janë private këngët e mia?" },
+  "faq.q7": { en: HOME_FAQ[6].q, sq: "A janë private këngët e mia?" },
   "faq.a7": {
-    en: "Every route except the public landing page requires a signed-in account, and Saved Artist presets are stored per-user — no one else using the app sees your uploads or your artist chains.",
-    sq: "Çdo rrugë përveç faqes publike kërkon një llogari të kyçur, dhe presetet e Saved Artists ruhen për çdo përdorues veç e veç — askush tjetër që përdor aplikacionin nuk sheh ngarkimet a zinxhirët e tu.",
+    en: HOME_FAQ[6].a,
+    sq: "Ngarkimet dhe masterat e tu arrihen vetëm nga llogaria jote e kyçur, ose përmes një lidhjeje ndarjeje që krijon dhe mund ta anulosh. Skedarët audio fshihen përgjithmonë 48 orë pasi i krijon, dhe presetet e Saved Artists janë private.",
   },
-  "faq.q8": { en: "What's actually free?", sq: "Çfarë është vërtet falas?" },
+  "faq.q8": { en: HOME_FAQ[7].q, sq: "Çfarë është vërtet falas?" },
   // Numbers interpolated from lib/pricing.js (not hand-typed) — this
   // exact string went stale twice already after pricing changes before
   // this fix (once missing the free-trial-not-monthly correction, once
@@ -190,8 +216,8 @@ const DICT = {
   // PLANS/pricing cards read means a price change here is now
   // structurally impossible to forget.
   "faq.a8": {
-    en: `30-second mastering previews (unlimited, Standard engine), chord/key/BPM detection (unlimited, always free), and 3 full-length masters total, free — a one-time trial, not renewed monthly. After that, single masters are ${SINGLE_MASTER.price} each, or subscribe: ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period}) gives ${PLANS.studio.masterLimit}/month (resets monthly) and adds Professional mastering and stem separation. ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period}) gives ${PLANS.pro.masterLimit}/month and adds everything else in the studio.`,
-    sq: `Parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard), zbulimi i akordeve/tonalitetit/BPM-së (i pakufizuar, gjithmonë falas), dhe 3 masterë të plotë gjithsej, falas — një provë një-herëshe, nuk rinovohet çdo muaj. Pas kësaj, çdo master i vetëm kushton ${SINGLE_MASTER.price}, ose abonohu: ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period.replace("/mo", "/muaj")}) jep ${PLANS.studio.masterLimit}/muaj (rinovohet çdo muaj) dhe shton masterizimin Professional e ndarjen e instrumenteve. ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period.replace("/mo", "/muaj")}) jep ${PLANS.pro.masterLimit}/muaj dhe shton gjithçka tjetër në studio.`,
+    en: HOME_FAQ[7].a,
+    sq: `Parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard), zbulimi i akordeve/tonalitetit/BPM-së dhe matësi LUFS (të pakufizuara, gjithmonë falas), dhe 3 masterë të plotë gjithsej, falas — një provë një-herëshe, nuk rinovohet çdo muaj. Më pas, masterat e vetëm kushtojnë ${SINGLE_MASTER.price} secili, ose abonohu: ${PLANS.indie.label} (${PLANS.indie.price}${PLANS.indie.period}), ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period}) ose ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period}).`,
   },
 
   "contact.eyebrow": { en: "Contact", sq: "Kontakt" },
