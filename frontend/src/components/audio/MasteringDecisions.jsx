@@ -28,11 +28,11 @@ function Status({ status, t }) {
 
 function Row({ label, status, t, children }) {
   return (
-    <li className="grid gap-2 border-b border-border-subtle py-3.5 last:border-0 sm:grid-cols-[150px_minmax(0,1fr)_auto] sm:items-baseline sm:gap-4">
-      <span className="text-[13px] font-semibold text-text-primary">{label}</span>
-      <div className="min-w-0 text-[14px] leading-relaxed text-text-secondary">{children}</div>
+    <li className="decision-row border-b border-border-subtle py-3.5 last:border-0">
+      <span className="decision-label text-[13px] font-semibold text-text-primary">{label}</span>
+      <div className="decision-body text-[14px] leading-relaxed text-text-secondary">{children}</div>
       {status ? (
-        <div className="sm:justify-self-end">
+        <div className="decision-status">
           <Status status={status} t={t} />
         </div>
       ) : null}
@@ -53,7 +53,7 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
   const metrics = detailedMetrics(result);
 
   return (
-    <section aria-labelledby={`${detailsId}-title`} className="rounded-[20px] border border-border-subtle bg-white/60 p-4 sm:p-6">
+    <section aria-labelledby={`${detailsId}-title`} className="decisions-card rounded-[20px] border border-border-subtle bg-white/60 p-4 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id={`${detailsId}-title`} className="m-0 text-[18px] font-semibold text-text-primary">
           {t("decisions.title")}
@@ -69,7 +69,7 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
               ? r.moves.map((m) => (
                   <span key={`${m.hz}-${m.problem}`} className="block">
                     {t(m.dynamic ? "decisions.moveDynamic" : "decisions.move", { problem: humanizeProblem(m.problem), hz: formatHz(m.hz) })}{" "}
-                    <span className="font-mono text-text-primary">{fmtDb(m.gainDb)} dB</span>
+                    <span className="whitespace-nowrap font-mono text-text-primary">{fmtDb(m.gainDb)} dB</span>
                   </span>
                 ))
               : r.noted.length
@@ -112,7 +112,7 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
           {loudness.beforeLufs != null && loudness.afterLufs != null ? (
             <span className="block">
               <span className="font-mono text-text-primary">{t("decisions.loud.change", { b: fmtNum(loudness.beforeLufs), a: fmtNum(loudness.afterLufs) })}</span>
-              {loudness.changeLu != null ? <span className="ml-2 font-mono">({fmtDb(loudness.changeLu)} LU)</span> : null}
+              {loudness.changeLu != null ? <span className="ml-2 whitespace-nowrap font-mono">({fmtDb(loudness.changeLu)} LU)</span> : null}
             </span>
           ) : null}
           {loudness.truePeakBefore != null && loudness.truePeakAfter != null ? (
@@ -146,7 +146,7 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
           </button>
           {open ? (
             <div id={`${detailsId}-details`} className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[420px] border-collapse text-[13px]">
+              <table className="w-full border-collapse text-[12px] sm:text-[13px]">
                 <thead>
                   <tr className="border-b border-border-subtle text-left text-[11px] uppercase tracking-[0.1em] text-text-secondary">
                     <th scope="col" className="py-2 pr-3 font-medium">{t("decisions.col.metric")}</th>
@@ -157,9 +157,12 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
                 <tbody>
                   {metrics.map((m) => (
                     <tr key={m.key} className="border-b border-border-subtle last:border-0">
-                      <th scope="row" className="py-2 pr-3 text-left font-normal text-text-primary">{t(`decisions.metric.${m.key}`)}</th>
-                      <td className="py-2 pr-3 text-right font-mono text-text-secondary">{Number.isFinite(m.before) ? `${fmtNum(m.before, m.key === "correlation" ? 2 : 1)} ${m.unit}` : "—"}</td>
-                      <td className="py-2 text-right font-mono text-text-primary">{Number.isFinite(m.after) ? `${fmtNum(m.after, m.key === "correlation" ? 2 : 1)} ${m.unit}` : "—"}</td>
+                      <th scope="row" className="py-2 pr-3 text-left font-normal text-text-primary">
+                        {t(`decisions.metric.${m.key}`)}
+                        {m.unit ? <span className="ml-1 text-text-secondary">({m.unit})</span> : null}
+                      </th>
+                      <td className="whitespace-nowrap py-2 pr-3 text-right font-mono text-text-secondary">{Number.isFinite(m.before) ? fmtNum(m.before, m.key === "correlation" ? 2 : 1) : "—"}</td>
+                      <td className="whitespace-nowrap py-2 text-right font-mono text-text-primary">{Number.isFinite(m.after) ? fmtNum(m.after, m.key === "correlation" ? 2 : 1) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>

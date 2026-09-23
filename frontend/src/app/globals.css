@@ -373,6 +373,35 @@ select:focus-visible,
   }
 }
 
+/* "What Auralith changed" card: lays out from its OWN width (container
+   query), not the viewport — it sits in a full-width column on the
+   homepage and in a narrow side column in the app. Narrow: label + status
+   on one line, explanation full-width below. Wide: label | body | status. */
+.decisions-card {
+  container-type: inline-size;
+}
+.decision-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label status"
+    "body body";
+  column-gap: 0.75rem;
+  row-gap: 0.375rem;
+  align-items: center;
+}
+.decision-row > .decision-label { grid-area: label; }
+.decision-row > .decision-status { grid-area: status; justify-self: end; }
+.decision-row > .decision-body { grid-area: body; min-width: 0; }
+@container (min-width: 560px) {
+  .decision-row {
+    grid-template-columns: 140px minmax(0, 1fr) auto;
+    grid-template-areas: "label body status";
+    column-gap: 1rem;
+    align-items: baseline;
+  }
+}
+
 /* Long-form reading (guides, legal, SEO education). ~68ch measure,
    generous leading, real heading hierarchy — typographic, not boxed. */
 .af-prose {

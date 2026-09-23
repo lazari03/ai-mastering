@@ -52,7 +52,7 @@ function Table({ title, rows }) {
     <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
       <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">{title}</p>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[420px] text-xs">
+        <table className="w-full text-xs [&_td+td]:whitespace-nowrap [&_td+td]:pl-2 [&_th+th]:pl-2">
           <thead>
             <tr className="border-b border-border-subtle text-[10px] uppercase tracking-[0.1em] text-text-secondary">
               <th className="pb-1.5 text-left font-medium">Parameter</th>
@@ -213,7 +213,7 @@ export default function ProcessingSummary({ result }) {
             Target: {applied.spectral_match_source === "reference_track" ? "matched to your uploaded reference track" : "genre default profile"}
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[280px] text-xs">
+            <table className="w-full text-xs [&_td+td]:whitespace-nowrap [&_td+td]:pl-2 [&_th+th]:pl-2">
               <thead>
                 <tr className="border-b border-border-subtle text-[10px] uppercase tracking-[0.1em] text-text-secondary">
                   <th className="pb-1.5 text-left font-medium">Band</th>
@@ -230,7 +230,7 @@ export default function ProcessingSummary({ result }) {
         <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
           <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">Compression Per Band</p>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[320px] text-xs">
+            <table className="w-full text-xs [&_td+td]:whitespace-nowrap [&_td+td]:pl-2 [&_th+th]:pl-2">
               <thead>
                 <tr className="border-b border-border-subtle text-[10px] uppercase tracking-[0.1em] text-text-secondary">
                   <th className="pb-1.5 text-left font-medium">Band</th>
