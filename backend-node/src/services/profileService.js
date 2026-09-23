@@ -1,7 +1,7 @@
 import { getFirestore } from "../config/firebase.js";
 import { notifyNewRegistration } from "./telegramService.js";
 import { sendWelcomeEmail } from "./brevoService.js";
-import { recordServerEvent } from "./analyticsService.js";
+import { recordServerEvent, unlinkUserAnalytics } from "./analyticsService.js";
 import { writeNotification } from "./adminNotificationService.js";
 import { deleteAllJobsForUser } from "./jobsService.js";
 import { shareLinks } from "./shareLinkService.js";
@@ -131,5 +131,6 @@ export async function deleteAllUserData(uid) {
   await deleteSubcollection(doc, "artists");
   await deleteAllJobsForUser(uid);
   shareLinks.deleteAllForUser(uid);
+  unlinkUserAnalytics(uid);
   await doc.delete();
 }

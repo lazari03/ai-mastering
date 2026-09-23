@@ -567,3 +567,13 @@ export function normalizeCheckoutFailure(error) {
 }
 
 export { SESSION_INACTIVITY_MS, CHECKOUT_ABANDON_MS };
+
+// Account deletion: behaviour stays in the aggregate numbers, but nothing
+// in the analytics store points back to the deleted account any more.
+const unlinkStmts = ["analytics_visitors", "analytics_sessions", "analytics_events"].map((table) =>
+  analyticsDb.prepare(`UPDATE ${table} SET uid = NULL WHERE uid = ?`)
+);
+export function unlinkUserAnalytics(uid) {
+  if (!uid) return;
+  analyticsDb.transaction(() => unlinkStmts.forEach((stmt) => stmt.run(uid)))();
+}

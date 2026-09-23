@@ -1,6 +1,6 @@
 import { Breadcrumbs, PageShell } from "@/components/site/Page";
 
-export const LAST_UPDATED = "August 16, 2026";
+export const LAST_UPDATED = "September 23, 2026";
 
 const PATHS = { "Terms & Conditions": "/terms", "Privacy Policy": "/privacy", "Refund Policy": "/refund" };
 

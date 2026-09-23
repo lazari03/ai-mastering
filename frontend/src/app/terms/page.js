@@ -1,5 +1,7 @@
 import LegalPage from "@/components/legal/LegalPage";
 import { buildMetadata } from "@/lib/seo";
+import { PRODUCT } from "@/lib/product";
+import { PLANS, SINGLE_MASTER, STEM_SEPARATION } from "@/lib/pricing";
 
 export const metadata = buildMetadata({
   title: "Terms & Conditions — Auralith Forge",
@@ -27,9 +29,12 @@ export default function TermsPage() {
         <p>
           Auralith Forge lets you upload audio files and run them through automated digital signal processing
           (&quot;DSP&quot;) — equalization, compression, saturation, stereo imaging, and loudness/true-peak
-          limiting — to produce a mastered output file. It also offers related tools: noise-reduction &quot;clean
-          audio&quot; processing, chord/key/BPM detection, and codec-compression previews. Processing is automated;
-          no human listens to or reviews your uploads as part of delivering the Service.
+          limiting — to produce a mastered output file. Each master starts by analyzing your file; the engine then
+          corrects what it measures and leaves the rest alone, guided by the genre, style, objective and direction you
+          choose. It also offers related tools: chord/key/BPM detection, a LUFS loudness meter, reference-track
+          mastering, stem separation (vocals and accompaniment), codec-compression previews, and share links for
+          finished masters. Processing is automated; no human listens to or reviews your uploads as part of
+          delivering the Service.
         </p>
       </section>
 
@@ -37,8 +42,8 @@ export default function TermsPage() {
         <h2>3. Eligibility and your account</h2>
         <p>
           You must be at least 16 years old, or the age of digital consent in your country if higher, to create an
-          account. You agree to provide accurate registration information (including your name, email, and phone
-          number) and to keep it up to date. You are responsible for all activity under your account and for
+          account. You agree to provide accurate registration information (your name, email and phone number, or
+          your Google account if you sign in with Google) and to keep it up to date. You are responsible for all activity under your account and for
           keeping your login credentials confidential.
         </p>
       </section>
@@ -58,10 +63,9 @@ export default function TermsPage() {
         </p>
         <p>
           <strong>Storage is temporary, not a backup.</strong> Uploaded files, mastered output, and codec previews
-          are automatically and permanently deleted from our servers a limited time after you create them (currently
-          48 hours) — download what you need before then. We don&apos;t offer long-term or unlimited storage on the
-          free tier; if you need your files retained longer than that, that would be a separate paid storage
-          feature, not something the Service does today.
+          are automatically and permanently deleted from our servers {PRODUCT.retentionHours} hours after you create
+          them, on every plan — download what you need before then. Share links stop working when the files they
+          point to are deleted. The Service does not offer long-term audio storage.
         </p>
       </section>
 
@@ -111,38 +115,61 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>7. Saved Artist presets</h2>
+        <h2>7. Artist Profiles</h2>
         <p>
-          The Service lets you save named mastering profiles (&quot;Saved Artist&quot; presets) tied to your
-          account. These are private to your account, stored indefinitely (unlike audio files — see Section 4)
-          since they contain no audio, and are treated as Your Content under Section 4.
+          The Service lets you save named Artist Profiles tied to your account: the genre, style, objective and
+          direction you chose, and any processing chain you import as a JSON file. They contain no audio, are
+          private to your account, are kept until you delete them or your account (unlike audio files — see Section
+          4), and are treated as Your Content under Section 4.
+        </p>
+        <p>
+          <strong>Share links.</strong> On plans that include them, you can create a link that lets anyone who has
+          it download a finished master, until the link expires, is revoked, or the files are deleted. You are
+          responsible for who you share a link with.
         </p>
       </section>
 
       <section>
         <h2>8. Fees and paid plans</h2>
         <p>
-          Mastering previews (30-second, Standard engine) and chord/key/BPM detection are both free and unlimited for
-          everyone, no account tier required. Every account also gets 3 free full-length masters as a one-time trial
-          (never resets). The Studio plan raises that to a monthly limit and adds Professional mastering and stem
-          separation; the All-Access plan raises it further and adds everything else in the studio. Current pricing
-          is listed in the app (Settings → Billing) and may change;
-          we&apos;ll show you the price before you pay, every time. Our{" "}
-          <a href="/refund">Refund Policy</a> applies to all purchases.
+          Mastering previews ({PRODUCT.previewSeconds}-second, Standard engine) and chord/key/BPM detection are free
+          and unlimited for every account, including a free one. Every account also gets {PRODUCT.freeMasters} free
+          full-length masters as a one-time trial that never resets. Beyond that:
+        </p>
+        <ul>
+          <li><strong>{PLANS.indie.label}</strong> — {PLANS.indie.masterLimit} masters per month, Standard engine;</li>
+          <li><strong>{PLANS.studio.label}</strong> — {PLANS.studio.masterLimit} masters per month, Standard and Professional engines;</li>
+          <li>
+            <strong>{PLANS.pro.label}</strong> — {PLANS.pro.masterLimit} masters per month, both engines,{" "}
+            {PRODUCT.stems.includedPerMonth} stem-separated masters per month, and share links;
+          </li>
+          <li>
+            One-time purchases, on any plan: a {SINGLE_MASTER.label} credit (one extra full-length master) or a{" "}
+            {STEM_SEPARATION.label} credit (one stem-separated master). Credits are used automatically when your plan
+            allowance runs out.
+          </li>
+        </ul>
+        <p>
+          Monthly allowances reset at the start of each billing period and do not roll over. Prices are shown on
+          the <a href="/pricing">pricing page</a> and in the app, may change for future periods, and are always shown
+          before you pay. Payments are processed by Polar, our merchant of record, which handles checkout, invoices
+          and applicable sales tax/VAT; its terms also apply to the purchase. Our <a href="/refund">Refund Policy</a>{" "}
+          applies to all purchases.
         </p>
         <p>
-          Studio and All-Access subscriptions renew automatically each month until you cancel. You can cancel
-          anytime from Settings → Billing → Manage billing — it stays active through the end of the period you
-          already paid for, then does not renew.
+          Subscriptions (monthly or annual) renew automatically at the end of each period until you cancel. You can
+          cancel anytime from Settings → Billing → Manage billing — the plan stays active until the end of the period
+          you already paid for, then does not renew.
         </p>
       </section>
 
       <section>
         <h2>9. Third-party services</h2>
         <p>
-          We use Firebase Authentication and Firestore (Google Cloud) to manage accounts and store account and
-          preset data (never audio — see Section 4). Your use of the Service is also subject to Google&apos;s
-          applicable terms for those underlying services.
+          The Service relies on third-party providers, including Google Firebase (sign-in and account data),
+          Cloudflare (network delivery and security), Polar (payments) and Brevo (email). Our{" "}
+          <a href="/privacy">Privacy Policy</a> lists them and what each receives. Your use of those parts of the
+          Service is also subject to the providers&apos; applicable terms.
         </p>
       </section>
 
@@ -169,7 +196,8 @@ export default function TermsPage() {
       <section>
         <h2>12. Termination</h2>
         <p>
-          You may stop using the Service and request deletion of your account at any time by contacting us. We may
+          You may stop using the Service and delete your account at any time from Settings (or by contacting us).
+          Deleting your account removes your profile, Artist Profiles, master history and share links. We may
           suspend or terminate your account if you violate these Terms, the Acceptable Use section, or the
           Copyright Claims section above.
         </p>

@@ -82,7 +82,28 @@ const KNOWN_EVENT_NAMES = new Set([
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 const COLLECT_URL = `${API_BASE}/analytics/collect`;
 
+// The cookie banner promises analytics only "if you allow it". Until the
+// visitor accepts, the visitor/session ids live in memory for this tab only
+// (counted, but not recognisable on the next visit) and nothing goes to
+// TelemetryDeck. Declining also clears anything stored earlier.
+const CONSENT_KEY = "cookie_consent";
+const memoryStore = new Map();
+function hasConsent() {
+  try {
+    return window.localStorage.getItem(CONSENT_KEY) === "accepted";
+  } catch {
+    return false;
+  }
+}
+function clearStoredIds() {
+  try {
+    for (const key of Object.values(STORAGE)) window.localStorage.removeItem(key);
+  } catch {
+    // storage blocked — nothing stored to clear
+  }
+}
 function safeGet(key) {
+  if (!hasConsent()) return memoryStore.has(key) ? memoryStore.get(key) : null;
   try {
     return window.localStorage.getItem(key);
   } catch {
@@ -90,6 +111,10 @@ function safeGet(key) {
   }
 }
 function safeSet(key, value) {
+  if (!hasConsent()) {
+    memoryStore.set(key, value);
+    return;
+  }
   try {
     window.localStorage.setItem(key, value);
   } catch {
@@ -248,9 +273,11 @@ function flush(useBeacon = false) {
   });
   sessionJustRotated = false;
 
-  const clientUser = uidRef || getVisitorId();
-  for (const evt of events) {
-    sendTelemetrySignal(evt.name, { props: evt.props, path: evt.path, clientUser, sessionId: session });
+  if (hasConsent()) {
+    const clientUser = uidRef || getVisitorId();
+    for (const evt of events) {
+      sendTelemetrySignal(evt.name, { props: evt.props, path: evt.path, clientUser, sessionId: session });
+    }
   }
 
   try {
@@ -328,5 +355,16 @@ export function initAnalyticsClient() {
   window.addEventListener("pagehide", () => {
     flushHeartbeat();
     flush(true);
+  });
+
+  // Accept keeps this tab's ids (moved into storage); Decline wipes any
+  // stored from an earlier visit.
+  window.addEventListener("cookie-consent-changed", () => {
+    if (hasConsent()) {
+      for (const [key, value] of memoryStore) safeSet(key, value);
+      memoryStore.clear();
+    } else {
+      clearStoredIds();
+    }
   });
 }

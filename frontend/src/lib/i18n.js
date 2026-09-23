@@ -891,10 +891,10 @@ const DICT = {
   },
   "help.topic3.q": { en: "What's the difference between Standard and Professional?", sq: "Cili është ndryshimi midis Standard dhe Professional?" },
   "help.topic3.a": {
-    en: "Standard is the free, default engine. Professional adds oversampled true-peak limiting, finer dynamic EQ, and tempo-aware compression timing — pick it from the Engine dropdown when mastering.",
-    sq: "Standard është motori falas, i parazgjedhur. Professional shton kufizim true-peak me oversampling, EQ dinamik më të hollësishëm, dhe kohëzgjatje kompresimi të ndjeshme ndaj tempos — zgjidhe nga menuja Engine gjatë masterizimit.",
+    en: "Both engines run the same analysis, correction logic, true-peak limiter and verification. Professional adds finer low-end control (separate sub and punch bands) and a transient-aware clipper before the limiter. Standard is used by free masters and Indie; Professional comes with Studio and All-Access — pick it from the Engine dropdown when mastering.",
+    sq: "Të dy motorët përdorin të njëjtën analizë, logjikë korrigjimi, limitues true-peak dhe verifikim. Professional shton kontroll më të imët të basit (breza të veçantë sub dhe punch) dhe një clipper që ruan tranzientët para limituesit. Standard përdoret nga masterat falas dhe Indie; Professional vjen me Studio dhe All-Access — zgjidhe nga menuja Engine gjatë masterizimit.",
   },
-  "help.topic4.q": { en: "How do I reuse the same mastering chain for an artist's next release?", sq: "Si ta ripërdor të njëjtin zinxhir masterizimi për botimin tjetër të një artisti?" },
+  "help.topic4.q": { en: "How do I keep an artist's sound consistent across releases?", sq: "Si ta mbaj tingullin e një artisti të qëndrueshëm ndër botime?" },
   "help.topic4.a": {
     en: "Save an Artist Profile (in the Master tab: \"Save as profile\", or build one under Artist Profiles). Apply it on every future track: each track is still analyzed first, then leaned toward that artist's character. If you need an exact processing chain instead, import it as JSON under Master → Artist profiles.",
     sq: "Ruaj një Profil Artisti (në tab-in Master: \"Ruaj si profil\", ose ndërtoje te Profilet e Artistëve). Aplikoje në çdo këngë të ardhshme: çdo këngë analizohet prapë së pari, pastaj anohet drejt karakterit të artistit. Nëse të duhet një zinxhir i saktë përpunimi, importoje si JSON te Master → Profilet e artistëve.",

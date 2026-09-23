@@ -6,7 +6,7 @@
 //
 // Three paid plans + Free, plus one one-time purchase (SINGLE_MASTER below):
 //   Free       — 3 masters TOTAL (one-time trial, never resets), Standard only
-//   Indie      — 15 masters/month (resets monthly), Standard + Professional
+//   Indie      — 15 masters/month (resets monthly), Standard only
 //   Studio     — 50 masters/month (resets monthly), Standard + Professional
 //   All-Access — 250 masters/month (5x Studio, resets monthly), everything
 // Chord detection is unconditionally free for everyone (see

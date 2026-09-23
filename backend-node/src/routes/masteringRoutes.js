@@ -258,7 +258,7 @@ function parseOptionalInt(value) {
 async function createShareLinkHandler(req, res) {
   const plan = await getPlan(req.user.uid).catch(() => "free");
   if (plan !== "pro") {
-    return res.status(402).json({ detail: "Share links are an All-Access feature (€19.99/mo). Upgrade in Settings → Billing." });
+    return res.status(402).json({ detail: "Share links are an All-Access feature. See plans in Settings → Billing." });
   }
   const job = await getJob(req.user.uid, req.params.jobId);
   if (!job || job.preview) {
@@ -752,7 +752,7 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
 
     if (tier === "professional" && !planUnlocked) {
       return res.status(402).json({
-        detail: "Professional mastering needs the Studio plan or higher (€9.99/mo). Upgrade in Settings → Billing.",
+        detail: "Professional mastering needs the Studio plan or higher. See plans in Settings → Billing.",
       });
     }
 
@@ -771,22 +771,21 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
             mustConsumeStemCredit = true;
           } else {
             return res.status(402).json({
-              detail: `You've used your ${stemQuota.limit} stem separations this month — they reset next month. Buy an extra one (€4.99) if you don't want to wait. Manage in Settings → Billing.`,
+              detail: `You've used your ${stemQuota.limit} stem separations this month — they reset next month. Buy an extra one if you don't want to wait. Manage in Settings → Billing.`,
             });
           }
         }
       } else {
         // Free/Studio get no bundled stem access at all, not even a
         // trial — this is the single most expensive operation in the
-        // app. A purchased credit is the only way in, same standalone
-        // pattern as Chord Detection's pay-per-use path.
+        // app. A purchased credit is the only way in.
         const stemCredits = snapshot ? snapshot.extraStemCredits : 0;
         if (stemCredits > 0) {
           mustConsumeStemCredit = true;
         } else {
           return res.status(402).json({
             detail:
-              "Stem separation is an All-Access feature (€19.99/mo, 20/month included), or buy one separately for €4.99. Manage in Settings → Billing.",
+              "Stem separation is included on All-Access (20/month), or buy a single stem-separated master. Manage in Settings → Billing.",
           });
         }
       }
@@ -810,13 +809,13 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
         mustConsumeCredit = true;
       } else if (plan === "free") {
         return res.status(402).json({
-          detail: `You've used your ${quotaLimit} free masters — that's a one-time trial, it doesn't renew. Buy a single master (€2.99) for just this track, or subscribe to Studio (€9.99/mo, 50/month) or All-Access (€19.99/mo, 250/month) in Settings → Billing.`,
+          detail: `You've used your ${quotaLimit} free masters — that's a one-time trial, it doesn't renew. Buy a single master for just this track, or subscribe — Indie (15/month), Studio (50/month) or All-Access (250/month) — in Settings → Billing.`,
         });
       } else {
-        const upsellPlan = plan === "studio" ? "All-Access (€19.99/mo) for 250/month" : null;
+        const upsellPlan = plan === "indie" ? "Studio for 50/month" : plan === "studio" ? "All-Access for 250/month" : null;
         const upsell = upsellPlan ? ` Upgrade to ${upsellPlan}, or` : " Or";
         return res.status(402).json({
-          detail: `You've used your ${quotaLimit} masters this month — they reset next month.${upsell} buy a single master (€2.99) if you don't want to wait. Manage in Settings → Billing.`,
+          detail: `You've used your ${quotaLimit} masters this month — they reset next month.${upsell} buy a single master if you don't want to wait. Manage in Settings → Billing.`,
         });
       }
     }
