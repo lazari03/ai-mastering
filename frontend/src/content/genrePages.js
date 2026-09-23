@@ -39,7 +39,7 @@ export const GENRE_PAGES = {
       "Sub/808-aware bus compression — timing tuned to preserve punch instead of squashing the low end flat",
       "Presence-band clarity for vocals over dense, bass-heavy arrangements",
       "True-peak limiting that protects transient snap on kicks and 808 hits at high loudness targets",
-      "Saved Artist presets let you lock in one producer's exact low-end signature across a whole project",
+      "Artist Profiles keep one producer's low-end character consistent across a whole project, while each track is still corrected on its own",
     ],
   },
   rock: {
@@ -113,7 +113,7 @@ export const GENRE_PAGES = {
     bullets: [
       "Loudness targeting tuned for spoken-word platform standards, not music-streaming loudness wars",
       "EQ aimed at vocal intelligibility and consistency rather than musical brightness",
-      "Saved Artist presets are useful here for a show's specific host voice/room, applied identically every episode",
+      "An Artist Profile keeps a show's host voice consistent every episode, while each recording is still analyzed and corrected on its own",
       "Free tier covers most single-host podcast mastering needs without a subscription",
     ],
   },

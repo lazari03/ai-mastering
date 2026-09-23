@@ -14,8 +14,8 @@ export const HOME_FAQ = [
     a: `Both run the same analysis, the same correction logic, the same true-peak limiter and the same verification. Professional adds finer low-end control — separate sub and punch bands instead of one low band — and a transient-aware clipper the engine can use before the limiter to reach loudness with less limiting. Standard is what your ${PRODUCT.freeMasters} free masters and the ${PLANS.indie.label} plan use; Professional comes with ${PLANS.studio.label} and ${PLANS.pro.label}.`,
   },
   {
-    q: "Can I save an artist's exact mastering chain?",
-    a: "Yes — import a full preset JSON under Saved Artists (genre, style, and a processing spec), and apply it to any future track from a dropdown, run exactly as written. It's private to your account.",
+    q: "Can I keep an artist's sound consistent across releases?",
+    a: "Yes — save an Artist Profile: the genre, style, objective and direction (warm, punchy, open…) that define their sound. Every new track is still analyzed and corrected on its own terms, then leaned toward that character, so releases sound related without copying one track's EQ onto another. Studios that need an exact processing chain can import one as JSON. Profiles are private to your account.",
   },
   {
     q: "Why does my mono source sound mono after mastering?",
@@ -31,7 +31,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Is my music private?",
-    a: `Your uploads and masters are only reachable from your own signed-in account, or through a share link you create and can revoke. Audio files are permanently deleted ${PRODUCT.retentionHours} hours after you create them, and Saved Artist presets are private to your account.`,
+    a: `Your uploads and masters are only reachable from your own signed-in account, or through a share link you create and can revoke. Audio files are permanently deleted ${PRODUCT.retentionHours} hours after you create them, and Artist Profiles are private to your account.`,
   },
   {
     q: "What's actually free?",

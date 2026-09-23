@@ -23,12 +23,6 @@ export default function ToolLandingPage({ slug, page }) {
     provider: { "@type": "Organization", name: SITE_NAME },
     description: page.description,
     url: absoluteUrl(`/${slug}`),
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "EUR",
-      description: "Free, unlimited detection.",
-    },
   };
 
   return (

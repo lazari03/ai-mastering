@@ -209,7 +209,7 @@ const MAX_USER_PRESETS = 100;
 
 function validateSettings(body) {
   const name = String(body?.name || "").trim().slice(0, 60);
-  if (!name) throw new Error("Give the preset a name.");
+  if (!name) throw new Error("Give the profile a name.");
   if (!GENRES.includes(body.genre)) throw new Error(`genre must be one of: ${GENRES.join(", ")}`);
   const style = body.style || "modern";
   if (!STYLES.includes(style)) throw new Error(`style must be one of: ${STYLES.join(", ")}`);
@@ -251,7 +251,7 @@ export async function createUserPreset(body, uid) {
   const shadowsBuiltIn = (await listBuiltInPresets()).some((p) => p.name === slug);
   if (existing.exists || shadowsBuiltIn) slug = `${slug}_${Date.now().toString(36).slice(-4)}`;
   const count = (await listCustomPresets(uid)).length;
-  if (count >= MAX_USER_PRESETS) throw new Error(`You can keep up to ${MAX_USER_PRESETS} presets — delete one first.`);
+  if (count >= MAX_USER_PRESETS) throw new Error(`You can keep up to ${MAX_USER_PRESETS} artist profiles — delete one first.`);
   const now = new Date().toISOString();
   await col.doc(slug).set({ ...record, created_at: now, updated_at: now });
   invalidateCustomPresets(uid);

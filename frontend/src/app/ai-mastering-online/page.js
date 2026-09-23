@@ -43,7 +43,7 @@ const FEATURES = [
   { title: "Adaptive DSP, not a preset button", body: "Automatic analysis-first processing for tonal balance, loudness, and dynamics — measured before anything is touched, not a single one-size-fits-all filter." },
   { title: "Presets as direction, not a fixed chain", body: "Curated mixing presets and editable JSON chains keep a catalog consistent — the engine still reads each track and only applies what it needs." },
   { title: "Instant, gain-matched A/B", body: "Compare original and mastered output instantly, with playback levels matched — so loudness alone never wins the comparison." },
-  { title: "Saved Artist mastering chains", body: "Import a full mastering chain for an artist once, then apply it to every new track from a dropdown — private to your account." },
+  { title: "Artist Profiles", body: "Save an artist's sound — genre, style, objective and direction — and reuse it. Each new track is still analyzed first, so the character carries over without forcing one track's EQ onto the next." },
   { title: "Codec preview", body: "Hear what actually reaches a listener after MP3, AAC, or Opus compression — a real encode/decode round-trip, not an estimate." },
   { title: "Stem-aware mastering", body: "Optionally separate the vocal from the accompaniment and rebalance them independently before the final master." },
 ];

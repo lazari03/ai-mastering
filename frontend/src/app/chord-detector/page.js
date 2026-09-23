@@ -29,12 +29,6 @@ const SERVICE_JSONLD = {
   description:
     "Upload a song and get its key, BPM, and chord progression detected automatically — for guitar, piano, or any instrument.",
   url: absoluteUrl("/chord-detector"),
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "EUR",
-    description: "Free, unlimited chord detection.",
-  },
 };
 
 
@@ -54,11 +48,6 @@ const FAQ = [
     question: "Do I need to master the track first?",
     answer:
       "No — chord detection is a separate tool from mastering. Upload a rough recording, a reference track, or a finished master; it works on any of them independently.",
-  },
-  {
-    question: "Is this bundled with a mastering plan?",
-    answer:
-      "No — it's a separate, free tool. You don't need to master anything, subscribe, or pay anything to use it, whether or not you're on a mastering plan.",
   },
   {
     question: "Which chords does it recognise?",

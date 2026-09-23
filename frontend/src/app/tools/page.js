@@ -25,7 +25,7 @@ const DESCRIPTIONS = {
 };
 
 const GROUP_INTRO = {
-  analyze: "Free, no account required to try them. Real audio analysis — no trial limit, no card.",
+  analyze: "Free and unlimited — create a free account to see results. Real audio analysis, no card.",
   master: "Mastering runs in the Studio. Try it free, with a plan when you need more.",
   prepare: "Inside the Studio, before mastering.",
   deliver: "Inside the Studio, before release.",
@@ -69,7 +69,7 @@ export default function ToolsHubPage() {
       <PageHero
         eyebrow="Auralith Studio"
         title="Free Music Tools"
-        lead="Real audio analysis, no account required to try them. Every one of these is free, always — no trial limit, no card."
+        lead="Real audio analysis, free and unlimited. A free account shows your results — no trial limit, no card."
         actions={
           <>
             <Link href="/lufs-meter" className="btn-primary">
