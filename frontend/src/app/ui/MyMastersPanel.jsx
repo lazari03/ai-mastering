@@ -130,7 +130,14 @@ export default function MyMastersPanel({ onNavigate }) {
 
   return (
     <div className="mx-auto w-full max-w-[1280px]">
-      <h1 className="m-0 text-[26px]">{t("myMasters.title")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="m-0 text-[26px]">{t("myMasters.title")}</h1>
+        {onNavigate ? (
+          <button type="button" onClick={() => onNavigate("master")} className="btn-primary btn-sm">
+            + {t("myMasters.newMaster")}
+          </button>
+        ) : null}
+      </div>
       <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t("myMasters.subtitle")}</p>
 
       {error && jobs === null ? (
@@ -183,7 +190,16 @@ export default function MyMastersPanel({ onNavigate }) {
         </p>
       ) : null}
 
-      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {pageJobs.length ? (
+        <div className="mt-5 hidden grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 border-b border-border-subtle px-4 pb-2 text-[11px] uppercase tracking-[0.12em] text-text-secondary lg:grid" aria-hidden="true">
+          <span>{t("myMasters.col.track")}</span>
+          <span>{t("myMasters.col.style")}</span>
+          <span>LUFS</span>
+          <span>{t("myMasters.col.status")}</span>
+          <span className="w-[260px] text-right">{t("myMasters.col.actions")}</span>
+        </div>
+      ) : null}
+      <ul className="m-0 list-none divide-y divide-border-subtle p-0 lg:mt-0 mt-5">
         {pageJobs.map((job, jobIndex) => {
           const expiry = timeUntil(job.expires_at);
           const expired = expiry === "expired";
@@ -192,13 +208,14 @@ export default function MyMastersPanel({ onNavigate }) {
             // Staggered fade-in per card — 30ms apart reads as one smooth
             // cascade over a PAGE_SIZE (8) list, not a slow one-by-one
             // reveal. Capped by the page size, so it never gets long.
-            <motion.div
+            <motion.li
               key={job.job_id}
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: jobIndex * 0.03, ease: "easeOut" }}
-              className="rounded-2xl border border-border-subtle bg-black/[0.045] p-4"
+              className="px-1 py-4 lg:px-4"
             >
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center lg:gap-4">
               {/* The clickable "cell" — opens the same dedicated preview
                   view a fresh render lands on (WebGL before/after,
                   download, processing summary), for any still-valid or
@@ -210,31 +227,24 @@ export default function MyMastersPanel({ onNavigate }) {
                   A sibling of the action buttons below, not a wrapper
                   around them — nesting <button> inside <a> is invalid
                   HTML and would double-fire on every click. */}
-              <Link href={`/app?job=${job.job_id}`} className="-m-1 flex flex-wrap items-center justify-between gap-2 rounded-xl p-1 transition hover:bg-black/[0.045]">
-                <div className="min-w-0">
-                  <p className="m-0 truncate text-sm font-semibold text-text-primary" title={job.original_filename || undefined}>
-                    {shortenFilename(job.original_filename) || job.job_id}
-                  </p>
-                  <p className="mt-0.5 text-xs text-text-secondary">
-                    {job.genre || t("myMasters.custom")} · {job.tier || t("myMasters.standard")} ·{" "}
-                    {job.created_at ? new Date(job.created_at).toLocaleString() : ""}
-                  </p>
-                </div>
-                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${expired ? "border-red-400/30 text-red-700" : "border-border-subtle text-text-secondary"}`}>
-                  {formatExpiry(t, job.expires_at)}
-                </span>
+              <Link href={`/app?job=${job.job_id}`} className="group min-w-0 rounded-lg transition">
+                <p className="m-0 truncate text-sm font-semibold text-text-primary group-hover:underline" title={job.original_filename || undefined}>
+                  {shortenFilename(job.original_filename) || job.job_id}
+                </p>
+                <p className="m-0 mt-0.5 text-xs text-text-secondary">{job.created_at ? new Date(job.created_at).toLocaleString() : ""}</p>
               </Link>
-
-              {job.before_lufs != null || job.after_lufs != null ? (
-                <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-lg border border-border-subtle px-2.5 py-1 text-text-secondary">
-                    {job.before_lufs ?? "—"} → {job.after_lufs ?? "—"} LUFS
-                  </span>
-                </div>
-              ) : null}
+              <p className="m-0 text-xs capitalize text-text-secondary">
+                {job.genre || t("myMasters.custom")} · {job.tier || t("myMasters.standard")}
+              </p>
+              <p className="m-0 font-mono text-xs text-text-primary">
+                {job.before_lufs != null || job.after_lufs != null ? `${job.before_lufs ?? "—"} → ${job.after_lufs ?? "—"}` : "—"}
+              </p>
+              <span className={`w-fit rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${expired ? "border-red-400/30 text-red-700" : "border-border-subtle text-text-secondary"}`}>
+                {formatExpiry(t, job.expires_at)}
+              </span>
 
               {!expired ? (
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 lg:w-[260px] lg:justify-end">
                   <button
                     type="button"
                     onClick={() => handleDownload(job)}
@@ -286,15 +296,20 @@ export default function MyMastersPanel({ onNavigate }) {
                     </button>
                   )}
                 </div>
-              ) : null}
+              ) : (
+                <Link href={`/app?job=${job.job_id}`} className="text-xs font-semibold text-text-primary underline decoration-border-subtle underline-offset-2 lg:w-[260px] lg:text-right">
+                  {t("myMasters.open")}
+                </Link>
+              )}
+              </div>
 
               {downloadErrors[job.job_id] ? <InlineAlert size="xs" className="mt-2">{downloadErrors[job.job_id]}</InlineAlert> : null}
 
               {!expired && openShareJobId === job.job_id ? <ShareLinkManager jobId={job.job_id} t={t} /> : null}
-            </motion.div>
+            </motion.li>
           );
         })}
-      </div>
+      </ul>
 
       {pageCount > 1 ? (
         <div className="mt-5 flex items-center justify-between gap-3">

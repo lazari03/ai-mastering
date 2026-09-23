@@ -17,12 +17,17 @@ import dynamic from "next/dynamic";
 // sendBeacon), so it costs nothing to load client-side, post-hydration.
 const AuthInit = dynamic(() => import("./AuthInit"), { ssr: false });
 const AnalyticsPageTracker = dynamic(() => import("@/components/AnalyticsPageTracker"), { ssr: false });
+// Loaded lazily: it only ever appears after scroll/exit intent, and it
+// pulls in the motion library — which otherwise landed in every page's
+// main bundle, including static SEO pages that don't animate anything.
+const PromoPopup = dynamic(() => import("@/components/marketing/PromoPopup"), { ssr: false });
 
 export default function ClientOnlyMounts() {
   return (
     <>
       <AuthInit />
       <AnalyticsPageTracker />
+      <PromoPopup />
     </>
   );
 }

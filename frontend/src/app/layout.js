@@ -2,7 +2,6 @@ import { Space_Grotesk, Plus_Jakarta_Sans } from "next/font/google";
 
 import Analytics from "@/components/Analytics";
 import CookieBanner from "@/components/CookieBanner";
-import PromoPopup from "@/components/marketing/PromoPopup";
 import ClientOnlyMounts from "./ClientOnlyMounts";
 import { LanguageProvider } from "@/lib/i18n";
 import { SITE_URL, SITE_NAME, DEFAULT_DESCRIPTION, DEFAULT_KEYWORDS } from "@/lib/seo";
@@ -73,7 +72,6 @@ export default function RootLayout({ children }) {
           <Analytics />
           {children}
           <CookieBanner />
-          <PromoPopup />
           {/* Fixed, pointer-events-none, one composite layer — see
               .grain-overlay in globals.css. Last in <body> so it paints
               above content without needing a z-index of its own. */}

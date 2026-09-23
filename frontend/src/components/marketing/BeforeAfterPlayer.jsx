@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useLanguage } from "@/lib/i18n";
+import { trackEvent } from "@/lib/analytics";
 
 function formatTime(seconds) {
   if (!Number.isFinite(seconds)) return "0:00";
@@ -225,7 +226,10 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
         <div className="flex shrink-0 rounded-full border border-border-subtle p-0.5">
           <button
             type="button"
-            onClick={() => swap("before")}
+            onClick={() => {
+              swap("before");
+              trackEvent("original_played", { source: "homepage_demo" });
+            }}
             aria-pressed={mode === "before"}
             className={`rounded-full font-semibold uppercase tracking-[0.08em] transition ${large ? "px-4 py-1.5 text-xs" : "px-3 py-1 text-[10px]"} ${
               mode === "before" ? "bg-black/[0.06] text-text-primary" : "text-text-secondary hover:text-text-primary"
@@ -235,10 +239,13 @@ export default function BeforeAfterPlayer({ label, genre, beforeSrc, afterSrc, l
           </button>
           <button
             type="button"
-            onClick={() => swap("after")}
+            onClick={() => {
+              swap("after");
+              trackEvent("mastered_played", { source: "homepage_demo" });
+            }}
             aria-pressed={mode === "after"}
             className={`rounded-full font-semibold uppercase tracking-[0.08em] transition ${large ? "px-4 py-1.5 text-xs" : "px-3 py-1 text-[10px]"} ${
-              mode === "after" ? "bg-accent/[0.14] text-accent" : "text-text-secondary hover:text-text-primary"
+              mode === "after" ? "bg-accent/[0.16] text-text-primary ring-1 ring-inset ring-accent/40" : "text-text-secondary hover:text-text-primary"
             }`}
           >
             {t("demoPlayer.after")}
