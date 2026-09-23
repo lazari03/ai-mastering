@@ -304,3 +304,136 @@ select:focus-visible,
 .pulse-ring {
   animation: pulseRing 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
+
+/* ── Auralith design system: shared primitives ─────────────────────────
+   One definition per control, used by every route (marketing, SEO tool
+   pages, guides, auth, app). Built only on the light-palette tokens at
+   the top of this file — nothing here references the legacy dark tokens.
+
+   Buttons: pill-shaped, the same shape as the header's Open App control.
+     .btn-primary    solid ink — the one main action in a view
+     .btn-secondary  outlined — alternatives next to a primary
+     .btn-quiet      text-weight action with an arrow ("Read the guide →")
+   Sizes: default 44px tall (touch target), .btn-sm 36px for dense rows. */
+@layer components {
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full px-5 text-[13px] font-semibold tracking-[0.02em] no-underline transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-sm {
+    @apply min-h-[36px] px-4 text-xs;
+  }
+  .btn-primary {
+    @apply btn bg-text-primary text-bg hover:bg-[#2a2a2a];
+  }
+  .btn-secondary {
+    @apply btn border border-border-subtle bg-transparent text-text-primary hover:border-text-primary/40 hover:bg-black/[0.03];
+  }
+  .btn-on-dark {
+    @apply btn bg-bg text-text-primary hover:bg-white;
+  }
+  .btn-quiet {
+    @apply inline-flex items-center gap-1.5 text-[14px] font-semibold text-text-primary underline decoration-border-subtle decoration-1 underline-offset-[6px] transition hover:decoration-text-primary;
+  }
+
+  /* Small uppercase label that precedes a heading. */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary;
+  }
+  .eyebrow::before {
+    content: "";
+    @apply h-1.5 w-1.5 rounded-full bg-accent;
+  }
+
+  /* In-copy links: visible without relying on colour alone. */
+  .text-link {
+    @apply font-medium text-text-primary underline decoration-accent/60 decoration-[1.5px] underline-offset-4 transition hover:decoration-accent;
+  }
+
+  /* Raised content card on the cream background. */
+  .card {
+    @apply rounded-2xl border border-border-subtle bg-white/55;
+  }
+
+  /* Form fields shared by auth, newsletter and app forms. */
+  .field {
+    @apply block w-full rounded-xl border border-border-subtle bg-white/70 px-3.5 py-3 text-sm text-text-primary outline-none transition placeholder:text-text-secondary/70 focus:border-text-primary/60 focus:bg-white;
+  }
+}
+
+/* Long-form reading (guides, legal, SEO education). ~68ch measure,
+   generous leading, real heading hierarchy — typographic, not boxed. */
+.af-prose {
+  max-width: 68ch;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+}
+.af-prose > * + * {
+  margin-top: 1.1em;
+}
+.af-prose h2 {
+  margin-top: 2.2em;
+  font-family: var(--font-title), sans-serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  scroll-margin-top: 7rem;
+}
+.af-prose h3 {
+  margin-top: 1.8em;
+  font-family: var(--font-title), sans-serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.3;
+  scroll-margin-top: 7rem;
+}
+.af-prose p,
+.af-prose li {
+  color: #2b2a27;
+}
+.af-prose ul,
+.af-prose ol {
+  padding-left: 1.25em;
+}
+.af-prose ul {
+  list-style: disc;
+}
+.af-prose ol {
+  list-style: decimal;
+}
+.af-prose li::marker {
+  color: var(--accent);
+}
+.af-prose li + li {
+  margin-top: 0.4em;
+}
+.af-prose a {
+  color: var(--text-primary);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+.af-prose a:hover {
+  text-decoration-color: var(--accent);
+}
+.af-prose strong {
+  font-weight: 600;
+}
+.af-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.af-prose th,
+.af-prose td {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.6em 0.75em 0.6em 0;
+  text-align: left;
+  vertical-align: top;
+}
+.af-prose th {
+  font-weight: 600;
+}

@@ -9,8 +9,7 @@ import { scorePassword } from "@/lib/passwordStrength";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
-const fieldStyle =
-  "w-full box-border rounded-xl border border-white/15 bg-black/20 px-3.5 py-3 text-sm text-white outline-none focus:border-brass/60";
+const fieldStyle = "field";
 
 /**
  * The login/signup gate shown over an already-computed chord result for
@@ -57,22 +56,25 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-text-primary/40 p-4 backdrop-blur-md"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="chord-gate-title"
     >
-      <div className="w-full max-w-[380px] rounded-2xl border border-brass/25 bg-[#0f1113] p-6">
-        <p className="m-0 text-[11px] uppercase tracking-[0.18em] text-brass">{t(eyebrowKey)}</p>
-        <h2 className="mt-2 font-[var(--font-title)] text-xl text-white">{t(titleKey)}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">{t(bodyKey)}</p>
+      <div className="w-full max-w-[400px] rounded-[28px] border border-black/[0.07] bg-bg p-6 shadow-[var(--shadow-ambient-lifted)] sm:p-7">
+        <p className="eyebrow m-0">{t(eyebrowKey)}</p>
+        <h2 id="chord-gate-title" className="mt-3 font-[var(--font-title)] text-2xl font-semibold tracking-[-0.02em] text-text-primary">{t(titleKey)}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t(bodyKey)}</p>
 
-        <div className="mt-4 flex gap-1 rounded-full border border-white/10 bg-black/20 p-1">
+        <div className="mt-5 flex gap-1 rounded-full border border-border-subtle bg-black/[0.03] p-1" role="tablist">
           <button
             type="button"
             onClick={() => {
               clearError();
               setMode("signup");
             }}
-            className={`flex-1 rounded-full py-2 text-xs font-bold uppercase tracking-[0.1em] transition ${
-              isSignup ? "bg-brass/20 text-brass" : "text-zinc-400"
+            className={`flex-1 rounded-full py-2 text-[12px] font-semibold transition ${
+              isSignup ? "bg-text-primary text-bg" : "text-text-secondary"
             }`}
           >
             {t("chordGate.newHere")}
@@ -83,8 +85,8 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
               clearError();
               setMode("signin");
             }}
-            className={`flex-1 rounded-full py-2 text-xs font-bold uppercase tracking-[0.1em] transition ${
-              !isSignup ? "bg-brass/20 text-brass" : "text-zinc-400"
+            className={`flex-1 rounded-full py-2 text-[12px] font-semibold transition ${
+              !isSignup ? "bg-text-primary text-bg" : "text-text-secondary"
             }`}
           >
             {t("chordGate.returning")}
@@ -93,7 +95,7 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
 
         <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
           <label className="block">
-            <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("login.email")}</span>
+            <span className="mb-1.5 block text-[12px] font-medium text-text-secondary">{t("login.email")}</span>
             <input
               type="email"
               required
@@ -106,7 +108,7 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-xs uppercase tracking-[0.1em] text-zinc-300">{t("login.password")}</span>
+            <span className="mb-1.5 block text-[12px] font-medium text-text-secondary">{t("login.password")}</span>
             <input
               type="password"
               required
@@ -119,7 +121,7 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
             />
             {isSignup && password ? (
               <div className="mt-2">
-                <div className="flex h-1 w-full overflow-hidden rounded-full bg-white/10">
+                <div className="flex h-1 w-full overflow-hidden rounded-full bg-black/[0.08]">
                   <div
                     className="h-full rounded-full transition-all duration-200"
                     style={{ width: `${passwordStrength.percent}%`, background: passwordStrength.color }}
@@ -130,7 +132,7 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
           </label>
 
           {isSignup ? (
-            <label className="flex items-start gap-2.5 text-xs leading-relaxed text-zinc-300">
+            <label className="flex items-start gap-2.5 text-xs leading-relaxed text-text-secondary">
               <input
                 type="checkbox"
                 required
@@ -140,11 +142,11 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
               />
               <span>
                 {t("login.termsPrefix")}{" "}
-                <Link href="/terms" target="_blank" className="text-brass hover:text-ember">
+                <Link href="/terms" target="_blank" className="text-link">
                   {t("login.termsLink")}
                 </Link>{" "}
                 {t("login.termsAnd")}{" "}
-                <Link href="/privacy" target="_blank" className="text-brass hover:text-ember">
+                <Link href="/privacy" target="_blank" className="text-link">
                   {t("login.privacyLink")}
                 </Link>
               </span>
@@ -156,7 +158,7 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
           <button
             type="submit"
             disabled={busy || (isSignup && !termsAccepted)}
-            className="flex w-full items-center justify-center gap-2 rounded-full border border-brass/50 bg-brass/[0.18] px-4 py-3 text-[13px] font-bold uppercase tracking-[0.14em] text-brass transition hover:bg-brass/25 disabled:opacity-50"
+            className="btn-primary w-full"
           >
             {busy ? (
               <>
@@ -170,17 +172,17 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
           </button>
         </form>
 
-        <div className="my-4 flex items-center gap-3 text-xs text-zinc-500">
-          <div className="h-px flex-1 bg-white/10" />
+        <div className="my-4 flex items-center gap-3 text-xs text-text-secondary">
+          <div className="h-px flex-1 bg-border-subtle" />
           {t("login.or")}
-          <div className="h-px flex-1 bg-white/10" />
+          <div className="h-px flex-1 bg-border-subtle" />
         </div>
 
         <button
           type="button"
           onClick={google}
           disabled={googleDisabled}
-          className="w-full rounded-full border border-white/15 bg-black/20 px-4 py-3 text-[13px] font-semibold uppercase tracking-[0.14em] text-zinc-100 transition hover:border-white/30 disabled:opacity-50"
+          className="btn-secondary w-full"
         >
           {t("login.google")}
         </button>

@@ -92,7 +92,7 @@ export default function PublicLufsMeter() {
         type="button"
         onClick={analyze}
         disabled={!file || isLoading || !ready}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-ember px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-[#100b08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-bg transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isLoading ? (
           <>
@@ -102,22 +102,31 @@ export default function PublicLufsMeter() {
           t("lufsMeter.measure")
         )}
       </button>
-      <p className="mt-1.5 text-[11px] text-zinc-500">{t("lufsMeter.alwaysFree")}</p>
+      <p className="mt-1.5 text-[11px] text-text-secondary">{t("lufsMeter.alwaysFree")}</p>
 
-      {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-600/25 bg-red-600/[0.05] px-4 py-3 text-sm text-red-800">
+          <span>{error}</span>
+          {file ? (
+            <button type="button" onClick={analyze} className="btn-secondary btn-sm">
+              {t("chordDetector.tryAgain")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <LufsMeterResult analysis={analysis} />
 
       {analysis ? (
-        <div className="mt-3 rounded-xl border border-brass/30 bg-brass/[0.06] p-4 text-center">
+        <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.045] p-4 text-center">
           <button
             type="button"
             onClick={masterThisTrack}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brass px-5 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-[#100b08] transition hover:brightness-110"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-bg transition hover:opacity-85"
           >
             {t("lufsMeter.masterThisTrack")}
           </button>
-          <p className="mt-2 text-[11px] text-zinc-500">{t("lufsMeter.sameFileNote")}</p>
+          <p className="mt-2 text-[11px] text-text-secondary">{t("lufsMeter.sameFileNote")}</p>
         </div>
       ) : null}
 

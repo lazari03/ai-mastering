@@ -50,6 +50,10 @@ class ChordAnalysisResponse(BaseModel):
     key: str
     duration: float
     chords: list[ChordSegment]
+    # 0..1, as reported by the analyzers (see chord_service.py). Optional
+    # so older clients and cached results stay valid.
+    bpm_confidence: float | None = None
+    key_confidence: float | None = None
 
 
 class AnalyzeResponse(BaseModel):

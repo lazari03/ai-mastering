@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import Footer from "@/components/Footer";
+import { Breadcrumbs, CtaBand, PageHero, PageShell, Section } from "@/components/site/Page";
+import { STUDIO_GROUPS, SIGNUP_URL } from "@/lib/studio";
 import { buildMetadata, JsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -11,87 +12,101 @@ export const metadata = buildMetadata({
   keywords: ["free music tools", "lufs meter", "bpm finder", "key finder", "chord detector"],
 });
 
-function breadcrumbJsonLd() {
-  return {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
-      { "@type": "ListItem", position: 2, name: "Free Tools", item: absoluteUrl("/tools") },
-    ],
-  };
+const BREADCRUMB_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
+    { "@type": "ListItem", position: 2, name: "Free Tools", item: absoluteUrl("/tools") },
+  ],
+};
+
+// Longer, page-specific descriptions for the free tools (the Studio map's
+// one-line blurbs are sized for the nav menu).
+const DESCRIPTIONS = {
+  "lufs-meter": "Measure Integrated Loudness, True Peak, and Loudness Range — the same analysis Studio runs on every upload.",
+  "chord-detector": "Get the key, BPM, and full chord progression of any recording, synced to playback.",
+  "bpm-finder": "Detect a track's exact tempo for beatmatching, syncing samples, or setting a click track.",
+  "song-key-finder": "Find the musical key of any track — for transposing, DJ set planning, or matching a cover to your vocal range.",
+  "chord-progression-finder": "Get the chords of a song in order, timed to the audio — for learning by ear or charting a cover.",
+  "adaptive-mastering": "Measures your mix first, then masters only what it needs — genre is context, your audio drives the decisions.",
+};
+
+const GROUP_INTRO = {
+  analyze: "Free, no account required to try them. Real audio analysis — no trial limit, no card.",
+  master: "Mastering runs in the Studio. Try it free, with a plan when you need more.",
+  prepare: "Inside the Studio, before mastering.",
+  deliver: "Inside the Studio, before release.",
+};
+
+const ORDER = ["analyze", "master", "prepare", "deliver"];
+
+function ToolCard({ tool }) {
+  return (
+    <li>
+      <Link
+        href={tool.href}
+        className="group flex h-full flex-col rounded-2xl border border-border-subtle bg-white/55 p-5 transition duration-300 hover:border-text-primary/30 hover:bg-white"
+      >
+        <span className="flex items-center justify-between gap-3">
+          <span className="text-[16px] font-semibold text-text-primary">{tool.name.en}</span>
+          {tool.appOnly ? (
+            <span className="shrink-0 rounded-full border border-border-subtle px-2 py-0.5 text-[11px] text-text-secondary">In the app</span>
+          ) : (
+            <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-text-primary">Free</span>
+          )}
+        </span>
+        <span className="mt-2 text-[14px] leading-[1.6] text-text-secondary">{DESCRIPTIONS[tool.key] || tool.blurb.en}</span>
+        <span className="mt-auto pt-4 text-[13px] font-semibold text-text-primary">
+          {tool.appOnly ? "Open in the app" : "Open tool"}{" "}
+          <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-0.5">
+            →
+          </span>
+        </span>
+      </Link>
+    </li>
+  );
 }
 
-const TOOLS = [
-  {
-    href: "/lufs-meter",
-    label: "LUFS Meter",
-    description: "Measure Integrated Loudness, True Peak, and Loudness Range — the same analysis Studio runs on every upload.",
-  },
-  {
-    href: "/chord-detector",
-    label: "Chord Detector",
-    description: "Get the key, BPM, and full chord progression of any recording, synced to playback.",
-  },
-  {
-    href: "/bpm-finder",
-    label: "BPM Finder",
-    description: "Detect a track's exact tempo for beatmatching, syncing samples, or setting a click track.",
-  },
-  {
-    href: "/song-key-finder",
-    label: "Key Finder",
-    description: "Find the musical key of any track — for transposing, DJ set planning, or matching a cover to your vocal range.",
-  },
-];
-
 export default function ToolsHubPage() {
+  const groups = ORDER.map((k) => STUDIO_GROUPS.find((g) => g.key === k));
   return (
-    <>
-      <main className="mx-auto w-full max-w-[900px] px-4 pb-24 pt-8 sm:px-6">
-        <JsonLd data={breadcrumbJsonLd()} />
+    <PageShell>
+      <JsonLd data={BREADCRUMB_JSONLD} />
+      <Breadcrumbs items={[{ name: "Home", href: "/" }, { name: "Free Tools", href: "/tools" }]} />
 
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px] text-zinc-400">
-          <Link href="/" className="hover:text-zinc-200">
-            Home
-          </Link>
-          <span aria-hidden="true">/</span>
-          <span className="text-zinc-300">Free Tools</span>
-        </nav>
-
-        <h1 className="mt-4 font-[var(--font-title)] text-3xl leading-[1.1] text-white sm:text-4xl">Free Music Tools</h1>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-zinc-400">
-          Real audio analysis, no account required to try them. Every one of these is free, always — no trial limit,
-          no card.
-        </p>
-
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {TOOLS.map((tool) => (
-            <Link
-              key={tool.href}
-              href={tool.href}
-              className="rounded-2xl border border-white/10 bg-black/20 p-5 transition hover:border-brass/40 hover:bg-brass/[0.04]"
-            >
-              <p className="m-0 text-base font-semibold text-white">{tool.label}</p>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{tool.description}</p>
-              <span className="mt-3 inline-block text-xs font-semibold uppercase tracking-[0.1em] text-brass">Try it →</span>
+      <PageHero
+        eyebrow="Auralith Studio"
+        title="Free Music Tools"
+        lead="Real audio analysis, no account required to try them. Every one of these is free, always — no trial limit, no card."
+        actions={
+          <>
+            <Link href="/lufs-meter" className="btn-primary">
+              Start with the LUFS Meter <span aria-hidden="true">→</span>
             </Link>
-          ))}
-        </div>
-
-        <div className="mt-10 rounded-2xl border border-brass/25 bg-brass/[0.06] p-6 text-center">
-          <p className="m-0 text-sm text-zinc-200">Once you've got your reading, hear what your track sounds like mastered.</p>
-          <div className="mt-4">
-            <Link
-              href="/lufs-meter"
-              className="inline-block rounded-full border border-brass/50 bg-brass/[0.18] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-brass hover:bg-brass/25"
-            >
-              Start with the LUFS Meter →
+            <Link href="/chord-detector" className="btn-secondary">
+              Detect chords, key & BPM
             </Link>
-          </div>
-        </div>
-      </main>
-      <Footer />
-    </>
+          </>
+        }
+      />
+
+      {groups.map((group) => (
+        <Section key={group.key} id={group.key} eyebrow={group.label.en} title={group.key === "analyze" ? "Analyze a track" : group.key === "master" ? "Master a track" : group.key === "prepare" ? "Prepare a mix" : "Deliver a release"} intro={GROUP_INTRO[group.key]}>
+          <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
+            {group.tools.map((tool) => (
+              <ToolCard key={tool.key} tool={tool} />
+            ))}
+          </ul>
+        </Section>
+      ))}
+
+      <CtaBand
+        title="Once you've got your reading, hear what your track sounds like mastered."
+        body="Adaptive mastering measures the same things these tools do — then decides what to change."
+        primary={{ href: SIGNUP_URL, label: "Try mastering free" }}
+        secondary={{ href: "/ai-mastering-online", label: "How adaptive mastering works" }}
+      />
+    </PageShell>
   );
 }

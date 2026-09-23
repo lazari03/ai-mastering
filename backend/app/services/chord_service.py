@@ -106,10 +106,10 @@ def analyze_chords_from_path(audio_path: str) -> dict:
     audio = es.MonoLoader(filename=str(audio_path))()
     duration = float(len(audio)) / 44100.0
 
-    tempo, _beats, _confidence, _, _intervals = es.RhythmExtractor2013(method="multifeature")(audio)
+    tempo, _beats, beat_confidence, _, _intervals = es.RhythmExtractor2013(method="multifeature")(audio)
     tempo = float(tempo)
 
-    key, scale, _key_strength = es.KeyExtractor()(audio)
+    key, scale, key_strength = es.KeyExtractor()(audio)
     key_label = f"{key} {scale}"
 
     with warnings.catch_warnings():
@@ -128,6 +128,12 @@ def analyze_chords_from_path(audio_path: str) -> dict:
         "key": key_label,
         "duration": round(duration, 2),
         "chords": segments,
+        # Confidence the analyzers themselves report, normalised to 0..1.
+        # RhythmExtractor2013's multifeature confidence runs 0..5.32
+        # (Essentia docs: >3.5 is very reliable); KeyExtractor's strength
+        # is already 0..1.
+        "bpm_confidence": round(min(max(float(beat_confidence) / 5.32, 0.0), 1.0), 3),
+        "key_confidence": round(min(max(float(key_strength), 0.0), 1.0), 3),
     }
 
 

@@ -7,7 +7,29 @@ import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
-export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAnalysisResult, initialAnalysis = null, sourceTool = "chord_detector" }) {
+function formatDuration(seconds) {
+  if (!Number.isFinite(seconds)) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// Analyzer-reported confidence (0..1, see backend chord_service.py) as a
+// plain-language level. Thresholds follow Essentia's own guidance for
+// RhythmExtractor2013 (>3.5 of 5.32 ≈ 0.66 is very reliable).
+function confidenceLevel(value) {
+  if (value == null) return null;
+  if (value >= 0.66) return "high";
+  if (value >= 0.4) return "medium";
+  return "low";
+}
+
+/**
+ * focus: which measurement the page is about — "chords" (default), "key"
+ * (Song Key Finder) or "bpm" (BPM Finder). The focused value is shown
+ * first and largest; everything else is still there.
+ */
+export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAnalysisResult, initialAnalysis = null, sourceTool = "chord_detector", focus = "chords" }) {
   const { t } = useLanguage();
   // initialAnalysis: a result computed elsewhere and handed off here — see
   // ChordsPanel.jsx's sessionStorage pickup for the public chord
@@ -87,53 +109,48 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
             <Spinner size={15} /> {t("chordDetector.analyzing")}
           </>
         ) : (
-          t("chordDetector.detect")
+          t(focus === "key" ? "chordDetector.detectKey" : focus === "bpm" ? "chordDetector.detectBpm" : "chordDetector.detect")
         )}
       </button>
       <p className="mt-1.5 text-[11px] text-text-secondary">{t("chordDetector.alwaysFree")}</p>
 
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-600/25 bg-red-600/[0.05] px-4 py-3 text-sm text-red-800">
+          <span>{error}</span>
+          {file ? (
+            <button type="button" onClick={detect} className="btn-secondary btn-sm">
+              {t("chordDetector.tryAgain")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {analysis ? (
         <div className="mt-5 space-y-3">
-          {/* gap/padding/type scale down a notch below sm: — three cells
-              share ~340px there, and "F# minor" at text-xl inside p-4
-              padding was wrapping awkwardly per-word. */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3 text-center sm:p-4">
-              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("chordDetector.key")}</p>
-              <p className="mt-1.5 text-lg font-bold sm:text-xl">{analysis.key}</p>
-            </div>
-            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3 text-center sm:p-4">
-              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("chordDetector.bpm")}</p>
-              <p className="mt-1.5 text-lg font-bold sm:text-xl">{analysis.bpm}</p>
-            </div>
-            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3 text-center sm:p-4">
-              <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("chordDetector.timeSig")}</p>
-              <p className="mt-1.5 text-lg font-bold sm:text-xl">4/4</p>
-            </div>
-          </div>
+          <ResultMetrics analysis={analysis} focus={focus} t={t} />
 
           <p className="text-[11px] text-text-secondary">{t("chordDetector.estimatedNote")}</p>
 
           <audio ref={audioRef} src={previewUrl || undefined} controls onTimeUpdate={onTimeUpdate} className="w-full" />
 
-          <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-4">
+          <div className="rounded-xl border border-border-subtle bg-white/60 p-4">
             <p className="m-0 mb-2.5 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("chordDetector.chordProgression")}</p>
-            <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">
-              {chordChips.map((c, idx) => (
-                <span
-                  key={`${c.start}-${c.chord}`}
-                  className={`rounded-lg border px-3.5 py-2 text-sm font-semibold transition ${
-                    idx === activeIndex
-                      ? "border-accent bg-black/[0.05] text-accent"
-                      : "border-border-subtle bg-black/[0.045] text-text-secondary"
-                  }`}
-                >
-                  {c.chord}
-                </span>
-              ))}
-            </div>
+            {chordChips.length ? (
+              <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
+                {chordChips.map((c, idx) => (
+                  <span
+                    key={`${c.start}-${c.chord}`}
+                    className={`rounded-lg border px-3.5 py-2 text-sm font-semibold transition ${
+                      idx === activeIndex ? "border-accent bg-accent/10 text-text-primary" : "border-border-subtle bg-bg text-text-secondary"
+                    }`}
+                  >
+                    {c.chord}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="m-0 text-sm leading-relaxed text-text-secondary">{t("chordDetector.noChords")}</p>
+            )}
           </div>
 
           {onMasterThisSong ? (
@@ -161,6 +178,36 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
           {file ? t("chordDetector.emptyWithFile") : t("chordDetector.emptyNoFile")}
         </p>
       )}
+    </div>
+  );
+}
+
+function Metric({ label, value, confidence, large, t }) {
+  const level = confidenceLevel(confidence);
+  return (
+    <div className={`rounded-xl border border-border-subtle bg-white/60 p-3 sm:p-4 ${large ? "col-span-2 sm:col-span-1" : ""}`}>
+      <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{label}</p>
+      <p className={`mt-1.5 font-[var(--font-title)] font-semibold tracking-[-0.02em] text-text-primary ${large ? "text-3xl sm:text-4xl" : "text-xl sm:text-2xl"}`}>{value}</p>
+      {level ? (
+        <p className="m-0 mt-1 flex items-center gap-1.5 text-[11px] text-text-secondary">
+          <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${level === "high" ? "bg-emerald-600" : level === "medium" ? "bg-amber-500" : "bg-red-500"}`} />
+          {t("chordDetector.confidence", { level: t(`chordDetector.confidence.${level}`) })}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ResultMetrics({ analysis, focus, t }) {
+  const key = { id: "key", label: t("chordDetector.key"), value: analysis.key, confidence: analysis.key_confidence };
+  const bpm = { id: "bpm", label: t("chordDetector.bpm"), value: analysis.bpm, confidence: analysis.bpm_confidence };
+  const duration = { id: "duration", label: t("chordDetector.duration"), value: formatDuration(analysis.duration) };
+  const ordered = focus === "bpm" ? [bpm, key, duration] : [key, bpm, duration];
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+      {ordered.map((m, i) => (
+        <Metric key={m.id} label={m.label} value={m.value} confidence={m.confidence} large={i === 0 && focus !== "chords"} t={t} />
+      ))}
     </div>
   );
 }

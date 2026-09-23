@@ -32,23 +32,23 @@ export default function LufsMeterResult({ analysis }) {
   return (
     <div className="mt-5 space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-          <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("lufsMeter.integratedLabel")}</p>
-          <p className="mt-1.5 text-2xl font-bold text-brass">{lufs.toFixed(1)} LUFS</p>
-          <p className="mt-2 text-xs leading-relaxed text-zinc-400">{loudnessContext(t, lufs)}</p>
+        <div className="rounded-xl border border-border-subtle bg-white/60 p-4">
+          <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("lufsMeter.integratedLabel")}</p>
+          <p className="mt-1.5 font-[var(--font-title)] text-2xl font-semibold tracking-[-0.02em] text-text-primary">{lufs.toFixed(1)} LUFS</p>
+          <p className="mt-2 text-xs leading-relaxed text-text-secondary">{loudnessContext(t, lufs)}</p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-          <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("lufsMeter.truePeakLabel")}</p>
-          <p className="mt-1.5 text-2xl font-bold text-brass">{peak.toFixed(1)} dBTP</p>
-          <p className="mt-2 text-xs leading-relaxed text-zinc-400">{truePeakContext(t, peak)}</p>
+        <div className="rounded-xl border border-border-subtle bg-white/60 p-4">
+          <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("lufsMeter.truePeakLabel")}</p>
+          <p className="mt-1.5 font-[var(--font-title)] text-2xl font-semibold tracking-[-0.02em] text-text-primary">{peak.toFixed(1)} dBTP</p>
+          <p className="mt-2 text-xs leading-relaxed text-text-secondary">{truePeakContext(t, peak)}</p>
         </div>
-        <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-          <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-zinc-400">{t("lufsMeter.rangeLabel")}</p>
-          <p className="mt-1.5 text-2xl font-bold text-brass">{lra.toFixed(1)} LU</p>
-          <p className="mt-2 text-xs leading-relaxed text-zinc-400">{rangeContext(t, lra)}</p>
+        <div className="rounded-xl border border-border-subtle bg-white/60 p-4">
+          <p className="m-0 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("lufsMeter.rangeLabel")}</p>
+          <p className="mt-1.5 font-[var(--font-title)] text-2xl font-semibold tracking-[-0.02em] text-text-primary">{lra.toFixed(1)} LU</p>
+          <p className="mt-2 text-xs leading-relaxed text-text-secondary">{rangeContext(t, lra)}</p>
         </div>
       </div>
-      <p className="text-[11px] text-zinc-500">{t("lufsMeter.measuredNote")}</p>
+      <p className="text-[11px] text-text-secondary">{t("lufsMeter.measuredNote")}</p>
     </div>
   );
 }

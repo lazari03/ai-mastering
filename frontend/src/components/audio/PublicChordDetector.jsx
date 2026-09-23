@@ -43,7 +43,7 @@ import { useLanguage } from "@/lib/i18n";
  *    shows the key/BPM/chord progression, without the live-playback
  *    highlighting a same-session result gets.
  */
-export default function PublicChordDetector() {
+export default function PublicChordDetector({ focus = "chords", sourceTool = "chord_detector" }) {
   const { t } = useLanguage();
   const router = useRouter();
   const { user, loading } = useAuthStore();
@@ -53,7 +53,7 @@ export default function PublicChordDetector() {
   const [result, setResult] = useState(null);
 
   useEffect(() => {
-    trackEvent("free_tool_opened", { source_tool: "chord_detector" });
+    trackEvent("free_tool_opened", { source_tool: sourceTool });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -96,9 +96,9 @@ export default function PublicChordDetector() {
 
       <div className="mt-4">
         {ready ? (
-          <ChordDetector file={file} previewUrl={previewUrl} onAnalysisResult={setResult} />
+          <ChordDetector file={file} previewUrl={previewUrl} onAnalysisResult={setResult} focus={focus} sourceTool={sourceTool} />
         ) : (
-          <p className="mt-3 text-xs text-zinc-500">{t("chordDetector.preparingUpload")}</p>
+          <p className="mt-3 text-xs text-text-secondary">{t("chordDetector.preparingUpload")}</p>
         )}
       </div>
 
