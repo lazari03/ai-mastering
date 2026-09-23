@@ -10,6 +10,7 @@ import { useLanguage } from "@/lib/i18n";
 import { shortenFilename } from "@/lib/format";
 import { LoadingBlock } from "@/components/ui/Spinner";
 import { trackEvent } from "@/lib/analytics";
+import InlineAlert from "@/components/ui/InlineAlert";
 
 // three.js + its postprocessing passes are real weight (~250KB+) that only
 // matters once someone actually finishes a master — dynamic + ssr:false
@@ -277,7 +278,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
             {t("result.viewAllMasters")}
           </button>
         </div>
-        {downloadError ? <p className="mt-2 text-xs text-red-700">⚠ {downloadError}</p> : null}
+        {downloadError ? <InlineAlert size="xs" className="mt-2">{downloadError}</InlineAlert> : null}
 
         {(job.source_warnings || []).map((warning) => (
           <div key={warning} className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-900">

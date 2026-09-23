@@ -56,7 +56,7 @@ const TABS = [
     group: "app.navGroup.analyze",
     render: (ctx) => <ChordsPanel onMasterThisSong={() => ctx.setActiveTab("master")} />,
   },
-  { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, group: "app.navGroup.library", render: () => <MyMastersPanel /> },
+  { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, group: "app.navGroup.library", render: (ctx) => <MyMastersPanel onNavigate={ctx.setActiveTab} /> },
   { key: "plans", labelKey: "app.tab.plans", icon: IconBilling, render: () => <PlansPanel /> },
   { key: "settings", labelKey: "app.tab.settings", icon: IconSettings, render: (ctx) => <SettingsPanel onReplayTutorial={() => ctx.setShowTutorial(true)} onOpenBilling={() => ctx.setActiveTab("plans")} /> },
   { key: "help", labelKey: "app.tab.help", icon: IconHelp, render: () => <HelpSupportPanel /> },

@@ -9,6 +9,7 @@ import { trackEvent } from "@/lib/analytics";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 import { IconCheck } from "@/components/app/icons";
+import InlineAlert from "@/components/ui/InlineAlert";
 
 // Feature-by-feature comparison rows — Free/Indie/Studio/All-Access
 // columns, in PLAN_ORDER. "—" means not included, everything else is the
@@ -351,7 +352,7 @@ export default function PlansPanel() {
         </>
       )}
       {changeStatus ? <p className="mt-3 text-sm text-accent">{changeStatus}</p> : null}
-      {checkoutError ? <p className="mt-3 text-sm text-red-700">{checkoutError}</p> : null}
+      {checkoutError ? <InlineAlert size="sm" className="mt-3">{checkoutError}</InlineAlert> : null}
     </div>
   );
 }

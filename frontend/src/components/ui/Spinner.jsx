@@ -1,12 +1,12 @@
 // Pure CSS (Tailwind's built-in animate-spin) — no new dependency, no JS
 // animation loop to worry about (see Threads.jsx's TBT saga for why that
-// matters). One ring element, brass-colored to match the rest of the app.
+// matters). One ring element, accent-colored to match the rest of the app.
 export function Spinner({ size = 16, className = "" }) {
   return (
     <span
       role="status"
       aria-label="Loading"
-      className={`inline-block shrink-0 animate-spin rounded-full border-2 border-border-subtle border-t-brass ${className}`}
+      className={`inline-block shrink-0 animate-spin rounded-full border-2 border-border-subtle border-t-accent ${className}`}
       style={{ width: size, height: size }}
     />
   );

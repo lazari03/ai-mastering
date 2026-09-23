@@ -6,11 +6,13 @@ import { motion } from "motion/react";
 
 import { getJobs, toAuthedDownloadUrl, deleteJobRecord, downloadFileSafely } from "@/network/http/client";
 import { useEntitlementsStore, planUnlocksShare } from "@/store/entitlementsStore";
+import StatePanel from "@/components/site/StatePanel";
 import { LoadingBlock } from "@/components/ui/Spinner";
 import { shortenFilename } from "@/lib/format";
 import { useLanguage } from "@/lib/i18n";
 import { trackEvent } from "@/lib/analytics";
 import ShareLinkManager from "./ShareLinkManager";
+import InlineAlert from "@/components/ui/InlineAlert";
 
 // Internal token, not display text — "expired" is compared against
 // elsewhere in this file (filtering, conditional rendering), so it stays
@@ -41,7 +43,7 @@ function formatExpiry(t, iso) {
 // filter both just slice the one already-fetched array client-side.
 const PAGE_SIZE = 8;
 
-export default function MyMastersPanel() {
+export default function MyMastersPanel({ onNavigate }) {
   const { t } = useLanguage();
   const [jobs, setJobs] = useState(null);
   const [error, setError] = useState("");
@@ -55,7 +57,9 @@ export default function MyMastersPanel() {
   const { plan } = useEntitlementsStore();
   const shareUnlocked = planUnlocksShare(plan);
 
+  const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => {
+    setError("");
     getJobs()
       .then(async (list) => {
         // Only the mastered file — My Masters is deliberately just that,
@@ -73,7 +77,8 @@ export default function MyMastersPanel() {
         setJobs(enriched);
       })
       .catch((err) => setError(err?.message || t("myMasters.loadFailed")));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadKey]);
 
   const handleDelete = async (jobId) => {
     setBusyJobId(jobId);
@@ -128,9 +133,28 @@ export default function MyMastersPanel() {
       <h1 className="m-0 text-[26px]">{t("myMasters.title")}</h1>
       <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t("myMasters.subtitle")}</p>
 
-      {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
+      {error && jobs === null ? (
+        <StatePanel
+          tone="error"
+          title={t("state.loadFailed.title")}
+          body={error}
+          compact
+          actions={[{ label: t("state.tryAgain"), onClick: () => setReloadKey((k) => k + 1) }]}
+        />
+      ) : error ? (
+        <p role="alert" className="mt-4 rounded-xl border border-red-600/25 bg-red-600/[0.05] px-3.5 py-2.5 text-sm text-red-800">
+          {error}
+        </p>
+      ) : null}
       {jobs === null && !error ? <LoadingBlock /> : null}
-      {jobs?.length === 0 ? <p className="mt-4 text-xs text-text-secondary">{t("myMasters.empty")}</p> : null}
+      {jobs?.length === 0 ? (
+        <StatePanel
+          title={t("state.noMasters.title")}
+          body={t("myMasters.empty")}
+          compact
+          actions={onNavigate ? [{ label: t("state.noMasters.action"), onClick: () => onNavigate("master") }] : []}
+        />
+      ) : null}
 
       {jobs?.length > 0 ? (
         <div className="mt-5 flex gap-2">
@@ -264,7 +288,7 @@ export default function MyMastersPanel() {
                 </div>
               ) : null}
 
-              {downloadErrors[job.job_id] ? <p className="mt-2 text-xs text-red-700">⚠ {downloadErrors[job.job_id]}</p> : null}
+              {downloadErrors[job.job_id] ? <InlineAlert size="xs" className="mt-2">{downloadErrors[job.job_id]}</InlineAlert> : null}
 
               {!expired && openShareJobId === job.job_id ? <ShareLinkManager jobId={job.job_id} t={t} /> : null}
             </motion.div>

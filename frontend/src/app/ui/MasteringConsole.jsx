@@ -18,6 +18,7 @@ import { trackEvent } from "@/lib/analytics";
 import { useMasteringProgress } from "@/lib/useMasteringProgress";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
+import InlineAlert from "@/components/ui/InlineAlert";
 
 // Codec names are format labels, not language-dependent text — same on
 // every locale, nothing to localize here.
@@ -680,7 +681,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                           </button>
                         ) : null}
                       </div>
-                      {importError ? <span className="mt-2 block text-[11px] text-red-700">⚠ {importError}</span> : null}
+                      {importError ? <InlineAlert size="xs" className="mt-2">{importError}</InlineAlert> : null}
                     </div>
                   </div>
                 </section>
@@ -812,7 +813,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
           </p>
         ) : null}
         {status ? <p className="mt-3 text-sm text-accent">{status}</p> : null}
-        {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
+        {error ? <InlineAlert size="sm" className="mt-3">{error}</InlineAlert> : null}
       </div>
 
       {/* sticky only from lg: up, where this sits beside the wizard in the
@@ -892,7 +893,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
               >
                 {downloading ? t("console.downloading") : t("console.downloadMaster")}
               </button>
-              {downloadError ? <p className="mt-2 text-xs text-red-700">⚠ {downloadError}</p> : null}
+              {downloadError ? <InlineAlert size="xs" className="mt-2">{downloadError}</InlineAlert> : null}
             </div>
 
             <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
@@ -926,7 +927,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 </button>
               </div>
 
-              {codecPreviewError ? <p className="mt-2 text-xs text-red-700">{codecPreviewError}</p> : null}
+              {codecPreviewError ? <InlineAlert size="xs" className="mt-2">{codecPreviewError}</InlineAlert> : null}
 
               {codecPreview ? (
                 <div className="mt-3 space-y-3">

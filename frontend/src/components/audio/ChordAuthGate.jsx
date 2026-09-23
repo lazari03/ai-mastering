@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/authStore";
 import { scorePassword } from "@/lib/passwordStrength";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
+import InlineAlert from "@/components/ui/InlineAlert";
 
 const fieldStyle = "field";
 
@@ -153,7 +154,7 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
             </label>
           ) : null}
 
-          {error ? <p className="m-0 text-sm text-red-700">{error}</p> : null}
+          {error ? <InlineAlert size="sm" className="m-0">{error}</InlineAlert> : null}
 
           <button
             type="submit"

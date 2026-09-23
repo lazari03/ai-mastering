@@ -1,5 +1,7 @@
 "use client";
 
+import { LoadingBlock } from "@/components/ui/Spinner";
+import StatePanel from "@/components/site/StatePanel";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -142,9 +144,17 @@ export default function HomePanel({ onNavigate }) {
         </div>
 
         {jobs === null ? (
-          <p className="mt-4 text-sm text-text-secondary">…</p>
+          <LoadingBlock className="mt-4" />
         ) : jobs.length === 0 ? (
-          <p className="mt-4 text-sm text-text-secondary">{t("app.home.noTracks")}</p>
+          <div className="mt-4 rounded-xl border border-dashed border-border-subtle">
+            <StatePanel
+              title={t("state.noMasters.title")}
+              body={t("app.home.noTracks")}
+              headingLevel={3}
+              compact
+              actions={[{ label: t("state.noMasters.action"), onClick: () => onNavigate("master") }]}
+            />
+          </div>
         ) : (
           <div className="mt-4 overflow-hidden rounded-xl border border-border-subtle">
             <table className="w-full border-collapse text-sm">

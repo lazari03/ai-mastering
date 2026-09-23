@@ -13,6 +13,17 @@ import { useState } from "react";
 // anything audio-typed beyond the list.
 const DEFAULT_ACCEPT = "audio/*,.mp3,.wav,.flac,.aiff,.aif,.m4a,.aac,.ogg,.opus,.wma";
 
+// What the upload pipeline can decode (backend-node AUDIO_DECODE_EXTS plus
+// the natively-read WAV/AIFF/FLAC). Drag-and-drop bypasses the picker's
+// `accept` filter, so a dropped PDF or image would otherwise go all the way
+// to the server before failing — it's caught here with a clear message.
+const SUPPORTED_EXT = /\.(wav|wave|aiff?|flac|mp3|m4a|aac|ogg|oga|opus|wma|mp4|webm)$/i;
+function isSupportedAudio(file) {
+  if (!file) return true;
+  if (SUPPORTED_EXT.test(file.name || "")) return true;
+  return /^audio\//.test(file.type || "");
+}
+
 export default function FileDropzone({ id, label, fileName, onChange, onRemove, accept = DEFAULT_ACCEPT, compact = false }) {
   const selected = Boolean(fileName);
   // True while a file is being dragged over the zone — drives the visual
@@ -21,6 +32,19 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
   // highlight from flickering as the cursor moves across inner elements.
   const [dragDepth, setDragDepth] = useState(0);
   const dragging = dragDepth > 0;
+  const [rejected, setRejected] = useState("");
+
+  // Every selection (picker or drop) goes through here: unsupported files
+  // are stopped with an explanation instead of reaching the caller.
+  const accept_ = (event) => {
+    const file = event?.target?.files?.[0];
+    if (file && !isSupportedAudio(file)) {
+      setRejected(file.name || "file");
+      return;
+    }
+    setRejected("");
+    onChange(event);
+  };
 
   // The copy on this component has always said "Drop an audio file" — this
   // makes that actually true. The dropped file is handed to the same
@@ -31,7 +55,7 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
     setDragDepth(0);
     const files = event.dataTransfer?.files;
     if (files?.length) {
-      onChange({ target: { files } });
+      accept_({ target: { files } });
     }
   };
 
@@ -65,7 +89,7 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
         onClick={(event) => {
           event.currentTarget.value = "";
         }}
-        onChange={onChange}
+        onChange={accept_}
         className="hidden"
       />
       {compact ? (
@@ -110,6 +134,12 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
           ) : null}
         </div>
       )}
+      {rejected ? (
+        <p role="alert" className="mx-auto mt-3 max-w-[46ch] rounded-xl border border-red-600/25 bg-red-600/[0.05] px-3 py-2 text-left text-xs leading-relaxed text-red-800">
+          <strong className="font-semibold">{rejected}</strong> isn&apos;t an audio file we can read. Use WAV, AIFF, FLAC, MP3, M4A, AAC, OGG,
+          WMA, MP4 or WebM.
+        </p>
+      ) : null}
     </div>
   );
 }

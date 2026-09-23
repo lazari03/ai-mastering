@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { createShareLink, listShareLinks, revokeShareLink } from "@/network/http/client";
+import InlineAlert from "@/components/ui/InlineAlert";
 
 // Expiry choices offered to the user. The backend always caps a link at
 // the master's own expiry, so "master" (null) is also the upper bound of
@@ -142,7 +143,7 @@ export default function ShareLinkManager({ jobId, t }) {
         </div>
       ) : null}
 
-      {error ? <p className="mt-2 text-xs text-red-700">{error}</p> : null}
+      {error ? <InlineAlert size="xs" className="mt-2">{error}</InlineAlert> : null}
 
       <p className="mt-3 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("myMasters.shareLinks")}</p>
       {links === null ? null : visibleLinks.length === 0 ? (

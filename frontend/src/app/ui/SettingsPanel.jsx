@@ -10,6 +10,7 @@ import { PLANS } from "@/lib/pricing";
 import { scorePassword } from "@/lib/passwordStrength";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
+import InlineAlert from "@/components/ui/InlineAlert";
 
 const fieldStyle =
   "w-full box-border rounded-xl border border-border-subtle bg-black/[0.045] px-3.5 py-3 text-sm text-text-primary outline-none focus:border-border-subtle";
@@ -212,7 +213,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
           ) : null}
         </label>
 
-        {error ? <p className="m-0 text-sm text-red-700">{error}</p> : null}
+        {error ? <InlineAlert size="sm" className="m-0">{error}</InlineAlert> : null}
         {passwordStatus ? <p className="m-0 text-sm text-accent">{passwordStatus}</p> : null}
 
         <button
@@ -319,7 +320,7 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
               />
             </label>
 
-            {error ? <p className="m-0 text-sm text-red-700">{error}</p> : null}
+            {error ? <InlineAlert size="sm" className="m-0">{error}</InlineAlert> : null}
 
             <div className="flex flex-wrap gap-2">
               <button
