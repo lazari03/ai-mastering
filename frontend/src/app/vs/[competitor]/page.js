@@ -35,17 +35,6 @@ export default async function ComparisonPage({ params }) {
   return (
     <PageShell>
       <JsonLd data={faqJsonLd(page.faq)} />
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
-            { "@type": "ListItem", position: 2, name: "AI Mastering", item: absoluteUrl("/ai-mastering-online") },
-            { "@type": "ListItem", position: 3, name: `vs ${page.label}`, item: absoluteUrl(`/vs/${competitor}`) },
-          ],
-        }}
-      />
 
       <Breadcrumbs
         items={[

@@ -41,7 +41,7 @@ import { SITE_URL } from "@/lib/seo";
 // site changed on every deploy — a signal that gets discounted as noise
 // once it's obviously untrue. Bump this by hand when the copy in
 // src/content/*.js or a landing page actually changes.
-const CONTENT_LAST_MODIFIED = "2026-08-25";
+const CONTENT_LAST_MODIFIED = "2026-09-23";
 
 export default function sitemap() {
   // /ai-mastering-online is priority 0.9, just under the homepage — it's
@@ -58,6 +58,7 @@ export default function sitemap() {
     // (non-landing-page) tool.
     { path: "/lufs-meter", priority: 0.8, changeFrequency: "monthly" },
     { path: "/tools", priority: 0.6, changeFrequency: "monthly" },
+    { path: "/pricing", priority: 0.8, changeFrequency: "monthly" },
     // Reference content rather than a landing page — priority matches the
     // genre pages because informational pages that answer a question
     // outright are what earn citations and inbound links.

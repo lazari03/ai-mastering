@@ -37,18 +37,6 @@ function serviceJsonLd(genre, page) {
   };
 }
 
-function breadcrumbJsonLd(genre, page) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
-      { "@type": "ListItem", position: 2, name: "AI Mastering", item: absoluteUrl("/ai-mastering-online") },
-      { "@type": "ListItem", position: 3, name: `${page.label} mastering`, item: absoluteUrl(`/master/${genre}`) },
-    ],
-  };
-}
-
 const f1 = (n) => n.toFixed(1);
 
 // Genre-specific answers built from the engine's real numbers for this genre.
@@ -93,7 +81,6 @@ export default async function GenreMasteringPage({ params }) {
   return (
     <PageShell>
       <JsonLd data={serviceJsonLd(genre, page)} />
-      <JsonLd data={breadcrumbJsonLd(genre, page)} />
       <JsonLd data={faqJsonLd(faq)} />
 
       <Breadcrumbs

@@ -15,7 +15,15 @@ export const metadata = buildMetadata({
 // that hook otherwise.
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
+    // The form needs the query string (client-only), so the server renders a
+    // minimal shell with the page's heading instead of nothing at all.
+    <Suspense
+      fallback={
+        <main id="main" className="flex min-h-screen items-center justify-center px-4">
+          <h1 className="m-0 font-[var(--font-title)] text-[28px] font-semibold text-text-primary">Sign in to Auralith Forge</h1>
+        </main>
+      }
+    >
       <LoginClient />
     </Suspense>
   );

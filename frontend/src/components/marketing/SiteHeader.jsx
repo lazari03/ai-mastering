@@ -22,7 +22,7 @@ const EASE = "ease-[cubic-bezier(0.32,0.72,0,1)]";
 // everywhere else they navigate home and scroll to the section. (Bare
 // "#pricing" links used to do nothing at all outside the homepage.)
 const NAV_LINKS = [
-  { href: "/#pricing", key: "nav.pricing" },
+  { href: "/pricing", key: "nav.pricing" },
   { href: "/blog", key: "nav.blog" },
   { href: "/#faq", key: "nav.faq" },
   { href: "/#contact", key: "nav.contact" },

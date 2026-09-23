@@ -36,15 +36,6 @@ const SOFTWARE_JSONLD = {
   offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
 };
 
-const BREADCRUMB_JSONLD = {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  itemListElement: [
-    { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
-    { "@type": "ListItem", position: 2, name: "Tools", item: absoluteUrl("/tools") },
-    { "@type": "ListItem", position: 3, name: "LUFS Meter", item: absoluteUrl("/lufs-meter") },
-  ],
-};
 
 const FAQ = [
   {
@@ -96,7 +87,6 @@ export default function LufsMeterPage() {
   return (
     <PageShell>
       <JsonLd data={SOFTWARE_JSONLD} />
-      <JsonLd data={BREADCRUMB_JSONLD} />
       <JsonLd data={faqJsonLd(FAQ)} />
 
       <Breadcrumbs items={[{ name: "Home", href: "/" }, { name: "Tools", href: "/tools" }, { name: "LUFS Meter", href: "/lufs-meter" }]} />

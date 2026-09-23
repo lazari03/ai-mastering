@@ -37,15 +37,6 @@ const SERVICE_JSONLD = {
   },
 };
 
-const BREADCRUMB_JSONLD = {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  itemListElement: [
-    { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
-    { "@type": "ListItem", position: 2, name: "Tools", item: absoluteUrl("/tools") },
-    { "@type": "ListItem", position: 3, name: "Chord Detector", item: absoluteUrl("/chord-detector") },
-  ],
-};
 
 const HOW_IT_WORKS = [
   ["01", "Upload your track", "Any format — a rough phone recording works fine, doesn't need to be mastered first."],
@@ -132,7 +123,7 @@ export default function ChordDetectorPage() {
         },
       ]}
       relatedKeys={[...TOOL_LANDING_KEYS, "lufs-meter"]}
-      schemas={[SERVICE_JSONLD, BREADCRUMB_JSONLD]}
+      schemas={[SERVICE_JSONLD]}
       cta={{ title: "Analyze your track — it's free", body: "Key, BPM and the full chord progression from one upload.", primary: "Analyze a track" }}
     />
   );

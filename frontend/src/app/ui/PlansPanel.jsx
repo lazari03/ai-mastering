@@ -10,6 +10,7 @@ import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 import { IconCheck } from "@/components/app/icons";
 import InlineAlert from "@/components/ui/InlineAlert";
+import { PLAN_COMPARISON } from "@/lib/product";
 
 // Feature-by-feature comparison rows — Free/Indie/Studio/All-Access
 // columns, in PLAN_ORDER. "—" means not included, everything else is the
@@ -22,16 +23,7 @@ import InlineAlert from "@/components/ui/InlineAlert";
 // there's an assertion below rather than a comment alone, because a row
 // that's one short doesn't fail loudly, it silently shifts every value
 // after it into the wrong column and misprices the table.
-const COMPARISON_ROWS = [
-  { label: "Masters", values: ["3 total (one-time)", "15 / month", "50 / month", "250 / month"] },
-  { label: "Standard engine", values: [true, true, true, true] },
-  // Matches the backend gate (masteringRoutes.js: studio and pro only) and
-  // planUnlocksProfessional — Indie is Standard-only.
-  { label: "Professional engine", values: [false, false, true, true] },
-  { label: "Stem separation", values: ["Pay per use", "Pay per use", "Pay per use", "20 / month included"] },
-  { label: "Chord detection", values: ["Free, unlimited", "Free, unlimited", "Free, unlimited", "Free, unlimited"] },
-  { label: "Shareable download links", values: [false, false, false, true] },
-];
+const COMPARISON_ROWS = PLAN_COMPARISON;
 
 const misalignedRow = COMPARISON_ROWS.find((row) => row.values.length !== PLAN_ORDER.length);
 if (misalignedRow) {

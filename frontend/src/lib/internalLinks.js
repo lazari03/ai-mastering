@@ -22,7 +22,7 @@ export const CTA = {
   // Anonymous visitors can't check out directly (Polar checkout requires
   // an authed uid — see PlansPanel.jsx), so "subscribe" from a public
   // page always means "go see the plans," not a direct checkout link.
-  pricing: "/#pricing",
+  pricing: "/pricing",
   blog: "/blog",
 };
 

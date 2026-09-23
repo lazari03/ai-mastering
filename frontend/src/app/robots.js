@@ -78,6 +78,5 @@ export default function robots() {
       publicRule("*"),
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
   };
 }

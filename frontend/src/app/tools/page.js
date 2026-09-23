@@ -12,14 +12,6 @@ export const metadata = buildMetadata({
   keywords: ["free music tools", "lufs meter", "bpm finder", "key finder", "chord detector"],
 });
 
-const BREADCRUMB_JSONLD = {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  itemListElement: [
-    { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
-    { "@type": "ListItem", position: 2, name: "Free Tools", item: absoluteUrl("/tools") },
-  ],
-};
 
 // Longer, page-specific descriptions for the free tools (the Studio map's
 // one-line blurbs are sized for the nav menu).
@@ -72,7 +64,6 @@ export default function ToolsHubPage() {
   const groups = ORDER.map((k) => STUDIO_GROUPS.find((g) => g.key === k));
   return (
     <PageShell>
-      <JsonLd data={BREADCRUMB_JSONLD} />
       <Breadcrumbs items={[{ name: "Home", href: "/" }, { name: "Free Tools", href: "/tools" }]} />
 
       <PageHero

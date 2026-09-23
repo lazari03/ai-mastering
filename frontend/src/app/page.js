@@ -1,5 +1,5 @@
 import HomeClient from "./HomeClient";
-import { buildMetadata, organizationJsonLd, faqJsonLd, JsonLd } from "@/lib/seo";
+import { buildMetadata, organizationJsonLd, websiteJsonLd, brandJsonLd, faqJsonLd, JsonLd } from "@/lib/seo";
 import { HOME_FAQ } from "@/content/homeFaq";
 
 export const metadata = buildMetadata({
@@ -25,6 +25,8 @@ const FAQ_ITEMS = HOME_FAQ.map(({ q, a }) => ({ question: q, answer: a }));
 export default function HomePage() {
   return (
     <>
+      <JsonLd data={websiteJsonLd()} />
+      <JsonLd data={brandJsonLd()} />
       <JsonLd data={organizationJsonLd()} />
       <JsonLd data={faqJsonLd(FAQ_ITEMS)} />
       <HomeClient />

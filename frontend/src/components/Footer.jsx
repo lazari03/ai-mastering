@@ -65,7 +65,7 @@ export default function Footer() {
           <Column title={t("footer.col.product")}>
             <FooterLink href="/ai-mastering-online">{t("footer.link.aiMasteringOnline")}</FooterLink>
             <FooterLink href="/tools">{t("footer.link.allTools")}</FooterLink>
-            <FooterLink href="/#pricing">{t("footer.link.pricing")}</FooterLink>
+            <FooterLink href="/pricing">{t("footer.link.pricing")}</FooterLink>
             <FooterLink href="/login?mode=signup">{t("footer.link.openApp")}</FooterLink>
           </Column>
 

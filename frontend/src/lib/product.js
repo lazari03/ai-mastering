@@ -51,4 +51,18 @@ export function paidEntryText() {
   return `${indie.label} at ${indie.price}${indie.period} for ${indie.masterLimit} masters a month, or ${SINGLE_MASTER.price} for a single master`;
 }
 
+// Feature-by-feature comparison, one row per axis, one value per plan in
+// PLAN_ORDER ("—"/false = not included). Shared by the in-app Plans panel
+// and the public /pricing page. Every row must match what the backend
+// enforces (see the sources list at the top of this file).
+export const PLAN_COMPARISON = [
+  { label: "Masters", values: [`${PLANS.free.masterLimit} total (one-time)`, `${PLANS.indie.masterLimit} / month`, `${PLANS.studio.masterLimit} / month`, `${PLANS.pro.masterLimit} / month`] },
+  { label: "Standard engine", values: [true, true, true, true] },
+  { label: "Professional engine", values: [false, false, true, true] },
+  { label: "Stem separation", values: ["Pay per use", "Pay per use", "Pay per use", `${PRODUCT.stems.includedPerMonth} / month included`] },
+  { label: "Chord, key & BPM detection", values: ["Free, unlimited", "Free, unlimited", "Free, unlimited", "Free, unlimited"] },
+  { label: "Codec preview & level-matched A/B", values: [true, true, true, true] },
+  { label: "Shareable download links", values: [false, false, false, true] },
+];
+
 export { PLANS, PLAN_ORDER, SINGLE_MASTER, STEM_SEPARATION };

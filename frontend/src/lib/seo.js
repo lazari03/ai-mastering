@@ -1,3 +1,4 @@
+import { PLANS, PLAN_ORDER } from "@/lib/pricing";
 // Central SEO constants — every page's metadata pulls from here so title
 // format, domain, and default keywords stay consistent instead of each
 // page inventing its own.
@@ -87,6 +88,7 @@ export function buildMetadata({ title, description, path = "/", keywords = [], n
 // thing that erodes trust signals (and can trigger a manual review),
 // worth catching regardless of how minor it looks.
 export function organizationJsonLd() {
+  const prices = PLAN_ORDER.map((k) => Number.parseFloat(String(PLANS[k].price).replace(/[^0-9.]/g, "")) || 0);
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -97,11 +99,49 @@ export function organizationJsonLd() {
     description: DEFAULT_DESCRIPTION,
     offers: {
       "@type": "AggregateOffer",
-      lowPrice: "0",
-      highPrice: "19.99",
+      lowPrice: String(Math.min(...prices)),
+      highPrice: String(Math.max(...prices)),
       priceCurrency: "EUR",
-      offerCount: "3",
+      offerCount: String(PLAN_ORDER.length),
     },
+  };
+}
+
+// Site identity for search engines: WebSite carries the site name (what
+// Google shows as the result's site name) and Organization ties the brand to
+// the domain. Homepage only — one declaration of each for the whole site.
+export function websiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    alternateName: ["Auralith", "auralithforge.app"],
+    url: `${SITE_URL}/`,
+  };
+}
+
+export function brandJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: `${SITE_URL}/`,
+    logo: `${SITE_URL}/icon.svg`,
+  };
+}
+
+// BreadcrumbList from the same items the visible <Breadcrumbs> renders —
+// emitted by that component, so the schema can't disagree with the trail.
+export function breadcrumbJsonLd(items) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      item: absoluteUrl(item.href || "/"),
+    })),
   };
 }
 

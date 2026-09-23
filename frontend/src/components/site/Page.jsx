@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import SiteHeader from "@/components/marketing/SiteHeader";
 import Footer from "@/components/Footer";
+import { JsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 // Layout primitives shared by every public route. Server components (no
 // "use client") so every word of SEO copy is in the server-rendered HTML.
@@ -25,9 +26,11 @@ export function PageShell({ children, width = "default", mainClassName = "" }) {
   );
 }
 
-/** Visible breadcrumb trail. Pair with breadcrumbJsonLd on pages that emit it. */
+/** Visible breadcrumb trail + its BreadcrumbList schema (one source). */
 export function Breadcrumbs({ items }) {
   return (
+    <>
+    <JsonLd data={breadcrumbJsonLd(items)} />
     <nav aria-label="Breadcrumb" className="mb-6 text-[13px] text-text-secondary">
       <ol className="m-0 flex list-none flex-wrap items-center gap-1.5 p-0">
         {items.map((item, i) => (
@@ -46,6 +49,7 @@ export function Breadcrumbs({ items }) {
         ))}
       </ol>
     </nav>
+    </>
   );
 }
 
