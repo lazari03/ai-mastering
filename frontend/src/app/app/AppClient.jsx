@@ -278,7 +278,7 @@ export default function AppClient() {
   // Fullscreen render-status overlay — one shared timeline (see the hook's
   // own comment) drives it regardless of which tab is active underneath,
   // so it still shows even if the user switches tabs mid-render.
-  const { progress: masteringProgress, phaseMessage: masteringPhaseMessage, logs: masteringLogs } = useMasteringProgress();
+  const { elapsedSec: masteringElapsedSec } = useMasteringProgress();
   const isMasteringSubmitting = useMasteringStore((s) => s.isSubmitting);
 
   // While Firebase's async session check is still running, or once it's
@@ -556,7 +556,7 @@ export default function AppClient() {
 
       <NotificationBanner activeTab={activeTab} onView={() => goToTab("master")} />
       {showTutorial ? <OnboardingTour onDone={dismissTutorial} /> : null}
-      <MasteringLoaderOverlay visible={isMasteringSubmitting} progress={masteringProgress} phaseMessage={masteringPhaseMessage} logs={masteringLogs} />
+      <MasteringLoaderOverlay visible={isMasteringSubmitting} elapsedSec={masteringElapsedSec} />
       </div>
     </div>
   );

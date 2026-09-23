@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
 import ProcessingSummary from "@/components/audio/ProcessingSummary";
+import MasteringDecisions from "@/components/audio/MasteringDecisions";
+import { summarizeDecisions } from "@/lib/masteringDecisions";
 import { downloadFileSafely, getJobDetail, toAuthedDownloadUrl } from "@/network/http/client";
 import { useMasteringStore } from "@/store/masteringStore";
 import { useLanguage } from "@/lib/i18n";
@@ -221,7 +223,11 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
         <div className="mb-4 flex items-center justify-center gap-1 rounded-full border border-border-subtle bg-black/[0.045] p-1">
           <button
             type="button"
-            onClick={() => setPreviewMode("before")}
+            aria-pressed={previewMode === "before"}
+            onClick={() => {
+              setPreviewMode("before");
+              trackEvent("original_played", { source: "result_view" });
+            }}
             className={`flex-1 rounded-full px-4 py-2 text-xs uppercase tracking-[0.1em] transition ${
               previewMode === "before" ? "bg-black/[0.05] text-text-primary" : "text-text-secondary hover:text-text-secondary"
             }`}
@@ -230,7 +236,11 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
           </button>
           <button
             type="button"
-            onClick={() => setPreviewMode("after")}
+            aria-pressed={previewMode === "after"}
+            onClick={() => {
+              setPreviewMode("after");
+              trackEvent("mastered_played", { source: "result_view" });
+            }}
             className={`flex-1 rounded-full px-4 py-2 text-xs uppercase tracking-[0.1em] transition ${
               previewMode === "after" ? "bg-accent text-black" : "text-text-secondary hover:text-text-secondary"
             }`}
@@ -287,8 +297,15 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
         ))}
       </div>
 
+      {/* Engine decisions first (what was corrected, what was preserved,
+          how it verified); the raw processing numbers stay below for
+          anyone who wants them, and are all older jobs have. */}
       <div className="mt-6">
-        <h2 className="m-0 mb-3 text-base">{t("result.detailsHeading")}</h2>
+        <MasteringDecisions result={job} source="result_view" />
+      </div>
+
+      <div className="mt-6">
+        <h2 className="m-0 mb-3 text-base">{t(summarizeDecisions(job) ? "result.technicalHeading" : "result.detailsHeading")}</h2>
         <div className="glass-panel rounded-[20px] p-4 sm:p-[22px]">
           <ProcessingSummary result={job} />
         </div>

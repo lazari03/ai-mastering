@@ -6,8 +6,17 @@ import { AnimatePresence, motion } from "motion/react";
 
 import LogoMark from "@/components/brand/LogoMark";
 import { shuffledQuotes } from "@/lib/masteringQuotes";
+import { useLanguage } from "@/lib/i18n";
 
 const QUOTE_INTERVAL_MS = 5000;
+
+const STEPS = ["analyze", "detect", "plan", "master", "verify"];
+
+function fmtElapsed(sec) {
+  const m = Math.floor(sec / 60);
+  const s = String(sec % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
 
 /**
  * Fullscreen render-status overlay — replaces the inline progress bar as
@@ -16,14 +25,12 @@ const QUOTE_INTERVAL_MS = 5000;
  * ancestor's overflow/transform (the app shell uses both), independent of
  * where in the tree it's mounted from.
  *
- * `progress`/`phaseMessage`/`logs` are the real, already-computed
- * simulated progress from useMasteringProgress — this component doesn't
- * invent its own fake timeline, it just presents that one more
- * convincingly: a rotating line from masteringQuotes.js so a render that
- * takes tens of seconds (real multiband DSP, not an instant filter)
- * doesn't read as dead air, plus the phase log box below so what the
- * engine is doing is visible as a running record, not only as the single
- * current line.
+ * Honest by construction: the backend reports no intermediate progress
+ * for a render, so there's no percentage and no "current step" here —
+ * an indeterminate bar, the real elapsed time, and the engine's pipeline
+ * listed as what happens during a master (not ticked off on a timer).
+ * A rotating line from masteringQuotes.js keeps a long render from
+ * reading as dead air.
  *
  * Quote rotation is AnimatePresence mode="wait" keyed by index — the
  * outgoing quote fully fades out before the next fades in, so two quotes
@@ -32,7 +39,8 @@ const QUOTE_INTERVAL_MS = 5000;
  * visibly glitch when a timer fired late: text swapped while still
  * fading, reading as quotes overlapping/morphing into each other.
  */
-export default function MasteringLoaderOverlay({ visible, progress = 0, phaseMessage = "", logs = [] }) {
+export default function MasteringLoaderOverlay({ visible, elapsedSec = 0 }) {
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [quotes] = useState(() => shuffledQuotes());
   const [quoteIndex, setQuoteIndex] = useState(0);
@@ -54,46 +62,39 @@ export default function MasteringLoaderOverlay({ visible, progress = 0, phaseMes
 
   if (!mounted || !visible) return null;
 
-  const clampedProgress = Math.max(0, Math.min(100, Math.round(progress)));
-
   return createPortal(
-    <div
-      role="status"
-      aria-live="polite"
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-bg"
-    >
-      {/* min-h-0 + overflow-y-auto: on short phone viewports the full
-          stack (rings + bar + quote + log box) can exceed the screen —
-          scroll inside the overlay rather than clipping the log box. */}
+    <div role="status" aria-live="polite" className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-bg">
       <div className="relative z-10 flex max-h-full min-h-0 w-full max-w-[520px] flex-col items-center overflow-y-auto px-6 py-8 text-center">
-        {/* Pulsing ring stack around the logo — three staggered rings, pure
-            CSS (pulseRing keyframe in globals.css), no per-frame JS cost. */}
         <div className="relative mb-8 flex h-24 w-24 shrink-0 items-center justify-center">
           <span className="pulse-ring absolute inset-0 rounded-full border border-accent/60" />
           <span className="pulse-ring absolute inset-0 rounded-full border border-border-subtle" style={{ animationDelay: "0.6s" }} />
-          <span className="pulse-ring absolute inset-0 rounded-full border border-accent/40" style={{ animationDelay: "1.2s" }} />
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-border-subtle bg-black/[0.04] backdrop-blur-sm">
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-border-subtle bg-black/[0.04]">
             <LogoMark size={28} />
           </div>
         </div>
 
-        <p className="mb-1 text-[11px] uppercase tracking-[0.22em] text-accent">Mastering in progress</p>
-        <p className="mb-7 text-xs text-text-secondary">{phaseMessage || "Analyzing the source signal…"}</p>
+        <p className="mb-1 text-[11px] uppercase tracking-[0.22em] text-text-secondary">{t("loader.eyebrow")}</p>
+        <p className="m-0 font-[var(--font-title)] text-[22px] font-semibold text-text-primary">{t("console.phase.running")}</p>
 
-        {/* Progress bar — same underlying number MasteringConsole already
-            computes, just presented at full-screen scale. */}
-        <div className="mb-2 h-1.5 w-full shrink-0 overflow-hidden rounded-full bg-black/[0.05]">
-          <div
-            className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
-            style={{ width: `${clampedProgress}%` }}
-          />
+        {/* Indeterminate: no invented percentage. */}
+        <div className="indeterminate-bar mt-6 h-1 w-full shrink-0 overflow-hidden rounded-full bg-black/[0.06]" aria-hidden="true">
+          <span />
         </div>
-        <p className="mb-8 text-[11px] text-text-secondary">{clampedProgress}%</p>
+        <p className="mb-8 mt-2 font-mono text-[12px] text-text-secondary">{t("loader.elapsed", { time: fmtElapsed(elapsedSec) })}</p>
 
-        {/* Rotating quote — mode="wait" guarantees the outgoing quote is
-            fully gone before the next appears. Fixed min-height so the
-            layout doesn't jump as line lengths change. */}
-        <div className="flex min-h-[4.5rem] w-full shrink-0 items-center justify-center">
+        <div className="w-full shrink-0 rounded-2xl border border-border-subtle bg-white/60 p-4 text-left">
+          <p className="m-0 mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary">{t("loader.pipelineTitle")}</p>
+          <ol className="m-0 flex list-none flex-col gap-2 p-0">
+            {STEPS.map((step, i) => (
+              <li key={step} className="flex gap-3 text-[13px] leading-snug text-text-primary">
+                <span className="mt-px font-mono text-[11px] text-text-secondary">{String(i + 1).padStart(2, "0")}</span>
+                <span>{t(`loader.step.${step}`)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="mt-6 flex min-h-[3.5rem] w-full shrink-0 items-center justify-center">
           <AnimatePresence mode="wait">
             <motion.p
               key={quoteIndex}
@@ -101,35 +102,13 @@ export default function MasteringLoaderOverlay({ visible, progress = 0, phaseMes
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.4, ease: "easeOut" }}
-              className="m-0 max-w-[38ch] text-[15px] italic leading-relaxed text-text-primary"
+              className="m-0 max-w-[38ch] text-[14px] italic leading-relaxed text-text-secondary"
             >
               "{quotes[quoteIndex]}"
             </motion.p>
           </AnimatePresence>
         </div>
-
-        {/* Live phase log — the same timeline entries useMasteringProgress
-            feeds the phase line above, kept as a running record (the hook
-            caps it at the last 8) so a long render shows visible forward
-            motion, not just one line replacing itself. */}
-        {logs.length ? (
-          <div className="mt-6 w-full shrink-0 rounded-xl border border-border-subtle bg-black/[0.04] p-3.5 text-left backdrop-blur-sm">
-            <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.16em] text-text-secondary">Engine log</p>
-            <div className="flex flex-col gap-1 font-mono text-[11px] leading-relaxed">
-              {logs.map((entry, i) => (
-                <motion.p
-                  key={entry.ts}
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.25, ease: "easeOut" }}
-                  className={`m-0 break-words ${i === logs.length - 1 ? "text-accent" : "text-text-secondary"}`}
-                >
-                  {entry.text}
-                </motion.p>
-              ))}
-            </div>
-          </div>
-        ) : null}
+        <p className="m-0 mt-2 text-[12px] text-text-secondary">{t("loader.note")}</p>
       </div>
     </div>,
     document.body

@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { takePendingToolFile } from "@/lib/toolHandoff";
 import AdaptiveControlsPanel from "@/components/audio/AdaptiveControlsPanel";
 import ProcessingSummary from "@/components/audio/ProcessingSummary";
+import MasteringDecisions from "@/components/audio/MasteringDecisions";
 import ProParamsPanel from "@/components/audio/ProParamsPanel";
 import SignalVisualizer from "@/components/audio/SignalVisualizer";
 import FileDropzone from "@/components/ui/FileDropzone";
@@ -949,6 +950,8 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                 </div>
               ) : null}
             </div>
+
+            <MasteringDecisions result={result} source="console" />
 
             <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
               <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.processingSummary")}</p>
