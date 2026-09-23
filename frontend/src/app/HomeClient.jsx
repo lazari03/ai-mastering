@@ -134,10 +134,7 @@ export default function HomeClient() {
 
         <div className="relative mx-auto grid max-w-[1280px] gap-14 lg:grid-cols-[0.92fr_1fr] lg:items-center lg:gap-20">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.07] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-dark-text-secondary ring-1 ring-inset ring-white/10">
-              <span className="h-1 w-1 rounded-full bg-accent" aria-hidden="true" />
-              {t("hero.eyebrow")}
-            </span>
+            <p className="eyebrow m-0 text-dark-text-secondary">{t("hero.eyebrow")}</p>
 
             {/* Capped at 4.25rem, not the 5.75rem the type scale would
                 happily allow: above that this headline wraps to five

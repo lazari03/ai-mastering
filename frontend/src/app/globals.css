@@ -347,13 +347,14 @@ select:focus-visible,
     @apply inline-flex items-center gap-1.5 text-[14px] font-semibold text-text-primary underline decoration-border-subtle decoration-1 underline-offset-[6px] transition hover:decoration-text-primary;
   }
 
-  /* Small uppercase label that precedes a heading. */
+  /* Small uppercase label that precedes a heading: a short hairline
+     then the label — editorial, no pill, no colour. */
   .eyebrow {
-    @apply inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary;
+    @apply inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary;
   }
   .eyebrow::before {
     content: "";
-    @apply h-1.5 w-1.5 rounded-full bg-accent;
+    @apply h-px w-7 shrink-0 bg-current opacity-50;
   }
 
   /* In-copy links: visible without relying on colour alone. */

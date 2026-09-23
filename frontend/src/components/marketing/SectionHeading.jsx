@@ -11,10 +11,7 @@ export default function SectionHeading({ eyebrow, title, subtitle, className = "
   return (
     <div className={className}>
       {eyebrow ? (
-        <span className="inline-flex items-center gap-2 rounded-full bg-black/[0.045] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary">
-          <span className="h-1 w-1 rounded-full bg-accent" aria-hidden="true" />
-          {eyebrow}
-        </span>
+        <p className="eyebrow m-0">{eyebrow}</p>
       ) : null}
       <h2
         className="mt-5 max-w-3xl font-[var(--font-title)] text-[38px] font-semibold leading-[1.02] tracking-[-0.03em] text-text-primary sm:text-[52px] lg:text-[64px]"
