@@ -1,6 +1,7 @@
-import { GENRES, STYLES, TAGS } from "../config/constants.js";
+import { GENRES, STYLES, TAGS, CATEGORIES, FLAVOURS_BY_CATEGORY } from "../config/constants.js";
 import { getFirestore } from "../config/firebase.js";
 import { normalizePreset } from "./presetsService.js";
+import { listBuiltInPresets } from "./builtinPresetsService.js";
 
 // Saved Artists live in Firestore, one doc per artist, scoped under the
 // owning user — private per-account and durable across restarts/redeploys,
@@ -193,4 +194,86 @@ export async function deleteCustomPreset(name, uid) {
   await ref.delete();
   invalidateCustomPresets(uid);
   return true;
+}
+
+// ---- User-built presets (Direction controls) ---------------------------
+// Created and edited from the console / My Presets, not imported as JSON.
+// Stored in the same per-user collection as imported artist chains so
+// /master resolves both the same way; kind "settings" marks them as
+// editable adaptive-engine settings (genre/style/tags/tweaks/objective),
+// as opposed to an imported literal "processing" chain.
+const DIRECTIONS = new Set(["balanced", "warm", "punchy", "open", "clear", "custom"]);
+const INTENSITIES = new Set(["subtle", "balanced", "strong"]);
+const LOUDNESS = new Set(["natural", "streaming", "loud"]);
+const MAX_USER_PRESETS = 100;
+
+function validateSettings(body) {
+  const name = String(body?.name || "").trim().slice(0, 60);
+  if (!name) throw new Error("Give the preset a name.");
+  if (!GENRES.includes(body.genre)) throw new Error(`genre must be one of: ${GENRES.join(", ")}`);
+  const style = body.style || "modern";
+  if (!STYLES.includes(style)) throw new Error(`style must be one of: ${STYLES.join(", ")}`);
+  const tags = (Array.isArray(body.tags) ? body.tags : []).filter((t) => TAGS.includes(t));
+  const category = body.category && CATEGORIES.includes(body.category) ? body.category : null;
+  const flavour = category && body.flavour && (FLAVOURS_BY_CATEGORY[category] || []).includes(body.flavour) ? body.flavour : null;
+  const d = body.direction || {};
+  const direction = {
+    tone: DIRECTIONS.has(d.tone) ? d.tone : "custom",
+    intensity: INTENSITIES.has(d.intensity) ? d.intensity : "balanced",
+    loudness: LOUDNESS.has(d.loudness) ? d.loudness : "streaming",
+  };
+  return {
+    artist_name: name,
+    description: String(body.description || "").trim().slice(0, 200),
+    genre: body.genre,
+    style,
+    tags,
+    tweaks: normalizeTweaks(body.tweaks),
+    category,
+    flavour,
+    direction,
+    use_stem_separation: false,
+    output_format: body.output_format === "mp3" ? "mp3" : "wav",
+    processing: null,
+    kind: "settings",
+  };
+}
+
+export async function createUserPreset(body, uid) {
+  const record = validateSettings(body);
+  let slug = slugify(record.artist_name);
+  if (!slug) throw new Error("Give the preset a name with at least one letter or number.");
+  const col = artistsCollection(uid);
+  // Never overwrite an existing preset by creating one with the same name.
+  // A built-in with the same slug would shadow it at /master (built-ins
+  // resolve first), so that counts as taken too.
+  const existing = await col.doc(slug).get();
+  const shadowsBuiltIn = (await listBuiltInPresets()).some((p) => p.name === slug);
+  if (existing.exists || shadowsBuiltIn) slug = `${slug}_${Date.now().toString(36).slice(-4)}`;
+  const count = (await listCustomPresets(uid)).length;
+  if (count >= MAX_USER_PRESETS) throw new Error(`You can keep up to ${MAX_USER_PRESETS} presets — delete one first.`);
+  const now = new Date().toISOString();
+  await col.doc(slug).set({ ...record, created_at: now, updated_at: now });
+  invalidateCustomPresets(uid);
+  return toPresetShape(slug, { ...record, updated_at: now });
+}
+
+export async function updateUserPreset(slug, body, uid) {
+  const ref = artistsCollection(uid).doc(slug);
+  const doc = await ref.get();
+  if (!doc.exists) {
+    const error = new Error("Preset not found");
+    error.status = 404;
+    throw error;
+  }
+  if (doc.data()?.processing) {
+    const error = new Error("This preset is an imported processing chain — edit its JSON and re-import it instead.");
+    error.status = 409;
+    throw error;
+  }
+  const record = validateSettings(body);
+  const now = new Date().toISOString();
+  await ref.set({ ...record, created_at: doc.data()?.created_at || now, updated_at: now });
+  invalidateCustomPresets(uid);
+  return toPresetShape(slug, { ...record, updated_at: now });
 }

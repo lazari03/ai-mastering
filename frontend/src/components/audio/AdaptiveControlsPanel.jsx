@@ -1,31 +1,16 @@
 "use client";
 
-import Knob from "@/components/ui/Knob";
+import DirectionControls from "@/components/audio/DirectionControls";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
-// The Quick-mode counterpart to ProParamsPanel — instead of a manual
-// literal spec (that engine doesn't know what "genre" even means), this
-// shows and lets the user nudge the REAL adaptive-engine values for
-// whatever genre/style/category/flavour/tags is currently selected,
-// against the actual uploaded file. The 7 knobs are backend/ai_mastering's
-// existing tweak sliders (low_end/punch/presence/brightness/warmth/width/
-// loudness — see mastering_params.py:_apply_user_tweaks), previously
-// computed and sent on submit but with no UI anywhere to see or adjust
-// them; the band bars below are the live, real per-band EQ correction
-// those tweaks (plus genre/style/category/flavour/tags) currently produce
-// — computed by the same compute_processing_params() call a real render
-// uses (see masteringStore.js:refreshPreviewParams), not an approximation.
-const TWEAKS = [
-  ["low_end", "adaptive.tweak.lowEnd"],
-  ["punch", "adaptive.tweak.punch"],
-  ["presence", "adaptive.tweak.presence"],
-  ["brightness", "adaptive.tweak.brightness"],
-  ["warmth", "adaptive.tweak.warmth"],
-  ["width", "adaptive.tweak.width"],
-  ["loudness", "adaptive.tweak.loudness"],
-];
-
+// The Quick-mode counterpart to ProParamsPanel. Direction controls on top
+// (tone/intensity/loudness, expanding into the adaptive engine's 7 user
+// tweaks — see domain/mastering/directions.js), and below them the live,
+// real per-band EQ correction the current selection produces against the
+// uploaded file — computed by the same compute_processing_params() call a
+// real render uses (see masteringStore.js:refreshPreviewParams), not an
+// approximation.
 const BANDS = [
   ["sub_bass_20_60hz", "adaptive.band.sub"],
   ["bass_60_250hz", "adaptive.band.bass"],
@@ -72,6 +57,10 @@ function BandBar({ label, db }) {
 export default function AdaptiveControlsPanel({
   tweaks,
   onTweak,
+  direction,
+  onDirection,
+  onReset,
+  footer = null,
   analysis,
   livePreviewParams,
   isAnalyzing,
@@ -80,8 +69,6 @@ export default function AdaptiveControlsPanel({
   previewError,
 }) {
   const { t } = useLanguage();
-
-  if (previewUnavailable) return null;
 
   const gains = livePreviewParams?.per_band_gain_changes_db;
 
@@ -93,13 +80,13 @@ export default function AdaptiveControlsPanel({
       </div>
       <p className="mt-1 text-[10px] leading-relaxed text-text-secondary">{t("adaptive.body")}</p>
 
-      <div className="mt-2.5 flex flex-wrap items-start gap-x-3 gap-y-1.5">
-        {TWEAKS.map(([key, labelKey]) => (
-          <Knob key={key} label={t(labelKey)} value={tweaks[key] ?? 0} min={-1} max={1} step={0.05} onChange={(v) => onTweak(key, v)} size={34} />
-        ))}
+      <div className="mt-3">
+        <DirectionControls direction={direction} tweaks={tweaks} onDirection={onDirection} onTweak={onTweak} onReset={onReset} idPrefix="console-dir" />
       </div>
 
-      {!analysis ? (
+      {/* The live band view needs the adaptive engine's preview endpoint;
+          the direction controls above work (and render) without it. */}
+      {previewUnavailable ? null : !analysis ? (
         <p className="mt-3 border-t border-border-subtle pt-2.5 text-[10px] text-text-secondary">{t("adaptive.uploadHint")}</p>
       ) : gains ? (
         <div className="mt-3 flex flex-col gap-3 border-t border-border-subtle pt-3 sm:flex-row sm:gap-6">
@@ -126,6 +113,7 @@ export default function AdaptiveControlsPanel({
       ) : (
         <p className="mt-3 border-t border-border-subtle pt-2.5 text-[10px] text-text-secondary">{previewError || t("adaptive.computing")}</p>
       )}
+      {footer}
     </div>
   );
 }

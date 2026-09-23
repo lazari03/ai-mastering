@@ -84,6 +84,11 @@ async function resolveConfig(input, uid) {
     resolved.style = preset.style || resolved.style;
     resolved.tags = preset.tags || resolved.tags;
     resolved.tweaks = normalizeTweaks(preset.tweaks || resolved.tweaks);
+    // A user-built preset's objective travels with it (built-ins carry none).
+    if (preset.category) {
+      resolved.category = preset.category;
+      resolved.flavour = preset.flavour || null;
+    }
     resolved.use_stem_separation = Boolean(preset.use_stem_separation);
     resolved.output_format = preset.output_format === "mp3" ? "mp3" : "wav";
     if (preset.processing) {

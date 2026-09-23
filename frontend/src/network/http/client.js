@@ -148,6 +148,22 @@ export async function postImportPreset(formData) {
   });
 }
 
+export async function createUserPreset(body) {
+  return request("/custom-presets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateUserPreset(name, body) {
+  return request(`/custom-presets/${encodeURIComponent(name)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function deleteCustomPreset(name) {
   return request(`/custom-presets/${encodeURIComponent(name)}`, { method: "DELETE" });
 }

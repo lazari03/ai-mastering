@@ -7,6 +7,8 @@ import {
   postMaster,
   postImportPreset,
   deleteCustomPreset,
+  createUserPreset,
+  updateUserPreset,
   postCodecPreview,
   postAnalyzeAudio,
   postPreviewParams,
@@ -127,6 +129,31 @@ export async function importPreset(file, displayName) {
     formData.append("display_name", displayName);
   }
   return postImportPreset(formData);
+}
+
+// Body for a user-built ("settings") preset — the same fields the
+// adaptive engine reads on /master, so a saved preset renders exactly like
+// the console did when it was saved.
+function userPresetBody(input) {
+  return {
+    name: input.name,
+    description: input.description || "",
+    genre: input.genre,
+    style: input.style || "modern",
+    tags: input.tags || [],
+    tweaks: normalizeTweaks(input.tweaks || {}),
+    category: input.category || null,
+    flavour: input.category ? input.flavour || null : null,
+    direction: input.direction || null,
+  };
+}
+
+export async function saveUserPreset(input) {
+  return createUserPreset(userPresetBody(input));
+}
+
+export async function editUserPreset(name, input) {
+  return updateUserPreset(name, userPresetBody(input));
 }
 
 export async function deletePreset(name) {

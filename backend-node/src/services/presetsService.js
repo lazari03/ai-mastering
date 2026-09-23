@@ -38,6 +38,14 @@ export function normalizePreset(name, value, extra = {}) {
     style: value?.style || "modern",
     tags: Array.isArray(value?.tags) ? value.tags : [],
     tweaks: value?.tweaks || {},
+    // User-built presets (Direction controls) also carry the musical
+    // objective and the direction they were made from, so reopening one
+    // restores the exact controls it was saved with.
+    category: value?.category || null,
+    flavour: value?.flavour || null,
+    direction: value?.direction || null,
+    kind: value?.kind || (value?.processing ? "chain" : "settings"),
+    updated_at: value?.updated_at || null,
     use_stem_separation: Boolean(value?.use_stem_separation),
     output_format: value?.output_format || "wav",
     // Passed through, not flattened away: when present, /master routes this

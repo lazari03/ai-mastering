@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
-import { fetchCatalog, importPreset, deletePreset, runMasteringJob, analyzeAudio, previewParams } from "@/domain/mastering/masteringDomain";
+import { fetchCatalog, importPreset, deletePreset, runMasteringJob, analyzeAudio, previewParams, saveUserPreset, editUserPreset } from "@/domain/mastering/masteringDomain";
+import { DEFAULT_DIRECTION, tweaksForDirection, directionFromPreset } from "@/domain/mastering/directions";
 import { mapAdaptiveParamsToProParams } from "@/domain/mastering/adaptiveToProParams";
 import { trackEvent } from "@/lib/analytics";
 import { useAuthStore } from "@/store/authStore";
@@ -90,6 +91,16 @@ export const useMasteringStore = create((set, get) => ({
   selectedTags: [],
   useStemSeparation: false,
   tweaks: { ...EMPTY_TWEAKS },
+  // Direction controls (Quick mode): a tone + intensity + loudness choice
+  // that expands into the 7 engine tweaks above (see directions.js).
+  // Fine-tuning any tweak by hand flips tone to "custom".
+  direction: { ...DEFAULT_DIRECTION },
+  // The user preset the current settings came from. Unlike selectedPreset
+  // (cleared on any edit so /master uses the edited values), this survives
+  // edits — it's what "Update preset" writes back to.
+  basePreset: "",
+  isSavingPreset: false,
+  presetSaveError: "",
   tier: "standard",
 
   // "quick" = automatic, DSP picks everything from genre/style/tags.
@@ -122,6 +133,14 @@ export const useMasteringStore = create((set, get) => ({
   previewUnavailable: false,
 
   async bootstrap() {
+    // The console remounts on every tab switch; once the catalog is in,
+    // re-running this would reset the genre and drop a preset the user
+    // just picked from My Presets. Preset edits refresh the list
+    // themselves (upsertUserPreset/deletePreset/importPreset).
+    if (get().genres.length && !get().error) {
+      if (get().isBootstrapping) set({ isBootstrapping: false });
+      return;
+    }
     set({ isBootstrapping: true, error: "" });
 
     try {
@@ -316,12 +335,19 @@ export const useMasteringStore = create((set, get) => ({
     }
 
     const hasProcessing = Boolean(preset.processing);
+    const tweaks = { ...EMPTY_TWEAKS, ...(preset.tweaks || {}) };
     set({
       selectedPreset,
+      basePreset: preset.custom && !hasProcessing ? preset.name : "",
       selectedGenre: preset.genre || get().selectedGenre,
       selectedStyle: preset.style || get().selectedStyle,
       selectedTags: preset.tags || [],
-      tweaks: { ...EMPTY_TWEAKS, ...(preset.tweaks || {}) },
+      tweaks,
+      direction: directionFromPreset(preset, tweaks),
+      // User-built presets carry their objective; built-ins don't have one,
+      // so they clear it (the preset alone defines the sound).
+      selectedCategory: preset.category || "",
+      selectedFlavour: preset.category ? preset.flavour || "" : "",
       useStemSeparation: Boolean(preset.use_stem_separation),
       // A preset without its own literal spec doesn't touch mode/proParams
       // here (unlike the hasProcessing branch just below) — the
@@ -358,14 +384,89 @@ export const useMasteringStore = create((set, get) => ({
 
   setTweak(key, value) {
     const numeric = Number(value);
+    const direction = get().direction;
     set({
       tweaks: {
         ...get().tweaks,
         [key]: Number.isFinite(numeric) ? numeric : 0,
       },
+      // Loudness has its own segment; any tonal tweak makes it custom.
+      direction: key === "loudness" ? direction : { ...direction, tone: "custom" },
       selectedPreset: "",
     });
     get().refreshPreviewParams();
+  },
+
+  // patch: any of { tone, intensity, loudness }.
+  setDirection(patch) {
+    const direction = { ...get().direction, ...patch };
+    set({
+      direction,
+      tweaks: tweaksForDirection(direction, get().tweaks),
+      selectedPreset: "",
+    });
+    get().refreshPreviewParams();
+  },
+
+  resetDirection() {
+    set({ direction: { ...DEFAULT_DIRECTION }, tweaks: { ...EMPTY_TWEAKS }, selectedPreset: "" });
+    get().refreshPreviewParams();
+  },
+
+  // The current Quick-mode settings as a user preset body.
+  currentPresetSettings() {
+    const s = get();
+    return {
+      genre: s.selectedGenre,
+      style: s.selectedStyle,
+      tags: s.selectedTags,
+      tweaks: s.tweaks,
+      category: s.selectedCategory,
+      flavour: s.selectedFlavour,
+      direction: s.direction,
+    };
+  },
+
+  // Create (existingName empty) or overwrite a user preset, then reload the
+  // preset list. Returns the saved preset, or null on failure (the message
+  // lands in presetSaveError). Doesn't touch the console selection — the
+  // console's own save/update wrappers below do that.
+  async upsertUserPreset(input, existingName = "") {
+    set({ isSavingPreset: true, presetSaveError: "" });
+    try {
+      const saved = existingName ? await editUserPreset(existingName, input) : await saveUserPreset(input);
+      const catalog = await fetchCatalog();
+      set({ presets: catalog.presets, isSavingPreset: false });
+      // Edited from My Presets while the console has it applied (and
+      // unmodified): reload it so the console shows what will render.
+      if (existingName && get().selectedPreset === existingName) get().setPreset(existingName);
+      trackEvent(existingName ? "preset_updated" : "preset_created", { tone: input.direction?.tone || "custom" });
+      return saved;
+    } catch (err) {
+      set({ isSavingPreset: false, presetSaveError: err.message || "Couldn't save the preset" });
+      return null;
+    }
+  },
+
+  async saveCurrentAsPreset(name, description = "") {
+    const saved = await get().upsertUserPreset({ ...get().currentPresetSettings(), name, description });
+    if (saved) set({ selectedPreset: saved.name, basePreset: saved.name });
+    return saved;
+  },
+
+  async updateBasePreset() {
+    const base = get().presets.find((p) => p.name === get().basePreset);
+    if (!base) return null;
+    const saved = await get().upsertUserPreset(
+      { ...get().currentPresetSettings(), name: base.display_name, description: base.description },
+      base.name
+    );
+    if (saved) set({ selectedPreset: saved.name });
+    return saved;
+  },
+
+  clearPresetSaveError() {
+    set({ presetSaveError: "" });
   },
 
   setTier(tier) {
@@ -439,6 +540,7 @@ export const useMasteringStore = create((set, get) => ({
       set({
         presets: catalog.presets,
         selectedPreset: preset.name,
+        basePreset: "",
         selectedGenre: preset.genre || get().selectedGenre,
         selectedStyle: preset.style || get().selectedStyle,
         selectedTags: preset.tags || [],
@@ -459,9 +561,11 @@ export const useMasteringStore = create((set, get) => ({
       await deletePreset(name);
       const catalog = await fetchCatalog();
       const stillSelected = catalog.presets.some((p) => p.name === get().selectedPreset);
+      const baseStillExists = catalog.presets.some((p) => p.name === get().basePreset);
       set({
         presets: catalog.presets,
         ...(stillSelected ? {} : { selectedPreset: "" }),
+        ...(baseStillExists ? {} : { basePreset: "" }),
       });
     } catch (err) {
       set({ importError: err.message || "Failed to remove preset" });

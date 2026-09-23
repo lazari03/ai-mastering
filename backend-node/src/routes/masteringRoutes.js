@@ -12,7 +12,7 @@ import { invalidateCachedSession, requiresEmailVerification } from "../middlewar
 import { processMastering, execFileAsync, deleteJobFiles, postMultipartToPython } from "../services/masteringService.js";
 import { analyzeChords, previewCodec } from "../services/chordCleanService.js";
 import { listMixPresets } from "../services/presetsService.js";
-import { importCustomPreset, deleteCustomPreset } from "../services/customPresetsService.js";
+import { importCustomPreset, deleteCustomPreset, createUserPreset, updateUserPreset } from "../services/customPresetsService.js";
 import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPresetsService.js";
 import { saveProfile, getProfile, deleteAllUserData } from "../services/profileService.js";
 import { recordJob, listJobs, ownsJob, getJob, getJobDetail, deleteJob } from "../services/jobsService.js";
@@ -550,6 +550,23 @@ router.post("/import-preset", uploadPresetJson.single("file"), async (req, res) 
     return res.status(400).json({ detail: error?.message || "Preset import failed" });
   } finally {
     fs.unlink(req.file.path, () => {});
+  }
+});
+
+// User-built presets from the Direction controls (JSON body, not a file).
+router.post("/custom-presets", async (req, res) => {
+  try {
+    return res.status(201).json(await createUserPreset(req.body || {}, req.user.uid));
+  } catch (error) {
+    return res.status(error.status || 400).json({ detail: error?.message || "Couldn't save the preset" });
+  }
+});
+
+router.put("/custom-presets/:name", async (req, res) => {
+  try {
+    return res.json(await updateUserPreset(req.params.name, req.body || {}, req.user.uid));
+  } catch (error) {
+    return res.status(error.status || 400).json({ detail: error?.message || "Couldn't update the preset" });
   }
 });
 

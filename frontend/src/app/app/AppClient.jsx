@@ -9,6 +9,7 @@ import ChordsPanel from "@/app/ui/ChordsPanel";
 import MasteringConsole from "@/app/ui/MasteringConsole";
 import MasterResultView from "@/app/ui/MasterResultView";
 import MyMastersPanel from "@/app/ui/MyMastersPanel";
+import MyPresetsPanel from "@/app/ui/MyPresetsPanel";
 import ExplorePanel from "@/app/ui/ExplorePanel";
 import HomePanel from "@/app/ui/HomePanel";
 import HelpSupportPanel from "@/app/ui/HelpSupportPanel";
@@ -24,7 +25,7 @@ import EntitlementsBadge from "@/components/app/EntitlementsBadge";
 import OnboardingTour from "@/components/app/OnboardingTour";
 import MasteringLoaderOverlay from "@/components/app/MasteringLoaderOverlay";
 import { LoadingBlock } from "@/components/ui/Spinner";
-import { IconHome, IconMaster, IconChords, IconMyMasters, IconExplore, IconHelp, IconSettings, IconBilling, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
+import { IconHome, IconMaster, IconChords, IconMyMasters, IconPresets, IconExplore, IconHelp, IconSettings, IconBilling, IconChevronLeft, IconChevronRight } from "@/components/app/icons";
 import { getProfile, postProfile } from "@/network/http/client";
 import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
@@ -47,7 +48,9 @@ const TABS = [
     labelKey: "app.tab.master",
     icon: IconMaster,
     group: "app.navGroup.create",
-    render: (ctx) => <MasteringConsole onOpenHelp={() => ctx.setActiveTab("help")} onOpenBilling={() => ctx.setActiveTab("plans")} />,
+    render: (ctx) => (
+      <MasteringConsole onOpenHelp={() => ctx.setActiveTab("help")} onOpenBilling={() => ctx.setActiveTab("plans")} onOpenPresets={() => ctx.setActiveTab("presets")} />
+    ),
   },
   {
     key: "chords",
@@ -57,6 +60,7 @@ const TABS = [
     render: (ctx) => <ChordsPanel onMasterThisSong={() => ctx.setActiveTab("master")} />,
   },
   { key: "myMasters", labelKey: "app.tab.myMasters", icon: IconMyMasters, group: "app.navGroup.library", render: (ctx) => <MyMastersPanel onNavigate={ctx.setActiveTab} /> },
+  { key: "presets", labelKey: "app.tab.presets", icon: IconPresets, group: "app.navGroup.library", render: (ctx) => <MyPresetsPanel onNavigate={ctx.setActiveTab} /> },
   { key: "plans", labelKey: "app.tab.plans", icon: IconBilling, render: () => <PlansPanel /> },
   { key: "settings", labelKey: "app.tab.settings", icon: IconSettings, render: (ctx) => <SettingsPanel onReplayTutorial={() => ctx.setShowTutorial(true)} onOpenBilling={() => ctx.setActiveTab("plans")} /> },
   { key: "help", labelKey: "app.tab.help", icon: IconHelp, render: () => <HelpSupportPanel /> },
@@ -89,6 +93,7 @@ const SEARCH_INDEX = [
   { id: "stems", labelKey: "app.explore.stems.title", goTo: "master" },
   { id: "chords", labelKey: "app.tab.chords", goTo: "chords" },
   { id: "myMasters", labelKey: "app.tab.myMasters", goTo: "myMasters" },
+  { id: "presets", labelKey: "app.tab.presets", goTo: "presets" },
   { id: "explore", labelKey: "app.tab.explore", goTo: "explore" },
   { id: "plans", labelKey: "app.tab.plans", goTo: "plans" },
   { id: "settings", labelKey: "app.tab.settings", goTo: "settings" },

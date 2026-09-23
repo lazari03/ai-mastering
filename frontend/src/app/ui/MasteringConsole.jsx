@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 
 import { takePendingToolFile } from "@/lib/toolHandoff";
 import AdaptiveControlsPanel from "@/components/audio/AdaptiveControlsPanel";
+import PresetSaveBar from "@/components/audio/PresetSaveBar";
 import ProcessingSummary from "@/components/audio/ProcessingSummary";
 import MasteringDecisions from "@/components/audio/MasteringDecisions";
 import ProParamsPanel from "@/components/audio/ProParamsPanel";
@@ -52,7 +53,7 @@ function SectionLabel({ children }) {
   return <h2 className="m-0 mb-2.5 text-xs uppercase tracking-[0.14em] text-accent">{children}</h2>;
 }
 
-export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
+export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPresets }) {
   const { t } = useLanguage();
   const [activeStep, setActiveStep] = useState(0);
   const [inputPreviewUrl, setInputPreviewUrl] = useState("");
@@ -96,6 +97,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
     mode,
     proParams,
     tweaks,
+    direction,
     analysis,
     isAnalyzing,
     livePreviewParams,
@@ -113,6 +115,8 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
     toggleTag,
     setUseStemSeparation,
     setTweak,
+    setDirection,
+    resetDirection,
     setTier,
     setMode,
     setProSection,
@@ -540,6 +544,10 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling }) {
                     <AdaptiveControlsPanel
                       tweaks={tweaks}
                       onTweak={setTweak}
+                      direction={direction}
+                      onDirection={setDirection}
+                      onReset={resetDirection}
+                      footer={<PresetSaveBar onOpenPresets={onOpenPresets} />}
                       analysis={analysis}
                       livePreviewParams={livePreviewParams}
                       isAnalyzing={isAnalyzing}

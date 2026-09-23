@@ -30,6 +30,17 @@ export function IconMyMasters(props) {
   );
 }
 
+export function IconPresets(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M5 4v16M12 4v16M19 4v16" />
+      <circle cx="5" cy="14" r="2" fill="var(--bg, #fff)" />
+      <circle cx="12" cy="8" r="2" fill="var(--bg, #fff)" />
+      <circle cx="19" cy="12" r="2" fill="var(--bg, #fff)" />
+    </svg>
+  );
+}
+
 export function IconHelp(props) {
   return (
     <svg {...base} {...props}>
