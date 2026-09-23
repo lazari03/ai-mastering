@@ -43,6 +43,7 @@ import { recordServerEvent, normalizeMasteringFailure } from "../services/analyt
 import { mintDownloadToken, verifyShareToken, isShareJobExpired } from "../services/downloadTokenService.js";
 import { shareLinks, ShareLinkError } from "../services/shareLinkService.js";
 import { cleanupUploadsOnFinish } from "../middleware/cleanupUploads.js";
+import { masteringDspProps } from "../services/masteringTelemetry.js";
 
 const router = express.Router();
 
@@ -940,7 +941,12 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     if (!preview) {
       recordServerEvent("master_completed", {
         uid: req.user.uid,
-        props: { tier, mastering_mode: useStemSeparation ? "stems" : "standard", processing_duration_ms: Date.now() - masteringStartedAt },
+        props: {
+          tier,
+          mastering_mode: useStemSeparation ? "stems" : "standard",
+          processing_duration_ms: Date.now() - masteringStartedAt,
+          ...masteringDspProps(result),
+        },
       });
     }
     return res.json({ ...result, preview });

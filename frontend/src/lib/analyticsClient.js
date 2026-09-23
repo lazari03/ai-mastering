@@ -75,6 +75,8 @@ const KNOWN_EVENT_NAMES = new Set([
   "free_tool_opened",
   "free_tool_analysis_completed",
   "free_tool_master_cta_clicked",
+  "password_reset_requested",
+  "purchase",
 ]);
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";

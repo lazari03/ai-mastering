@@ -33,7 +33,7 @@ const VISITOR_LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
 const SESSION_LAST_SEEN_THROTTLE_MS = 2 * 60 * 1000;
 
 const MAX_EVENTS_PER_REQUEST = 25;
-const MAX_PROP_KEYS = 20;
+const MAX_PROP_KEYS = 30; // server master_completed carries ~22 flat DSP metrics (masteringTelemetry.js)
 const MAX_STRING_LEN = 300;
 const MAX_PATH_LEN = 300;
 
@@ -83,6 +83,8 @@ export const ALLOWED_EVENT_NAMES = new Set([
   "free_tool_opened",
   "free_tool_analysis_completed",
   "free_tool_master_cta_clicked",
+  "password_reset_requested",
+  "purchase",
 ]);
 
 // Backend-only event names — never accepted from the public /collect

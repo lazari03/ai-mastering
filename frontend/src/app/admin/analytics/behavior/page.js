@@ -99,6 +99,31 @@ export default function AdminBehaviorPage() {
             </ul>
           </Panel>
 
+          <Panel title="Conversion funnel" hint="People, not sessions — an anonymous visitor who signs up is joined to their account, so signing up isn't counted as a drop-off.">
+            <ol className="m-0 list-none space-y-2 p-0">
+              {data.conversionFunnel.map((step, i) => {
+                const max = data.conversionFunnel[0]?.count || 1;
+                return (
+                  <li key={step.key}>
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="text-zinc-200">
+                        <span className="mr-2 font-mono text-[11px] text-zinc-500">{String(i + 1).padStart(2, "0")}</span>
+                        {step.label}
+                      </span>
+                      <span className="shrink-0 font-mono text-zinc-300">
+                        {step.count.toLocaleString()} <span className="text-zinc-500">· {step.pctOfVisitors}%</span>
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full bg-[#1f9686]" style={{ width: `${Math.max(1.5, (step.count / max) * 100)}%` }} />
+                    </div>
+                    {i > 0 ? <p className="m-0 mt-1 text-[11px] text-zinc-500">{step.fromPrevious}% of the previous step</p> : null}
+                  </li>
+                );
+              })}
+            </ol>
+          </Panel>
+
           <div className="grid gap-5 lg:grid-cols-2">
             <Panel title="Product journey" hint="Each step counts only sessions that also reached the step before it.">
               <Journey steps={data.productJourney} />
@@ -187,6 +212,40 @@ export default function AdminBehaviorPage() {
               />
             </Panel>
           </div>
+
+          <Panel title="Mastering engine" hint="From the engine's own diagnostics on each finished render — no audio is stored for this.">
+            {data.engine.masters ? (
+              <>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    ["Masters", data.engine.masters],
+                    ["Median render time", data.engine.medianProcessingSeconds != null ? `${data.engine.medianProcessingSeconds}s` : "—"],
+                    ["Backoff rate", `${data.engine.backoffRate}%`],
+                    ["Passed verification", `${data.engine.evalPassRate}%`],
+                    ["Low-end protection", `${data.engine.lowEndProtectionRate}%`],
+                    ["HF protection", `${data.engine.hfProtectionRate}%`],
+                    ["Held back for transients", `${data.engine.loudnessHeldBackRate}%`],
+                    ["Used compression", `${data.engine.compressionRate}%`],
+                    ["Avg EQ corrections", data.engine.avgEqCorrections ?? "—"],
+                    ["Avg limiter reduction", data.engine.avgLimiterGrDb != null ? `${data.engine.avgLimiterGrDb} dB` : "—"],
+                    ["Avg loudness change", data.engine.avgLoudnessChangeLu != null ? `${data.engine.avgLoudnessChangeLu} LU` : "—"],
+                    ["Renders with diagnostics", data.engine.withDiagnostics],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-xl border border-white/10 p-3">
+                      <p className="m-0 text-[11px] text-zinc-500">{label}</p>
+                      <p className="m-0 mt-1 font-mono text-lg text-white">{value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <AdminTable columns={[{ key: "key", label: "Tier" }, { key: "count", label: "Masters" }, { key: "share", label: "Share", render: pctCell("share") }]} rows={data.engine.byTier.map((r) => ({ ...r, id: r.key }))} />
+                  <AdminTable columns={[{ key: "key", label: "Genre" }, { key: "count", label: "Masters" }, { key: "share", label: "Share", render: pctCell("share") }]} rows={data.engine.byGenre.map((r) => ({ ...r, id: r.key }))} />
+                </div>
+              </>
+            ) : (
+              <p className="m-0 text-sm text-zinc-500">No finished masters in this range yet.</p>
+            )}
+          </Panel>
 
           <Panel title="Reliability" hint="Server-observed renders only (previews excluded).">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

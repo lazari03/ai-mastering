@@ -26,8 +26,123 @@ const sessionsStmt = analyticsDb.prepare(
   "SELECT session_id, visitor_id, uid, started_at, landing_page, device_category, is_new_visitor, page_view_count, active_ms, has_uploaded, has_mastered, has_viewed_pricing, has_started_checkout, has_paid FROM analytics_sessions WHERE started_at >= ? AND started_at < ?"
 );
 const eventsStmt = analyticsDb.prepare(
-  "SELECT session_id, uid, name, ts, path, props_json, source FROM analytics_events WHERE name != 'heartbeat' AND ts >= ? AND ts < ? ORDER BY ts"
+  "SELECT session_id, visitor_id, uid, name, ts, path, props_json, source FROM analytics_events WHERE name != 'heartbeat' AND ts >= ? AND ts < ? ORDER BY ts"
 );
+// visitor -> account link, recorded the first time a visitor authenticates.
+const visitorUidStmt = analyticsDb.prepare("SELECT visitor_id, uid FROM analytics_visitors WHERE uid IS NOT NULL");
+
+const MASTER_CTA = /master|signup|start|open_app|try/i;
+
+// People, not sessions: signup splits one person into an anonymous visitor
+// and an account, so identities are joined through analytics_visitors.uid.
+function conversionFunnel(sessionRows, eventRows) {
+  const uidOf = new Map(visitorUidStmt.all().map((r) => [r.visitor_id, r.uid]));
+  const who = (visitorId, uid) => uid || (visitorId && uidOf.get(visitorId)) || visitorId || null;
+  const reached = {};
+  const mark = (step, id) => {
+    if (!id) return;
+    (reached[step] ||= new Set()).add(id);
+  };
+  for (const s of sessionRows) mark("visited", who(s.visitor_id, s.uid));
+  for (const e of eventRows) {
+    const id = who(e.visitor_id, e.uid);
+    const props = parseProps(e.props_json);
+    switch (e.name) {
+      case "cta_click":
+        if (MASTER_CTA.test(String(props.cta_id || ""))) mark("masterCta", id);
+        break;
+      case "signup_started":
+      case "free_tool_master_cta_clicked":
+        mark("masterCta", id);
+        break;
+      case "sign_up":
+        mark("signedUp", id);
+        break;
+      case "audio_upload_started":
+      case "audio_upload_completed":
+        mark("uploaded", id);
+        break;
+      case "master_completed":
+        if (e.source === "backend" || (props.preview !== true && props.preview !== "true")) mark("mastered", id);
+        break;
+      case "original_played":
+      case "mastered_played":
+        mark("listened", id);
+        break;
+      case "download_completed":
+        mark("downloaded", id);
+        break;
+      case "checkout_started":
+      case "begin_checkout":
+        mark("checkout", id);
+        break;
+      case "payment_succeeded":
+        mark("paid", id);
+        break;
+      default:
+    }
+  }
+  const steps = [
+    ["visited", "Visited"],
+    ["masterCta", "Clicked a master / sign-up CTA"],
+    ["signedUp", "Created an account"],
+    ["uploaded", "Uploaded audio"],
+    ["mastered", "Completed a master"],
+    ["listened", "Listened to the A/B"],
+    ["downloaded", "Downloaded"],
+    ["checkout", "Started checkout"],
+    ["paid", "Paid"],
+  ];
+  const base = reached.visited?.size || 0;
+  let prev = null;
+  return steps.map(([key, label]) => {
+    const count = reached[key]?.size || 0;
+    const row = { key, label, count, pctOfVisitors: rate(count, base), fromPrevious: prev == null ? 100 : rate(count, prev) };
+    prev = count;
+    return row;
+  });
+}
+
+// Aggregate DSP metrics from server-side master_completed events
+// (props from masteringTelemetry.js). Only renders that carried
+// diagnostics count toward the engine averages.
+function engineMetrics(eventRows) {
+  const done = eventRows.filter((e) => e.source === "backend" && e.name === "master_completed").map((e) => parseProps(e.props_json));
+  const started = eventRows.filter((e) => e.source === "backend" && e.name === "master_started").length;
+  const failed = eventRows.filter((e) => e.source === "backend" && e.name === "master_failed").length;
+  const withDiag = done.filter((p) => p.eq_corrections != null);
+  const avg = (arr, key) => {
+    const vals = arr.map((p) => Number(p[key])).filter(Number.isFinite);
+    return vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100 : null;
+  };
+  const share = (key) => rate(withDiag.filter((p) => p[key] === true || p[key] === "true").length, withDiag.length);
+  const countBy = (key) => {
+    const m = new Map();
+    for (const p of done) m.set(p[key] || "unknown", (m.get(p[key] || "unknown") || 0) + 1);
+    return [...m.entries()].map(([k, n]) => ({ key: k, count: n, share: rate(n, done.length) })).sort((a, b) => b.count - a.count);
+  };
+  const durations = done.map((p) => Number(p.processing_duration_ms)).filter(Number.isFinite);
+  return {
+    masters: done.length,
+    started,
+    failed,
+    failureRate: rate(failed, started),
+    withDiagnostics: withDiag.length,
+    medianProcessingSeconds: durations.length ? Math.round(median(durations) / 100) / 10 : null,
+    byTier: countBy("tier"),
+    byGenre: countBy("genre"),
+    backoffRate: share("backoff"),
+    lowEndProtectionRate: share("low_end_protection"),
+    hfProtectionRate: share("hf_protection"),
+    loudnessHeldBackRate: share("loudness_held_back"),
+    compressionRate: share("compression"),
+    evalPassRate: share("eval_passed"),
+    avgEqCorrections: avg(withDiag, "eq_corrections"),
+    avgLimiterGrDb: avg(withDiag, "limiter_max_gr_db"),
+    avgLoudnessChangeLu: avg(withDiag, "lufs_change"),
+    avgCrestChangeDb: avg(withDiag, "crest_change_db"),
+  };
+}
 
 function rate(n, d) {
   return d ? Math.round((n / d) * 1000) / 10 : 0;
@@ -278,6 +393,8 @@ export async function getBehavior({ from, to }) {
     entryPages,
     nextSteps,
     tools,
+    conversionFunnel: conversionFunnel(sessionRows, eventRows),
+    engine: engineMetrics(eventRows),
     toolToMaster: {
       sessionsWithToolResult: sessions.filter((x) => x.toolsCompleted.size > 0).length,
       thenMastered: sessions.filter((x) => x.toolsCompleted.size > 0 && x.mastered).length,
