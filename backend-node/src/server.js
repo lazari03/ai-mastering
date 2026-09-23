@@ -163,8 +163,14 @@ app.use("/", adminNotificationsRoutes);
 app.use((err, req, res, _next) => {
   console.error(`Unhandled error on ${req.method} ${req.path}:`, err);
   if (res.headersSent) return;
+  if (err.name === "MulterError" && err.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ detail: `That file is larger than ${settings.maxUploadMb} MB. Export a shorter or compressed version and try again.`, code: "file_too_large" });
+  }
   const status = err.status || err.statusCode || (err.name === "MulterError" ? 400 : 500);
-  res.status(status).json({ detail: err.message || "Something went wrong." });
+  // 4xx messages are written for users (validation, file-type rejection);
+  // an unexpected 5xx message can describe internals, so it stays in the log.
+  const detail = status < 500 ? err.message || "Request rejected." : "Something went wrong on our side. Please try again.";
+  res.status(status).json({ detail });
 });
 
 app.listen(settings.port, () => {

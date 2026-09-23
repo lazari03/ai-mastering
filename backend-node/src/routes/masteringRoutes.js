@@ -986,9 +986,20 @@ router.post("/analyze-chords", expensiveLimiter, upload.single("file"), cleanupU
     recordServerEvent("analysis_completed", { uid: req.user.uid, props: { source_tool: "chord_detector" } });
     return res.json(result);
   } catch (error) {
-    const detail = error?.stderr || error?.message || "Chord detection failed";
-    recordServerEvent("analysis_failed", { uid: req.user.uid, props: { source_tool: "chord_detector", reason: normalizeMasteringFailure(error) } });
-    return res.status(500).json({ detail });
+    // stderr/internal messages stay in the server log — they can carry
+    // file paths and stack traces. The client gets a useful, safe reason.
+    console.error("analyze-chords failed:", error?.stderr || error?.message || error);
+    const reason = normalizeMasteringFailure(error);
+    recordServerEvent("analysis_failed", { uid: req.user.uid, props: { source_tool: "chord_detector", reason } });
+    const detail =
+      reason === "invalid_audio" || reason === "unsupported_format"
+        ? "We couldn't read that file as audio. Try a WAV, FLAC, MP3 or M4A export of the track."
+        : reason === "file_too_large"
+          ? "That file is too large to analyze. Try a shorter or compressed version."
+          : reason === "processing_timeout"
+            ? "The analysis took too long. Try again, or upload a shorter clip."
+            : "Chord detection failed on our side. Please try again in a moment.";
+    return res.status(500).json({ detail, code: reason });
   }
 });
 
