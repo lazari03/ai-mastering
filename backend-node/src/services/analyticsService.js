@@ -249,7 +249,7 @@ export function newId() {
 // reading on every single event (recordServerEvent fires on nearly every
 // mastering/checkout action): the role field changes rarely, so a few
 // minutes of staleness costs nothing and saves a Firestore read per event.
-const ADMIN_UID_CACHE_TTL_MS = 5 * 60 * 1000;
+const ADMIN_UID_CACHE_TTL_MS = 30 * 60 * 1000; // roles change ~never; each miss is a billed Firestore read
 const adminUidCache = new Map(); // uid -> { isAdmin, expiresAt }
 
 async function isAdminUid(uid) {

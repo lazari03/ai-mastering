@@ -130,13 +130,39 @@ function toPresetShape(slug, artist) {
   return normalizePreset(slug, { ...artist, display_name: artist.artist_name }, { custom: true });
 }
 
+// Per-user memo of the Saved Artists list: it was re-read in full (one
+// billed read per preset) on every console load. Every write path in this
+// module invalidates the user's entry; the TTL bounds staleness from edits
+// made outside this process.
+const LIST_TTL_MS = 10 * 60 * 1000;
+const listMemo = new Map(); // uid -> { list, at }
+export function invalidateCustomPresets(uid) {
+  listMemo.delete(uid);
+}
+
 export async function listCustomPresets(uid) {
+  const memo = uid ? listMemo.get(uid) : null;
+  if (memo && Date.now() - memo.at < LIST_TTL_MS) return memo.list;
+  const list = await listCustomPresetsUncached(uid);
+  if (uid) {
+    if (listMemo.size > 20_000) listMemo.clear();
+    listMemo.set(uid, { list, at: Date.now() });
+  }
+  return list;
+}
+
+async function listCustomPresetsUncached(uid) {
   if (!uid) return [];
   const snapshot = await artistsCollection(uid).get();
   return snapshot.docs.map((doc) => toPresetShape(doc.id, doc.data()));
 }
 
 export async function getCustomPreset(name, uid) {
+  const memo = uid ? listMemo.get(uid) : null;
+  if (memo && Date.now() - memo.at < LIST_TTL_MS) {
+    const hit = memo.list.find((p) => p.name === name);
+    if (hit) return hit;
+  }
   if (!uid) return null;
   const doc = await artistsCollection(uid).doc(name).get();
   return doc.exists ? toPresetShape(doc.id, doc.data()) : null;
@@ -153,6 +179,7 @@ export async function importCustomPreset(jsonText, artistName, uid) {
   const { slug, artist } = parseImportedPreset(raw, artistName);
   const record = { ...artist, created_at: new Date() };
   await artistsCollection(uid).doc(slug).set(record);
+  invalidateCustomPresets(uid);
 
   return toPresetShape(slug, record);
 }
@@ -164,5 +191,6 @@ export async function deleteCustomPreset(name, uid) {
     return false;
   }
   await ref.delete();
+  invalidateCustomPresets(uid);
   return true;
 }

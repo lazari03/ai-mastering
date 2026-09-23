@@ -287,7 +287,15 @@ export async function createPortalUrl(uid) {
 
 export async function getSubscriptionStatus(uid) {
   const doc = await userDoc(uid).get();
-  const sub = doc.data()?.subscription;
+  return subscriptionStatusFromUserData(doc.data());
+}
+
+// Pure versions of getSubscriptionStatus/getPlan over an already-read user
+// doc — the entitlements and /master routes read users/{uid} ONCE and
+// derive everything from that snapshot instead of re-reading the same
+// document for each field (each .get() is a billed Firestore read).
+export function subscriptionStatusFromUserData(data) {
+  const sub = data?.subscription;
   return {
     active: isEntitled(sub),
     status: sub?.status || null,
@@ -328,7 +336,11 @@ function planKeyForProductId(productId) {
 
 export async function getPlan(uid) {
   const doc = await userDoc(uid).get();
-  const sub = doc.data()?.subscription;
+  return planFromUserData(doc.data());
+}
+
+export function planFromUserData(data) {
+  const sub = data?.subscription;
   if (!isEntitled(sub)) return "free";
   return planKeyForProductId(sub.productId) || "free";
 }

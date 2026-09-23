@@ -18,7 +18,14 @@ function hashToken(token) {
 // fetches, entitlement polls, etc.) would be a Firestore write per
 // request for no real benefit; activity only needs minute-level
 // resolution, not per-request precision.
-const LAST_ACTIVE_WRITE_THROTTLE_MS = 2 * 60 * 1000;
+// lastActiveAt only backs an inactivity limit measured in hours
+// (settings.sessionInactivityHours), so minute-level freshness buys
+// nothing. It's written at most every 15 minutes and, once read or written
+// by this process, kept in memory — the user doc is read once per uid per
+// process instead of on every session-cache miss (was once a minute).
+const LAST_ACTIVE_WRITE_THROTTLE_MS = 15 * 60 * 1000;
+const LAST_ACTIVE_MEMO_MAX = 50_000;
+const lastActiveMemo = new Map(); // uid -> epoch ms of the last known lastActiveAt
 
 // checkRevoked:true makes a real extra network call to Google's Identity
 // Toolkit API on top of normal (local, free) signature verification — and
@@ -76,6 +83,7 @@ export function invalidateCachedSession(uid) {
     if (entry.user.uid === uid) verifiedSessionCache.delete(key);
   }
   revocationCheckedAt.delete(uid);
+  lastActiveMemo.delete(uid);
 }
 
 // A password-account signup never checks that the email itself is real
@@ -171,8 +179,14 @@ export async function requireAuth(req, res, next) {
       // the actual timestamp write is throttled below so this doesn't cost
       // a Firestore write per request.
       const userRef = getFirestore().collection("users").doc(decoded.uid);
-      const userSnap = await userRef.get();
-      const lastActiveAt = userSnap.data()?.lastActiveAt?.toDate?.() || null;
+      let lastActiveMs = lastActiveMemo.get(decoded.uid);
+      if (lastActiveMs === undefined) {
+        const userSnap = await userRef.get();
+        lastActiveMs = userSnap.data()?.lastActiveAt?.toDate?.()?.getTime?.() ?? null;
+        if (lastActiveMemo.size >= LAST_ACTIVE_MEMO_MAX) lastActiveMemo.clear();
+        lastActiveMemo.set(decoded.uid, lastActiveMs);
+      }
+      const lastActiveAt = lastActiveMs ? new Date(lastActiveMs) : null;
       // A fresh real sign-in (auth_time just now) IS activity, even though
       // it hasn't reached the throttled Firestore write below yet — without
       // this, the very first request after any idle period longer than the
@@ -193,7 +207,9 @@ export async function requireAuth(req, res, next) {
       if (staleMs > LAST_ACTIVE_WRITE_THROTTLE_MS) {
         // Fire-and-forget — this must never add latency to (or fail) a
         // real request just because a bookkeeping write hiccupped.
-        userRef.set({ lastActiveAt: new Date() }, { merge: true }).catch((error) => {
+        const nowDate = new Date();
+        lastActiveMemo.set(decoded.uid, nowDate.getTime());
+        userRef.set({ lastActiveAt: nowDate }, { merge: true }).catch((error) => {
           console.error("Failed to record lastActiveAt:", error.message);
         });
       }

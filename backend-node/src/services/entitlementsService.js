@@ -162,3 +162,36 @@ export async function getStemQuotaStatus(uid) {
 export const consumeStemQuota = (uid) => consumeMonthly(uid, "stemQuota", STEM_MONTHLY_LIMIT);
 export const getExtraStemCreditCount = (uid) => getCreditBalance(uid, "extraStemCredits");
 export const consumeExtraStemCredit = (uid) => consumeCredit(uid, "extraStemCredits");
+
+// ---- Single-read snapshot --------------------------------------------
+// Everything the entitlements endpoint and /master's pre-render checks
+// need lives on the one users/{uid} document. Reading it once and deriving
+// every counter from the snapshot replaces 4-6 separate reads of the same
+// doc per call. Consumption still goes through the transactional helpers
+// above (they must re-read inside the transaction to be race-safe).
+export async function readUserData(uid) {
+  const doc = await userDoc(uid).get();
+  return doc.data() || {};
+}
+
+export function entitlementsFromUserData(data, plan) {
+  const month = currentMonthKey();
+  const limit = PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free;
+  let masterQuota;
+  if (plan === "free") {
+    const used = Number(data?.freeMasterUsage?.used || 0);
+    masterQuota = { used, remaining: Math.max(0, limit - used), limit, resets: false };
+  } else {
+    const q = data?.masterQuota;
+    const used = q?.month === month ? Number(q.used || 0) : 0;
+    masterQuota = { used, remaining: Math.max(0, limit - used), limit, resets: true };
+  }
+  const sq = data?.stemQuota;
+  const stemUsed = sq?.month === month ? Number(sq.used || 0) : 0;
+  return {
+    masterQuota,
+    extraCredits: Number(data?.extraMasterCredits || 0),
+    stemQuota: { used: stemUsed, remaining: Math.max(0, STEM_MONTHLY_LIMIT - stemUsed), limit: STEM_MONTHLY_LIMIT, resets: true },
+    extraStemCredits: Number(data?.extraStemCredits || 0),
+  };
+}

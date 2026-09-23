@@ -20,20 +20,20 @@ import {
   createCheckoutUrl,
   createPortalUrl,
   getSubscriptionStatus,
+  planFromUserData,
+  subscriptionStatusFromUserData,
   getPlan,
   changeSubscriptionPlan,
 } from "../services/polarService.js";
 import {
-  getMasterQuotaStatus,
   consumeMasterQuota,
   PLAN_MASTER_LIMITS,
-  getExtraCreditCount,
   consumeExtraCredit,
-  getStemQuotaStatus,
   consumeStemQuota,
-  getExtraStemCreditCount,
   consumeExtraStemCredit,
   STEM_MONTHLY_LIMIT,
+  readUserData,
+  entitlementsFromUserData,
 } from "../services/entitlementsService.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { subscribeToNewsletter } from "../services/newsletterService.js";
@@ -429,14 +429,11 @@ router.get("/billing/status", async (req, res) => {
 // show "unlocked" while another still thought the user was on Free.
 router.get("/billing/entitlements", async (req, res) => {
   try {
-    const plan = await getPlan(req.user.uid);
-    const [subscription, masterQuota, extraCredits, stemQuota, extraStemCredits] = await Promise.all([
-      getSubscriptionStatus(req.user.uid),
-      getMasterQuotaStatus(req.user.uid, plan),
-      getExtraCreditCount(req.user.uid),
-      getStemQuotaStatus(req.user.uid),
-      getExtraStemCreditCount(req.user.uid),
-    ]);
+    // One read of users/{uid}, not six (see entitlementsFromUserData).
+    const userData = await readUserData(req.user.uid);
+    const plan = planFromUserData(userData);
+    const subscription = subscriptionStatusFromUserData(userData);
+    const { masterQuota, extraCredits, stemQuota, extraStemCredits } = entitlementsFromUserData(userData, plan);
     return res.json({
       plan,
       subscription,
@@ -725,7 +722,14 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
   let plan = "free";
 
   if (!preview) {
-    plan = await getPlan(req.user.uid).catch(() => "free");
+    // One snapshot for every pre-render check below. Fails CLOSED like
+    // before: an unreadable doc means no quota, no credits.
+    const userData = await readUserData(req.user.uid).catch((error) => {
+      console.error("readUserData failed, failing closed:", error.message);
+      return null;
+    });
+    plan = userData ? planFromUserData(userData) : "free";
+    const snapshot = userData ? entitlementsFromUserData(userData, plan) : null;
     const planUnlocked = plan === "studio" || plan === "pro";
     quotaLimit = PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free;
 
@@ -741,14 +745,11 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
         // masters" — see entitlementsService.js's STEM_MONTHLY_LIMIT
         // comment for why this stays separately metered even on the top
         // plan. Fails CLOSED, same discipline as the master quota below.
-        const stemQuota = await getStemQuotaStatus(req.user.uid).catch((error) => {
-          console.error("getStemQuotaStatus failed, failing closed:", error.message);
-          return { remaining: 0, limit: STEM_MONTHLY_LIMIT };
-        });
+        const stemQuota = snapshot ? snapshot.stemQuota : { remaining: 0, limit: STEM_MONTHLY_LIMIT };
         if (stemQuota.remaining > 0) {
           mustConsumeStemQuota = true;
         } else {
-          const stemCredits = await getExtraStemCreditCount(req.user.uid).catch(() => 0);
+          const stemCredits = snapshot ? snapshot.extraStemCredits : 0;
           if (stemCredits > 0) {
             mustConsumeStemCredit = true;
           } else {
@@ -762,7 +763,7 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
         // trial — this is the single most expensive operation in the
         // app. A purchased credit is the only way in, same standalone
         // pattern as Chord Detection's pay-per-use path.
-        const stemCredits = await getExtraStemCreditCount(req.user.uid).catch(() => 0);
+        const stemCredits = snapshot ? snapshot.extraStemCredits : 0;
         if (stemCredits > 0) {
           mustConsumeStemCredit = true;
         } else {
@@ -779,10 +780,7 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     // which correctly falls through to checking credits and then a clear
     // error, rather than a raw 500 or silently letting the render through
     // unverified.
-    const quota = await getMasterQuotaStatus(req.user.uid, plan).catch((error) => {
-      console.error("getMasterQuotaStatus failed, failing closed:", error.message);
-      return { remaining: 0, limit: quotaLimit };
-    });
+    const quota = snapshot ? snapshot.masterQuota : { remaining: 0, limit: quotaLimit };
     if (quota.remaining > 0) {
       mustConsumeQuota = true;
     } else {
@@ -790,7 +788,7 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
       // before refusing outright. For Free this is the ONLY way forward
       // besides upgrading (no reset coming); for Studio/All-Access it's
       // an alternative to waiting for next month.
-      const credits = await getExtraCreditCount(req.user.uid).catch(() => 0);
+      const credits = snapshot ? snapshot.extraCredits : 0;
       if (credits > 0) {
         mustConsumeCredit = true;
       } else if (plan === "free") {

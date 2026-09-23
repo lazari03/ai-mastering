@@ -45,11 +45,26 @@ function readLocalFileFallback() {
   }
 }
 
+// The built-in catalog changes only through the admin preset routes
+// below, but was re-read in full (one billed read per preset document) on
+// every console load and every preset render. Cached in memory; the admin
+// upsert/delete paths invalidate it, and the TTL covers edits made
+// directly in the Firebase console.
+const CATALOG_TTL_MS = 10 * 60 * 1000;
+let catalogCache = null; // { presets, at }
+
+export function invalidateBuiltInPresetCache() {
+  catalogCache = null;
+}
+
 export async function listBuiltInPresets() {
+  if (catalogCache && Date.now() - catalogCache.at < CATALOG_TTL_MS) return catalogCache.presets;
   try {
     const snapshot = await presetsCollection().get();
     if (!snapshot.empty) {
-      return snapshot.docs.map((doc) => normalizePreset(doc.id, doc.data(), { custom: false }));
+      const presets = snapshot.docs.map((doc) => normalizePreset(doc.id, doc.data(), { custom: false }));
+      catalogCache = { presets, at: Date.now() };
+      return presets;
     }
   } catch (error) {
     console.error("Firestore unreachable for built-in presets, falling back to local file:", error.message);
@@ -96,6 +111,7 @@ export async function upsertBuiltInPreset(slug, raw) {
   };
 
   await presetsCollection().doc(slug).set(record);
+  invalidateBuiltInPresetCache();
   return normalizePreset(slug, record, { custom: false });
 }
 
@@ -104,5 +120,6 @@ export async function deleteBuiltInPreset(slug) {
   const doc = await ref.get();
   if (!doc.exists) return false;
   await ref.delete();
+  invalidateBuiltInPresetCache();
   return true;
 }
