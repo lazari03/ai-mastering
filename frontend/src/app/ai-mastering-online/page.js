@@ -3,6 +3,7 @@ import Link from "next/link";
 import RelatedTools from "@/components/site/RelatedTools";
 import { Breadcrumbs, CtaBand, Faq, LinkList, PageHero, PageShell, Section, Steps } from "@/components/site/Page";
 import { PLANS, PLAN_ORDER } from "@/lib/pricing";
+import { PRODUCT, SUPPORTED_FORMATS_TEXT, paidEntryText } from "@/lib/product";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { COMPARISON_PAGES, COMPARISON_KEYS } from "@/content/comparisonPages";
 import { TOOL_LANDING_KEYS, TOOL_LANDING_PAGES } from "@/content/toolLandingPages";
@@ -18,7 +19,7 @@ import { buildMetadata, JsonLd, faqJsonLd, organizationJsonLd, SITE_NAME } from 
 export const metadata = buildMetadata({
   title: `AI Mastering Online — Master Your Music in Minutes | ${SITE_NAME}`,
   description:
-    "Master your music online with a real adaptive DSP engine — no software install, no plugins. 21 genre-aware presets, instant A/B, codec preview, stem-aware processing. 3 free masters, no card required.",
+    "Master your music online with an adaptive DSP engine that analyzes your mix before changing anything — genre-aware targets, level-matched A/B, codec preview, stem-aware processing. 3 free masters, no card required.",
   path: "/ai-mastering-online",
   keywords: [
     "ai mastering online",
@@ -40,7 +41,7 @@ export const metadata = buildMetadata({
 // SEO page in this app).
 const FEATURES = [
   { title: "Adaptive DSP, not a preset button", body: "Automatic analysis-first processing for tonal balance, loudness, and dynamics — measured before anything is touched, not a single one-size-fits-all filter." },
-  { title: "21 genre-aware presets", body: "21 curated mixing presets plus editable JSON chains, so a whole catalog masters consistently instead of every track starting from zero." },
+  { title: "Presets as direction, not a fixed chain", body: "Curated mixing presets and editable JSON chains keep a catalog consistent — the engine still reads each track and only applies what it needs." },
   { title: "Instant, gain-matched A/B", body: "Compare original and mastered output instantly, with playback levels matched — so loudness alone never wins the comparison." },
   { title: "Saved Artist mastering chains", body: "Import a full mastering chain for an artist once, then apply it to every new track from a dropdown — private to your account." },
   { title: "Codec preview", body: "Hear what actually reaches a listener after MP3, AAC, or Opus compression — a real encode/decode round-trip, not an estimate." },
@@ -54,11 +55,11 @@ const FAQ_ITEMS = [
   },
   {
     question: "What file formats can I upload?",
-    answer: "Common audio formats (WAV, MP3, FLAC, AIFF, and more) are accepted and decoded automatically. Final export is WAV or MP3.",
+    answer: `${SUPPORTED_FORMATS_TEXT} are accepted and decoded automatically, up to ${PRODUCT.maxUploadMb} MB. Final export is WAV or MP3.`,
   },
   {
     question: "Is it actually free, or a time-limited trial?",
-    answer: "3 full-length masters are free, no card required — a lifetime allowance, not a trial that expires after a week. After that, Studio is €9.99/mo for 50 masters/month.",
+    answer: `3 full-length masters are free, no card required — a lifetime allowance, not a trial that expires after a week. After that: ${paidEntryText()}. Studio and All-Access add the Professional engine and more masters.`,
   },
   {
     question: "How is this different from a generic 'AI mastering' button?",

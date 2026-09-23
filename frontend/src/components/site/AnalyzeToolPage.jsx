@@ -2,10 +2,10 @@ import PublicChordDetector from "@/components/audio/PublicChordDetector";
 import RelatedTools from "@/components/site/RelatedTools";
 import { Breadcrumbs, CtaBand, Faq, LinkList, PageHero, PageShell, Section, Steps, ToolFrame } from "@/components/site/Page";
 import { JsonLd, faqJsonLd } from "@/lib/seo";
+import { SUPPORTED_FORMATS_TEXT } from "@/lib/product";
 
-// Formats the upload pipeline accepts (backend-node constants.js
-// AUDIO_DECODE_EXTS plus the natively-read WAV/AIFF/FLAC).
-export const SUPPORTED_FORMATS = "WAV, AIFF, FLAC, MP3, M4A, AAC, OGG, WMA, MP4 and WebM";
+// Formats the upload pipeline accepts — see lib/product.js.
+export const SUPPORTED_FORMATS = SUPPORTED_FORMATS_TEXT;
 
 /**
  * Illustrative output shown next to the live tool before anything is

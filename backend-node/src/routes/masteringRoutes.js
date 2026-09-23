@@ -42,6 +42,7 @@ import { expensiveLimiter, shareAccessLimiter } from "../middleware/rateLimit.js
 import { recordServerEvent, normalizeMasteringFailure } from "../services/analyticsService.js";
 import { mintDownloadToken, verifyShareToken, isShareJobExpired } from "../services/downloadTokenService.js";
 import { shareLinks, ShareLinkError } from "../services/shareLinkService.js";
+import { cleanupUploadsOnFinish } from "../middleware/cleanupUploads.js";
 
 const router = express.Router();
 
@@ -672,7 +673,7 @@ async function truncateToPreview(inputPath, workDir) {
   return outputPath;
 }
 
-router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
+router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, async (req, res) => {
   const file = req.files?.file?.[0];
   if (!file) {
     return res.status(400).json({ detail: "file is required" });
@@ -702,22 +703,16 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
     recordServerEvent("master_started", { uid: req.user.uid, props: { tier, mastering_mode: useStemSeparation ? "stems" : "standard" } });
   }
 
-  // Two plans + Free (see PRICING.md): Free (3 Standard masters TOTAL —
-  // a one-time trial, not a monthly allowance, no Professional tier, no
-  // stems, no chords), Studio (50 masters/month, resets monthly, Standard
-  // + Professional, no bundled stems, no chords), All-Access (250
-  // masters/month, resets monthly, everything including unlimited chord
-  // detection — see /analyze-chords below). Professional tier stays
-  // strictly plan-gated (Studio+, no credit bypass) — it's compute-cheap,
-  // no reason to meter it separately. Stem separation is NOT part of that
-  // same bucket: it's real, disproportionate server cost (Demucs source
-  // separation + multiple output files per job), so it gets its own
-  // tiered gate below rather than a flat plan check. The one-time
-  // "single master" purchase only ever covers the master-count limit
-  // itself. For a Free user past their 3-master trial, buying single
-  // masters IS the standard path forward (no more free resets); for
-  // Studio/All-Access, it's what covers the gap between exhausting this
-  // month's quota and next month's reset, if they don't want to wait.
+  // Plans (see config/settings.js for the full list): Free = 3 Standard
+  // masters one-time; Indie 15/month Standard only; Studio 50/month and
+  // All-Access 250/month with Professional. Professional stays strictly
+  // plan-gated (Studio+, no credit bypass). Stem separation has its own
+  // gate below (real, disproportionate compute): All-Access gets a monthly
+  // sub-limit, every plan can buy single stem-separated masters. The
+  // one-time "single master" purchase only covers the master-count limit —
+  // the standard path for Free past the trial, or a top-up for paid plans
+  // that don't want to wait for the monthly reset. Chord detection is free
+  // and ungated (see /analyze-chords).
   // Checked (not consumed) here and only actually spent after a
   // successful render below, so a render that fails midway never costs
   // the user a slot or a credit.
@@ -975,7 +970,7 @@ router.post("/master", expensiveLimiter, masterUpload, async (req, res) => {
 // no subscription check. It's a top-of-funnel lead-gen tool (see
 // PublicChordDetector.jsx), not a product on its own, so gating it ever
 // cost more in funnel drop-off than the €1.49/€2.99 it used to bring in.
-router.post("/analyze-chords", expensiveLimiter, upload.single("file"), async (req, res) => {
+router.post("/analyze-chords", expensiveLimiter, upload.single("file"), cleanupUploadsOnFinish, async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ detail: "file is required" });
   }

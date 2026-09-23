@@ -47,7 +47,7 @@ export const PLANS = {
     period: "/mo",
     masterLimit: 15,
     blurb: "For one release a month, not fifty.",
-    features: ["15 masters / month", "Standard & Professional engines", "Codec preview & instant A/B"],
+    features: ["15 masters / month", "Standard engine", "Codec preview & instant A/B"],
     annual: { item: "plan_indie_annual", price: "€49.90", period: "/yr", perMonth: "€4.16" },
   },
   studio: {
@@ -115,5 +115,5 @@ export const STEM_SEPARATION = {
   item: "stem_separation",
   label: "Stem Separation",
   price: "€4.99",
-  blurb: "One stem-separated master (vocals, drums, bass, other). Included free on All-Access, 20/month.",
+  blurb: "One stem-separated master (vocals and accompaniment, rebalanced separately). Included on All-Access, 20/month.",
 };

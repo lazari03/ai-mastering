@@ -25,7 +25,9 @@ import InlineAlert from "@/components/ui/InlineAlert";
 const COMPARISON_ROWS = [
   { label: "Masters", values: ["3 total (one-time)", "15 / month", "50 / month", "250 / month"] },
   { label: "Standard engine", values: [true, true, true, true] },
-  { label: "Professional engine", values: [false, true, true, true] },
+  // Matches the backend gate (masteringRoutes.js: studio and pro only) and
+  // planUnlocksProfessional — Indie is Standard-only.
+  { label: "Professional engine", values: [false, false, true, true] },
   { label: "Stem separation", values: ["Pay per use", "Pay per use", "Pay per use", "20 / month included"] },
   { label: "Chord detection", values: ["Free, unlimited", "Free, unlimited", "Free, unlimited", "Free, unlimited"] },
   { label: "Shareable download links", values: [false, false, false, true] },

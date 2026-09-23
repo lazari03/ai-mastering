@@ -82,15 +82,18 @@ export const settings = {
   // see services/customPresetsService.js — not a local file.
 
   // Polar (Merchant of Record). See services/polarService.js and
-  // PRICING.md for the plan this backs: 2 subscription tiers, no à la
-  // carte purchases at all —
-  //   Free    — 3 Standard masters/month, no Professional, no stems, no chords
-  //   Studio  — 50 masters/month (Standard + Professional), stems included, no chords
-  //   All-Access — 250 masters/month, stems, unlimited chord detection
-  // Every paid feature is plan-only now — see entitlementsService.js's
-  // PLAN_MASTER_LIMITS and masteringRoutes.js's gating. Unset product IDs
-  // just mean that plan can't be checked out yet (checkout route 400s with
-  // a clear message), not a crash; the free tier works with none of this set.
+  // Plans this backs (frontend/src/lib/pricing.js is the display source;
+  // entitlementsService.js PLAN_MASTER_LIMITS + masteringRoutes.js gates are
+  // what's enforced):
+  //   Free       — 3 Standard masters, ONE-TIME (never resets)
+  //   Indie      — 15 masters/month, Standard engine
+  //   Studio     — 50 masters/month, Standard + Professional
+  //   All-Access — 250 masters/month, Standard + Professional, 20 stem
+  //                separations/month, shareable links
+  //   One-time   — single master, single stem-separated master
+  //   Chord/key/BPM detection is free for everyone (no product).
+  // Unset product IDs just mean that product can't be checked out yet
+  // (checkout route 400s with a clear message), not a crash.
   polarAccessToken: process.env.POLAR_ACCESS_TOKEN || null,
   polarWebhookSecret: process.env.POLAR_WEBHOOK_SECRET || null,
   polarServer: process.env.POLAR_ENVIRONMENT === "production" ? "production" : "sandbox",

@@ -5,7 +5,7 @@ import { PLANS, SINGLE_MASTER } from "@/lib/pricing";
 export const metadata = buildMetadata({
   title: "Master Your Music Online — AI Audio Mastering with a Real DSP Engine | Auralith Forge",
   description:
-    "Master your tracks online with an adaptive DSP engine — analysis-first EQ, compression, saturation, stereo imaging, and true-peak limiting. Free Standard tier, genre-aware presets, and saved artist mastering chains.",
+    "Master your tracks online with an adaptive DSP engine — analysis-first EQ, compression, saturation, stereo imaging, and true-peak limiting. It measures your mix first, corrects only what needs it and preserves the rest. Free trial, genre-aware targets, and saved artist mastering chains.",
   path: "/",
   keywords: [
     "mastering online",

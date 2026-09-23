@@ -30,7 +30,7 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://auralithfor
 export const SITE_NAME = "Auralith Forge";
 
 export const DEFAULT_DESCRIPTION =
-  "AI-powered online audio mastering with a real adaptive DSP engine — EQ, multiband compression, saturation, true-peak limiting, and genre-aware presets. Master a track in minutes, not days.";
+  "Online audio mastering with an adaptive DSP engine that analyzes your mix before changing anything — EQ, multiband compression, saturation and true-peak limiting only where your track needs them. Master a track in minutes.";
 
 export const DEFAULT_KEYWORDS = [
   "AI audio mastering",

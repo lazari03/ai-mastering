@@ -58,10 +58,10 @@ const DICT = {
   "demo.target": { en: "Mastering target for this genre", sq: "Objektivi i masterizimit për këtë zhanër" },
 
   "genres.eyebrow": { en: "By Genre", sq: "Sipas Zhanrit" },
-  "genres.title": { en: "Mastering tuned per genre", sq: "Masterizim i përshtatur për çdo zhanër" },
+  "genres.title": { en: "Genre sets the destination. Your mix decides the moves.", sq: "Zhanri cakton destinacionin. Miksi yt vendos lëvizjet." },
   "genres.body": {
-    en: "Every genre gets its own DSP target profile, not a one-size preset — pick one to see its real loudness target.",
-    sq: "Çdo zhanër ka profilin e vet të DSP-së, jo një preset të përgjithshëm — zgjidh një për të parë objektivin real të zërit.",
+    en: "Genre tells the engine what to protect and where the loudness and tonal targets sit. The processing itself is decided by measuring your track — pick a genre to see its real targets.",
+    sq: "Zhanri i tregon motorit çfarë të ruajë dhe ku janë objektivat e zërit dhe tonit. Përpunimi vendoset duke matur këngën tënde — zgjidh një zhanër për të parë objektivat reale.",
   },
   "genres.cta": { en: "Master {genre} tracks →", sq: "Masterizo këngë {genre} →" },
 
@@ -82,10 +82,10 @@ const DICT = {
     sq: "Përpunim automatik i bazuar në analizë për balancë tonale, volum, dhe dinamikë — matur para se të prekët gjë.",
   },
   "features.f2.eyebrow": { en: "Workflow", sq: "Rrjedha e Punës" },
-  "features.f2.title": { en: "Pro Presets", sq: "Presete Profesionale" },
+  "features.f2.title": { en: "Presets as Direction", sq: "Presetet si Drejtim" },
   "features.f2.body": {
-    en: "21 curated mixing presets plus editable JSON chains for repeatable release consistency across a whole catalog.",
-    sq: "21 presete miksimi të kuruara plus zinxhirë JSON të modifikueshëm për konsistencë të përsëritshme botimi në të gjithë katalogun.",
+    en: "Curated mixing presets and editable JSON chains as creative direction — the engine still reads every track and applies only what it needs, so a whole catalog stays consistent.",
+    sq: "Presete miksimi të kuruara dhe zinxhirë JSON të modifikueshëm si drejtim krijues — motori lexon çdo këngë dhe zbaton vetëm atë që duhet, që i gjithë katalogu të mbetet konsistent.",
   },
   "features.f3.eyebrow": { en: "Control", sq: "Kontroll" },
   "features.f3.title": { en: "Instant A/B", sq: "A/B Menjëherë" },
@@ -589,8 +589,8 @@ const DICT = {
   "console.masterTrackQuotaUsed": { en: "Master Track — Quota used, upgrade", sq: "Masterizo — Kuota u përdor, përmirëso" },
   "console.masterTrackDefault": { en: "Master Track", sq: "Masterizo" },
   "console.previewNote": {
-    en: "Preview renders the first 30s with the Standard engine, free and unlimited. Master Track renders the full file — 3 total as a free trial (one-time, then €2.99/track or subscribe), 50/month on Studio, 250/month on All-Access. Full result and A/B comparison appear on the right once it's done.",
-    sq: "Parapamja renderon 30 sekondat e para me motorin Standard, falas dhe e pakufizuar. Masterizo renderon skedarin e plotë — 3 gjithsej si provë falas (një-herëshe, pastaj €2.99/këngë ose abonim), 50/muaj në Studio, 250/muaj në All-Access. Rezultati i plotë dhe krahasimi A/B shfaqen djathtas kur të përfundojë.",
+    en: "Preview renders the first 30s with the Standard engine, free and unlimited. Master Track renders the full file — 3 total as a free trial (one-time, then €2.99/track or subscribe), 15/month on Indie, 50/month on Studio, 250/month on All-Access. Full result and A/B comparison appear on the right once it's done.",
+    sq: "Parapamja renderon 30 sekondat e para me motorin Standard, falas dhe e pakufizuar. Masterizo renderon skedarin e plotë — 3 gjithsej si provë falas (një-herëshe, pastaj €2.99/këngë ose abonim), 15/muaj në Indie, 50/muaj në Studio, 250/muaj në All-Access. Rezultati i plotë dhe krahasimi A/B shfaqen djathtas kur të përfundojë.",
   },
   "console.outOfMastersMonth": { en: "Out of masters this month?", sq: "Mbaruan masterat për këtë muaj?" },
   "console.usedFreeMasters": { en: "Used up your 3 free masters?", sq: "Përdore 3 masterat e tu falas?" },

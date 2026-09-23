@@ -15,6 +15,7 @@ import adminNotificationsRoutes from "./routes/adminNotificationsRoutes.js";
 import { reconcileAllSubscriptions } from "./services/polarService.js";
 import { startBot as startTelegramBot } from "./services/telegramService.js";
 import { clientIp } from "./middleware/clientIp.js";
+import { startUploadSweep } from "./middleware/cleanupUploads.js";
 
 // <a href download>, <audio src>, and direct browser navigation to a
 // download-family route can't attach an Authorization header — a ?dl=
@@ -82,6 +83,9 @@ app.set("trust proxy", true);
 // Real visitor IP + country behind Cloudflare (see middleware/clientIp.js)
 // — before anything that keys on the client (rate limits, analytics).
 app.use(clientIp);
+
+// Temp-upload backstop sweep (see middleware/cleanupUploads.js).
+startUploadSweep();
 
 app.use(
   cors({
