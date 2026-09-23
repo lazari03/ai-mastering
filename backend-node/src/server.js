@@ -14,6 +14,7 @@ import adminUsersRoutes from "./routes/adminUsersRoutes.js";
 import adminNotificationsRoutes from "./routes/adminNotificationsRoutes.js";
 import { reconcileAllSubscriptions } from "./services/polarService.js";
 import { startBot as startTelegramBot } from "./services/telegramService.js";
+import { clientIp } from "./middleware/clientIp.js";
 
 // <a href download>, <audio src>, and direct browser navigation to a
 // download-family route can't attach an Authorization header — a ?dl=
@@ -77,6 +78,10 @@ const app = express();
 // detail. Safe to trust unconditionally here: Caddy is the only thing
 // that ever talks to this container (see ARCHITECTURE.md §7 / Caddyfile).
 app.set("trust proxy", true);
+
+// Real visitor IP + country behind Cloudflare (see middleware/clientIp.js)
+// — before anything that keys on the client (rate limits, analytics).
+app.use(clientIp);
 
 app.use(
   cors({

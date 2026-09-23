@@ -2,7 +2,7 @@ import { track } from "./analyticsClient";
 
 // Every call site across the app (authStore.js, PlansPanel.jsx,
 // masteringStore.js, ChordDetector.jsx, HomeClient.jsx, SiteHeader.jsx,
-// ToolLandingAnalytics.jsx, PublicChordDetector.jsx, ...) already calls
+// PublicChordDetector.jsx, PublicLufsMeter.jsx, ...) already calls
 // trackEvent() at exactly the funnel moments worth measuring — this is
 // now the one place that forwards those calls into the first-party
 // analytics pipeline (analyticsClient.js -> /analytics/collect ->

@@ -25,6 +25,7 @@ import {
 // separate nav layouts, and never overflows awkwardly on a narrow screen —
 // it just scrolls, same convention as a native app's tab bar.
 const NAV = [
+  { href: "/admin/analytics/behavior", labelKey: "admin.nav.behavior", Icon: IconTarget },
   { href: "/admin/analytics", labelKey: "admin.nav.overview", Icon: IconGrid },
   { href: "/admin/analytics/live", labelKey: "admin.nav.live", Icon: IconRadio },
   { href: "/admin/analytics/sessions", labelKey: "admin.nav.sessions", Icon: IconList },

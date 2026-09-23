@@ -981,6 +981,7 @@ const DICT = {
   // shown to a customer), but still routed through t() rather than
   // hardcoded so the one localization system in this app stays the one
   // localization system, not "everywhere except admin."
+  "admin.nav.behavior": { en: "Behavior", sq: "Sjellja" },
   "admin.nav.overview": { en: "Overview", sq: "Përmbledhje" },
   "admin.nav.live": { en: "Live", sq: "Live" },
   "admin.nav.sessions": { en: "Sessions", sq: "Sesionet" },

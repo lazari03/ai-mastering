@@ -153,13 +153,11 @@ function sanitizeReferrer(referrer) {
   }
 }
 
-// Offline lookup (bundled MaxMind-derived DB, no external API call, no IP
-// ever leaves this server) — the only geo source this app uses, in keeping
-// with the same privacy stance that removed GA/Meta/TikTok. req.ip is
-// trustworthy here because server.js already sets `trust proxy` for
-// Caddy's X-Forwarded-For; "::ffff:"-prefixed IPv4-in-IPv6 addresses (what
-// Node reports for an IPv4 client behind a proxy) need the prefix
-// stripped or geoip-lite's lookup misses them entirely.
+// Fallback only: the route passes the country middleware/clientIp.js
+// already resolved (Cloudflare's CF-IPCountry, or this same offline DB on
+// the real visitor IP). Offline lookup — no IP ever leaves this server.
+// "::ffff:"-prefixed IPv4-in-IPv6 addresses need the prefix stripped or
+// geoip-lite's lookup misses them entirely.
 function resolveCountry(ip) {
   if (typeof ip !== "string" || !ip) return null;
   try {
@@ -179,23 +177,34 @@ function referrerDomain(referrer) {
   }
 }
 
-// Small, dependency-free UA read — this app only needs three coarse
-// buckets (mobile/tablet/desktop conversion comparisons, spec section 18's
-// "are mobile users converting worse"), not a full device-detection
-// library. Good enough for that, not meant to be exhaustive.
-function parseUserAgent(ua) {
+// Small, dependency-free UA read — this app only needs coarse buckets
+// (mobile/tablet/desktop conversion comparisons, spec section 18's "are
+// mobile users converting worse"), not a full device-detection library.
+// Order matters: iOS user agents contain "like Mac OS X" and Android ones
+// contain "Linux", so the specific platforms are tested first.
+const BOT_UA = /bot|crawl|spider|slurp|facebookexternalhit|embedly|quora link preview|headlesschrome|lighthouse|pagespeed|pingdom|uptime|monitor|curl|wget|python-requests|axios|node-fetch|go-http-client/i;
+export function isBotUserAgent(ua) {
+  return typeof ua !== "string" || ua.length < 10 || BOT_UA.test(ua);
+}
+
+export function parseUserAgent(ua) {
   const s = typeof ua === "string" ? ua : "";
-  const deviceCategory = /Mobi|Android(?!.*Tablet)|iPhone/i.test(s) ? "mobile" : /Tablet|iPad/i.test(s) ? "tablet" : "desktop";
+  const isIpad = /iPad/.test(s);
+  const isAndroid = /Android/.test(s);
+  const deviceCategory = isIpad || (isAndroid && !/Mobile/.test(s)) || /Tablet/i.test(s) ? "tablet" : /Mobi|iPhone|iPod|Android/i.test(s) ? "mobile" : "desktop";
   let browser = "other";
-  if (/Edg\//.test(s)) browser = "edge";
-  else if (/Chrome\//.test(s) && !/Chromium/.test(s)) browser = "chrome";
-  else if (/Firefox\//.test(s)) browser = "firefox";
-  else if (/Safari\//.test(s) && !/Chrome/.test(s)) browser = "safari";
+  if (/Edg(e|A|iOS)?\//.test(s)) browser = "edge";
+  else if (/OPR\/|Opera/.test(s)) browser = "opera";
+  else if (/SamsungBrowser\//.test(s)) browser = "samsung";
+  else if (/Firefox\/|FxiOS\//.test(s)) browser = "firefox";
+  else if (/CriOS\/|Chrome\//.test(s) && !/Chromium/.test(s)) browser = "chrome";
+  else if (/Safari\//.test(s)) browser = "safari";
   let os = "other";
-  if (/Windows/.test(s)) os = "windows";
-  else if (/Mac OS X/.test(s)) os = "macos";
-  else if (/Android/.test(s)) os = "android";
-  else if (/iPhone|iPad|iOS/.test(s)) os = "ios";
+  if (/iPhone|iPad|iPod/.test(s)) os = "ios";
+  else if (isAndroid) os = "android";
+  else if (/Windows/.test(s)) os = "windows";
+  else if (/CrOS/.test(s)) os = "chromeos";
+  else if (/Mac OS X|Macintosh/.test(s)) os = "macos";
   else if (/Linux/.test(s)) os = "linux";
   return { deviceCategory, browser, os };
 }
@@ -295,7 +304,7 @@ const insertEventStmt = analyticsDb.prepare(`
 // write partially fails, because analytics must never surface as a
 // user-facing error (spec section 31).
 // ---------------------------------------------------------------------
-export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSession, context, events }) {
+export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, country: knownCountry = null, isNewSession, context, events }) {
   if (!isUuid(visitorId) || !isUuid(sessionId)) {
     throw Object.assign(new Error("Invalid visitor/session id"), { status: 400 });
   }
@@ -307,6 +316,9 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
     return { accepted: 0 };
   }
   if (!Array.isArray(events) || events.length === 0) return { accepted: 0 };
+  // Crawlers that execute JavaScript (Googlebot, Lighthouse, uptime
+  // checkers) would otherwise count as visitors and dilute every rate.
+  if (isBotUserAgent(ua)) return { accepted: 0 };
   const batchEvents = events.slice(0, MAX_EVENTS_PER_REQUEST).filter((e) => e && ALLOWED_EVENT_NAMES.has(e.name));
   if (batchEvents.length === 0) return { accepted: 0 };
 
@@ -327,7 +339,7 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
   // trusted from the client (a visitor's browser has no legitimate way to
   // know its own IP-derived country, and letting it claim one would just
   // be spoofable garbage in the admin dashboard).
-  const country = resolveCountry(ip);
+  const country = knownCountry || resolveCountry(ip);
 
   // One synchronous transaction — either the whole batch lands or none of
   // it does, and there's no network round trip in the middle to race
@@ -457,7 +469,8 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, isNewSess
         sessionPatch.active_ms = runningActiveMs;
       }
 
-      sendSignal(evt.name, { uid, visitorId, props: { ...props, path: path || undefined, country } });
+      // Not mirrored to TelemetryDeck from here — the browser sends its own
+      // signals (see telemetryDeckService.js for why).
     }
 
     const patchKeys = Object.keys(sessionPatch);
@@ -492,7 +505,7 @@ export async function recordServerEvent(name, { uid = null, sessionId = null, vi
       activeMs: null,
       source: "backend",
     });
-    sendSignal(name, { uid, visitorId, props: sanitizeProps(props) });
+    sendSignal(name, { uid, visitorId, sessionId, props: sanitizeProps(props) });
     if (sessionId) {
       const patch = {};
       if (name === "master_completed") patch.has_mastered = 1;

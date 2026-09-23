@@ -18,6 +18,7 @@ import {
   getRetention,
   getLive,
 } from "../services/analyticsQueryService.js";
+import { getBehavior } from "../services/analyticsBehaviorService.js";
 import { toCsv } from "../services/csvExportService.js";
 import { buildReportPdf } from "../services/pdfExportService.js";
 
@@ -86,7 +87,8 @@ router.post("/analytics/collect", analyticsCollectLimiter, async (req, res) => {
       uid: typeof body.uid === "string" && body.uid.length <= 128 ? body.uid : null,
       isNewSession: Boolean(body.isNewSession),
       ua: req.headers["user-agent"],
-      ip: req.ip,
+      ip: req.clientIp || req.ip,
+      country: req.clientCountry || null,
       context: body.context || {},
       events: body.events,
     });
@@ -123,6 +125,18 @@ admin.get("/live", async (req, res) => {
   } catch (error) {
     console.error("admin/live failed:", error);
     return res.status(500).json({ detail: "Failed to load live overview." });
+  }
+});
+
+// What visitors do, where they stop, and a ranked "fix next" list — see
+// analyticsBehaviorService.js.
+admin.get("/behavior", async (req, res) => {
+  try {
+    const range = resolveRange(req.query);
+    return res.json(await getBehavior(range));
+  } catch (error) {
+    console.error("admin/behavior failed:", error);
+    return res.status(500).json({ detail: "Failed to load behavior insights." });
   }
 });
 

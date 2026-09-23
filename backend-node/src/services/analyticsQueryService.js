@@ -166,10 +166,23 @@ function fetchSessionsInRange(from, to) {
   return rows.map(sessionFromRow);
 }
 
+// Name filtering happens in SQL (idx_events_name_ts), not after loading
+// every row: heartbeats are the bulk of analytics_events, and the old
+// "SELECT * in range, then .filter() in JS" parsed all of them on every
+// call — six times per Overview load.
+const eventsStmtCache = new Map();
 function fetchEventsInRange(from, to, names = null) {
-  const rows = db().prepare("SELECT * FROM analytics_events WHERE ts >= ? AND ts < ?").all(from.toISOString(), to.toISOString());
-  const events = rows.map(eventFromRow);
-  return names ? events.filter((e) => names.includes(e.name)) : events;
+  const range = [from.toISOString(), to.toISOString()];
+  if (!names) {
+    return db().prepare("SELECT * FROM analytics_events WHERE ts >= ? AND ts < ?").all(...range).map(eventFromRow);
+  }
+  if (names.length === 0) return [];
+  const key = names.length;
+  if (!eventsStmtCache.has(key)) {
+    const placeholders = names.map(() => "?").join(", ");
+    eventsStmtCache.set(key, db().prepare(`SELECT * FROM analytics_events WHERE name IN (${placeholders}) AND ts >= ? AND ts < ?`));
+  }
+  return eventsStmtCache.get(key).all(...names, ...range).map(eventFromRow);
 }
 
 function applySessionFilters(sessions, filters = {}) {
@@ -193,21 +206,39 @@ function pct(numerator, denominator) {
 // pricing.js, the single source of truth for what these actually cost.
 // Kept as a small constant map (not imported cross-project) since
 // backend-node and frontend are separate deploys; if a price changes,
-// update both.
-const PLAN_MONTHLY_PRICE_EUR = { studio: 9.99, pro: 19.99 };
+// update both. Monthly-equivalent EUR per product: annual plans count as
+// price/12. (Previously only monthly Studio and All-Access were counted,
+// so Indie and every annual subscriber were missing from MRR.)
+function mrrProducts() {
+  const p = settings.polarProducts;
+  return [
+    [p.planIndie, 4.99],
+    [p.planStudio, 9.99],
+    [p.planPro, 19.99],
+    [p.planIndieAnnual, 49.9 / 12],
+    [p.planStudioAnnual, 99.9 / 12],
+    [p.planProAnnual, 199.9 / 12],
+  ].filter(([productId]) => Boolean(productId));
+}
 
 // Subscriptions themselves stay in Firestore (users/{uid}.subscription) —
 // that's low-volume, one doc per paying customer, nowhere near the
 // analytics write pattern that forced the SQLite move.
 async function estimateSubscriptionStats() {
-  const [studioSnap, proSnap] = await Promise.all([
-    getFirestore().collection("users").where("subscription.status", "==", "active").where("subscription.productId", "==", settings.polarProducts.planStudio).count().get(),
-    getFirestore().collection("users").where("subscription.status", "==", "active").where("subscription.productId", "==", settings.polarProducts.planPro).count().get(),
-  ]);
-  const studioCount = studioSnap.data().count;
-  const proCount = proSnap.data().count;
-  const mrr = studioCount * PLAN_MONTHLY_PRICE_EUR.studio + proCount * PLAN_MONTHLY_PRICE_EUR.pro;
-  return { activeSubscribers: studioCount + proCount, mrr: Math.round(mrr * 100) / 100 };
+  const products = mrrProducts();
+  const counts = await Promise.all(
+    products.map(([productId]) =>
+      getFirestore().collection("users").where("subscription.status", "==", "active").where("subscription.productId", "==", productId).count().get()
+    )
+  );
+  let activeSubscribers = 0;
+  let mrr = 0;
+  counts.forEach((snap, i) => {
+    const n = snap.data().count;
+    activeSubscribers += n;
+    mrr += n * products[i][1];
+  });
+  return { activeSubscribers, mrr: Math.round(mrr * 100) / 100 };
 }
 
 export async function getOverview({ from, to, prevFrom, prevTo }) {
@@ -219,9 +250,16 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
   const cancelEvents = fetchEventsInRange(from, to, ["subscription_cancelled"]);
   const shareEvents = fetchEventsInRange(from, to, ["share_created"]);
   const downloadEvents = fetchEventsInRange(from, to, ["download_completed"]);
-  const errorEvents = fetchEventsInRange(from, to, FAILURE_EVENT_NAMES);
+  const errorEvents = authoritative(fetchEventsInRange(from, to, FAILURE_EVENT_NAMES));
+  // Sign-ups come from the server-observed sign_up event (written when an
+  // account is actually created), not "authenticated session from a new
+  // visitor" — that counted returning users on a fresh browser as sign-ups
+  // and missed people who signed up on their second visit.
+  const signupCount = fetchEventsInRange(from, to, ["sign_up"]).length;
+  const prevSignupCount = fetchEventsInRange(prevFrom, prevTo, ["sign_up"]).length;
 
   const summarize = (list) => ({
+    sessions: list.length,
     visitors: new Set(list.map(identityKey)).size,
     newVisitors: list.filter((s) => s.isNewVisitor).length,
     returningVisitors: list.filter((s) => !s.isNewVisitor).length,
@@ -246,7 +284,7 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
     visitors: withDelta(current.visitors, previous.visitors),
     newVisitors: withDelta(current.newVisitors, previous.newVisitors),
     returningVisitors: withDelta(current.returningVisitors, previous.returningVisitors),
-    signups: withDelta(current.signups, previous.signups),
+    signups: withDelta(signupCount, prevSignupCount),
     avgSessionSeconds: withDelta(current.avgActiveSeconds, previous.avgActiveSeconds),
     uploads: withDelta(current.uploads, previous.uploads),
     masters: withDelta(current.masters, previous.masters),
@@ -260,10 +298,13 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
     sharesCreated: shareEvents.length,
     downloadsCompleted: downloadEvents.length,
     errorCount: errorEvents.length,
+    // Session-based on both sides: the upload/master/paid counts are
+    // sessions, so dividing them by unique visitors mixed units and could
+    // exceed 100% (one visitor, three sessions, three uploads).
     conversion: {
-      visitorToUpload: pct(current.uploads, current.visitors),
-      visitorToMaster: pct(current.masters, current.visitors),
-      visitorToPaid: withDelta(pct(current.paid, current.visitors), pct(previous.paid, previous.visitors)),
+      visitorToUpload: pct(current.uploads, current.sessions),
+      visitorToMaster: pct(current.masters, current.sessions),
+      visitorToPaid: withDelta(pct(current.paid, current.sessions), pct(previous.paid, previous.sessions)),
       checkoutToPaid: pct(current.paid, current.checkoutStarts),
     },
   };
@@ -554,9 +595,19 @@ export async function getSales({ from, to }) {
 
 const FAILURE_EVENT_NAMES = ["audio_upload_failed", "analysis_failed", "master_failed", "checkout_failed"];
 
+// master_* is written twice: by the browser (masteringStore.js, including
+// preview renders and client-side network errors) and by the server
+// (masteringRoutes.js, real renders only, with a normalized `reason`).
+// Counting both doubled every mastering failure. The server copy is the
+// authoritative one.
+const SERVER_AUTHORITATIVE = new Set(["master_started", "master_completed", "master_failed"]);
+function authoritative(events) {
+  return events.filter((e) => !(SERVER_AUTHORITATIVE.has(e.name) && e.source === "frontend"));
+}
+
 export async function getErrors({ from, to, prevFrom, prevTo }) {
-  const events = fetchEventsInRange(from, to, FAILURE_EVENT_NAMES);
-  const prevEvents = fetchEventsInRange(prevFrom, prevTo, FAILURE_EVENT_NAMES);
+  const events = authoritative(fetchEventsInRange(from, to, FAILURE_EVENT_NAMES));
+  const prevEvents = authoritative(fetchEventsInRange(prevFrom, prevTo, FAILURE_EVENT_NAMES));
 
   const countBy = (list) => {
     const map = new Map();

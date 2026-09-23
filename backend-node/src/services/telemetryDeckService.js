@@ -4,13 +4,12 @@ import TelemetryDeck from "@telemetrydeck/sdk";
 
 import { settings } from "../config/settings.js";
 
-// Mirrors every analytics event to TelemetryDeck (telemetrydeck.com)
-// alongside the existing SQLite store (analyticsService.js) — a deliberate
-// dual-write, not a replacement: the SQLite-backed /admin/analytics/*
-// pages keep working exactly as they do today while TelemetryDeck
-// accumulates events in parallel, so nothing breaks and there's no
-// all-or-nothing cutover. Whether/when to swap the admin UI over to read
-// from TelemetryDeck's Query API instead is a separate, later decision.
+// Server-observed events only (payments, subscriptions, sign-ups, share
+// links, mastering results) go to TelemetryDeck from here. Everything the
+// browser tracks is sent by the browser itself (frontend/src/lib/
+// telemetryDeck.js): TelemetryDeck derives country from the sending IP and
+// device/OS/browser from the sending User-Agent, so signals mirrored from
+// this server all looked like one Node process in the server's datacenter.
 //
 // Uses the official @telemetrydeck/sdk rather than hand-rolling the v2
 // ingest request — it handles clientUser hashing (SHA-256 + salt),
@@ -37,7 +36,7 @@ function getClient() {
 // write path (recordServerEvent's own try/catch, ingestBatch's "must
 // never look like a real API error" comment); this follows the identical
 // discipline for the new destination.
-export function sendSignal(type, { uid = null, visitorId = null, props = {} } = {}) {
+export function sendSignal(type, { uid = null, visitorId = null, sessionId = null, props = {} } = {}) {
   const td = getClient();
   if (!td) return; // not configured yet — silent no-op, not an error
 
@@ -47,7 +46,10 @@ export function sendSignal(type, { uid = null, visitorId = null, props = {} } = 
     payload[key] = typeof value === "string" ? value : String(value);
   }
 
-  td.signal(type.slice(0, 200), payload, { clientUser: uid || visitorId || "anonymous" }).catch((error) => {
+  // sessionID per call: the SDK otherwise stamps one random ID, chosen at
+  // startup, on every signal this process ever sends — i.e. every user in
+  // one "session".
+  td.signal(type.slice(0, 200), payload, { clientUser: uid || visitorId || "anonymous", sessionID: sessionId || uid || visitorId || "server" }).catch((error) => {
     console.error(`TelemetryDeck signal "${type}" failed (non-fatal):`, error.message);
   });
 }

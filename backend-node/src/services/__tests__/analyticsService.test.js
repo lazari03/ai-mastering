@@ -55,3 +55,17 @@ test("server-only events are never part of the public ingestion allowlist", () =
     assert.equal(ALLOWED_EVENT_NAMES.has(name), false, `${name} must not be publicly ingestible — it must only ever be written by recordServerEvent()`);
   }
 });
+
+test("user-agent parsing: iPhones are iOS, not macOS; tablets and bots detected", async () => {
+  const { parseUserAgent, isBotUserAgent } = await import("../analyticsService.js");
+  const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+  assert.deepEqual(parseUserAgent(iphone), { deviceCategory: "mobile", browser: "safari", os: "ios" });
+  const ipad = "Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+  assert.equal(parseUserAgent(ipad).deviceCategory, "tablet");
+  const androidTablet = "Mozilla/5.0 (Linux; Android 13; SM-X700) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
+  assert.deepEqual(parseUserAgent(androidTablet), { deviceCategory: "tablet", browser: "chrome", os: "android" });
+  const chromeIos = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/126.0 Mobile/15E148 Safari/604.1";
+  assert.equal(parseUserAgent(chromeIos).browser, "chrome");
+  assert.equal(isBotUserAgent("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"), true);
+  assert.equal(isBotUserAgent(iphone), false);
+});

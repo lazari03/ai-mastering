@@ -117,6 +117,12 @@ services:
         NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
         NEXT_PUBLIC_PLAUSIBLE_DOMAIN: ${NEXT_PUBLIC_PLAUSIBLE_DOMAIN}
+        # Same TelemetryDeck app + salt as node-api — the browser sends
+        # page/product signals itself (frontend/src/lib/telemetryDeck.js) so
+        # TelemetryDeck sees the visitor's real country and device. The app
+        # ID is public by design (it ships in every client SDK).
+        NEXT_PUBLIC_TELEMETRYDECK_APP_ID: ${TELEMETRYDECK_APP_ID}
+        NEXT_PUBLIC_TELEMETRYDECK_SALT: ${TELEMETRYDECK_SALT}
     restart: unless-stopped
     depends_on:
       - node-api

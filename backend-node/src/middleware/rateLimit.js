@@ -9,7 +9,7 @@ import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 // "new" key on every request and bypass the limit entirely; the helper
 // normalizes to the subnet instead of the individual address.
 function keyByUidOrIp(req) {
-  return req.user?.uid || ipKeyGenerator(req.ip);
+  return req.user?.uid || ipKeyGenerator(req.clientIp || req.ip);
 }
 
 // Blunts basic request floods across the whole API — generous enough that
@@ -54,7 +54,7 @@ export const analyticsCollectLimiter = rateLimit({
   limit: 120,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => ipKeyGenerator(req.ip),
+  keyGenerator: (req) => ipKeyGenerator(req.clientIp || req.ip),
   message: { detail: "Too many analytics requests." },
 });
 
@@ -68,6 +68,6 @@ export const shareAccessLimiter = rateLimit({
   limit: 60,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => ipKeyGenerator(req.ip),
+  keyGenerator: (req) => ipKeyGenerator(req.clientIp || req.ip),
   message: { detail: "Too many requests for shared files — try again in a few minutes.", code: "rate_limited" },
 });

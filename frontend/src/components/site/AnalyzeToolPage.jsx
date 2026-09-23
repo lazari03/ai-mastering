@@ -1,4 +1,3 @@
-import ToolLandingAnalytics from "@/components/marketing/ToolLandingAnalytics";
 import PublicChordDetector from "@/components/audio/PublicChordDetector";
 import RelatedTools from "@/components/site/RelatedTools";
 import { Breadcrumbs, CtaBand, Faq, LinkList, PageHero, PageShell, Section, Steps, ToolFrame } from "@/components/site/Page";
@@ -91,7 +90,6 @@ export default function AnalyzeToolPage({
 }) {
   return (
     <PageShell>
-      {analyticsSlug ? <ToolLandingAnalytics slug={analyticsSlug} /> : null}
       {schemas.map((s, i) => (
         <JsonLd key={i} data={s} />
       ))}
@@ -102,6 +100,8 @@ export default function AnalyzeToolPage({
       <PageHero eyebrow={eyebrow} title={h1} lead={lead}>
         <div id="tool" className="grid scroll-mt-28 gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:items-start">
           <ToolFrame label={toolLabel} footer={`Free, no card. Supports ${SUPPORTED_FORMATS}.`}>
+            {/* PublicChordDetector fires free_tool_opened itself — the old
+                ToolLandingAnalytics beacon would double-count this page. */}
             <PublicChordDetector focus={focus} sourceTool={analyticsSlug ? analyticsSlug.replace(/-/g, "_") : "chord_detector"} />
           </ToolFrame>
           <ExampleResult focus={focus} />

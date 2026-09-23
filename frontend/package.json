@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@telemetrydeck/sdk": "^2.0.4",
     "firebase": "^12.17.1",
     "motion": "12.23.12",
     "next": "16.3.5",

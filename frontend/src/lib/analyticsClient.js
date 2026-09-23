@@ -1,5 +1,7 @@
 "use client";
 
+import { sendTelemetrySignal } from "./telemetryDeck";
+
 // ---------------------------------------------------------------------
 // First-party analytics client — the one place that talks to
 // /analytics/collect. No third-party SDK, no fingerprinting: a visitorId
@@ -240,6 +242,11 @@ function flush(useBeacon = false) {
     events,
   });
   sessionJustRotated = false;
+
+  const clientUser = uidRef || getVisitorId();
+  for (const evt of events) {
+    sendTelemetrySignal(evt.name, { props: evt.props, path: evt.path, clientUser, sessionId: session });
+  }
 
   try {
     if (useBeacon && navigator.sendBeacon) {

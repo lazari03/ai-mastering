@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { getAdminAnalytics } from "@/network/http/client";
 import { LoadingBlock } from "@/components/ui/Spinner";
+import { markInternalTraffic } from "@/lib/telemetryDeck";
 
 // The ONE frontend gate for the whole /admin/analytics surface — and it is
 // explicitly NOT the security boundary (spec section 15/35). It exists
@@ -28,7 +29,9 @@ export default function AdminAuthGate({ children }) {
     let cancelled = false;
     getAdminAnalytics("/me")
       .then(() => {
-        if (!cancelled) setStatus("authorized");
+        if (cancelled) return;
+        markInternalTraffic();
+        setStatus("authorized");
       })
       .catch((err) => {
         if (cancelled) return;
