@@ -76,7 +76,7 @@ export default function PrivacyPage() {
           Depending on where you live, you may have rights to access, correct, export, or delete your personal
           data, and to object to or restrict certain processing. We don&apos;t yet have a fully self-service
           tool for this — to exercise any of these rights today, email{" "}
-          <a href="mailto:studio@auralithforge.app" className="text-brass hover:text-ember">studio@auralithforge.app</a>{" "}
+          <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a>{" "}
           and we will action your request.
         </p>
       </section>
@@ -127,7 +127,7 @@ export default function PrivacyPage() {
         <h2>12. Contact</h2>
         <p>
           Questions about this Privacy Policy or your data? Email{" "}
-          <a href="mailto:studio@auralithforge.app" className="text-brass hover:text-ember">studio@auralithforge.app</a>.
+          <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a>.
         </p>
       </section>
     </LegalPage>

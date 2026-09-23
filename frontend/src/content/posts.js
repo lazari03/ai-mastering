@@ -27,6 +27,13 @@ export const POSTS = [
     captionKey: "gallery.img1.caption",
     datePublished: "2026-08-16",
     readingTime: "5 min read",
+    sections: [
+      { at: 0, id: "not-magic", title: "\"AI mastering\" is a DSP chain" },
+      { at: 1, id: "analysis-first", title: "Analysis comes before processing" },
+      { at: 2, id: "the-chain", title: "The processing chain, stage by stage" },
+      { at: 3, id: "transparency", title: "A good engine explains itself" },
+    ],
+    takeaway: "Adaptive mastering means the same genre target produces different moves on different mixes, because every stage is driven by measurements of your audio. If a tool can't show what it measured and changed, be sceptical.",
     paragraphs: [
       "\"AI mastering\" gets thrown around as a marketing term more often than it gets explained. Underneath the phrase, at least in a real engine, is a deterministic chain of digital signal processing (DSP) stages — the same categories of tools a human mastering engineer reaches for, applied automatically based on measurements taken from your actual audio.",
       "The chain typically starts with analysis, not processing: measuring integrated loudness (LUFS), spectral balance across frequency bands, dynamic range, and stereo width before a single sample is touched. Those measurements become the input to every stage that follows, which is what separates \"adaptive\" processing from a fixed preset — the same genre target produces different EQ moves on a bass-heavy mix than on a thin one.",
@@ -48,6 +55,13 @@ export const POSTS = [
     captionKey: "gallery.img2.caption",
     datePublished: "2026-08-16",
     readingTime: "4 min read",
+    sections: [
+      { at: 0, id: "different-job", title: "Mastering is not fader riding" },
+      { at: 1, id: "what-is-automated", title: "What actually gets automated" },
+      { at: 2, id: "stems", title: "Where stems move the line" },
+      { at: 3, id: "upshot", title: "The practical upshot" },
+    ],
+    takeaway: "AI mastering automates the measurement-to-decision step on a finished stereo mix — tonal balance, dynamics, width and loudness — not the balance decisions of a mix engineer.",
     paragraphs: [
       "A common misconception is that AI mastering tools are trying to replace a mixing engineer riding faders on individual tracks. They're not — that's a different job, working with individual stems and full session context. Mastering, automated or not, works on a finished two-track mix and makes bus-level decisions: overall tonal balance, dynamics, stereo image, and final loudness.",
       "What actually gets automated is the analysis-to-decision step that a human mastering engineer does by ear and experience: listening to a rough mix, deciding it's 2dB too dark above 8kHz for the target genre, deciding the low end needs a touch more control before it'll translate to club systems, and picking compression timing that suits the track's actual tempo rather than a generic setting. An adaptive engine does the same measurement-to-decision mapping, consistently, on every track, without fatigue.",
@@ -69,6 +83,13 @@ export const POSTS = [
     captionKey: "gallery.img3.caption",
     datePublished: "2026-08-16",
     readingTime: "4 min read",
+    sections: [
+      { at: 0, id: "consistency", title: "The consistency problem" },
+      { at: 1, id: "capture-the-chain", title: "Capture the chain as data" },
+      { at: 2, id: "in-practice", title: "What it looks like in practice" },
+      { at: 3, id: "recall-sheet", title: "A recall sheet that never drifts" },
+    ],
+    takeaway: "Consistency across an artist's catalog comes from reapplying the exact processing specification that worked, saved privately under the artist's name — not from a better generic preset.",
     paragraphs: [
       "A studio that masters one artist's catalog over months or years runs into a problem generic presets don't solve: consistency across releases. A \"streaming pop\" preset gets you in the right neighborhood for any pop track; it doesn't guarantee that this artist's next single sits next to their last one in a playlist without an audible tonal jump.",
       [

@@ -253,6 +253,13 @@ const DICT = {
   "login.termsLink": { en: "Terms & Conditions", sq: "Kushtet e Përdorimit" },
   "login.termsAnd": { en: "and", sq: "dhe" },
   "login.privacyLink": { en: "Privacy Policy", sq: "Politikën e Privatësisë" },
+  "login.forgot": { en: "Forgot password?", sq: "Harrove fjalëkalimin?" },
+  "login.reset": { en: "Reset your password", sq: "Rivendos fjalëkalimin" },
+  "login.resetIntro": { en: "Enter the email you signed up with and we'll send you a link to set a new password.", sq: "Shkruaj email-in me të cilin u regjistrove dhe do të të dërgojmë një lidhje për të vendosur një fjalëkalim të ri." },
+  "login.submitReset": { en: "Send reset link", sq: "Dërgo lidhjen" },
+  "login.resetSent": { en: "If an account exists for that email, a reset link is on its way. Check your inbox and spam folder — the link expires after an hour.", sq: "Nëse ekziston një llogari me atë email, lidhja po vjen. Kontrollo inbox-in dhe spam-in — lidhja skadon pas një ore." },
+  "login.backToSignin": { en: "Back to sign in", sq: "Kthehu te hyrja" },
+  "login.passwordResetDone": { en: "Password updated — sign in with your new password.", sq: "Fjalëkalimi u përditësua — hyr me fjalëkalimin e ri." },
   "login.sessionExpired": { en: "You were signed out after 24 hours of inactivity — sign in again to continue.", sq: "U çkyçe pas 24 orësh pa aktivitet — hyr sërish për të vazhduar." },
 
   "footer.legal.terms": { en: "Terms & Conditions", sq: "Kushtet e Përdorimit" },

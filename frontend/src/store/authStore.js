@@ -12,6 +12,7 @@ import {
   updatePassword,
   reauthenticateWithCredential,
   sendEmailVerification,
+  sendPasswordResetEmail,
   EmailAuthProvider,
   GoogleAuthProvider,
   getAdditionalUserInfo,
@@ -43,6 +44,7 @@ function readableAuthError(error) {
     "auth/weak-password": "Password needs to be at least 6 characters.",
     "auth/popup-closed-by-user": "Sign-in was cancelled.",
     "auth/network-request-failed": "Network error — check your connection and try again.",
+    "auth/too-many-requests": "Too many attempts — wait a few minutes and try again.",
   };
   return map[error?.code] || error?.message || "Something went wrong signing in.";
 }
@@ -185,6 +187,39 @@ export const useAuthStore = create((set) => ({
       set({ busy: false });
     } catch (error) {
       set({ busy: false, error: readableAuthError(error) });
+    }
+  },
+
+  // Password reset. Firebase emails a link to its hosted reset page, which
+  // sets the new password and returns here. Resolves true for "sent" and for
+  // "no such account" alike — the UI shows the same neutral confirmation
+  // either way, so the form can't be used to discover which emails exist.
+  async sendPasswordReset(email) {
+    if (!isFirebaseConfigured()) {
+      set({ error: NOT_CONFIGURED_MESSAGE });
+      return false;
+    }
+    set({ busy: true, error: "" });
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      try {
+        await sendPasswordResetEmail(getFirebaseAuth(), email, origin ? { url: `${origin}/login?reason=password_reset` } : undefined);
+      } catch (err) {
+        // The continue URL must be an authorized domain in Firebase; if this
+        // deployment's isn't, still send the email with Firebase's default.
+        if (err?.code !== "auth/unauthorized-continue-uri" && err?.code !== "auth/invalid-continue-uri") throw err;
+        await sendPasswordResetEmail(getFirebaseAuth(), email);
+      }
+      trackEvent("password_reset_requested");
+      set({ busy: false });
+      return true;
+    } catch (error) {
+      if (error?.code === "auth/user-not-found") {
+        set({ busy: false });
+        return true;
+      }
+      set({ busy: false, error: readableAuthError(error) });
+      return false;
     }
   },
 

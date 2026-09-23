@@ -258,9 +258,21 @@ select:focus-visible,
 
 .legal-prose h2 {
   margin: 0 0 0.6em;
-  font-size: 1.15rem;
+  font-family: var(--font-title), sans-serif;
+  font-size: 1.3rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
+  scroll-margin-top: 7rem;
+}
+.legal-prose ul {
+  list-style: disc;
+}
+.legal-prose a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  text-underline-offset: 3px;
 }
 
 .legal-prose p {

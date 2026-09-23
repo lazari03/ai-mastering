@@ -89,7 +89,7 @@ export default function TermsPage() {
         <p>
           If you believe content on the Service infringes your rights, or you&apos;ve received notice that content
           you uploaded is under dispute, contact{" "}
-          <a href="mailto:studio@auralithforge.app" className="text-brass hover:text-ember">studio@auralithforge.app</a>{" "}
+          <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a>{" "}
           with enough detail to identify the content and the rights in question.
         </p>
         <p>
@@ -128,7 +128,7 @@ export default function TermsPage() {
           separation; the All-Access plan raises it further and adds everything else in the studio. Current pricing
           is listed in the app (Settings → Billing) and may change;
           we&apos;ll show you the price before you pay, every time. Our{" "}
-          <a href="/refund" className="text-brass hover:text-ember">Refund Policy</a> applies to all purchases.
+          <a href="/refund">Refund Policy</a> applies to all purchases.
         </p>
         <p>
           Studio and All-Access subscriptions renew automatically each month until you cancel. You can cancel
@@ -196,7 +196,7 @@ export default function TermsPage() {
         <h2>15. Contact</h2>
         <p>
           Questions about these Terms? Email{" "}
-          <a href="mailto:studio@auralithforge.app" className="text-brass hover:text-ember">studio@auralithforge.app</a>.
+          <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a>.
         </p>
       </section>
     </LegalPage>

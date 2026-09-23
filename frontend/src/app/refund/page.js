@@ -38,14 +38,14 @@ export default function RefundPage() {
         <ul>
           <li>Requests made more than 14 days after the relevant charge;</li>
           <li>A period you've substantially used (see Section 2);</li>
-          <li>Charges resulting from a violation of our <a href="/terms" className="text-brass hover:text-ember">Terms &amp; Conditions</a>.</li>
+          <li>Charges resulting from a violation of our <a href="/terms">Terms &amp; Conditions</a>.</li>
         </ul>
       </section>
 
       <section>
         <h2>4. How to request a refund</h2>
         <p>
-          Email <a href="mailto:studio@auralithforge.app" className="text-brass hover:text-ember">studio@auralithforge.app</a>{" "}
+          Email <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a>{" "}
           with your account email and the date of the charge. We aim to respond within 5 business days. Refunds are
           processed back through Polar, our payment processor, to your original payment method.
         </p>

@@ -8,6 +8,7 @@ import { getSharedJobInfo, downloadFileSafely, getShareLinkInfo, downloadSharedF
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 import { trackEvent } from "@/lib/analytics";
+import StatePanel from "@/components/site/StatePanel";
 
 function formatExpiry(t, iso) {
   if (!iso) return null;
@@ -72,74 +73,86 @@ export default function SharedMasterClient({ jobId, token: legacyToken, fromFrag
   const remaining = info ? formatExpiry(t, info.expires_at) : null;
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-5 bg-[#0b0d10] px-6 text-center text-white">
-      <Link href="/" className="flex items-center gap-2">
-        <LogoMark size={26} />
-        <span className="font-[var(--font-title)] text-xs uppercase tracking-[0.18em] text-brass">Auralith Forge</span>
+    <main id="main" className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-16 text-center sm:px-6">
+      <Link href="/" className="flex items-center gap-2.5 text-text-primary">
+        <LogoMark size={20} />
+        <span className="text-[12px] font-semibold uppercase tracking-[0.22em]">
+          Auralith <span className="font-normal text-text-secondary">Forge</span>
+        </span>
       </Link>
 
       {error ? (
-        <>
-          <h1 className="m-0 font-[var(--font-title)] text-2xl">{t("shared.linkUnavailable")}</h1>
-          <p className="m-0 max-w-sm text-sm text-zinc-400">{error}</p>
-        </>
+        <StatePanel
+          tone="error"
+          title={t("shared.linkUnavailable")}
+          body={error}
+          headingLevel={1}
+          compact
+          actions={[
+            { href: "/", label: t("shared.masterYourOwn") },
+          ]}
+        />
       ) : !info ? (
         <LoadingBlock />
       ) : (
-        <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-black/20 p-6">
-          <p className="m-0 text-xs uppercase tracking-[0.14em] text-brass">{t("shared.sharedMaster")}</p>
-          <p className="mt-2 truncate text-lg font-semibold text-white">{info.filename}</p>
-          {info.before_lufs != null && info.after_lufs != null ? (
-            <p className="mt-1 text-xs text-zinc-500">
-              {info.before_lufs} → {info.after_lufs} LUFS
-            </p>
-          ) : null}
+        <div className="bezel w-full max-w-[420px]">
+          <div className="bezel-core p-6 text-left sm:p-7">
+            <p className="eyebrow m-0">{t("shared.sharedMaster")}</p>
+            <h1 className="mt-3 truncate font-[var(--font-title)] text-[22px] font-semibold tracking-[-0.02em] text-text-primary">{info.filename}</h1>
+            {info.before_lufs != null && info.after_lufs != null ? (
+              <p className="mt-1 font-mono text-[12px] text-text-secondary">
+                {info.before_lufs} → {info.after_lufs} LUFS
+              </p>
+            ) : null}
 
-          <button
-            type="button"
-            onClick={async () => {
-              setDownloadError("");
-              setDownloading(true);
-              try {
-                if (fromFragment) {
-                  await downloadSharedFile(token, info.filename || "mastered.wav");
-                } else {
-                  await downloadFileSafely(info.download_url, info.filename || "mastered.wav");
+            <button
+              type="button"
+              onClick={async () => {
+                setDownloadError("");
+                setDownloading(true);
+                try {
+                  if (fromFragment) {
+                    await downloadSharedFile(token, info.filename || "mastered.wav");
+                  } else {
+                    await downloadFileSafely(info.download_url, info.filename || "mastered.wav");
+                  }
+                  trackEvent("download_completed", { source: "shared_link" });
+                } catch (err) {
+                  setDownloadError(err?.code ? shareErrorText(t, err) : err?.message || t("shared.downloadFailed"));
+                } finally {
+                  setDownloading(false);
                 }
-                trackEvent("download_completed", { source: "shared_link" });
-              } catch (err) {
-                setDownloadError(err?.code ? shareErrorText(t, err) : err?.message || t("shared.downloadFailed"));
-              } finally {
-                setDownloading(false);
-              }
-            }}
-            disabled={downloading}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-ember px-5 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-[#100b08] transition hover:brightness-110 disabled:opacity-50"
-          >
-            {downloading ? (
-              <>
-                <Spinner size={14} /> {t("shared.downloading")}
-              </>
-            ) : (
-              t("shared.download")
-            )}
-          </button>
-          {downloadError ? <p className="mt-2 text-xs text-red-700">⚠ {downloadError}</p> : null}
+              }}
+              disabled={downloading}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-4 text-sm font-bold uppercase tracking-[0.14em] text-bg transition hover:opacity-85 disabled:opacity-60"
+            >
+              {downloading ? (
+                <>
+                  <Spinner size={14} /> {t("shared.downloading")}
+                </>
+              ) : (
+                t("shared.download")
+              )}
+            </button>
+            {downloadError ? (
+              <p role="alert" className="mt-3 rounded-xl border border-red-600/25 bg-red-600/[0.05] px-3 py-2 text-[13px] text-red-800">
+                {downloadError}
+              </p>
+            ) : null}
 
-          <p className="mt-3 text-[11px] text-zinc-500">
-            {remaining ? t("shared.expiresIn", { remaining }) : t("shared.aboutToExpire")}
-          </p>
-          {info.downloads_remaining != null ? (
-            <p className="mt-1 text-[11px] text-zinc-500">{t("shared.downloadsRemaining", { n: info.downloads_remaining })}</p>
-          ) : null}
+            <div className="mt-4 flex flex-wrap justify-between gap-2 border-t border-border-subtle pt-4 text-[12px] text-text-secondary">
+              <span>{remaining ? t("shared.expiresIn", { remaining }) : t("shared.aboutToExpire")}</span>
+              {info.downloads_remaining != null ? <span>{t("shared.downloadsRemaining", { n: info.downloads_remaining })}</span> : null}
+            </div>
+          </div>
         </div>
       )}
 
-      <p className="text-[11px] text-zinc-600">
-        <Link href="/" className="hover:text-zinc-400">
+      {!error ? (
+        <Link href="/" className="text-[13px] text-text-secondary transition hover:text-text-primary">
           {t("shared.masterYourOwn")}
         </Link>
-      </p>
+      ) : null}
     </main>
   );
 }

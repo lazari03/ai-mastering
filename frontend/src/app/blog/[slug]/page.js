@@ -1,9 +1,10 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
-import Footer from "@/components/Footer";
-import SiteHeader from "@/components/marketing/SiteHeader";
+import RelatedTools from "@/components/site/RelatedTools";
+import { Breadcrumbs, Callout, CtaBand, LinkList, PageShell } from "@/components/site/Page";
 import { POSTS, getPostBySlug } from "@/content/posts";
 import { GENRE_PAGES } from "@/content/genrePages";
 import { buildMetadata, articleJsonLd, JsonLd } from "@/lib/seo";
@@ -26,7 +27,7 @@ function ParagraphBody({ paragraph }) {
     typeof segment === "string" ? (
       segment
     ) : (
-      <Link key={idx} href={segment.href} className="text-text-primary underline decoration-accent/50 underline-offset-[3px] transition-colors hover:text-accent">
+      <Link key={idx} href={segment.href}>
         {segment.text}
       </Link>
     )
@@ -54,11 +55,11 @@ export default async function BlogPostPage({ params }) {
 
   const otherPosts = POSTS.filter((p) => p.slug !== post.slug);
   const relatedGenres = relatedGenresForPost(post.slug);
+  const sections = post.sections || [];
+  const sectionAt = Object.fromEntries(sections.map((s) => [s.at, s]));
 
   return (
-    <>
-    <main className="mx-auto w-full max-w-[820px] px-4 pb-24 pt-4 sm:px-6">
-      <SiteHeader />
+    <PageShell width="reading">
       <JsonLd
         data={articleJsonLd({
           title: post.title,
@@ -69,80 +70,101 @@ export default async function BlogPostPage({ params }) {
         })}
       />
 
-      <Link href="/blog" className="text-[13px] text-text-secondary transition-colors hover:text-text-primary">
-        ← All guides
-      </Link>
+      <Breadcrumbs items={[{ name: "Home", href: "/" }, { name: "Guides", href: "/blog" }, { name: post.title, href: `/blog/${post.slug}` }]} />
 
-      <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary">
-        {post.readingTime} · {post.datePublished}
-      </p>
-      <h1 className="mt-3 font-[var(--font-title)] text-[34px] font-semibold leading-[1.05] tracking-[-0.03em] text-text-primary sm:text-[46px]">{post.title}</h1>
-
-      <div className="relative mt-8 h-80 w-full overflow-hidden rounded-[1.5rem] ring-1 ring-inset ring-black/[0.06]">
-        {/* This is the article's LCP element — priority preloads it
-            instead of the default lazy behavior, which would otherwise
-            delay it behind everything else on the page. */}
-        <Image src={post.image} alt={post.title} fill sizes="(max-width: 760px) 100vw, 760px" priority className="object-cover" />
-      </div>
-
-      <div className="legal-prose mt-10 max-w-[68ch] space-y-5 text-[17px] leading-[1.7] text-text-secondary">
-        {post.paragraphs.map((p, idx) => (
-          <p key={idx} className="m-0"><ParagraphBody paragraph={p} /></p>
-        ))}
-      </div>
-
-      <div className="mt-12 rounded-[1.5rem] bg-black/[0.035] p-7 ring-1 ring-inset ring-black/[0.05]">
-        <p className="m-0 text-[17px] font-semibold text-text-primary">Want to hear this applied to your own track?</p>
-        <div className="mt-3 flex flex-wrap gap-2.5">
-          <Link
-            href={CTA.signup}
-            className="inline-block rounded-full bg-text-primary px-6 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-bg transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+      <article>
+        <header className="pt-4">
+          <p className="m-0 font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary">
+            {post.readingTime} · <time dateTime={post.datePublished}>{post.datePublished}</time>
+          </p>
+          <h1
+            className="mt-4 font-[var(--font-title)] text-[36px] font-semibold leading-[1.05] tracking-[-0.03em] text-text-primary sm:text-[48px]"
+            style={{ textWrap: "balance" }}
           >
-            Master a track free
-          </Link>
-          <Link
-            href={CTA.pricing}
-            className="inline-block rounded-full bg-black/[0.055] px-6 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-text-primary transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
-          >
-            Studio &amp; All-Access plans →
-          </Link>
-        </div>
-      </div>
+            {post.title}
+          </h1>
+          <p className="mt-5 text-[18px] leading-[1.6] text-text-secondary" style={{ textWrap: "pretty" }}>
+            {post.description}
+          </p>
+        </header>
 
-      {relatedGenres.length ? (
-        <div className="mt-8">
-          <p className="m-0 font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary">Related genre guides</p>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
-            {relatedGenres.map((g) => (
-              <Link key={g} href={`/master/${g}`} className="text-sm font-medium text-text-primary transition-colors hover:text-accent">
-                {GENRE_PAGES[g].label} mastering →
-              </Link>
-            ))}
-          </div>
+        <div className="relative mt-8 aspect-[16/9] w-full overflow-hidden rounded-[1.5rem] ring-1 ring-inset ring-black/[0.06]">
+          {/* This is the article's LCP element — priority preloads it
+              instead of the default lazy behavior, which would otherwise
+              delay it behind everything else on the page. */}
+          <Image src={post.image} alt={post.title} fill sizes="(max-width: 760px) 100vw, 760px" priority className="object-cover" />
         </div>
-      ) : null}
 
-      <div className="mt-8">
-        <p className="m-0 font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary">Also useful</p>
-        <Link href={CHORD_DETECTOR_URL} className="mt-2 block text-sm font-medium text-text-primary transition-colors hover:text-accent">
-          Know the chords before you master — try Chord Detector →
-        </Link>
-      </div>
+        {sections.length ? (
+          <nav aria-label="In this guide" className="mt-10 border-l-2 border-accent/60 pl-5">
+            <p className="m-0 text-[12px] font-semibold uppercase tracking-[0.14em] text-text-secondary">In this guide</p>
+            <ol className="m-0 mt-3 flex list-none flex-col gap-2 p-0">
+              {sections.map((s) => (
+                <li key={s.id}>
+                  <a href={`#${s.id}`} className="text-[15px] text-text-primary transition hover:text-accent">
+                    {s.title}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        ) : null}
+
+        <div className="af-prose mt-10">
+          {post.paragraphs.map((p, idx) => (
+            <Fragment key={idx}>
+              {sectionAt[idx] ? <h2 id={sectionAt[idx].id}>{sectionAt[idx].title}</h2> : null}
+              <p>
+                <ParagraphBody paragraph={p} />
+              </p>
+            </Fragment>
+          ))}
+          {post.takeaway ? <Callout title="Key takeaway">{post.takeaway}</Callout> : null}
+        </div>
+      </article>
+
+      <section className="mt-16 grid gap-10 border-t border-border-subtle pt-10 sm:grid-cols-2" aria-label="Related">
+        {relatedGenres.length ? (
+          <LinkList title="Related genre guides" links={relatedGenres.map((g) => ({ href: `/master/${g}`, label: `${GENRE_PAGES[g].label} mastering` }))} />
+        ) : null}
+        <LinkList
+          title="Also useful"
+          links={[
+            { href: CHORD_DETECTOR_URL, label: "Know the chords before you master — try Chord Detector" },
+            { href: "/mastering-loudness-targets", label: "Mastering loudness targets by genre" },
+          ]}
+        />
+      </section>
 
       {otherPosts.length ? (
-        <div className="mt-14 border-t border-black/[0.08] pt-8">
-          <p className="m-0 font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary">More guides</p>
-          <div className="mt-3 flex flex-col gap-2">
+        <section className="mt-16" aria-labelledby="more-guides">
+          <h2 id="more-guides" className="m-0 font-[var(--font-title)] text-[24px] font-semibold tracking-[-0.02em] text-text-primary sm:text-[28px]">
+            More guides
+          </h2>
+          <ul className="m-0 mt-6 grid list-none gap-3 p-0">
             {otherPosts.map((p) => (
-              <Link key={p.slug} href={`/blog/${p.slug}`} className="text-sm font-medium text-text-primary transition-colors hover:text-accent">
-                {p.title}
-              </Link>
+              <li key={p.slug}>
+                <Link
+                  href={`/blog/${p.slug}`}
+                  className="group block rounded-2xl border border-border-subtle bg-white/55 p-5 transition hover:border-text-primary/30 hover:bg-white"
+                >
+                  <span className="block text-[16px] font-semibold text-text-primary">{p.title}</span>
+                  <span className="mt-1.5 block text-[14px] leading-[1.55] text-text-secondary">{p.description}</span>
+                </Link>
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </section>
       ) : null}
-    </main>
-    <Footer />
-    </>
+
+      <RelatedTools keys={["adaptive-mastering", "lufs-meter", "chord-detector", "reference-mastering"]} />
+
+      <CtaBand
+        title="Want to hear this applied to your own track?"
+        body="3 full masters free, no card required."
+        primary={{ href: CTA.signup, label: "Master a track free" }}
+        secondary={{ href: CTA.pricing, label: "Studio & All-Access plans" }}
+      />
+    </PageShell>
   );
 }
