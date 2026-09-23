@@ -15,9 +15,9 @@ export const SUPPORTED_FORMATS = SUPPORTED_FORMATS_TEXT;
 function ExampleResult({ focus }) {
   const chords = ["Bm", "G", "D", "A", "Bm", "G", "D", "A"];
   const cell = (label, value, big) => (
-    <div className="rounded-xl border border-border-subtle bg-white/60 p-4">
+    <div className="min-w-0 rounded-xl border border-border-subtle bg-white/60 p-4">
       <p className="m-0 text-[11px] uppercase tracking-[0.14em] text-text-secondary">{label}</p>
-      <p className={`m-0 mt-1 font-[var(--font-title)] font-semibold tracking-[-0.02em] text-text-primary ${big ? "text-4xl" : "text-2xl"}`}>{value}</p>
+      <p className={`m-0 mt-1 font-[var(--font-title)] font-semibold tracking-[-0.02em] text-text-primary ${big ? "text-3xl sm:text-4xl" : "text-2xl"}`}>{value}</p>
     </div>
   );
   return (

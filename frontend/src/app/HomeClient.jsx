@@ -132,7 +132,7 @@ export default function HomeClient() {
           }}
         />
 
-        <div className="relative mx-auto grid max-w-[1280px] gap-14 lg:grid-cols-[0.92fr_1fr] lg:items-center lg:gap-20">
+        <div className="relative mx-auto grid max-w-[1280px] grid-cols-1 gap-14 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1fr)] lg:items-center lg:gap-20 [&>*]:min-w-0">
           <div>
             <p className="eyebrow m-0 text-dark-text-secondary">{t("hero.eyebrow")}</p>
 
@@ -242,7 +242,7 @@ export default function HomeClient() {
       </section>
 
       <section id="how-it-listens" className="reveal mt-24 scroll-mt-28">
-        <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16 [&>*]:min-w-0">
           <div>
             <p className="eyebrow m-0">{t("listens.eyebrow")}</p>
             <h2 className="mt-4 font-[var(--font-title)] text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] text-text-primary sm:text-[44px]" style={{ textWrap: "balance" }}>

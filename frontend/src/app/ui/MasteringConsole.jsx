@@ -283,7 +283,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
     `rounded-xl border px-3.5 py-2 text-xs font-semibold capitalize transition ${active ? (tone === "brass" ? CHIP_BRASS : CHIP_EMBER) : `${CHIP_BASE} hover:border-text-primary/30`}`;
 
   return (
-    <div className="mx-auto grid w-full max-w-[1280px] items-start gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+    <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] [&>*]:min-w-0">
       <div>
         <h1 className="m-0 text-[26px]">{t("console.title")}</h1>
         <p className="mt-2 text-sm text-text-secondary">{t("console.subtitle")}</p>

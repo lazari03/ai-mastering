@@ -65,7 +65,7 @@ export default function HomePanel({ onNavigate }) {
       <h1 className="m-0 text-2xl font-semibold text-text-primary sm:text-3xl">{t("app.home.title")}</h1>
       <p className="mt-1.5 text-sm text-text-secondary">{t("app.home.subtitle")}</p>
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr]">
+      <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] [&>*]:min-w-0">
         {/* Real drag-and-drop, wired into the same masteringStore the
             Mastering tab reads from — dropping a file here and landing on
             Mastering shows it already loaded, not a dead-end upload box. */}

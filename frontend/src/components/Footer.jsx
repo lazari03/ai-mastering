@@ -51,7 +51,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 py-12 md:grid-cols-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr_0.9fr]">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 py-12 md:grid-cols-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)] [&>*]:min-w-0">
           <div className="col-span-2 md:col-span-3 lg:col-span-1">
             <Link href="/" className="flex items-center gap-2.5 text-text-primary">
               <LogoMark size={20} />
