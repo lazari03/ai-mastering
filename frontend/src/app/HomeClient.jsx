@@ -16,6 +16,7 @@ import { BEFORE_AFTER_DEMOS } from "@/lib/beforeAfterDemos";
 import BeforeAfterPlayer from "@/components/marketing/BeforeAfterPlayer";
 import GenreShowcase from "@/components/marketing/GenreShowcase";
 import SectionHeading from "@/components/marketing/SectionHeading";
+import HeroQuickTry from "@/components/marketing/HeroQuickTry";
 import MasteringDecisions from "@/components/audio/MasteringDecisions";
 import LoudnessMeter from "@/components/audio/LoudnessMeter";
 import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
@@ -153,34 +154,11 @@ export default function HomeClient() {
               {t("hero.body")}
             </p>
 
-            <div className="mt-9 flex flex-wrap items-center gap-5">
-              <Link
-                href={CTA.signup}
-                onClick={() => handleCtaClick("master_a_track_free", "homepage_hero")}
-                className="group flex items-center gap-3 rounded-full bg-dark-text-primary py-2 pl-7 pr-2 text-sm font-semibold text-dark-bg transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
-              >
-                {t("hero.ctaPrimary")}
-                <span
-                  aria-hidden="true"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-dark-bg/10 text-base transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px group-hover:scale-105"
-                >
-                  ↗
-                </span>
-              </Link>
-              <a
-                href="#demo"
-                className="group inline-flex items-center gap-2 text-sm font-medium text-dark-text-primary transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:text-accent"
-              >
-                {t("hero.ctaSecondary")}
-                <span
-                  aria-hidden="true"
-                  className="transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-1"
-                >
-                  →
-                </span>
-              </a>
-            </div>
-            <p className="m-0 mt-4 text-xs text-dark-text-secondary">{t("hero.ctaReassurance")}</p>
+            {/* The try panel replaces the old "Master a Track Free" button
+                row: a signup link as the first action meant 4 in 5 engaged
+                visitors never tried anything. Upload and the sample run
+                with no account; signup stays one line below it. */}
+            <HeroQuickTry />
 
             {/* Analyze → Correct → Preserve → Verify: what the engine does,
                 instead of spec counts (presets, engines) in the hero. */}
@@ -208,7 +186,7 @@ export default function HomeClient() {
             // layering, so the band simply contains it now. Keeping it
             // in flow also means no magic numbers to retune whenever
             // the hero copy changes length.
-            <div className="bezel bezel-on-dark relative z-10">
+            <div id="hero-player" className="bezel bezel-on-dark relative z-10 scroll-mt-28">
               <div className="bezel-core p-3 sm:p-4">
                 <BeforeAfterPlayer large {...BEFORE_AFTER_DEMOS[0]} />
                 {/* Real numbers from this demo's own master (content/demoMaster.js),
