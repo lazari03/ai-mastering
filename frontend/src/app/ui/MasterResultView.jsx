@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 
 import ProcessingSummary from "@/components/audio/ProcessingSummary";
 import MasteringDecisions from "@/components/audio/MasteringDecisions";
@@ -13,16 +12,7 @@ import { shortenFilename } from "@/lib/format";
 import { LoadingBlock } from "@/components/ui/Spinner";
 import { trackEvent } from "@/lib/analytics";
 import InlineAlert from "@/components/ui/InlineAlert";
-
-// three.js + its postprocessing passes are real weight (~250KB+) that only
-// matters once someone actually finishes a master — dynamic + ssr:false
-// keeps it out of the initial /app bundle (and out of any server render,
-// since it touches window/AudioContext/WebGL) for the common case of just
-// uploading/configuring on the Master tab.
-const WebGLMasterPreview = dynamic(() => import("@/components/audio/WebGLMasterPreview"), {
-  ssr: false,
-  loading: () => <div className="h-64 w-full animate-pulse rounded-2xl border border-border-subtle bg-black/[0.04] sm:h-80" />,
-});
+import ABMasterPlayer from "@/components/audio/ABMasterPlayer";
 
 /**
  * The dedicated post-mastering view — reached at /app?job=:jobId (a
@@ -49,7 +39,6 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
   const [urls, setUrls] = useState(null); // { originalUrl, masteredUrl }
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [previewMode, setPreviewMode] = useState("after");
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
 
@@ -59,7 +48,6 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
     setUrls(null);
     setLoadError("");
     setLoading(true);
-    setPreviewMode("after");
 
     getJobDetail(jobId)
       .then(async (detail) => {
@@ -118,20 +106,16 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
   const applied = job.processing_applied || {};
   const target = job.target_profile_used || {};
   const abMatch = job.ab_gain_match || {};
-  // Both loudness-match gains are handed to the player at once now, not
-  // just whichever one's currently selected — WebGLMasterPreview keeps
-  // both the original and mastered audio loaded and playing in lockstep,
-  // and Before/After just ramps one's gain up and the other's down
-  // in-place (no reload, no lost position, no dropped play state — that's
-  // what actually makes it possible to hear what changed instead of
-  // restarting from 0 on every toggle).
+  // Both loudness-match gains go to the player at once — ABMasterPlayer
+  // plays both versions in sync and Before/After is a gain crossfade, so
+  // neither side sounds "better" just because it's louder.
   const beforeGainDb = abMatch.before_gain_db || 0;
   const afterGainDb = abMatch.after_gain_db || 0;
   // toAuthedDownloadUrl always returns a non-empty string (it just signs a
   // URL, it never checks the resource actually exists), so a plain ||
   // fallback here could never catch a previewUrl that 404s — only a
   // genuinely missing field. The real fallback happens at the player
-  // itself (see WebGLMasterPreview's afterFallbackSrc/onError): if the
+  // itself (see ABMasterPlayer's afterFallbackSrc): if the
   // 16-bit preview copy 404s (an older job, or a rare failed transcode —
   // the backend now regenerates it lazily, but this covers the rest), the
   // player swaps to masteredUrl automatically instead of "After" just
@@ -139,6 +123,16 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
   const afterSrc = urls ? urls.previewUrl || urls.masteredUrl : null;
   const afterFallbackSrc = urls ? urls.masteredUrl : null;
   const beforeSrc = urls ? urls.originalUrl : null;
+
+  // Real before/after measurements from this job, when the engine recorded them.
+  const num = (v) => (Number.isFinite(v) ? v.toFixed(1) : null);
+  const stats = [
+    { label: t("hero.demo.loudness"), before: num(job.before_lufs ?? job.analysis_before?.integrated_lufs), after: num(job.after_lufs ?? job.analysis_after?.integrated_lufs), unit: "LUFS" },
+    { label: t("hero.demo.truePeak"), before: num(job.analysis_before?.true_peak_db), after: num(job.analysis_after?.true_peak_db), unit: "dBTP" },
+    { label: t("lufsMeter.rangeLabel"), before: num(job.analysis_before?.loudness_range_lu), after: num(job.analysis_after?.loudness_range_lu), unit: "LU" },
+  ]
+    .filter((s) => s.before !== null && s.after !== null)
+    .map((s) => ({ ...s, value: `${s.before} → ${s.after}` }));
 
   const handleDownload = async () => {
     if (!urls) return;
@@ -219,81 +213,74 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
         </div>
       </div>
 
-      <div className="glass-panel rounded-[20px] p-4 sm:p-[22px]">
-        <div className="mb-4 flex items-center justify-center gap-1 rounded-full border border-border-subtle bg-black/[0.045] p-1">
-          <button
-            type="button"
-            aria-pressed={previewMode === "before"}
-            onClick={() => {
-              setPreviewMode("before");
-              trackEvent("original_played", { source: "result_view" });
-            }}
-            className={`flex-1 rounded-full px-4 py-2 text-xs uppercase tracking-[0.1em] transition ${
-              previewMode === "before" ? "bg-black/[0.05] text-text-primary" : "text-text-secondary hover:text-text-secondary"
-            }`}
-          >
-            {t("result.before")}
-          </button>
-          <button
-            type="button"
-            aria-pressed={previewMode === "after"}
-            onClick={() => {
-              setPreviewMode("after");
-              trackEvent("mastered_played", { source: "result_view" });
-            }}
-            className={`flex-1 rounded-full px-4 py-2 text-xs uppercase tracking-[0.1em] transition ${
-              previewMode === "after" ? "bg-accent text-black" : "text-text-secondary hover:text-text-secondary"
-            }`}
-          >
-            {t("result.after")}
-          </button>
-        </div>
-
+      <div className="glass-panel rounded-[20px] p-3 sm:p-4">
         {beforeSrc && afterSrc ? (
-          <WebGLMasterPreview
+          <ABMasterPlayer
             beforeSrc={beforeSrc}
             afterSrc={afterSrc}
             afterFallbackSrc={afterFallbackSrc}
             beforeGainDb={beforeGainDb}
             afterGainDb={afterGainDb}
-            mode={previewMode}
+            beforeLabel={t("result.before")}
+            afterLabel={t("result.after")}
+            preparingLabel={t("result.preparingAb")}
+            onModeChange={(m) => trackEvent(m === "before" ? "original_played" : "mastered_played", { source: "result_view" })}
           />
+        ) : null}
+
+        {stats.length ? (
+          <dl className="m-0 mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {stats.map((stat) => (
+              <div key={stat.label} className="rounded-xl bg-black/[0.03] px-4 py-3">
+                <dt className="text-[10px] uppercase tracking-[0.14em] text-text-secondary">{stat.label}</dt>
+                <dd className="m-0 mt-1 font-mono text-[13px] text-text-primary">
+                  {stat.value}
+                  <span className="text-text-secondary"> {stat.unit}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
         ) : null}
 
         {/* Full-width stacked on mobile (easier to tap, no cramped
             3-buttons-squeezed-into-one-row), a flexible row from sm: up —
             replaces a fixed min-w-[200px] that used to force wrapping at
             arbitrary widths regardless of the actual viewport. */}
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <button
             type="button"
             onClick={handleDownload}
             disabled={downloading || !urls}
-            className="inline-flex w-full justify-center rounded-lg border border-border-subtle bg-black/[0.05] px-4 py-3 text-xs uppercase tracking-[0.1em] text-accent hover:bg-black/[0.06] disabled:opacity-50 sm:w-auto sm:flex-1 sm:min-w-[180px]"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-text-primary px-6 py-3 text-[13px] font-semibold text-bg transition-transform duration-200 active:scale-[0.98] disabled:opacity-50 sm:w-auto"
           >
+            <span aria-hidden="true">↓</span>
             {downloading ? t("console.downloading") : t("console.downloadMaster")}
+            {job.output_format ? <span className="font-mono text-[11px] uppercase opacity-60">{job.output_format}</span> : null}
           </button>
-          <button
-            type="button"
-            onClick={handleMasterAnother}
-            className="inline-flex w-full justify-center rounded-lg border border-border-subtle bg-black/[0.045] px-4 py-3 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
-          >
-            {t("result.masterAnother")}
-          </button>
-          <button
-            type="button"
-            onClick={onViewAllMasters}
-            className="inline-flex w-full justify-center rounded-lg border border-border-subtle bg-black/[0.045] px-4 py-3 text-xs uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30 sm:w-auto sm:flex-1 sm:min-w-[180px]"
-          >
-            {t("result.viewAllMasters")}
-          </button>
+          <div className="flex gap-2 sm:ml-auto">
+            <button
+              type="button"
+              onClick={handleMasterAnother}
+              className="flex-1 rounded-full px-5 py-3 text-[13px] font-medium text-text-primary ring-1 ring-inset ring-black/[0.1] transition hover:bg-black/[0.04] sm:flex-none"
+            >
+              {t("result.masterAnother")}
+            </button>
+            <button
+              type="button"
+              onClick={onViewAllMasters}
+              className="flex-1 rounded-full px-5 py-3 text-[13px] font-medium text-text-secondary transition hover:bg-black/[0.04] hover:text-text-primary sm:flex-none"
+            >
+              {t("result.viewAllMasters")}
+            </button>
+          </div>
         </div>
         {downloadError ? <InlineAlert size="xs" className="mt-2">{downloadError}</InlineAlert> : null}
 
         {(job.source_warnings || []).map((warning) => (
-          <div key={warning} className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-900">
-            ⚠ {warning}
-          </div>
+          <p key={warning} className="m-0 mt-3 flex gap-2.5 rounded-xl bg-amber-400/[0.08] px-4 py-3 text-[12px] leading-relaxed text-amber-900">
+            <span aria-hidden="true" className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+            {warning}
+          </p>
         ))}
       </div>
 

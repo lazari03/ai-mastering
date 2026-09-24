@@ -807,6 +807,7 @@ const DICT = {
   "result.title": { en: "Your master is ready", sq: "Masteri yt është gati" },
   "result.before": { en: "Before", sq: "Para" },
   "result.after": { en: "After", sq: "Pas" },
+  "result.preparingAb": { en: "preparing instant A/B…", sq: "duke përgatitur A/B të menjëhershëm…" },
   "result.masterAnother": { en: "Master Another Track", sq: "Masterizo një Gjurmë Tjetër" },
   "result.viewAllMasters": { en: "View All My Masters", sq: "Shiko të Gjitha Masterat e Mia" },
   "decisions.title": { en: "What Auralith changed", sq: "Çfarë ndryshoi Auralith" },

@@ -14,7 +14,7 @@ import { useEffect, useRef } from "react";
 // the close and reuse the graph (resume() keeps running against the
 // still-open context) instead of crashing either way; a real unmount
 // lets the deferred close fire and release the AudioContext. Same
-// pattern as WebGLMasterPreview.jsx.
+// pattern as ABMasterPlayer.jsx.
 const audioGraphs = new WeakMap();
 
 export default function SignalVisualizer({ src, className = "", barColor = "#e85d2a", gainDb = 0 }) {
