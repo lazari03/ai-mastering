@@ -36,3 +36,9 @@ export function shortenFilename(name, maxLength = 42) {
   const tail = tailLen > 0 ? base.slice(base.length - tailLen) : "";
   return `${head}…${tail}${ext}`;
 }
+
+// Bytes → megabytes for upload progress ("12.4"), one decimal below 100 MB.
+export function formatMb(bytes) {
+  const mb = (bytes || 0) / (1024 * 1024);
+  return mb >= 100 ? String(Math.round(mb)) : mb.toFixed(1);
+}

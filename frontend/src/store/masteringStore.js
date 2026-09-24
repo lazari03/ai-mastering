@@ -66,6 +66,10 @@ const PREVIEW_DEBOUNCE_MS = 350;
 export const useMasteringStore = create((set, get) => ({
   isBootstrapping: true,
   isSubmitting: false,
+  // { loaded, total, done } bytes while the master request is uploading —
+  // real transfer progress for the wait screen; null once the server has
+  // the file (or when nothing is uploading).
+  uploadProgress: null,
   isImportingPreset: false,
   error: "",
   status: "",
@@ -591,6 +595,7 @@ export const useMasteringStore = create((set, get) => ({
 
     set({
       isSubmitting: true,
+      uploadProgress: { loaded: 0, total: 0, done: false },
       status: preview ? "Rendering preview..." : "Analyzing and mastering...",
       error: "",
       result: null,
@@ -629,10 +634,12 @@ export const useMasteringStore = create((set, get) => ({
         category: !preview && !usingSavedPreset && !useProProcessing ? state.selectedCategory || null : null,
         flavour: !preview && !usingSavedPreset && !useProProcessing ? state.selectedFlavour || null : null,
         preview,
+        onUploadProgress: (progress) => set({ uploadProgress: progress.done ? null : progress }),
       });
 
       set({
         isSubmitting: false,
+        uploadProgress: null,
         status: preview ? "Preview ready." : "Mastering complete.",
         result: response,
       });
@@ -658,6 +665,7 @@ export const useMasteringStore = create((set, get) => ({
     } catch (err) {
       set({
         isSubmitting: false,
+        uploadProgress: null,
         status: "",
         error: err.message || "Mastering failed",
       });

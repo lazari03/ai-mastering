@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { postAnalyzeChords } from "@/network/http/client";
+import { uploadStatusText } from "@/lib/uploadProgress";
 import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
@@ -40,6 +41,7 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
   // to in that case, same as any other result with no file/previewUrl.
   const [analysis, setAnalysis] = useState(initialAnalysis);
   const [isLoading, setIsLoading] = useState(false);
+  const [upload, setUpload] = useState(null);
   const [error, setError] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
   const audioRef = useRef(null);
@@ -53,7 +55,7 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const result = await postAnalyzeChords(formData);
+      const result = await postAnalyzeChords(formData, { onUploadProgress: setUpload });
       setAnalysis(result);
       // Only fired when onAnalysisResult is set — that's PublicChordDetector's
       // signal that this run happened on the public, logged-out-friendly
@@ -70,6 +72,7 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
       setError(err?.message || t("chordDetector.failed"));
     } finally {
       setIsLoading(false);
+      setUpload(null);
     }
   };
 
@@ -106,7 +109,7 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
       >
         {isLoading ? (
           <>
-            <Spinner size={15} /> {t("chordDetector.analyzing")}
+            <Spinner size={15} /> {uploadStatusText(t, upload, t("chordDetector.analyzing"))}
           </>
         ) : (
           t(focus === "key" ? "chordDetector.detectKey" : focus === "bpm" ? "chordDetector.detectBpm" : "chordDetector.detect")

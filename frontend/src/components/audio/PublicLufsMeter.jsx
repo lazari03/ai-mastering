@@ -11,6 +11,7 @@ import { useMasteringStore } from "@/store/masteringStore";
 import { postAnalyzeAudio } from "@/network/http/client";
 import { stashPendingToolFile } from "@/lib/toolHandoff";
 import { trackEvent } from "@/lib/analytics";
+import { uploadStatusText } from "@/lib/uploadProgress";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
@@ -32,6 +33,7 @@ export default function PublicLufsMeter() {
   const [file, setFile] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [upload, setUpload] = useState(null);
   const [error, setError] = useState("");
   const [showGate, setShowGate] = useState(false);
 
@@ -51,13 +53,14 @@ export default function PublicLufsMeter() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await postAnalyzeAudio(formData);
+      const response = await postAnalyzeAudio(formData, { onUploadProgress: setUpload });
       setAnalysis(response.analysis);
       trackEvent("free_tool_analysis_completed", { source_tool: "lufs_meter" });
     } catch (err) {
       setError(err?.message || t("lufsMeter.failed"));
     } finally {
       setIsLoading(false);
+      setUpload(null);
     }
   };
 
@@ -96,7 +99,7 @@ export default function PublicLufsMeter() {
       >
         {isLoading ? (
           <>
-            <Spinner size={15} /> {t("lufsMeter.analyzing")}
+            <Spinner size={15} /> {uploadStatusText(t, upload, t("lufsMeter.analyzing"))}
           </>
         ) : (
           t("lufsMeter.measure")

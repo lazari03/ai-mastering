@@ -111,7 +111,7 @@ export default function HomeClient() {
           as a panel, rather than teaching every meter and track colour
           (several are hardcoded bg-black/NN overlays, not tokens) to
           invert for a dark backdrop. */}
-      <section id="demo" className="reveal relative -mx-4 scroll-mt-28 px-4 pb-20 pt-12 sm:-mx-6 sm:px-6 sm:pb-[4.5rem] sm:pt-16">
+      <section id="demo" className="reveal relative -mx-4 scroll-mt-28 px-4 pb-20 pt-8 sm:-mx-6 sm:px-6 sm:pb-[4.5rem] sm:pt-16">
         {/* The band starts far above this section's own top edge so it
             runs up behind the floating nav island to the top of the
             page. A cream strip holding the nav, with the black starting
@@ -143,14 +143,14 @@ export default function HomeClient() {
                 fold. A hero that looks impressive and buries its own
                 call to action is a worse hero. */}
             <h1
-              className="m-0 mt-7 font-[var(--font-title)] text-[clamp(2.5rem,5vw,4.25rem)] font-semibold leading-[0.98] tracking-[-0.035em] text-dark-text-primary"
+              className="m-0 mt-5 font-[var(--font-title)] text-[clamp(2.25rem,5vw,4.25rem)] sm:mt-7 font-semibold leading-[0.98] tracking-[-0.035em] text-dark-text-primary"
               style={{ textWrap: "balance" }}
             >
               {t("hero.title1")}
               <span className="block text-dark-text-primary/50">{t("hero.title2")}</span>
             </h1>
 
-            <p className="mt-7 max-w-[50ch] text-[17px] leading-[1.6] text-dark-text-secondary" style={{ textWrap: "pretty" }}>
+            <p className="mt-5 max-w-[50ch] text-[15px] leading-[1.55] text-dark-text-secondary sm:mt-7 sm:text-[17px] sm:leading-[1.6]" style={{ textWrap: "pretty" }}>
               {t("hero.body")}
             </p>
 

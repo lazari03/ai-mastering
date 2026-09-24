@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 
+import SendToDesktop from "@/components/ui/SendToDesktop";
+import { useCoarsePointer } from "@/lib/useCoarsePointer";
+
 // Explicit extensions alongside the wildcard, not "audio/*" alone — the
 // bare MIME wildcard is exactly what made .mp3 files unselectable
 // (greyed out) in some OS file pickers: the picker filters on the OS's
@@ -33,6 +36,11 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
   const [dragDepth, setDragDepth] = useState(0);
   const dragging = dragDepth > 0;
   const [rejected, setRejected] = useState("");
+  // Phones: no drag-and-drop, "click" is a tap, and the file is often not
+  // on the device at all — the copy and help below follow that.
+  const touch = useCoarsePointer();
+  // Only read once `touch` is true, i.e. after mount — navigator exists.
+  const ios = touch && /iPhone|iPad|iPod/.test(navigator.userAgent || "");
 
   // Every selection (picker or drop) goes through here: unsupported files
   // are stopped with an explanation instead of reaching the caller.
@@ -119,7 +127,13 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
               {selected ? "✓" : "↑"}
             </span>
             <span className="text-[13px] font-semibold text-text-primary">
-              {dragging ? "Drop it here" : selected ? "Selected — click to replace" : "Drop an audio file, or click to browse"}
+              {dragging
+                ? "Drop it here"
+                : selected
+                  ? `Selected — ${touch ? "tap" : "click"} to replace`
+                  : touch
+                    ? "Tap to choose an audio file"
+                    : "Drop an audio file, or click to browse"}
             </span>
             <span className="break-all text-xs text-text-secondary">{fileName || "No file selected"}</span>
           </label>
@@ -134,6 +148,16 @@ export default function FileDropzone({ id, label, fileName, onChange, onRemove, 
           ) : null}
         </div>
       )}
+      {touch && !compact && !selected ? (
+        <div className="mt-4 flex flex-col items-center gap-2 border-t border-border-subtle pt-4">
+          {ios ? (
+            <p className="m-0 max-w-[36ch] text-[11px] leading-relaxed text-text-secondary">
+              Recorded in Voice Memos? Tap Share → Save to Files, then choose it here.
+            </p>
+          ) : null}
+          <SendToDesktop />
+        </div>
+      ) : null}
       {rejected ? (
         <p role="alert" className="mx-auto mt-3 max-w-[46ch] rounded-xl border border-red-600/25 bg-red-600/[0.05] px-3 py-2 text-left text-xs leading-relaxed text-red-800">
           <strong className="font-semibold">{rejected}</strong> isn&apos;t an audio file we can read. Use WAV, AIFF, FLAC, MP3, M4A, AAC, OGG,

@@ -43,9 +43,11 @@ export default function CookieBanner() {
   if (consent) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border-subtle bg-bg px-4 py-4 sm:px-6">
-      <div className="mx-auto flex max-w-4xl flex-col items-center gap-3 sm:flex-row sm:justify-between">
-        <p className="m-0 text-xs text-text-secondary sm:text-sm">
+    // One compact row on phones: stacked, it took ~190px of a 660px
+    // viewport and sat right on top of the homepage's upload panel.
+    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border-subtle bg-bg px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-2.5 sm:px-6 sm:py-4">
+      <div className="mx-auto flex max-w-4xl flex-row items-center justify-between gap-3">
+        <p className="m-0 text-[11px] leading-snug text-text-secondary sm:text-sm">
           {t("cookie.body")}{" "}
           <Link href="/privacy" className="text-text-primary underline decoration-border-subtle underline-offset-4 hover:text-accent">
             {t("cookie.privacyLink")}
@@ -56,14 +58,14 @@ export default function CookieBanner() {
           <button
             type="button"
             onClick={() => choose("declined")}
-            className="rounded-full border border-border-subtle px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/40"
+            className="rounded-full border border-border-subtle px-3 py-2 text-[11px] sm:px-4 font-semibold uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/40"
           >
             {t("cookie.decline")}
           </button>
           <button
             type="button"
             onClick={() => choose("accepted")}
-            className="rounded-full bg-text-primary px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-bg hover:opacity-85"
+            className="rounded-full bg-text-primary px-3 py-2 text-[11px] sm:px-4 font-semibold uppercase tracking-[0.1em] text-bg hover:opacity-85"
           >
             {t("cookie.accept")}
           </button>

@@ -13,6 +13,7 @@ import { useMasteringStore } from "@/store/masteringStore";
 import { postAnalyzeAudio } from "@/network/http/client";
 import { stashPendingToolFile } from "@/lib/toolHandoff";
 import { trackEvent } from "@/lib/analytics";
+import { uploadStatusText } from "@/lib/uploadProgress";
 import { CTA } from "@/lib/internalLinks";
 import { useLanguage } from "@/lib/i18n";
 import { DEMO_MASTER } from "@/content/demoMaster";
@@ -44,6 +45,7 @@ export default function HeroQuickTry() {
   const [input, setInput] = useState(null); // "upload" | "sample"
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [upload, setUpload] = useState(null);
   const [error, setError] = useState("");
   const [showGate, setShowGate] = useState(false);
   // A file dropped while the sample is still analyzing must win — only the
@@ -61,14 +63,19 @@ export default function HeroQuickTry() {
       await useAuthStore.getState().ensureAnonymous();
       const formData = new FormData();
       formData.append("file", nextFile);
-      const response = await postAnalyzeAudio(formData);
+      const response = await postAnalyzeAudio(formData, {
+        onUploadProgress: (p) => runId === latestRun.current && setUpload(p),
+      });
       if (runId !== latestRun.current) return;
       setAnalysis(response.analysis);
       trackEvent("free_tool_analysis_completed", { source_tool: "homepage_hero", input: source });
     } catch (err) {
       if (runId === latestRun.current) setError(err?.message || t("lufsMeter.failed"));
     } finally {
-      if (runId === latestRun.current) setIsLoading(false);
+      if (runId === latestRun.current) {
+        setIsLoading(false);
+        setUpload(null);
+      }
     }
   };
 
@@ -109,7 +116,7 @@ export default function HeroQuickTry() {
   };
 
   return (
-    <div className="bezel bezel-on-dark relative z-10 mt-9 max-w-[560px]">
+    <div className="bezel bezel-on-dark relative z-10 mt-7 max-w-[560px] sm:mt-9">
       <div className="bezel-core p-4 sm:p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <p className="m-0 text-[15px] font-semibold text-text-primary">{t("heroTry.title")}</p>
@@ -128,7 +135,7 @@ export default function HeroQuickTry() {
           </button>
           {isLoading ? (
             <span className="inline-flex items-center gap-2 text-[12px] text-text-secondary" role="status">
-              <Spinner size={13} /> {t("lufsMeter.analyzing")}
+              <Spinner size={13} /> {uploadStatusText(t, upload, t("lufsMeter.analyzing"))}
             </span>
           ) : (
             <span className="text-[12px] text-text-secondary">{t("heroTry.hint")}</span>

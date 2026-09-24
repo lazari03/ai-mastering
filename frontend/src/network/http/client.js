@@ -16,16 +16,52 @@ async function authHeader(forceRefresh = false) {
   return { Authorization: `Bearer ${token}` };
 }
 
+// fetch() can't report upload progress, and on a phone a large WAV can
+// spend minutes uploading behind what looks like a frozen spinner. When a
+// caller passes onUploadProgress, the request goes over XHR instead and
+// resolves to a real Response, so everything downstream is unchanged.
+function xhrFetch(url, { method = "GET", headers = {}, body, signal, onUploadProgress }) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, url);
+    for (const [key, value] of Object.entries(headers)) xhr.setRequestHeader(key, value);
+    xhr.responseType = "blob";
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onUploadProgress({ loaded: event.loaded, total: event.total });
+    };
+    xhr.upload.onload = () => onUploadProgress({ loaded: 1, total: 1, done: true });
+    xhr.onload = () => {
+      const responseHeaders = new Headers();
+      for (const line of xhr.getAllResponseHeaders().trim().split(/[\r\n]+/)) {
+        const idx = line.indexOf(":");
+        if (idx > 0) responseHeaders.append(line.slice(0, idx).trim(), line.slice(idx + 1).trim());
+      }
+      resolve(new Response(xhr.response, { status: xhr.status, headers: responseHeaders }));
+    };
+    xhr.onerror = () => reject(new TypeError("network error"));
+    xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
+    signal?.addEventListener("abort", () => xhr.abort(), { once: true });
+    xhr.send(body);
+  });
+}
+
+// What a person on a flaky mobile connection sees — never "start
+// backend-node". The raw detail stays in development, where it's useful.
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 async function doFetch(path, options, timeoutMs, forceRefresh) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  const { public: isPublic, ...fetchOptions } = options;
+  const { public: isPublic, onUploadProgress, ...fetchOptions } = options;
   options = fetchOptions;
   try {
     // Public endpoints (share links) never carry the viewer's session, so
     // they behave identically for the owner and for a recipient with no
     // account.
     const headers = { ...(options.headers || {}), ...(isPublic ? {} : await authHeader(forceRefresh)) };
+    if (onUploadProgress) {
+      return await xhrFetch(`${API_BASE}${path}`, { ...options, headers, signal: controller.signal, onUploadProgress });
+    }
     return await fetch(`${API_BASE}${path}`, {
       ...options,
       headers,
@@ -34,10 +70,18 @@ async function doFetch(path, options, timeoutMs, forceRefresh) {
     });
   } catch (error) {
     if (error?.name === "AbortError") {
-      throw new Error(`Mastering backend timeout after ${Math.round(timeoutMs / 1000)}s at ${API_BASE}.`);
+      throw new Error(
+        IS_DEV
+          ? `Mastering backend timeout after ${Math.round(timeoutMs / 1000)}s at ${API_BASE}.`
+          : "This is taking too long — check your connection and try again.",
+      );
     }
     const reason = error?.message || "network error";
-    throw new Error(`Cannot reach mastering backend at ${API_BASE}. ${reason}. Start backend-node and retry.`);
+    throw new Error(
+      IS_DEV
+        ? `Cannot reach mastering backend at ${API_BASE}. ${reason}. Start backend-node and retry.`
+        : "Connection lost — check your signal and try again.",
+    );
   } finally {
     clearTimeout(timeoutId);
   }
@@ -106,17 +150,19 @@ export async function getMixPresets() {
   return request("/mix-presets");
 }
 
-export async function postMaster(formData) {
+export async function postMaster(formData, { onUploadProgress } = {}) {
   return request("/master", {
     method: "POST",
     body: formData,
+    onUploadProgress,
   }, MASTERING_TIMEOUT_MS);
 }
 
-export async function postAnalyzeChords(formData) {
+export async function postAnalyzeChords(formData, { onUploadProgress } = {}) {
   return request("/analyze-chords", {
     method: "POST",
     body: formData,
+    onUploadProgress,
   }, MASTERING_TIMEOUT_MS);
 }
 
@@ -124,10 +170,11 @@ export async function postAnalyzeChords(formData) {
 // — the one-time, real-audio-decode half of the live "professional
 // controls" preview. Uses the same generous timeout as /master since it's
 // a real audio decode, not the cheap math /preview-params below is.
-export async function postAnalyzeAudio(formData) {
+export async function postAnalyzeAudio(formData, { onUploadProgress } = {}) {
   return request("/analyze", {
     method: "POST",
     body: formData,
+    onUploadProgress,
   }, MASTERING_TIMEOUT_MS);
 }
 

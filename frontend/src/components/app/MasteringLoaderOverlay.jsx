@@ -7,6 +7,8 @@ import { AnimatePresence, motion } from "motion/react";
 import LogoMark from "@/components/brand/LogoMark";
 import { shuffledQuotes } from "@/lib/masteringQuotes";
 import { useLanguage } from "@/lib/i18n";
+import { useMasteringStore } from "@/store/masteringStore";
+import { formatMb } from "@/lib/format";
 
 const QUOTE_INTERVAL_MS = 5000;
 
@@ -44,6 +46,12 @@ export default function MasteringLoaderOverlay({ visible, elapsedSec = 0 }) {
   const [mounted, setMounted] = useState(false);
   const [quotes] = useState(() => shuffledQuotes());
   const [quoteIndex, setQuoteIndex] = useState(0);
+  // Real bytes-sent progress while the file is still going up — on mobile
+  // data that's most of the wait, and it's the one part of a master whose
+  // progress is actually known. null once the server has the file.
+  const upload = useMasteringStore((s) => s.uploadProgress);
+  const uploading = Boolean(upload);
+  const uploadRatio = upload?.total ? upload.loaded / upload.total : 0;
 
   useEffect(() => {
     setMounted(true);
@@ -73,14 +81,32 @@ export default function MasteringLoaderOverlay({ visible, elapsedSec = 0 }) {
           </div>
         </div>
 
-        <p className="mb-1 text-[11px] uppercase tracking-[0.22em] text-text-secondary">{t("loader.eyebrow")}</p>
-        <p className="m-0 font-[var(--font-title)] text-[22px] font-semibold text-text-primary">{t("console.phase.running")}</p>
+        <p className="mb-1 text-[11px] uppercase tracking-[0.22em] text-text-secondary">{t(uploading ? "loader.uploadEyebrow" : "loader.eyebrow")}</p>
+        <p className="m-0 font-[var(--font-title)] text-[22px] font-semibold text-text-primary">{t(uploading ? "loader.uploading" : "console.phase.running")}</p>
 
-        {/* Indeterminate: no invented percentage. */}
-        <div className="indeterminate-bar mt-6 h-1 w-full shrink-0 overflow-hidden rounded-full bg-black/[0.06]" aria-hidden="true">
-          <span />
-        </div>
-        <p className="mb-8 mt-2 font-mono text-[12px] text-text-secondary">{t("loader.elapsed", { time: fmtElapsed(elapsedSec) })}</p>
+        {uploading ? (
+          // Determinate: these are real bytes sent, from the upload itself.
+          <div
+            className="mt-6 h-1 w-full shrink-0 overflow-hidden rounded-full bg-black/[0.06]"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(uploadRatio * 100)}
+          >
+            <span className="block h-full rounded-full bg-accent transition-[width] duration-300 ease-out" style={{ width: `${uploadRatio * 100}%` }} />
+          </div>
+        ) : (
+          // Indeterminate: the render itself reports no progress.
+          <div className="indeterminate-bar mt-6 h-1 w-full shrink-0 overflow-hidden rounded-full bg-black/[0.06]" aria-hidden="true">
+            <span />
+          </div>
+        )}
+        <p className="mb-8 mt-2 font-mono text-[12px] text-text-secondary">
+          {uploading && upload.total
+            ? t("loader.uploadedOf", { loaded: formatMb(upload.loaded), total: formatMb(upload.total), pct: Math.round(uploadRatio * 100) })
+            : t("loader.elapsed", { time: fmtElapsed(elapsedSec) })}
+        </p>
+        {uploading ? <p className="-mt-6 mb-8 max-w-[36ch] text-[12px] leading-relaxed text-text-secondary">{t("loader.uploadKeepOpen")}</p> : null}
 
         <div className="w-full shrink-0 rounded-2xl border border-border-subtle bg-white/60 p-4 text-left">
           <p className="m-0 mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary">{t("loader.pipelineTitle")}</p>

@@ -14,6 +14,12 @@ import {
   postPreviewParams,
   toAuthedDownloadUrl,
 } from "@/network/http/client";
+import { sliceWavHead } from "@/lib/wavExcerpt";
+
+// Must match PREVIEW_SECONDS in backend-node masteringRoutes.js — the
+// server truncates to this anyway; trimming here just skips uploading the
+// rest of the file.
+const PREVIEW_SECONDS = 30;
 
 const TWEAK_KEYS = ["low_end", "punch", "presence", "brightness", "warmth", "width", "loudness"];
 
@@ -203,7 +209,8 @@ export async function previewParams({ analysis, genre, style, tags, tweaks, cate
 
 export async function runMasteringJob(input) {
   const formData = new FormData();
-  formData.append("file", input.file);
+  const upload = input.preview ? (await sliceWavHead(input.file, PREVIEW_SECONDS)) || input.file : input.file;
+  formData.append("file", upload);
 
   if (input.genre) {
     formData.append("genre", input.genre);
@@ -238,7 +245,7 @@ export async function runMasteringJob(input) {
     formData.append("reference_file", input.referenceFile);
   }
 
-  const response = await postMaster(formData);
+  const response = await postMaster(formData, { onUploadProgress: input.onUploadProgress });
 
   const [originalUrl, masteredUrl, previewUrl] = await Promise.all([
     toAuthedDownloadUrl(`/original/${response.job_id}`),
