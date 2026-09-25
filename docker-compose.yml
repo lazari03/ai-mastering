@@ -56,12 +56,23 @@ services:
       POLAR_ACCESS_TOKEN: ${POLAR_ACCESS_TOKEN}
       POLAR_WEBHOOK_SECRET: ${POLAR_WEBHOOK_SECRET}
       POLAR_ENVIRONMENT: ${POLAR_ENVIRONMENT:-sandbox}
+      # Every plan in both billing periods — run
+      # backend-node/scripts/seed-polar-products.js to create them in Polar
+      # and print these IDs. Indie and the three yearly products were
+      # missing here, so those checkouts failed with "Billing isn't
+      # configured" in production.
+      POLAR_PLAN_INDIE_PRODUCT_ID: ${POLAR_PLAN_INDIE_PRODUCT_ID}
       POLAR_PLAN_STUDIO_PRODUCT_ID: ${POLAR_PLAN_STUDIO_PRODUCT_ID}
       POLAR_PLAN_PRO_PRODUCT_ID: ${POLAR_PLAN_PRO_PRODUCT_ID}
-      POLAR_CHORDS_MONTHLY_PRODUCT_ID: ${POLAR_CHORDS_MONTHLY_PRODUCT_ID}
+      POLAR_PLAN_INDIE_ANNUAL_PRODUCT_ID: ${POLAR_PLAN_INDIE_ANNUAL_PRODUCT_ID}
+      POLAR_PLAN_STUDIO_ANNUAL_PRODUCT_ID: ${POLAR_PLAN_STUDIO_ANNUAL_PRODUCT_ID}
+      POLAR_PLAN_PRO_ANNUAL_PRODUCT_ID: ${POLAR_PLAN_PRO_ANNUAL_PRODUCT_ID}
       POLAR_SINGLE_MASTER_PRODUCT_ID: ${POLAR_SINGLE_MASTER_PRODUCT_ID}
-      POLAR_CHORD_DETECTION_PRODUCT_ID: ${POLAR_CHORD_DETECTION_PRODUCT_ID}
       POLAR_STEM_SEPARATION_PRODUCT_ID: ${POLAR_STEM_SEPARATION_PRODUCT_ID}
+      # Retired chord products — no longer sold, kept only so existing
+      # chord subscribers are still recognized by the webhook handler.
+      POLAR_CHORDS_MONTHLY_PRODUCT_ID: ${POLAR_CHORDS_MONTHLY_PRODUCT_ID}
+      POLAR_CHORD_DETECTION_PRODUCT_ID: ${POLAR_CHORD_DETECTION_PRODUCT_ID}
       # Signs the ?dl= download tokens and public /shared/ links — must
       # stay stable across restarts or every outstanding link breaks the
       # moment this container redeploys (see settings.js:downloadTokenSecret).

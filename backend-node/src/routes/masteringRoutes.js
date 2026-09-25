@@ -447,8 +447,8 @@ router.get("/billing/entitlements", async (req, res) => {
   }
 });
 
-// body.item is one of: plan_studio | plan_pro | single_master |
-// stem_separation. chords_monthly/chord_detection are deliberately absent —
+// body.item is one of: plan_indie | plan_studio | plan_pro (each also
+// with an _annual suffix) | single_master | stem_separation. chords_monthly/chord_detection are deliberately absent —
 // chord detection is unconditionally free now (see /analyze-chords above),
 // so there's nothing left to sell there; anyone with an existing
 // chordSubscription keeps being honored by polarService.js's webhook
@@ -491,7 +491,11 @@ router.post("/billing/checkout", async (req, res) => {
     // perform the same in-place change /billing/change-plan does,
     // transparently, instead of ever reaching Polar's checkout for a
     // plan product on an already-subscribed customer.
-    if ((productKey === "planStudio" || productKey === "planPro") && (await getPlan(req.user.uid)) !== "free") {
+    // Every plan product — Indie/Studio/All-Access, monthly or annual.
+    // This used to list only planStudio/planPro, so a subscriber picking
+    // Indie or any yearly plan still reached Polar's checkout and hit its
+    // "already subscribed" dead end.
+    if (productKey.startsWith("plan") && (await getPlan(req.user.uid)) !== "free") {
       const result = await changeSubscriptionPlan(req.user.uid, productKey);
       recordServerEvent("checkout_started", { uid: req.user.uid, props: { plan: productKey, via: "auto_switched_from_checkout" } });
       return res.json({ changedPlan: true, ...result });

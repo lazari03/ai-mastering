@@ -315,8 +315,8 @@ const DICT = {
   "pricing.badge": { en: "Best Value", sq: "Vlera më e Mirë" },
   "pricing.billingLabel": { en: "Billing period", sq: "Periudha e faturimit" },
   "pricing.billing.monthly": { en: "Monthly", sq: "Mujore" },
-  "pricing.billing.annual": { en: "Annual", sq: "Vjetore" },
-  "pricing.annualSaving": { en: "Annual billing — 2 months free", sq: "Faturim vjetor — 2 muaj falas" },
+  "pricing.billing.annual": { en: "Yearly", sq: "Vjetore" },
+  "pricing.annualSaving": { en: "Yearly billing — 2 months free", sq: "Faturim vjetor — 2 muaj falas" },
   // "{price}" is substituted at the call site rather than templated here:
   // the dictionary stays plain strings, which keeps it readable and means
   // a missing key degrades to the key name instead of throwing.
@@ -502,6 +502,9 @@ const DICT = {
   "billing.updating": { en: "Updating…", sq: "Duke përditësuar…" },
   "billing.upgrade": { en: "Upgrade", sq: "Përmirëso" },
   "billing.switch": { en: "Switch", sq: "Ndrysho" },
+  "billing.switchToAnnual": { en: "Switch to yearly", sq: "Kalo në vjetor" },
+  "billing.switchToMonthly": { en: "Switch to monthly", sq: "Kalo në mujor" },
+  "billing.currentSummary": { en: "You're on {plan}, billed {period}.", sq: "Je në {plan}, me faturim {period}." },
   "billing.switchedTo": { en: "Switched to {plan} — charged the prorated difference now.", sq: "Kalove tek {plan} — u fature diferenca proporcionale tani." },
   "billing.scheduledTo": {
     en: "Scheduled: you'll move to {plan} at the start of your next billing period, no charge yet.",

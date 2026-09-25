@@ -18,7 +18,7 @@ const fieldStyle =
 export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
   const { t } = useLanguage();
   const router = useRouter();
-  const { plan: currentPlan, masterQuota, loaded: entitlementsLoaded } = useEntitlementsStore();
+  const { plan: currentPlan, subscription, masterQuota, loaded: entitlementsLoaded } = useEntitlementsStore();
   const { user, busy, error, changePassword, deleteAccount, signOutEverywhere, clearError } = useAuthStore();
   const [signOutEverywhereStatus, setSignOutEverywhereStatus] = useState("");
 
@@ -151,7 +151,12 @@ export default function SettingsPanel({ onReplayTutorial, onOpenBilling }) {
           <LoadingBlock />
         ) : (
           <>
-            <p className="m-0 mt-2 text-sm text-text-primary">{PLANS[currentPlan]?.label || PLANS.free.label}</p>
+            <p className="m-0 mt-2 text-sm text-text-primary">
+              {PLANS[currentPlan]?.label || PLANS.free.label}
+              {currentPlan && currentPlan !== "free" ? (
+                <span className="text-text-secondary"> · {t(`pricing.billing.${subscription?.billing || "monthly"}`)}</span>
+              ) : null}
+            </p>
             {masterQuota ? (
               <p className="m-0 mt-0.5 text-xs text-text-secondary">
                 {t("billing.leftOf", { remaining: masterQuota.remaining, limit: masterQuota.limit })}

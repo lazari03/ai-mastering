@@ -26,6 +26,15 @@ export const CTA = {
   blog: "/blog",
 };
 
+// Signup that lands on the in-app Plans page with the chosen billing
+// period already selected — for a paid plan's CTA, so someone who picked
+// "Studio, yearly" on a public page doesn't have to find it again after
+// creating their account. Free keeps the plain signup.
+export function planSignupHref(planKey, billing = "monthly") {
+  if (!planKey || planKey === "free") return CTA.signup;
+  return `${CTA.signup}&redirect=${encodeURIComponent(`/app?tab=plans&billing=${billing}`)}`;
+}
+
 // ---- Genre <-> blog post graph ----------------------------------------
 // One declared edge per genre, to the single most topically relevant
 // post. Reverse lookups (which genres reference a given post) are

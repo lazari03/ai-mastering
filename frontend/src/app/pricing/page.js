@@ -4,7 +4,7 @@ import RelatedTools from "@/components/site/RelatedTools";
 import { Breadcrumbs, Checklist, CtaBand, PageHero, PageShell, Section } from "@/components/site/Page";
 import { PLANS, PLAN_ORDER, PLAN_COMPARISON, PRODUCT, SINGLE_MASTER, STEM_SEPARATION } from "@/lib/product";
 import { ANNUAL_MONTHS_CHARGED } from "@/lib/pricing";
-import { CTA } from "@/lib/internalLinks";
+import { CTA, planSignupHref } from "@/lib/internalLinks";
 import { buildMetadata, JsonLd, organizationJsonLd, SITE_NAME } from "@/lib/seo";
 
 // A real URL for pricing (the homepage section is /#pricing, which search
@@ -66,7 +66,7 @@ export default function PricingPage() {
                 {plan.annual ? (
                   <p className="m-0 mt-1 text-[12px] text-text-secondary">
                     or {plan.annual.price}
-                    {plan.annual.period} ({plan.annual.perMonth}/mo)
+                    {plan.annual.period} billed yearly ({plan.annual.perMonth}/mo)
                   </p>
                 ) : (
                   <p className="m-0 mt-1 text-[12px] text-text-secondary">No card required</p>
@@ -80,7 +80,7 @@ export default function PricingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href={CTA.signup} className="mt-auto block pt-6">
+                <Link href={planSignupHref(key)} className="mt-auto block pt-6">
                   <span className={featured ? "btn-primary w-full" : "btn-secondary w-full"}>{key === "free" ? "Start free" : `Choose ${plan.label}`}</span>
                 </Link>
               </li>
@@ -88,7 +88,7 @@ export default function PricingPage() {
           })}
         </ul>
         <p className="mt-4 text-[13px] text-text-secondary">
-          Annual billing: {ANNUAL_MONTHS_CHARGED} months charged for 12. Prices in EUR. Monthly allowances reset each month; the free trial is one-time.
+          Yearly billing: {ANNUAL_MONTHS_CHARGED} months charged for 12. Prices in EUR. Monthly allowances reset each month; the free trial is one-time.
         </p>
       </section>
 

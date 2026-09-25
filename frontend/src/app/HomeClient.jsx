@@ -11,7 +11,7 @@ import { POSTS } from "@/content/posts";
 import { useLanguage } from "@/lib/i18n";
 import { PLANS, PLAN_ORDER, BILLING_PERIODS, planPricing } from "@/lib/pricing";
 import { IconCheck } from "@/components/app/icons";
-import { CTA } from "@/lib/internalLinks";
+import { CTA, planSignupHref } from "@/lib/internalLinks";
 import { BEFORE_AFTER_DEMOS } from "@/lib/beforeAfterDemos";
 import BeforeAfterPlayer from "@/components/marketing/BeforeAfterPlayer";
 import GenreShowcase from "@/components/marketing/GenreShowcase";
@@ -440,7 +440,7 @@ export default function HomeClient() {
 
                   <div className="mt-auto pt-8">
                     <Link
-                      href={CTA.signup}
+                      href={planSignupHref(key, billing)}
                       onClick={() =>
                         handleCtaClick(key === "free" ? "pricing_free_cta" : `pricing_${key}_cta`, "homepage_pricing", {
                           billing,

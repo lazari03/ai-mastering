@@ -209,6 +209,33 @@ function currentProductKey(sub) {
   return PLAN_PRODUCT_KEYS.find((key) => settings.polarProducts[key] === sub.productId) || null;
 }
 
+// "monthly" | "annual" for a plan product key — the other half of what a
+// subscription is, next to its plan (entitlement) level.
+function billingForProductKey(productKey) {
+  if (!productKey) return null;
+  return productKey.endsWith("Annual") ? "annual" : "monthly";
+}
+
+function billingForProductId(productId) {
+  if (!productId) return null;
+  return billingForProductKey(PLAN_PRODUCT_KEYS.find((key) => settings.polarProducts[key] === productId) || null);
+}
+
+// "invoice" (charge the prorated difference now, switch now) or
+// "next_period" (keep what's paid for, switch at renewal). Higher tier ->
+// invoice. Monthly -> yearly on the same tier -> invoice too: the customer
+// is choosing to pay for the year up front, access doesn't change, and
+// deferring it would leave them billed monthly until a renewal they
+// weren't expecting. Everything else (lower tier, yearly -> monthly) keeps
+// the period already paid for and switches at renewal.
+export function prorationForChange(fromKey, toKey) {
+  const fromRank = PLAN_RANK[fromKey] || 0;
+  const toRank = PLAN_RANK[toKey] || 0;
+  if (toRank > fromRank) return "invoice";
+  if (toRank === fromRank && billingForProductKey(fromKey) === "monthly" && billingForProductKey(toKey) === "annual") return "invoice";
+  return "next_period";
+}
+
 export async function changeSubscriptionPlan(uid, productKey) {
   const productId = settings.polarProducts[productKey];
   if (!productId) {
@@ -238,9 +265,11 @@ export async function changeSubscriptionPlan(uid, productKey) {
   //     again before that renewal is a no-op: they're still ON
   //     All-Access (the downgrade hasn't applied yet), so there's
   //     nothing to re-upgrade into and no new charge to dodge.
-  const fromRank = PLAN_RANK[currentProductKey(sub)] || 0;
-  const toRank = PLAN_RANK[productKey] || 0;
-  const prorationBehavior = toRank > fromRank ? "invoice" : "next_period";
+  const fromKey = currentProductKey(sub);
+  if (fromKey === productKey) {
+    throw new Error("You're already on this plan.");
+  }
+  const prorationBehavior = prorationForChange(fromKey, productKey);
 
   // A downgrade already scheduled to this exact product (sub.productId
   // itself never changes under "next_period" — see the comment below and
@@ -305,6 +334,12 @@ export function subscriptionStatusFromUserData(data) {
     // never happened (see changeSubscriptionPlan's "next_period" path —
     // productId itself doesn't change until the real renewal).
     pendingPlan: planKeyForProductId(sub?.pendingProductId),
+    // Billing period of the current and any scheduled product, so the
+    // Plans panel can tell "Studio monthly" from "Studio yearly" (same
+    // plan key, different product) and show a scheduled monthly/yearly
+    // switch.
+    billing: isEntitled(sub) ? billingForProductId(sub?.productId) : null,
+    pendingBilling: billingForProductId(sub?.pendingProductId),
     pendingAppliesAt: sub?.pendingAppliesAt || null,
   };
 }
