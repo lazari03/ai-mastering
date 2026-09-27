@@ -224,6 +224,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
             beforeLabel={t("result.before")}
             afterLabel={t("result.after")}
             preparingLabel={t("result.preparingAb")}
+            levelMatchNote={t("result.levelMatched")}
             onModeChange={(m) => trackEvent(m === "before" ? "original_played" : "mastered_played", { source: "result_view" })}
           />
         ) : null}

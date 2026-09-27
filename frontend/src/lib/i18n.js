@@ -1141,6 +1141,10 @@ const DICT = {
     en: "Your purchase went through. Whatever you bought — subscription, credits, or an add-on — is already active on your account.",
     sq: "Blerja jote kaloi me sukses. Çfarëdo që bleve — abonim, kredite, ose shtesë — është tashmë aktive në llogarinë tënde.",
   },
+  "result.levelMatched": {
+    en: "Levels matched — both sides play at the same loudness, so you're comparing tone and dynamics rather than volume. The master is {db} dB louder in the downloaded file.",
+    sq: "Nivelet të barazuara — të dyja anët luajnë me të njëjtin volum, kështu që krahason tonin dhe dinamikën, jo volumin. Masteri është {db} dB më i lartë në skedarin e shkarkuar.",
+  },
   "thankYou.backToApp": { en: "Back to the app", sq: "Kthehu te aplikacioni" },
 
   "shared.missingToken": { en: "This link is missing its access token.", sq: "Kësaj lidhjeje i mungon tokeni i qasjes." },

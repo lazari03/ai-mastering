@@ -1106,10 +1106,23 @@ router.get("/original/:jobId", async (req, res) => {
   if (!(await ownsJob(req.user.uid, req.params.jobId))) {
     return res.status(404).json({ detail: "Original not found" });
   }
+  // "Before" must be the file the user actually uploaded. A bare
+  // startsWith("<job>_input") matches BOTH `<job>_input.mp3` (the real
+  // upload) and `<job>_input_internal.wav` (the decoded working copy the
+  // engine writes alongside it), and readdirSync order is not guaranteed —
+  // so which one got served was luck. Both are unprocessed source, so it
+  // never sounded wrong, but the A/B could silently compare against a
+  // transcode instead of the original.
+  //
+  // Prefer the genuine upload: `<job>_input.<ext>` with no further
+  // underscore-suffixed name. Fall back to the internal copy only if the
+  // original is already gone (retention sweep removes the upload first).
   const prefix = `${req.params.jobId}_input`;
   const localMatches = fs.readdirSync(settings.uploadDir).filter((name) => name.startsWith(prefix));
-  if (localMatches.length) {
-    return res.sendFile(path.join(settings.uploadDir, localMatches[0]));
+  const isOriginalUpload = (name) => /^[^_]+_input\.[^.]+$/.test(name);
+  const chosen = localMatches.find(isOriginalUpload) || localMatches[0];
+  if (chosen) {
+    return res.sendFile(path.join(settings.uploadDir, chosen));
   }
   return proxyFromPython(`/original/${req.params.jobId}`, res, "Original not found");
 });

@@ -271,7 +271,33 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
             }
         )
 
+    # Final true-peak guarantee. Everything above aims at the ceiling but
+    # nothing enforces it: the limiter works to its own 4x estimate, and
+    # the loudness guard and recovery steps both change gain AFTER it ran.
+    # Measured on a real render, the delivered file landed 0.025 dB above
+    # -1.0 dBTP even with an accurate meter, purely from that residual.
+    #
+    # A ceiling that is "usually met" is not a ceiling — distributors
+    # check it. This measures the finished signal and trims the exact
+    # overage, so the file cannot leave here above spec. Attenuation only,
+    # so it can never add loudness back or undo the limiting.
+    TRUE_PEAK_CEILING_DB = -1.0
+    # 16x, not the 4x used everywhere else: 4x carries ~0.07 dB of its own
+    # uncertainty, which is the whole margin at stake here. Measured at 4x
+    # the finished file read exactly -1.000 while a 32x reference saw
+    # -0.975 — i.e. the check passed a file that was over. This runs once
+    # per render, so the extra resolution is affordable precisely where it
+    # decides compliance.
+    final_tp_db = _true_peak_db(limited, oversample_factor=16)
+    true_peak_trim_db = 0.0
+    if final_tp_db > TRUE_PEAK_CEILING_DB:
+        true_peak_trim_db = float(final_tp_db - TRUE_PEAK_CEILING_DB)
+        limited = limited * (10.0 ** (-true_peak_trim_db / 20.0))
+        measured_lufs = float(meter.integrated_loudness(limited))
+
     limiter_report = {
+        "final_true_peak_db": round(_true_peak_db(limited, oversample_factor=16), 3),
+        "true_peak_trim_db": round(true_peak_trim_db, 3),
         "limiter_gain_reduction_db": round(limiter_gain_reduction_db, 3),
         "pre_clipper_peak_db": round(pre_peak_db, 3),
         "pre_limiter_peak_db": round(pre_peak_db - clipper_gain_reduction_db, 3),
@@ -343,7 +369,10 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
     # fix (a spec violation), not a Professional-tier feature — the actual
     # lookahead true-peak *limiter* and sub/punch band split stay Pro-only.
     target_peak_db = -1.0
-    observed_true_peak_db = _true_peak_db(stereo_pb.T)
+    # 16x: the 4x meter's own ~0.07 dB uncertainty is the entire margin
+    # being judged here, so measuring the compliance check at 4x can
+    # (and did) pass a file sitting above the ceiling.
+    observed_true_peak_db = _true_peak_db(stereo_pb.T, oversample_factor=16)
     if observed_true_peak_db > target_peak_db:
         stereo_pb = stereo_pb * (10.0 ** ((target_peak_db - observed_true_peak_db) / 20.0))
 
@@ -392,7 +421,10 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
             }
         )
 
-    observed_true_peak_db = _true_peak_db(stereo_pb.T)
+    # 16x: the 4x meter's own ~0.07 dB uncertainty is the entire margin
+    # being judged here, so measuring the compliance check at 4x can
+    # (and did) pass a file sitting above the ceiling.
+    observed_true_peak_db = _true_peak_db(stereo_pb.T, oversample_factor=16)
     if observed_true_peak_db > target_peak_db:
         stereo_pb = stereo_pb * (10.0 ** ((target_peak_db - observed_true_peak_db) / 20.0))
 

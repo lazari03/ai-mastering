@@ -116,9 +116,23 @@ export default function ABMasterPlayer({
   beforeLabel = "Before",
   afterLabel = "After",
   preparingLabel = "preparing instant A/B…",
+  // Optional translated copy for the level-match note; "{db}" is
+  // substituted with the measured difference. Falls back to English.
+  levelMatchNote = null,
+  // Default OFF for a user's own master: they are judging the file they
+  // just paid a credit for, and that file really is louder — hiding the
+  // gain they are about to download makes the product look like it did
+  // nothing. Marketing/demo players pass true, where matching matters
+  // because an unmatched A/B flatters whichever side is louder.
+  defaultLevelMatch = false,
   onModeChange,
   className = "",
 }) {
+  // How much louder the mastered file actually is, before matching. The
+  // A/B always attenuates the louder side down (see _ab_gain_match on the
+  // backend), so the gap between the two gains IS that difference.
+  const matchedDifferenceDb = Math.abs(Number(beforeGainDb) - Number(afterGainDb));
+  const [levelMatched, setLevelMatched] = useState(defaultLevelMatch);
   const audioRef = useRef(null);
   const canvasRef = useRef(null);
   const [mode, setModeState] = useState("after");
@@ -134,6 +148,7 @@ export default function ABMasterPlayer({
     graph: null,
     mode: "after",
     gainsDb: { before: 0, after: 0 },
+    matchEnabled: false,
     buffers: null, // { before, after } once decoded
     envelopes: null, // { before, after }, normalized to a shared scale
     usingBuffers: false,
@@ -147,6 +162,8 @@ export default function ABMasterPlayer({
     scrub: null, // 0..1 while dragging on the waveform
   });
   eng.current.gainsDb = { before: beforeGainDb, after: afterGainDb };
+  eng.current.matchEnabled = levelMatched;
+
 
   const position = () => {
     const e = eng.current;
@@ -161,7 +178,8 @@ export default function ABMasterPlayer({
     const now = g.ctx.currentTime;
     for (const which of ["before", "after"]) {
       const param = g.bufGain[which].gain;
-      const target = e.usingBuffers && which === e.mode ? dbToGain(e.gainsDb[which]) : 0;
+      const matchDb = e.matchEnabled ? e.gainsDb[which] : 0;
+      const target = e.usingBuffers && which === e.mode ? dbToGain(matchDb) : 0;
       param.cancelScheduledValues(now);
       if (immediate) {
         param.setValueAtTime(target, now);
@@ -170,8 +188,17 @@ export default function ABMasterPlayer({
         param.setTargetAtTime(target, now, XFADE_TC);
       }
     }
-    g.elGain.gain.value = e.usingBuffers ? 0 : dbToGain(e.gainsDb[e.mode]);
+    g.elGain.gain.value = e.usingBuffers ? 0 : dbToGain(e.matchEnabled ? e.gainsDb[e.mode] : 0);
   };
+
+  // Push a level-match toggle straight into the live audio graph — without
+  // this the switch would appear to do nothing until the next play or
+  // before/after change. Ramped (immediate=false) so the level moves
+  // smoothly instead of clicking mid-playback.
+  useEffect(() => {
+    applyGains(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levelMatched]);
 
   const stopSources = () => {
     const e = eng.current;
@@ -327,6 +354,10 @@ export default function ABMasterPlayer({
       const n = Math.max(12, Math.floor((w + BAR_GAP) / (BAR_W + BAR_GAP)));
       if (heights.length !== n) heights = new Float32Array(n);
       const env = e.envelopes?.[e.mode];
+      // Same gain the audio graph is applying right now (1.0 when the
+      // user has turned level matching off), so the waveform always
+      // depicts what is actually coming out of the speakers.
+      const envScale = dbToGain(e.matchEnabled ? e.gainsDb[e.mode] : 0);
       const t = (now - start) / 1000;
       for (let k = 0; k < n; k += 1) {
         let target;
@@ -335,7 +366,7 @@ export default function ABMasterPlayer({
           const to = Math.max(from + 1, Math.floor(((k + 1) / n) * env.length));
           let sum = 0;
           for (let i = from; i < to; i += 1) sum += env[i];
-          target = 0.04 + 0.96 * (sum / (to - from));
+          target = 0.04 + 0.96 * Math.min(1, (sum / (to - from)) * envScale);
         } else {
           // Loading: a quiet wave travelling across the bars.
           target = 0.1 + 0.08 * (Math.sin(t * 2.4 - k * 0.22) + 1);
@@ -414,6 +445,15 @@ export default function ABMasterPlayer({
         if (cancelled) return;
         const envBefore = rmsEnvelope(before);
         const envAfter = rmsEnvelope(after);
+
+        // Stored UNMATCHED and normalised to a shared scale. The
+        // level-match gain is applied at draw time instead of here, so
+        // flipping the Match-levels switch redraws instantly rather than
+        // re-decoding both files.
+        //
+        // Shared scale across both, so the two waveforms stay directly
+        // comparable to each other rather than each being normalised to
+        // its own peak (which would erase the very difference being shown).
         let max = 1e-6;
         for (const env of [envBefore, envAfter]) for (const v of env) if (v > max) max = v;
         for (const env of [envBefore, envAfter]) for (let i = 0; i < env.length; i += 1) env[i] /= max;
@@ -513,6 +553,29 @@ export default function ABMasterPlayer({
           {segment("after", afterLabel)}
         </div>
       </div>
+
+      {matchedDifferenceDb >= 0.1 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-2 sm:px-5">
+          <p className="m-0 max-w-[46ch] text-[11px] leading-snug text-text-secondary">
+            {levelMatched
+              ? (levelMatchNote
+                  ? levelMatchNote.replace("{db}", matchedDifferenceDb.toFixed(1))
+                  : `Levels matched — both sides play at the same loudness, so you're comparing tone and dynamics rather than volume. The master is ${matchedDifferenceDb.toFixed(1)} dB louder in the file you download.`)
+              : `Playing at real levels — the master is ${matchedDifferenceDb.toFixed(1)} dB louder, exactly as you'll download it. Match levels to judge tone without volume influencing you.`}
+          </p>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={levelMatched}
+            onClick={() => setLevelMatched((v) => !v)}
+            className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold transition ${
+              levelMatched ? "bg-text-primary text-bg" : "bg-black/[0.06] text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            {levelMatched ? "Levels matched" : "Match levels"}
+          </button>
+        </div>
+      ) : null}
 
       <div
         role="slider"

@@ -6,7 +6,7 @@ from pathlib import Path
 import librosa
 import numpy as np
 import soundfile as sf
-from scipy.signal import butter, firwin, sosfiltfilt, upfirdn
+from scipy.signal import butter, resample_poly, sosfiltfilt
 
 from .analysis.dynamics import bpm_confidence, clipping_evidence, peak_percentile_db
 from .analysis.loudness import FastMeter, full_loudness_analysis, loudness_series
@@ -149,29 +149,58 @@ def _ab_gain_match(before_lufs: float, after_lufs: float) -> dict:
     }
 
 
-# 4x oversampling for true-peak detection: a 48-tap windowed-sinc
-# interpolator (12 taps per phase, the structure ITU-R BS.1770 Annex 2
-# describes) applied to all channels in one vectorised polyphase pass.
-# ~2x cheaper than resample_poly's default 81-tap design with the same
-# purpose; the limiter's final true-peak guard uses the same meter.
+# 4x oversampling for true-peak work (ITU-R BS.1770 / EBU R128).
+#
+# This was a hand-rolled 48-tap windowed-sinc at cutoff 0.94/4, justified
+# as "~2x cheaper than resample_poly with the same purpose". It did not
+# have the same purpose: the early cutoff (0.235 rather than 0.25) plus
+# only 12 taps per phase rolled off the top of the band, so inter-sample
+# peaks carried by high-frequency content were largely invisible to it.
+# Measured error against a 32x reference:
+#
+#     7 kHz  -0.07 dB    15 kHz  -0.67 dB
+#    11 kHz  -0.09 dB    19 kHz  -2.43 dB    21 kHz  -3.77 dB
+#
+# Two things depended on that number, so the bug hit twice:
+#   * _true_peak_db  — the reported/QC'd figure, which under-read. The QC
+#     check used this same meter, so it could never catch the error: the
+#     validator and the thing being validated shared one bug.
+#   * _true_peak_limiter — builds its gain curve from the oversampled
+#     signal, so the LIMITER ITSELF could not see the peaks it exists to
+#     catch. Bright material could therefore be delivered above the
+#     stated -1.0 dBTP ceiling and clip on lossy decode.
+#
+# resample_poly is both more accurate and cheaper than a longer
+# hand-rolled filter (worst error 0.07 dB vs 0.29 dB for a 192-tap
+# design; 835 ms vs 955 ms on a 3-minute master). It costs ~50% more than
+# the broken 48-tap version — the correct trade for a number the limiter
+# and the safety check both depend on.
 _TP_OVERSAMPLE = 4
-_TP_TAPS = firwin(48, 0.94 / _TP_OVERSAMPLE, window=("kaiser", 7.0)) * _TP_OVERSAMPLE
-_TP_DELAY = (len(_TP_TAPS) - 1) // 2
 
 
-def _oversample4(audio: np.ndarray) -> np.ndarray:
-    """(n, ch) -> (4n, ch) interpolated, delay-compensated."""
+def _oversample4(audio: np.ndarray, factor: int = _TP_OVERSAMPLE) -> np.ndarray:
+    """(n, ch) -> (4n, ch), band-limited and delay-compensated.
+
+    resample_poly handles the group delay internally and returns exactly
+    n*4 frames, which _true_peak_limiter relies on when it reshapes the
+    result into per-sample groups of 4.
+    """
     x = np.asarray(audio, dtype=np.float32)
     if x.ndim == 1:
         x = x[:, np.newaxis]
-    up = upfirdn(_TP_TAPS.astype(np.float32), x, up=_TP_OVERSAMPLE, axis=0)
-    return up[_TP_DELAY : _TP_DELAY + x.shape[0] * _TP_OVERSAMPLE]
+    if x.shape[0] == 0:
+        return x
+    return resample_poly(x, int(factor), 1, axis=0).astype(np.float32)
 
 
-def _true_peak_db(audio_stereo: np.ndarray, oversample_factor: int = 4) -> float:
-    """Approximate true peak with 4x oversampling to capture inter-sample
-    peaks (oversample_factor kept for signature compatibility)."""
-    return _db(float(np.max(np.abs(_oversample4(audio_stereo)))))
+def _true_peak_db(audio_stereo: np.ndarray, oversample_factor: int = _TP_OVERSAMPLE) -> float:
+    """True peak in dBTP. Accurate to ~0.07 dB of a 32x reference across
+    the whole band, including above 15 kHz where the previous
+    implementation lost up to 3.8 dB."""
+    x = np.asarray(audio_stereo, dtype=np.float32)
+    if x.size == 0:
+        return _db(0.0)
+    return _db(float(np.max(np.abs(_oversample4(x, oversample_factor)))))
 
 
 def _short_term_lufs_series(audio_stereo: np.ndarray, sr: int) -> list[float]:
