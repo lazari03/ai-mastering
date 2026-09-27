@@ -9,7 +9,7 @@ from .analysis.loudness import FastMeter
 from .audio_utils import EPS, _db, _oversample4, _true_peak_db
 
 
-def _soft_clip(stereo: np.ndarray, ceiling_db: float = -0.3, oversample: int = 4, drive_db: float = 0.0) -> np.ndarray:
+def _soft_clip(stereo: np.ndarray, ceiling_db: float = -0.3, oversample: int = 4, drive_db: float = 0.0, max_reduction_db: float | None = None) -> np.ndarray:
     """Gentle oversampled tanh soft-clipper, run just before the limiter.
     Catching the very tips of the loudest transients here means the
     limiter downstream has less gain reduction left to do — less limiter
@@ -22,9 +22,52 @@ def _soft_clip(stereo: np.ndarray, ceiling_db: float = -0.3, oversample: int = 4
     ceiling = float(10.0 ** (ceiling_db / 20.0))
     drive = float(10.0 ** (drive_db / 20.0))
     up = resample_poly(stereo, oversample, 1, axis=0)
-    up = np.tanh(up * drive / ceiling) * ceiling
-    down = resample_poly(up, 1, oversample, axis=0)[: stereo.shape[0]]
+    if max_reduction_db is None:
+        # Exact preset chains retain their existing creative transfer curve.
+        up = np.tanh(up * drive / ceiling) * ceiling
+    else:
+        # Adaptive mastering only touches peaks above a soft knee. The old
+        # full-signal tanh changed even ordinary samples below the ceiling.
+        if np.max(np.abs(up)) <= ceiling or max_reduction_db <= 0:
+            return np.asarray(stereo, dtype=np.float32)
+        knee = ceiling * 0.85
+        magnitude = np.abs(up)
+        shaped = np.sign(up) * np.where(
+            magnitude > knee,
+            knee + (ceiling - knee) * np.tanh((magnitude - knee) / (ceiling - knee)),
+            magnitude,
+        )
+        # Bound the *measured* peak change, not the requested clipper share.
+        # Blending in the oversampled domain preserves the dry signal below
+        # the knee and avoids the former multi-dB shave on a 1 dB budget.
+        peak = float(np.max(magnitude))
+        target = peak * 10.0 ** (-max_reduction_db / 20.0)
+        shaped_peak = float(np.max(np.abs(shaped)))
+        wet = min(1.0, max(0.0, (peak - target) / max(peak - shaped_peak, EPS)))
+        # Downsample only the change. Resampling the entire signal introduces
+        # filter-edge artifacts even in passages below the clipper knee.
+        change = resample_poly(shaped - up, 1, oversample, axis=0)[: stereo.shape[0]]
+        down = stereo + wet * change
+    if max_reduction_db is None:
+        down = resample_poly(up, 1, oversample, axis=0)[: stereo.shape[0]]
+    if max_reduction_db is not None:
+        original_peak_db = _true_peak_db(stereo)
+        for _ in range(3):
+            reduction = original_peak_db - _true_peak_db(down)
+            if reduction <= max_reduction_db + 0.02:
+                break
+            wet *= max_reduction_db / max(reduction, EPS)
+            down = stereo + wet * change
     return down.astype(np.float32)
+
+
+def _limiter_reduction_db(clipped: np.ndarray, limited: np.ndarray) -> float:
+    """Maximum actual gain loss through the limiter, excluding the clipper."""
+    active = np.abs(clipped) > 1e-4
+    if not np.any(active):
+        return 0.0
+    ratios = np.abs(limited[active]) / np.abs(clipped[active])
+    return float(max(0.0, -20.0 * np.log10(max(float(np.min(ratios)), EPS))))
 
 
 def _crest_factor_db(stereo: np.ndarray) -> float:
@@ -122,7 +165,12 @@ def _true_peak_limiter(
     # Smooth the recovery (release) side only; the elementwise minimum can
     # only be more conservative, never violate the ceiling.
     release_alpha = float(np.exp(-1.0 / (sr * release_ms / 1000.0)))
-    released = lfilter([1 - release_alpha], [1, -release_alpha], gain_lookahead)
+    # Start from the first required gain, not lfilter's implicit zero state:
+    # zero produced an artificial fade-in whenever any peak needed limiting.
+    released, _ = lfilter(
+        [1 - release_alpha], [1, -release_alpha], gain_lookahead,
+        zi=[release_alpha * float(gain_lookahead[0])],
+    )
     final_gain = np.minimum(gain_lookahead, released).astype(np.float32)
     limited = stereo * final_gain[:, np.newaxis]
 
@@ -166,7 +214,8 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
     # with strong transients and little budget left to spend on shaving
     # peaks before the limiter does.
     clipper_enabled = bool(params.get("clipper_enabled", True))
-    clipped = _soft_clip(pre_limiter, ceiling_db=-0.3) if clipper_enabled else pre_limiter
+    clip_share = float(params.get("clipper_max_reduction_db", 1.0))
+    clipped = _soft_clip(pre_limiter, ceiling_db=-0.3, max_reduction_db=clip_share) if clipper_enabled else pre_limiter
     clipper_gain_reduction_db = float(max(0.0, pre_clip_peak_db - _true_peak_db(clipped))) if clipper_enabled else 0.0
 
     limiter_release_ms = float(params.get("limiter_release_ms", 60.0))
@@ -174,12 +223,12 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
 
     pre_peak_db = pre_clip_peak_db
     post_peak_db = _true_peak_db(limited)
-    limiter_gain_reduction_db = float(max(0.0, pre_peak_db - post_peak_db))
+    limiter_gain_reduction_db = _limiter_reduction_db(clipped, limited)
 
     measured_lufs = float(meter.integrated_loudness(limited))
     limited, measured_lufs, recovery_gain_db, recovery_iterations = _recover_undershot_loudness(
         render_candidate=lambda gain_db: _true_peak_limiter(
-            _soft_clip(pre_limiter * (10.0 ** (gain_db / 20.0)), ceiling_db=-0.3) if clipper_enabled else pre_limiter * (10.0 ** (gain_db / 20.0)),
+            _soft_clip(pre_limiter * (10.0 ** (gain_db / 20.0)), ceiling_db=-0.3, max_reduction_db=clip_share) if clipper_enabled else pre_limiter * (10.0 ** (gain_db / 20.0)),
             sr,
             ceiling_db=-1.0,
             release_ms=limiter_release_ms,
@@ -197,8 +246,12 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
         crest_floor_db=float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))),
     )
     if recovery_iterations:
+        final_input = pre_limiter * (10.0 ** (recovery_gain_db / 20.0))
+        final_clipped = _soft_clip(final_input, ceiling_db=-0.3, max_reduction_db=clip_share) if clipper_enabled else final_input
+        pre_peak_db = _true_peak_db(final_input)
+        clipper_gain_reduction_db = float(max(0.0, pre_peak_db - _true_peak_db(final_clipped))) if clipper_enabled else 0.0
         post_peak_db = _true_peak_db(limited)
-        limiter_gain_reduction_db = float(max(0.0, pre_peak_db - post_peak_db))
+        limiter_gain_reduction_db = _limiter_reduction_db(final_clipped, limited)
 
     loudness_guard = {"applied": False, "attenuation_db": 0.0, "measured_after_guard_lufs": None, "iterations": 0}
     tolerance_lufs = 0.2
@@ -220,8 +273,10 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
 
     limiter_report = {
         "limiter_gain_reduction_db": round(limiter_gain_reduction_db, 3),
-        "pre_limiter_peak_db": round(pre_peak_db, 3),
+        "pre_clipper_peak_db": round(pre_peak_db, 3),
+        "pre_limiter_peak_db": round(pre_peak_db - clipper_gain_reduction_db, 3),
         "post_limiter_peak_db": round(post_peak_db, 3),
+        "combined_peak_reduction_db": round(max(0.0, pre_peak_db - post_peak_db), 3),
         "clipper_applied": clipper_enabled,
         "clipper_gain_reduction_db": round(clipper_gain_reduction_db, 3),
         "release_ms": round(limiter_release_ms, 1),
@@ -259,8 +314,9 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
 
     clipper_enabled = bool(params.get("clipper_enabled", True))
     pre_clip_peak = float(np.max(np.abs(pre_limiter)) + EPS)
-    clipped = _soft_clip(pre_limiter.T, ceiling_db=-0.3).T if clipper_enabled else pre_limiter
-    clipper_gain_reduction_db = float(max(0.0, _db(pre_clip_peak) - _db(float(np.max(np.abs(clipped)) + EPS)))) if clipper_enabled else 0.0
+    clip_share = float(params.get("clipper_max_reduction_db", 1.0))
+    clipped = _soft_clip(pre_limiter.T, ceiling_db=-0.3, max_reduction_db=clip_share).T if clipper_enabled else pre_limiter
+    clipper_gain_reduction_db = float(max(0.0, _true_peak_db(pre_limiter.T) - _true_peak_db(clipped.T))) if clipper_enabled else 0.0
 
     # Gain-only true-peak limiter on BOTH tiers. pedalboard.Limiter (JUCE)
     # is not a transparent peak limiter: it contains a fixed first-stage
@@ -277,7 +333,7 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
 
     pre_peak = pre_clip_peak
     post_peak = float(np.max(np.abs(stereo_pb)) + EPS)
-    limiter_gain_reduction_db = float(max(0.0, _db(pre_peak) - _db(post_peak)))
+    limiter_gain_reduction_db = _limiter_reduction_db(clipped.T, stereo_pb.T)
 
     # Final true-peak guard in case inter-sample/implementation behavior exceeds
     # target. True peak (oversampled), not sample peak — a sample-peak check
@@ -293,7 +349,7 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
 
     def _render_recovery_candidate(extra_gain_db: float) -> np.ndarray:
         boosted = pre_limiter * (10.0 ** (extra_gain_db / 20.0))
-        clipped_c = _soft_clip(boosted.T, ceiling_db=-0.3).T if clipper_enabled else boosted
+        clipped_c = _soft_clip(boosted.T, ceiling_db=-0.3, max_reduction_db=clip_share).T if clipper_enabled else boosted
         limited_c = limiter(np.ascontiguousarray(clipped_c, dtype=np.float32), sr)
         tp_db = _true_peak_db(limited_c.T)
         if tp_db > target_peak_db:
@@ -310,8 +366,12 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
         crest_floor_db=float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))),
     )
     if recovery_iterations:
+        final_input = pre_limiter * (10.0 ** (recovery_gain_db / 20.0))
+        final_clipped = _soft_clip(final_input.T, ceiling_db=-0.3, max_reduction_db=clip_share).T if clipper_enabled else final_input
+        pre_peak = float(np.max(np.abs(final_input)) + EPS)
+        clipper_gain_reduction_db = float(max(0.0, _true_peak_db(final_input.T) - _true_peak_db(final_clipped.T))) if clipper_enabled else 0.0
         post_peak = float(np.max(np.abs(stereo_pb)) + EPS)
-        limiter_gain_reduction_db = float(max(0.0, _db(pre_peak) - _db(post_peak)))
+        limiter_gain_reduction_db = _limiter_reduction_db(final_clipped.T, stereo_pb.T)
 
     # Final loudness guard: attenuate once to enforce LUFS ceiling, then confirm.
     loudness_guard = {"applied": False, "attenuation_db": 0.0, "measured_after_guard_lufs": None, "iterations": 0}
@@ -338,8 +398,10 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
 
     limiter_report = {
         "limiter_gain_reduction_db": round(limiter_gain_reduction_db, 3),
-        "pre_limiter_peak_db": round(_db(pre_peak), 3),
+        "pre_clipper_peak_db": round(_true_peak_db(final_input.T) if recovery_iterations else _true_peak_db(pre_limiter.T), 3),
+        "pre_limiter_peak_db": round(_true_peak_db(final_clipped.T) if recovery_iterations else _true_peak_db(clipped.T), 3),
         "post_limiter_peak_db": round(_db(post_peak), 3),
+        "combined_peak_reduction_db": round(max(0.0, (_true_peak_db(final_input.T) if recovery_iterations else _true_peak_db(pre_limiter.T)) - _true_peak_db(stereo_pb.T)), 3),
         "clipper_applied": clipper_enabled,
         "clipper_gain_reduction_db": round(clipper_gain_reduction_db, 3),
         "release_ms": round(limiter_release_ms, 1),

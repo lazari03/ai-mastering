@@ -18,7 +18,7 @@ from .audio_utils import (
 from .band_levels import band_levels_db, loudness_matched_band_deltas
 from .evaluation.backoff import derive_backoff_plan
 from .evaluation.evaluate import evaluate_master
-from .mastering_params import _apply_user_tweaks, compute_processing_params, public_params
+from .mastering_params import _apply_user_tweaks, compute_processing_params, legacy_params_from_plan, public_params
 from .output_validation import validate_render
 from .planning import config as C
 from .processing.render import render_plan
@@ -233,8 +233,6 @@ def master_track(
     # Keep the reported legacy parameter view in sync with the plan that
     # actually produced the final audio.
     if backoff_info.get("applied"):
-        from .mastering_params import legacy_params_from_plan
-
         refreshed = legacy_params_from_plan(
             plan, context, profile, processing_params["_problems"], analysis_before,
             genre, list(tags or []), style, category, flavour, context.reference_used,
@@ -277,6 +275,53 @@ def master_track(
             processing_params=processing_params,
             limiter_report=limiter_report,
         )
+
+    # Evaluation checks planned tonal moves; final QC checks the actual
+    # deliverable. A tonal pass cannot overrule a dynamics or limiter fail.
+    # Try quieter, clipper-free renders before committing any output file.
+    if not quality_control["passed"]:
+        recoverable = {"limiter_gain_reduction", "dynamics_preservation"}
+        failed = {c["id"] for c in quality_control["checks"] if c["status"] == "fail"}
+        if not failed.issubset(recoverable):
+            raise InvalidAudioError(f"Master failed final quality control: {', '.join(sorted(failed))}")
+        base_plan = plan
+        recovered = False
+        for reduction_db in (2.0, 4.0, 6.0):
+            candidate_plan = base_plan.copy()
+            candidate_plan.clipper["enabled"] = False
+            candidate_plan.clipper["share_db"] = 0.0
+            candidate_plan.loudness["target_lufs"] = round(float(base_plan.loudness["target_lufs"]) - reduction_db, 2)
+            candidate_render, candidate_after, candidate_evaluation = _render_and_evaluate(
+                premaster_audio, sr, candidate_plan, profile, analysis_before, context,
+            )
+            candidate_params = legacy_params_from_plan(
+                candidate_plan, context, profile, processing_params["_problems"], analysis_before,
+                genre, list(tags or []), style, category, flavour, context.reference_used,
+            )
+            candidate_qc = run_quality_control(
+                analysis_before=analysis_before,
+                analysis_after=candidate_after,
+                mastered_audio=candidate_render["audio"],
+                processing_params=candidate_params,
+                limiter_report=candidate_render["limiter_report"],
+            )
+            renders += 1
+            if candidate_qc["passed"] and candidate_evaluation.passed:
+                plan, render, analysis_after, evaluation = candidate_plan, candidate_render, candidate_after, candidate_evaluation
+                stereo_processed = render["audio"]
+                limiter_report, loudness_guard, lufs_gain_db = render["limiter_report"], render["loudness_guard"], render["lufs_gain_db"]
+                ev = evaluation.to_dict()
+                transient_qc = {**ev["transients"], "corrective_action": {"applied": True, "reduced": f"clipper disabled; target lowered {reduction_db:.1f} dB"}}
+                candidate_params["user_tweaks"] = processing_params.get("user_tweaks", {})
+                candidate_params["tweak_summary"] = processing_params.get("tweak_summary", {})
+                processing_params = candidate_params
+                quality_control = candidate_qc
+                qc_corrections = []
+                backoff_info = {"attempted": True, "applied": True, "reason": "final QC failed; accepted a safer render", "actions": [f"clipper disabled; loudness target lowered {reduction_db:.1f} dB"]}
+                recovered = True
+                break
+        if not recovered:
+            raise InvalidAudioError("No mastering candidate passed final quality control; no master was delivered.")
     quality_control["corrections_applied"] = qc_corrections
 
     sf.write(str(output_path), stereo_processed, sr, subtype="PCM_24")

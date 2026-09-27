@@ -11,7 +11,7 @@ import { trackEvent } from "@/lib/analytics";
 // diagnostics; the caller keeps showing ProcessingSummary for those.
 //
 // Status is always a text label plus a glyph, never colour alone.
-const GLYPH = { corrected: "●", light: "◐", preserved: "○", noted: "◌" };
+const GLYPH = { corrected: "●", light: "◐", heavy: "●", preserved: "○", noted: "◌" };
 
 function Status({ status, t }) {
   return (
@@ -86,8 +86,8 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
           <span className="block">
             {dynamics.status === "corrected"
               ? [dynamics.multiband ? t("decisions.dyn.multiband") : null, dynamics.glue ? t("decisions.dyn.glue") : null].filter(Boolean).join(" · ")
-              : dynamics.status === "light"
-                ? t("decisions.dyn.limiterLight", { db: fmtNum(dynamics.limiterGrDb) })
+              : dynamics.status === "light" || dynamics.status === "heavy"
+                ? t("decisions.dyn.peakControl", { limiter: fmtNum(dynamics.limiterGrDb), clipper: fmtNum(dynamics.clipperGrDb) })
                 : dynamics.limiterOnly
                   ? t("decisions.dyn.limiterOnly")
                   : t("decisions.dyn.preserved")}

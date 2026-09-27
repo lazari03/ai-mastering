@@ -224,6 +224,7 @@ def render_plan(audio: np.ndarray, sr: int, plan: MasteringPlan, measure_stages:
     bus_params = {
         "target_lufs": target,
         "clipper_enabled": bool(plan.clipper.get("enabled")),
+        "clipper_max_reduction_db": float(plan.clipper.get("share_db", 0.0)),
         "limiter_release_ms": float(lim["release_ms"]),
         "limiter_crest_floor_db": float(lim.get("crest_floor_db", plan.target_context.get("target_crest_db", 8.0))),
         "target_dynamic_range_db": float(plan.target_context.get("target_crest_db", 8.0)),

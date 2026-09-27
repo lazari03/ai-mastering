@@ -79,11 +79,15 @@ export function summarizeDecisions(result) {
   const dyn = evaluation.dynamics || {};
   // Without compression the limiter can still shave real dB off the peaks;
   // calling that "preserved" would oversell restraint.
-  const limiterGr = Number(evaluation.limiter?.max_gr_db);
+  const limiterGr = Number(result.processing_applied?.limiter?.limiter_gain_reduction_db ?? evaluation.limiter?.max_gr_db);
+  const clipperGr = Number(result.processing_applied?.limiter?.clipper_gain_reduction_db ?? 0);
   const limiterWorked = Number.isFinite(limiterGr) && limiterGr >= 1.5;
+  const crestLoss = Number(dyn.crest_before_db) - Number(dyn.crest_after_db);
+  const heavyControl = limiterGr > 3 || clipperGr > 2 || crestLoss > 6 || result.quality_control?.passed === false;
   const dynamics = {
-    status: compressionOn ? "corrected" : limiterWorked ? "light" : "preserved",
+    status: heavyControl ? "heavy" : compressionOn ? "corrected" : limiterWorked || clipperGr >= 0.5 ? "light" : "preserved",
     limiterGrDb: Number.isFinite(limiterGr) ? round1(limiterGr) : null,
+    clipperGrDb: Number.isFinite(clipperGr) ? round1(clipperGr) : null,
     multiband: Boolean(comp.multiband?.enabled),
     glue: Boolean(comp.glue?.enabled),
     limiterOnly: Boolean(rejectedComp && /limiter alone/.test(rejectedComp.reason || "")),
@@ -120,7 +124,7 @@ export function summarizeDecisions(result) {
   // ---- verification ----------------------------------------------------
   const outcomes = evaluation.problem_outcomes || {};
   const verification = {
-    passed: evaluation.passed !== false,
+    passed: evaluation.passed !== false && result.quality_control?.passed !== false,
     backoffApplied: Boolean(diag.backoff_applied),
     flags: evaluation.flags || [],
     improved: Object.values(outcomes).filter((o) => o.improved).length,
