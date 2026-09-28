@@ -1009,6 +1009,39 @@ MASTERING_FLAVOURS = {
 }
 
 
+# Where the master is going. Streaming services play everything at a
+# reference loudness and turn louder masters DOWN, so extra loudness above
+# that level only costs dynamics there:
+#   Spotify -14 LUFS (normal mode), YouTube -14, Tidal -14, Amazon Music
+#   -14, Apple Music -16 (Sound Check); Apple Podcasts / AES TD1004 -16.
+# True peak: all of them ask for <= -1 dBTP; Spotify asks for -2 dBTP when
+# a master is louder than -14 LUFS, because lossy transcoding overshoots
+# more on dense masters. The engine applies that rule for every target
+# (see planning/target_model.py), so it isn't repeated per entry here.
+#   auto      — the genre's own best-practice loudness (GENRE_TARGET_PROFILES)
+#   streaming — land at the -14 LUFS reference: never turned down, keeps
+#               every dB of dynamics a louder master would give away
+#   apple     — land at Apple Music's -16 LUFS reference
+#   loud      — club/DJ/competitive: 1 LU louder than the genre default,
+#               still inside the limiter damage budget
+DELIVERY_TARGETS = {
+    "auto": {"label": "Genre best practice", "reference_lufs": None, "lufs_delta": 0.0},
+    "streaming": {"label": "Streaming (Spotify, YouTube, Tidal, Amazon)", "reference_lufs": -14.0, "lufs_delta": 0.0},
+    "apple": {"label": "Apple Music", "reference_lufs": -16.0, "lufs_delta": 0.0},
+    "loud": {"label": "Loud (club / DJ)", "reference_lufs": None, "lufs_delta": 1.0},
+}
+
+# Loudness at which platforms start turning a master down, and the true
+# peak ceiling on either side of it.
+STREAMING_REFERENCE_LUFS = -14.0
+TRUE_PEAK_CEILING_DBTP = -1.0
+LOUD_MASTER_TRUE_PEAK_CEILING_DBTP = -2.0
+
+
+def list_delivery_targets() -> list[str]:
+    return list(DELIVERY_TARGETS)
+
+
 def list_genres() -> list[str]:
     return list(GENRE_TARGET_PROFILES.keys())
 

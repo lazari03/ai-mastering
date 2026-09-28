@@ -14,7 +14,8 @@ from adaptive_mastering import analyze_for_preview, master_track as run_adaptive
 from ai_mastering.audio_utils import _true_peak_db
 from ai_mastering.planning import config as engine_config
 from ai_mastering.quality_control import InvalidAudioError
-from params import list_categories, list_flavours, list_genres, list_styles, list_tags
+from ai_mastering.planning.preset_intent import is_intent_preset, resolve_genre, resolve_style
+from params import list_categories, list_delivery_targets, list_flavours, list_genres, list_styles, list_tags
 
 from app.core.config import settings
 from app.services.preset_dsp_engine import render_preset_master
@@ -64,6 +65,23 @@ def _normalized_tweaks(raw_tweaks: dict) -> dict:
     return normalized
 
 
+def attach_preset_spec(resolved: dict, spec: dict) -> dict:
+    """Routes a preset spec to the engine its format was written for: an
+    intent preset (the built-ins — "boost up to 0.5 dB if needed", "aim for
+    -10.5 LUFS") steers the adaptive engine; a literal chain (explicit
+    gain_db / target_lufs_i — an imported JSON chain or the Pro manual
+    panel) runs on the manual-chain engine."""
+    if is_intent_preset(spec):
+        resolved["preset_intent"] = spec
+        resolved["full_preset"] = None
+        resolved["genre"] = resolve_genre(spec.get("genre")) or resolved.get("genre")
+        resolved["style"] = resolve_style(spec.get("style")) or resolved.get("style") or "modern"
+    else:
+        resolved["full_preset"] = spec
+        resolved["preset_intent"] = None
+    return resolved
+
+
 def resolve_mastering_config(
     genre: str | None,
     style: str | None,
@@ -75,6 +93,8 @@ def resolve_mastering_config(
     tier: str = "standard",
     category: str | None = None,
     flavour: str | None = None,
+    delivery: str | None = None,
+    preset_spec: dict | None = None,
 ) -> dict:
     resolved = {
         "genre": genre,
@@ -96,6 +116,13 @@ def resolve_mastering_config(
         # preset DSP engine instead of the genre-based adaptive one. Mirrors
         # backend-node/src/services/masteringService.js:resolveConfig().
         "full_preset": None,
+        # Set when the preset is written as adaptive intent (the built-in
+        # presets are) — it steers the adaptive engine instead of running
+        # as a literal chain. See ai_mastering/planning/preset_intent.py.
+        "preset_intent": None,
+        # Where the master is going: auto (genre best practice), streaming
+        # (-14 LUFS), apple (-16 LUFS) or loud. See params.DELIVERY_TARGETS.
+        "delivery": delivery or "auto",
     }
 
     if mix_preset:
@@ -112,14 +139,23 @@ def resolve_mastering_config(
         resolved["output_format"] = preset.get("output_format", resolved["output_format"])
 
         if preset.get("processing"):
-            resolved["full_preset"] = {
-                "name": mix_preset,
-                "genre": resolved["genre"],
-                "style": resolved["style"],
-                "processing": preset["processing"],
-                "quality_control": preset.get("quality_control"),
-                "output": preset.get("output"),
-            }
+            attach_preset_spec(
+                resolved,
+                {
+                    "name": mix_preset,
+                    "genre": resolved["genre"],
+                    "style": resolved["style"],
+                    "processing": preset["processing"],
+                    "quality_control": preset.get("quality_control"),
+                    "output": preset.get("output"),
+                    "adaptive": preset.get("adaptive"),
+                },
+            )
+
+    # An already-resolved preset spec from the caller (Node resolves both
+    # curated and user presets itself) takes priority over mix_preset.
+    if preset_spec:
+        attach_preset_spec(resolved, preset_spec)
 
     # A full preset (has a "processing" block) is a self-sufficient literal
     # instruction set for preset_dsp_engine — genre/style/tags on it are
@@ -150,6 +186,9 @@ def resolve_mastering_config(
             valid_flavours = list_flavours(resolved["category"])
             if resolved["flavour"] not in valid_flavours:
                 raise HTTPException(400, f"Unknown flavour '{resolved['flavour']}' for category '{resolved['category']}'. Options: {valid_flavours}")
+
+    if resolved["delivery"] not in list_delivery_targets():
+        raise HTTPException(400, f"Unknown delivery target '{resolved['delivery']}'. Options: {list_delivery_targets()}")
 
     if resolved["output_format"] not in ALLOWED_OUTPUT_FORMATS:
         raise HTTPException(400, f"output_format must be one of {sorted(ALLOWED_OUTPUT_FORMATS)}")
@@ -356,6 +395,8 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
                 reference_track_path=reference_input_path,
                 category=config.get("category"),
                 flavour=config.get("flavour"),
+                preset_intent=config.get("preset_intent"),
+                delivery=config.get("delivery"),
             )
         except InvalidAudioError as exc:
             # A real signal-integrity problem with the uploaded file (empty,
@@ -365,7 +406,8 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
         except Exception as exc:  # pragma: no cover
             raise HTTPException(500, f"Adaptive mastering failed: {type(exc).__name__}: {exc}") from exc
 
-    delivery_check = deliver_and_verify(wav_mastered_path, output_path, output_ext)
+    ceiling = float((mastering_result.get("target_profile_used") or {}).get("true_peak_ceiling_dbtp", engine_config.LIMITER_CEILING_DBTP))
+    delivery_check = deliver_and_verify(wav_mastered_path, output_path, output_ext, ceiling_db=ceiling)
     mastering_result.setdefault("processing_applied", {})["delivery_check"] = delivery_check
     if delivery_check["gain_trim_db"] > 0:
         mastering_result.setdefault("source_warnings", []).append(

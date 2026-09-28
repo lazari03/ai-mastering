@@ -6,12 +6,12 @@ import { Readable } from "node:stream";
 import express from "express";
 import multer from "multer";
 
-import { GENRES, STYLES, TAGS, CATEGORIES, FLAVOURS_BY_CATEGORY, AUDIO_DECODE_EXTS } from "../config/constants.js";
+import { GENRES, STYLES, TAGS, CATEGORIES, FLAVOURS_BY_CATEGORY, AUDIO_DECODE_EXTS, DELIVERY_TARGETS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
 import { invalidateCachedSession, requiresEmailVerification } from "../middleware/auth.js";
 import { processMastering, execFileAsync, deleteJobFiles, postMultipartToPython } from "../services/masteringService.js";
 import { analyzeChords, previewCodec } from "../services/chordCleanService.js";
-import { listMixPresets } from "../services/presetsService.js";
+import { getMixPresetByName, isIntentPreset, listMixPresets } from "../services/presetsService.js";
 import { importCustomPreset, deleteCustomPreset, createUserPreset, updateUserPreset } from "../services/customPresetsService.js";
 import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPresetsService.js";
 import { saveProfile, getProfile, deleteAllUserData } from "../services/profileService.js";
@@ -159,6 +159,10 @@ router.get("/tags", (_req, res) => {
 
 router.get("/styles", (_req, res) => {
   res.json({ styles: STYLES });
+});
+
+router.get("/delivery-targets", (_req, res) => {
+  res.json({ delivery_targets: DELIVERY_TARGETS });
 });
 
 router.get("/categories", (_req, res) => {
@@ -646,11 +650,20 @@ router.post("/analyze", expensiveLimiter, requireAdaptiveEngine, upload.single("
 // store. upload.none() parses the multipart fields into req.body without
 // expecting any file part (there isn't one here).
 router.post("/preview-params", requireAdaptiveEngine, upload.none(), async (req, res) => {
-  const { analysis, genre, style, tags, tweaks, category, flavour } = req.body || {};
+  const { analysis, genre, style, tags, tweaks, category, flavour, delivery, mix_preset } = req.body || {};
   if (!analysis || !genre) {
     return res.status(400).json({ detail: "analysis and genre are required" });
   }
   try {
+    // A selected intent preset steers the preview exactly as it steers the
+    // master, so the live numbers match what will render.
+    let presetJson = null;
+    if (mix_preset) {
+      const preset = await getMixPresetByName(mix_preset, req.user?.uid);
+      if (preset && isIntentPreset(preset)) {
+        presetJson = JSON.stringify({ name: preset.display_name || preset.name, genre: preset.genre, style: preset.style, processing: preset.processing, adaptive: preset.adaptive || null });
+      }
+    }
     const result = await postMultipartToPython("/preview-params", {
       fields: {
         analysis,
@@ -660,6 +673,8 @@ router.post("/preview-params", requireAdaptiveEngine, upload.none(), async (req,
         tweaks: tweaks || "{}",
         category: category || null,
         flavour: flavour || null,
+        delivery: delivery || null,
+        preset_json: presetJson,
       },
     });
     return res.json(result);
@@ -865,11 +880,16 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
         tweaks,
         use_stem_separation: useStemSeparation,
         output_format: req.body.output_format || "wav",
-        mix_preset: preview ? null : req.body.mix_preset || null,
+        // The free preview runs the same preset, objective and delivery
+        // target as the full master (they cost nothing extra) — it only
+        // differs in length and engine tier. It used to drop all three, so
+        // a preview didn't sound like the master it was previewing.
+        mix_preset: req.body.mix_preset || null,
         tier,
         processing,
-        category: preview ? null : req.body.category || null,
-        flavour: preview ? null : req.body.flavour || null,
+        category: req.body.category || null,
+        flavour: req.body.flavour || null,
+        delivery: req.body.delivery || "auto",
       },
     });
 

@@ -192,7 +192,7 @@ export async function analyzeAudio(file) {
 // _apply_user_tweaks calls a real render uses (see backend/ai_mastering/
 // mastering.py:preview_processing_params). Cheap enough to call on every
 // chip click or tweak drag — callers debounce anyway, this doesn't.
-export async function previewParams({ analysis, genre, style, tags, tweaks, category, flavour }) {
+export async function previewParams({ analysis, genre, style, tags, tweaks, category, flavour, delivery, mixPreset }) {
   const formData = new FormData();
   formData.append("analysis", JSON.stringify(analysis));
   formData.append("genre", genre);
@@ -203,6 +203,8 @@ export async function previewParams({ analysis, genre, style, tags, tweaks, cate
     formData.append("category", category);
     if (flavour) formData.append("flavour", flavour);
   }
+  if (delivery) formData.append("delivery", delivery);
+  if (mixPreset) formData.append("mix_preset", mixPreset);
   const response = await postPreviewParams(formData);
   return response.processing_params;
 }
@@ -229,6 +231,7 @@ export async function runMasteringJob(input) {
   if (input.mixPreset) {
     formData.append("mix_preset", input.mixPreset);
   }
+  formData.append("delivery", input.delivery || "auto");
 
   if (input.category) {
     formData.append("category", input.category);

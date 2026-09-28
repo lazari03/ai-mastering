@@ -16,6 +16,7 @@ import { downloadFileSafely, postCheckout } from "@/network/http/client";
 import { useMasteringStore } from "@/store/masteringStore";
 import { useEntitlementsStore, planUnlocksProfessional } from "@/store/entitlementsStore";
 import { STEM_SEPARATION } from "@/lib/pricing";
+import { DELIVERY_TARGETS } from "@/lib/deliveryTargets";
 import { trackEvent } from "@/lib/analytics";
 import { useMasteringProgress } from "@/lib/useMasteringProgress";
 import { Spinner } from "@/components/ui/Spinner";
@@ -109,6 +110,8 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
     setReferenceFile,
     setGenre,
     setStyle,
+    setDelivery,
+    selectedDelivery,
     setCategory,
     setFlavour,
     setPreset,
@@ -495,6 +498,21 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
                     </div>
                   </div>
 
+                  {/* Where the master is going. Sets the loudness target and
+                      true-peak ceiling (see lib/deliveryTargets.js); works
+                      with a preset, so it doesn't clear one. */}
+                  <div className="mt-3.5">
+                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.delivery")}</span>
+                    <div className="flex flex-wrap gap-2">
+                      {DELIVERY_TARGETS.map((target) => (
+                        <button key={target} type="button" onClick={() => setDelivery(target)} className={chipClass(selectedDelivery === target)}>
+                          {t(`delivery.${target}`)}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mb-0 mt-2 text-[10px] text-text-secondary">{t(`delivery.${selectedDelivery}.hint`)}</p>
+                  </div>
+
                   {/* Always visible, Quick or Pro — objective/tags are a
                       real DSP-affecting choice either way now: Quick uses
                       them to bias the adaptive engine directly, Pro uses
@@ -728,6 +746,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
                   <span className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs">{t("console.modeLabel", { mode: mode === "pro" ? t("console.pro") : t("console.quick") })}</span>
                   <span className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs">{t("console.genreLabel", { genre: selectedGenre || t("console.notSet") })}</span>
                   <span className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs">{t("console.styleLabel", { style: selectedStyle || t("console.notSet") })}</span>
+                  <span className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs">{t(`delivery.${selectedDelivery}`)}</span>
                   {selectedCategory ? (
                     <span className="rounded-lg border border-border-subtle bg-accent/10 px-3 py-1.5 text-xs text-accent">
                       {selectedCategory.replaceAll("_", " ")}

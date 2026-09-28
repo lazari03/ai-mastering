@@ -8,6 +8,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from adaptive_mastering import preview_processing_params as compute_preview_params
+from ai_mastering.planning.preset_intent import is_intent_preset, resolve_genre, resolve_style
 from app.core.config import settings
 from app.schemas.mastering import AnalyzeResponse, CodecPreviewResponse, MasterResponse, PresetSummary, PreviewParamsResponse
 from app.services.codec_preview_service import SUPPORTED_CODECS, simulate_codec
@@ -20,7 +21,7 @@ from app.services.mastering_service import (
     resolve_mastering_config,
 )
 from app.services.presets_service import list_mixing_presets
-from params import list_categories, list_flavours, list_genres, list_styles, list_tags
+from params import DELIVERY_TARGETS, list_categories, list_flavours, list_genres, list_styles, list_tags
 
 router = APIRouter(tags=["mastering"])
 
@@ -49,6 +50,11 @@ def get_tags() -> dict:
 @router.get("/styles")
 def get_styles() -> dict:
     return {"styles": list_styles()}
+
+
+@router.get("/delivery-targets")
+def get_delivery_targets() -> dict:
+    return {"delivery_targets": [{"key": k, "label": v["label"], "reference_lufs": v["reference_lufs"]} for k, v in DELIVERY_TARGETS.items()]}
 
 
 @router.get("/categories")
@@ -93,6 +99,10 @@ def preview_params(
     tweaks: str = Form("{}"),
     category: str | None = Form(None),
     flavour: str | None = Form(None),
+    delivery: str | None = Form(None),
+    # The selected intent preset's spec (Node resolves it), so the live
+    # parameter preview shows what that preset will actually do.
+    preset_json: str | None = Form(None),
 ) -> dict:
     """Pure computation on an analysis already produced by /analyze — no
     audio touched, so this is cheap enough to call on every chip click or
@@ -103,6 +113,16 @@ def preview_params(
         analysis_dict = json.loads(analysis)
     except json.JSONDecodeError as exc:
         raise HTTPException(400, "analysis must be valid JSON") from exc
+    preset_intent = None
+    if preset_json:
+        try:
+            spec = json.loads(preset_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(400, "preset_json must be valid JSON") from exc
+        if is_intent_preset(spec):
+            preset_intent = spec
+            genre = resolve_genre(spec.get("genre")) or genre
+            style = resolve_style(spec.get("style")) or style
     if genre not in list_genres():
         raise HTTPException(400, f"Unknown genre: {genre}")
 
@@ -118,6 +138,8 @@ def preview_params(
             tweaks=tweak_values,
             category=category,
             flavour=flavour,
+            preset_intent=preset_intent,
+            delivery=delivery,
         )
     except (KeyError, ValueError) as exc:
         raise HTTPException(400, f"Couldn't compute preview parameters: {exc}") from exc
@@ -141,6 +163,7 @@ def master_track(
     # behavior, unchanged from before this existed.
     category: str | None = Form(None),
     flavour: str | None = Form(None),
+    delivery: str | None = Form(None),
     # A caller that has already fully resolved a preset itself (Node does,
     # for both its curated and user-imported-custom presets — see
     # backend-node/src/services/presetsService.js) can send the resolved
@@ -154,6 +177,12 @@ def master_track(
 ) -> dict:
     tag_list = parse_json_array(tags, "tags")
     tweak_values = parse_json_object(tweaks, "tweaks")
+    preset_spec = None
+    if full_preset_json:
+        try:
+            preset_spec = json.loads(full_preset_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(400, "full_preset_json must be valid JSON") from exc
 
     resolved_config = resolve_mastering_config(
         genre=genre,
@@ -166,13 +195,9 @@ def master_track(
         tier=tier,
         category=category,
         flavour=flavour,
+        delivery=delivery,
+        preset_spec=preset_spec,
     )
-
-    if full_preset_json:
-        try:
-            resolved_config["full_preset"] = json.loads(full_preset_json)
-        except json.JSONDecodeError as exc:
-            raise HTTPException(400, "full_preset_json must be valid JSON") from exc
 
     if not _master_slots.acquire(blocking=False):
         raise HTTPException(503, "Server is at capacity right now — please try again in a minute.")

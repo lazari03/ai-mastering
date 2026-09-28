@@ -107,7 +107,8 @@ What the engine does to a track, in order:
    width and air automation, plus a mono-compatibility check.
 7. **Bus stage.** Optional glue compression, gain to the target LUFS, and a
    true-peak limiter — 4x oversampled, 3 ms lookahead, 60 ms release,
-   ceiling at -1.0 dBTP — with loudness-guard iterations so the result
+   ceiling at -2.0 dBTP for masters louder than -14 LUFS (Spotify's
+   guidance for lossy transcoding), -1.0 dBTP otherwise — with loudness-guard iterations so the result
    lands on target without audible pumping.
 8. **Report.** Mastered file plus before/after analysis and a summary of
    what was actually applied.
@@ -145,7 +146,10 @@ Importantly, the engine caps how far it will move loudness in a single
 pass — between roughly 0.9 and 4.5 dB of raise depending on style, and
 tighter still on material already above -12 LUFS. A quiet, dynamic mix will
 not be slammed to -8 LUFS just because the genre target says so. True peak
-is held at -1.0 dBTP regardless of genre.
+is held at -2.0 dBTP when the master is louder than -14 LUFS and -1.0 dBTP
+otherwise. A delivery target can also be chosen: Streaming lands at -14 LUFS
+(Spotify, YouTube, Tidal, Amazon), Apple Music at -16 LUFS, Loud at 1 LU
+above the genre default.
 
 ## Mastering for streaming platforms
 

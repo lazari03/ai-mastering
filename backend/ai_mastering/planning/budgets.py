@@ -69,6 +69,9 @@ def calculate_limiter_budget(profile: SourceProfile, context: TargetContext) -> 
     if (profile.clipping or {}).get("detected"):
         budget = min(budget, 1.5)
         reasons.append("input clipping detected: capped at 1.5 dB")
+    if context.limiter_budget_cap_db is not None and budget > context.limiter_budget_cap_db:
+        budget = float(context.limiter_budget_cap_db)
+        reasons.append(f"preset '{context.preset}' caps the limiter at {context.limiter_budget_cap_db:.1f} dB")
     budget = float(np.clip(budget, C.LIMITER_BUDGET_MIN_DB, C.LIMITER_BUDGET_MAX_DB))
     return {"budget_db": round(budget, 3), "reasons": reasons}
 
@@ -76,7 +79,7 @@ def calculate_limiter_budget(profile: SourceProfile, context: TargetContext) -> 
 def limiter_only_achievable_lufs(profile: SourceProfile, context: TargetContext, limiter_budget_db: float) -> float:
     """Loudness reachable by gain + limiting alone without exceeding the
     limiter damage budget (peak estimate: 99.5th-percentile 10 ms peak)."""
-    return float(profile.integrated_lufs + C.LIMITER_CEILING_DBTP + limiter_budget_db - profile.peak_p995_db)
+    return float(profile.integrated_lufs + context.ceiling_dbtp + limiter_budget_db - profile.peak_p995_db)
 
 
 def calculate_compression_need(profile: SourceProfile, context: TargetContext) -> dict:

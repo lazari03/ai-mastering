@@ -196,9 +196,10 @@ def evaluate_master(
     clipping = bool(np.any(np.abs(master_audio) >= 0.9999))
     if clipping:
         flag("clipping", 1.0, 0.0, 1.0, "bus", "full-scale samples in the master")
-    tp_over = master.true_peak_db > C.LIMITER_CEILING_DBTP + 0.15
+    ceiling = float(plan.limiter.get("ceiling_dbtp", C.LIMITER_CEILING_DBTP))
+    tp_over = master.true_peak_db > ceiling + 0.15
     if tp_over:
-        flag("true_peak_over_ceiling", master.true_peak_db, C.LIMITER_CEILING_DBTP, 1.0, "bus", f"true peak {master.true_peak_db:.2f} dBTP")
+        flag("true_peak_over_ceiling", master.true_peak_db, ceiling, 1.0, "bus", f"true peak {master.true_peak_db:.2f} dBTP")
 
     # --- did the planned corrections help? -----------------------------------
     before_dev = tonal_deviation(source, context)

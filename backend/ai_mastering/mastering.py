@@ -52,6 +52,8 @@ def preview_processing_params(
     tweaks: dict | None = None,
     category: str | None = None,
     flavour: str | None = None,
+    preset_intent: dict | None = None,
+    delivery: str | None = None,
 ) -> dict:
     """Exactly the parameter-computation half of master_track() — the same
     compute_processing_params + user-tweak-merge + _apply_user_tweaks calls
@@ -69,6 +71,8 @@ def preview_processing_params(
         style=style,
         category=category,
         flavour=flavour,
+        preset_intent=preset_intent,
+        delivery=delivery,
     )
     # Category/flavour tweak_bias is NOT merged into the sliders any more:
     # it shifts the target context (see planning/target_model.py), so it
@@ -114,6 +118,8 @@ def master_track(
     reference_track_path: str | Path | None = None,
     category: str | None = None,
     flavour: str | None = None,
+    preset_intent: dict | None = None,
+    delivery: str | None = None,
 ) -> dict:
     """SOURCE -> high-resolution analysis -> SourceProfile -> problem
     detection -> confidence -> budgets -> target context -> MasteringPlan
@@ -152,6 +158,8 @@ def master_track(
         flavour=flavour,
         tier=tier,
         reference_relative_db=reference_relative_db,
+        preset_intent=preset_intent,
+        delivery=delivery,
     )
     processing_params = _apply_user_tweaks(processing_params, analysis_before, tweaks or {})
     plan = processing_params["_plan"]
@@ -257,6 +265,7 @@ def master_track(
         mastered_audio=stereo_processed,
         processing_params=processing_params,
         limiter_report=limiter_report,
+        true_peak_ceiling_db=float(plan.limiter["ceiling_dbtp"]),
     )
     qc_corrections = []
     non_passing_ids = {c["id"] for c in quality_control["checks"] if c["status"] != "pass"}
@@ -274,6 +283,7 @@ def master_track(
             mastered_audio=stereo_processed,
             processing_params=processing_params,
             limiter_report=limiter_report,
+            true_peak_ceiling_db=float(plan.limiter["ceiling_dbtp"]),
         )
 
     # Evaluation checks planned tonal moves; final QC checks the actual
@@ -304,6 +314,7 @@ def master_track(
                 mastered_audio=candidate_render["audio"],
                 processing_params=candidate_params,
                 limiter_report=candidate_render["limiter_report"],
+                true_peak_ceiling_db=float(candidate_plan.limiter["ceiling_dbtp"]),
             )
             renders += 1
             if candidate_qc["passed"] and candidate_evaluation.passed:
@@ -467,6 +478,9 @@ def master_track(
             "category": category,
             "flavour": flavour if category else None,
             "target_lufs": float(plan.loudness["target_lufs"]),
+            "delivery": context.delivery,
+            "true_peak_ceiling_dbtp": float(plan.limiter["ceiling_dbtp"]),
+            "preset": context.preset,
             "loudness_range": {k: plan.loudness[k] for k in ("preferred_lufs", "acceptable_min_lufs", "acceptable_max_lufs")},
             "target_dynamic_range_db": float(context.target_crest_db),
             "target_width": float(public["target_width"]),

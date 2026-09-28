@@ -46,6 +46,7 @@ def main() -> int:
     parser.add_argument("--before", default=str(REPO / "frontend/public/audio/demos/pop-before.mp3"))
     parser.add_argument("--genre", default="pop")
     parser.add_argument("--style", default="modern")
+    parser.add_argument("--delivery", default="auto", help="auto | streaming | apple | loud (see params.DELIVERY_TARGETS)")
     args = parser.parse_args()
 
     before = Path(args.before).resolve()
@@ -67,15 +68,17 @@ def main() -> int:
             style=args.style,
             enable_stem_separation=False,
             tier="standard",
+            delivery=args.delivery,
         )
-        delivery = deliver_and_verify(master_wav, after_mp3, "mp3")
+        ceiling = float(result["target_profile_used"]["true_peak_ceiling_dbtp"])
+        delivery = deliver_and_verify(master_wav, after_mp3, "mp3", ceiling_db=ceiling)
 
     diag = result["processing_applied"].get("mastering_diagnostics") or result.get("mastering_diagnostics") or {}
     keep_analysis = ("integrated_lufs", "true_peak_db", "loudness_range_lu")
     demo = {
         "track": before.name,
         "genre": args.genre,
-        "rendered": {"date": date.today().isoformat(), "engine_commit": git_commit(), "style": args.style, "tier": "standard"},
+        "rendered": {"date": date.today().isoformat(), "engine_commit": git_commit(), "style": args.style, "tier": "standard", "delivery": args.delivery},
         "before_lufs": round(result["analysis_before"]["integrated_lufs"], 2),
         "after_lufs": round(result["analysis_after"]["integrated_lufs"], 2),
         "analysis_before": {k: result["analysis_before"].get(k) for k in keep_analysis},

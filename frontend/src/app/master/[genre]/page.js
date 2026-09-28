@@ -45,7 +45,7 @@ function faqFor(page, ctx, hero) {
   return [
     {
       question: `How loud will my ${label} master be?`,
-      answer: `With the default Modern style the engine aims for about ${f1(ctx.preferredLufs)} LUFS integrated and accepts anything from ${f1(ctx.windowMin)} to ${f1(ctx.windowMax)} LUFS. A mix already inside that range at or above ${f1(ctx.preferredLufs)} keeps its level; a quieter one is raised only as far as its transients allow. True peak is held at -1.0 dBTP.`,
+      answer: `With the default Modern style the engine aims for about ${f1(ctx.preferredLufs)} LUFS integrated and accepts anything from ${f1(ctx.windowMin)} to ${f1(ctx.windowMax)} LUFS. A mix already inside that range at or above ${f1(ctx.preferredLufs)} keeps its level; a quieter one is raised only as far as its transients allow. True peak is held at -2.0 dBTP for a master louder than -14 LUFS (Spotify's guidance for lossy transcoding) and -1.0 dBTP otherwise — pick the Streaming delivery target to land at -14 LUFS instead.`,
     },
     {
       question: `Does choosing ${page.label} apply a fixed ${label} preset?`,
@@ -75,7 +75,7 @@ export default async function GenreMasteringPage({ params }) {
     ["Acceptable window", `${f1(ctx.windowMin)} to ${f1(ctx.windowMax)} LUFS`, "Inside it, the level is left alone"],
     ["Crest factor floor", `${f1(ctx.crestDb)} dB`, "Loudness stops before dynamics drop below this"],
     ["Max stereo width", ctx.maxWidth.toFixed(2), ctx.maxWidth < 0.5 ? "Near-mono by design" : "Never widened past this"],
-    ["True-peak ceiling", "-1.0 dBTP", "Safe through MP3/AAC encoding"],
+    ["True-peak ceiling", "-2.0 / -1.0 dBTP", "-2.0 when louder than -14 LUFS (Spotify's advice), -1.0 otherwise"],
   ];
 
   return (

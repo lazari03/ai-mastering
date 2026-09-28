@@ -78,6 +78,9 @@ export const useMasteringStore = create((set, get) => ({
 
   file: null,
   referenceFile: null,
+  // Where the master is going (lib/deliveryTargets.js) — sets the loudness
+  // target and true-peak ceiling alongside genre/style/objective.
+  selectedDelivery: "auto",
   genres: [],
   tags: [],
   styles: [],
@@ -252,6 +255,8 @@ export const useMasteringStore = create((set, get) => ({
         tweaks: state.tweaks,
         category: state.selectedCategory,
         flavour: state.selectedFlavour,
+        delivery: state.selectedDelivery,
+        mixPreset: state.presets.find((p) => p.name === state.selectedPreset)?.kind === "direction" ? state.selectedPreset : null,
       });
       // The selection could have moved on again while this was in
       // flight — a stale response would flash outdated numbers for a
@@ -338,7 +343,12 @@ export const useMasteringStore = create((set, get) => ({
       return;
     }
 
-    const hasProcessing = Boolean(preset.processing);
+    // Only a literal chain (kind "chain": an imported JSON chain or a saved
+    // Pro setup) is a manual processing spec that belongs in the Pro knobs.
+    // Built-in presets are "direction": adaptive intents that steer the
+    // adaptive engine — loading them into the Pro knobs used to leave the
+    // console in Pro mode with an intent spec the manual engine can't read.
+    const hasProcessing = preset.kind === "chain";
     const tweaks = { ...EMPTY_TWEAKS, ...(preset.tweaks || {}) };
     set({
       selectedPreset,
@@ -370,6 +380,13 @@ export const useMasteringStore = create((set, get) => ({
         : {}),
     });
     if (!hasProcessing) get().refreshPreviewParams();
+  },
+
+  setDelivery(selectedDelivery) {
+    // Independent of the preset — "this preset, delivered for streaming" is
+    // a real combination — so this doesn't clear selectedPreset.
+    set({ selectedDelivery });
+    get().refreshPreviewParams();
   },
 
   toggleTag(tag) {
@@ -540,7 +557,7 @@ export const useMasteringStore = create((set, get) => ({
     try {
       const preset = await importPreset(file, displayName);
       const catalog = await fetchCatalog();
-      const hasProcessing = Boolean(preset.processing);
+      const hasProcessing = preset.kind === "chain";
       set({
         presets: catalog.presets,
         selectedPreset: preset.name,
@@ -612,6 +629,7 @@ export const useMasteringStore = create((set, get) => ({
 
     try {
       const usingSavedPreset = Boolean(state.selectedPreset);
+      const usingLiteralChain = state.presets.find((p) => p.name === state.selectedPreset)?.kind === "chain";
       // Reference mode always uses the adaptive engine (spectral matching
       // against the reference) — never the manual Pro processing spec, per
       // "no manual parameter form while reference mode is active".
@@ -631,8 +649,12 @@ export const useMasteringStore = create((set, get) => ({
         // Category/flavour only make sense for the adaptive engine — never
         // sent for a saved preset (a preset is a self-sufficient literal
         // spec) or a Pro-mode manual processing spec.
-        category: !preview && !usingSavedPreset && !useProProcessing ? state.selectedCategory || null : null,
-        flavour: !preview && !usingSavedPreset && !useProProcessing ? state.selectedFlavour || null : null,
+        // Objective/flavour apply to the adaptive engine — the free preview
+        // included (it used to drop them, so a preview didn't match its
+        // master). Only a literal chain or the Pro manual knobs skip them.
+        category: !usingLiteralChain && !useProProcessing ? state.selectedCategory || null : null,
+        flavour: !usingLiteralChain && !useProProcessing ? state.selectedFlavour || null : null,
+        delivery: state.selectedDelivery || "auto",
         preview,
         onUploadProgress: (progress) => set({ uploadProgress: progress.done ? null : progress }),
       });

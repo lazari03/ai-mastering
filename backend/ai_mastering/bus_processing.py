@@ -200,6 +200,11 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
         )
         stereo_pb = bus_board(stereo_pb, sr)
 
+    # Delivery true-peak ceiling (planning decides it: -1 dBTP, or -2 dBTP
+    # for masters louder than -14 LUFS per Spotify's transcoding guidance).
+    # The soft clipper sits 0.7 dB above it, as it did above -1.0 before.
+    ceiling_db = float(params.get("ceiling_dbtp", -1.0))
+    clip_ceiling_db = ceiling_db + 0.7
     meter = FastMeter(sr)
     lufs_pre = float(meter.integrated_loudness(stereo_pb.T))
     gain_db = float(params["target_lufs"] - lufs_pre)
@@ -215,11 +220,11 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
     # peaks before the limiter does.
     clipper_enabled = bool(params.get("clipper_enabled", True))
     clip_share = float(params.get("clipper_max_reduction_db", 1.0))
-    clipped = _soft_clip(pre_limiter, ceiling_db=-0.3, max_reduction_db=clip_share) if clipper_enabled else pre_limiter
+    clipped = _soft_clip(pre_limiter, ceiling_db=clip_ceiling_db, max_reduction_db=clip_share) if clipper_enabled else pre_limiter
     clipper_gain_reduction_db = float(max(0.0, pre_clip_peak_db - _true_peak_db(clipped))) if clipper_enabled else 0.0
 
     limiter_release_ms = float(params.get("limiter_release_ms", 60.0))
-    limited = _true_peak_limiter(clipped, sr, ceiling_db=-1.0, release_ms=limiter_release_ms)
+    limited = _true_peak_limiter(clipped, sr, ceiling_db=ceiling_db, release_ms=limiter_release_ms)
 
     pre_peak_db = pre_clip_peak_db
     post_peak_db = _true_peak_db(limited)
@@ -228,9 +233,9 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
     measured_lufs = float(meter.integrated_loudness(limited))
     limited, measured_lufs, recovery_gain_db, recovery_iterations = _recover_undershot_loudness(
         render_candidate=lambda gain_db: _true_peak_limiter(
-            _soft_clip(pre_limiter * (10.0 ** (gain_db / 20.0)), ceiling_db=-0.3, max_reduction_db=clip_share) if clipper_enabled else pre_limiter * (10.0 ** (gain_db / 20.0)),
+            _soft_clip(pre_limiter * (10.0 ** (gain_db / 20.0)), ceiling_db=clip_ceiling_db, max_reduction_db=clip_share) if clipper_enabled else pre_limiter * (10.0 ** (gain_db / 20.0)),
             sr,
-            ceiling_db=-1.0,
+            ceiling_db=ceiling_db,
             release_ms=limiter_release_ms,
         ),
         measure_lufs=lambda x: float(meter.integrated_loudness(x)),
@@ -247,7 +252,7 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
     )
     if recovery_iterations:
         final_input = pre_limiter * (10.0 ** (recovery_gain_db / 20.0))
-        final_clipped = _soft_clip(final_input, ceiling_db=-0.3, max_reduction_db=clip_share) if clipper_enabled else final_input
+        final_clipped = _soft_clip(final_input, ceiling_db=clip_ceiling_db, max_reduction_db=clip_share) if clipper_enabled else final_input
         pre_peak_db = _true_peak_db(final_input)
         clipper_gain_reduction_db = float(max(0.0, pre_peak_db - _true_peak_db(final_clipped))) if clipper_enabled else 0.0
         post_peak_db = _true_peak_db(limited)
@@ -281,7 +286,7 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
     # check it. This measures the finished signal and trims the exact
     # overage, so the file cannot leave here above spec. Attenuation only,
     # so it can never add loudness back or undo the limiting.
-    TRUE_PEAK_CEILING_DB = -1.0
+    TRUE_PEAK_CEILING_DB = ceiling_db
     # 16x, not the 4x used everywhere else: 4x carries ~0.07 dB of its own
     # uncertainty, which is the whole margin at stake here. Measured at 4x
     # the finished file read exactly -1.000 while a 32x reference saw
@@ -330,6 +335,11 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
         )
         stereo_pb = bus_board(stereo_pb, sr)
 
+    # Delivery true-peak ceiling (planning decides it: -1 dBTP, or -2 dBTP
+    # for masters louder than -14 LUFS per Spotify's transcoding guidance).
+    # The soft clipper sits 0.7 dB above it, as it did above -1.0 before.
+    ceiling_db = float(params.get("ceiling_dbtp", -1.0))
+    clip_ceiling_db = ceiling_db + 0.7
     meter = FastMeter(sr)
     lufs_pre = float(meter.integrated_loudness(stereo_pb.T))
     gain_db = float(params["target_lufs"] - lufs_pre)
@@ -341,7 +351,7 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
     clipper_enabled = bool(params.get("clipper_enabled", True))
     pre_clip_peak = float(np.max(np.abs(pre_limiter)) + EPS)
     clip_share = float(params.get("clipper_max_reduction_db", 1.0))
-    clipped = _soft_clip(pre_limiter.T, ceiling_db=-0.3, max_reduction_db=clip_share).T if clipper_enabled else pre_limiter
+    clipped = _soft_clip(pre_limiter.T, ceiling_db=clip_ceiling_db, max_reduction_db=clip_share).T if clipper_enabled else pre_limiter
     clipper_gain_reduction_db = float(max(0.0, _true_peak_db(pre_limiter.T) - _true_peak_db(clipped.T))) if clipper_enabled else 0.0
 
     # Gain-only true-peak limiter on BOTH tiers. pedalboard.Limiter (JUCE)
@@ -353,7 +363,7 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
     limiter_release_ms = float(params.get("limiter_release_ms", 120.0))
 
     def limiter(buf: np.ndarray, _sr: int) -> np.ndarray:
-        return _true_peak_limiter(np.asarray(buf, dtype=np.float32).T, _sr, ceiling_db=-1.0, release_ms=limiter_release_ms).T
+        return _true_peak_limiter(np.asarray(buf, dtype=np.float32).T, _sr, ceiling_db=ceiling_db, release_ms=limiter_release_ms).T
 
     stereo_pb = limiter(np.ascontiguousarray(clipped, dtype=np.float32), sr)
 
@@ -368,7 +378,7 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
     # undetected by the old np.max(np.abs(...)) check. This is a correctness
     # fix (a spec violation), not a Professional-tier feature — the actual
     # lookahead true-peak *limiter* and sub/punch band split stay Pro-only.
-    target_peak_db = -1.0
+    target_peak_db = ceiling_db
     # 16x: the 4x meter's own ~0.07 dB uncertainty is the entire margin
     # being judged here, so measuring the compliance check at 4x can
     # (and did) pass a file sitting above the ceiling.
@@ -378,7 +388,7 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
 
     def _render_recovery_candidate(extra_gain_db: float) -> np.ndarray:
         boosted = pre_limiter * (10.0 ** (extra_gain_db / 20.0))
-        clipped_c = _soft_clip(boosted.T, ceiling_db=-0.3, max_reduction_db=clip_share).T if clipper_enabled else boosted
+        clipped_c = _soft_clip(boosted.T, ceiling_db=clip_ceiling_db, max_reduction_db=clip_share).T if clipper_enabled else boosted
         limited_c = limiter(np.ascontiguousarray(clipped_c, dtype=np.float32), sr)
         tp_db = _true_peak_db(limited_c.T)
         if tp_db > target_peak_db:
@@ -396,7 +406,7 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
     )
     if recovery_iterations:
         final_input = pre_limiter * (10.0 ** (recovery_gain_db / 20.0))
-        final_clipped = _soft_clip(final_input.T, ceiling_db=-0.3, max_reduction_db=clip_share).T if clipper_enabled else final_input
+        final_clipped = _soft_clip(final_input.T, ceiling_db=clip_ceiling_db, max_reduction_db=clip_share).T if clipper_enabled else final_input
         pre_peak = float(np.max(np.abs(final_input)) + EPS)
         clipper_gain_reduction_db = float(max(0.0, _true_peak_db(final_input.T) - _true_peak_db(final_clipped.T))) if clipper_enabled else 0.0
         post_peak = float(np.max(np.abs(stereo_pb)) + EPS)

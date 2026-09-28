@@ -28,6 +28,10 @@ from dataclasses import asdict, dataclass, field
 import numpy as np
 
 from params import (
+    DELIVERY_TARGETS,
+    LOUD_MASTER_TRUE_PEAK_CEILING_DBTP,
+    STREAMING_REFERENCE_LUFS,
+    TRUE_PEAK_CEILING_DBTP,
     ADJUSTMENT_TAG_BIASES,
     GENRE_TARGET_PROFILES,
     MASTERING_CATEGORY_PROFILES,
@@ -37,6 +41,7 @@ from params import (
 )
 
 from . import config as C
+from .preset_intent import compile_intent
 
 _LEGACY_BAND_RANGES = {
     "sub_bass_20_60hz": (20.0, 60.0),
@@ -135,6 +140,15 @@ class TargetContext:
     reference_used: bool = False
     intent_notes: list[str] = field(default_factory=list)
     style_profile: dict = field(default_factory=dict)
+    # Delivery: where the master is going, and the true-peak ceiling that
+    # follows from its loudness (see params.DELIVERY_TARGETS).
+    delivery: str = "auto"
+    ceiling_dbtp: float = TRUE_PEAK_CEILING_DBTP
+    # Limits a preset intent sets on top of the engine's own (None = the
+    # engine's default applies).
+    preset: str | None = None
+    limiter_budget_cap_db: float | None = None
+    clipper_max_share_db: float = C.CLIPPER_MAX_SHARE_DB
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -179,7 +193,12 @@ def build_target_context(
     category: str | None = None,
     flavour: str | None = None,
     reference_relative_db: dict[str, float] | None = None,
+    preset_intent: dict | None = None,
+    delivery: str | None = None,
 ) -> TargetContext:
+    delivery = delivery or "auto"
+    if delivery not in DELIVERY_TARGETS:
+        raise ValueError(f"Unknown delivery target: {delivery}")
     if genre not in GENRE_TARGET_PROFILES:
         raise ValueError(f"Unknown genre: {genre}")
     if style not in MASTERING_STYLE_PROFILES:
@@ -232,10 +251,32 @@ def build_target_context(
             lo, hi = _TWEAK_REGIONS_HZ[tweak_key]
             shift_region(lo, hi, float(value) * C.INTENT_TWEAK_TO_TARGET_DB, f"category '{category}' {tweak_key}")
 
+    # Preset intent: each leaning ("boost 120 Hz by up to 0.5 dB") moves the
+    # target around that frequency by its allowance x preset_strength. The
+    # engine still acts only where the measured source is off target.
+    intent = compile_intent(preset_intent) if preset_intent else None
+    if intent:
+        for band in intent["eq"]:
+            lo, hi = band["hz"] / 1.41, band["hz"] * 1.41
+            shift_region(lo, hi, band["db"] * intent["strength"], f"preset '{intent['name']}' {band['hz']:.0f} Hz")
+
     # --- loudness range --------------------------------------------------
     tag_lufs = sum(float(ADJUSTMENT_TAG_BIASES.get(t, {}).get("target_lufs_delta", 0.0)) for t in tags)
-    preferred = float(profile["target_lufs"]) + tag_lufs + float(style_profile["target_lufs_delta"]) + cat["target_lufs_delta"]
-    preferred += float(cat["tweak_bias"].get("loudness", 0.0)) * 1.0
+    chip_lufs = tag_lufs + cat["target_lufs_delta"] + float(cat["tweak_bias"].get("loudness", 0.0)) * 1.0
+    preset_loud = (intent or {}).get("loudness")
+    if preset_loud:
+        # A preset's own loudness intent already reflects its style.
+        preferred = preset_loud["preferred"] + chip_lufs
+        notes.append(f"preset '{intent['name']}' loudness {preset_loud['preferred']:.1f} LUFS")
+    else:
+        preferred = float(profile["target_lufs"]) + float(style_profile["target_lufs_delta"]) + chip_lufs
+    delivery_cfg = DELIVERY_TARGETS[delivery]
+    if delivery_cfg["reference_lufs"] is not None:
+        # Normalizing platforms turn anything louder than their reference
+        # down; quieter genres (classical, jazz, podcast) keep their target.
+        preferred = min(preferred, float(delivery_cfg["reference_lufs"]))
+        notes.append(f"delivery '{delivery}': at most {delivery_cfg['reference_lufs']:.0f} LUFS so the platform never turns it down")
+    preferred += float(delivery_cfg["lufs_delta"])
     preferred = float(np.clip(preferred, -20.0, -6.5))
     priorities = dict(profile.get("preservation_priorities", {}))
     if "punch" in cat["tweak_bias"]:
@@ -258,7 +299,36 @@ def build_target_context(
     hf_mult = float(np.clip(1.0 + (float(style_profile["hf_boost_cap_db"]) - 0.75) * 0.4 + cat["hf_boost_cap_delta"] * 0.4, 0.4, 1.4))
     deesser_intent = float(np.clip(sum(float(ADJUSTMENT_TAG_BIASES.get(t, {}).get("deesser_strength", 0.0)) for t in tags), 0.0, 1.0))
 
+    min_lufs = preferred - below
+    max_lufs = preferred + C.LOUDNESS_WINDOW_ABOVE_LU
+    if preset_loud and "min" in preset_loud:
+        shift = preferred - preset_loud["preferred"]
+        min_lufs, max_lufs = preset_loud["min"] + shift, preset_loud["max"] + shift
+    if delivery_cfg["reference_lufs"] is not None:
+        max_lufs = min(max_lufs, float(delivery_cfg["reference_lufs"]))
+    min_lufs = min(min_lufs, preferred - 0.5)
+    max_lufs = max(max_lufs, preferred)
+
+    # Spotify: <= -1 dBTP, and -2 dBTP once a master is louder than
+    # -14 LUFS (dense masters overshoot more in lossy transcoding).
+    ceiling = LOUD_MASTER_TRUE_PEAK_CEILING_DBTP if max_lufs > STREAMING_REFERENCE_LUFS else TRUE_PEAK_CEILING_DBTP
+
+    limiter_cap = clipper_cap = None
+    if intent:
+        saturation = saturation if intent["saturation_max"] is None else min(saturation, intent["saturation_max"])
+        width += intent["width_delta"] * intent["strength"]
+        deesser_intent = float(np.clip(deesser_intent + 0.3 * intent["strength"] * min(1.0, intent["hf_dynamic_eq_db"] / 2.0), 0.0, 1.0))
+        if intent["bus_max_gr_db"] is not None:
+            compression_aggression += float(np.clip((intent["bus_max_gr_db"] - 1.5) / 3.0, -0.5, 0.5))
+        limiter_cap = intent["limiter_max_gr_db"]
+        clipper_cap = intent["clipper_max_db"]
+
     return TargetContext(
+        delivery=delivery,
+        ceiling_dbtp=ceiling,
+        preset=(intent or {}).get("name"),
+        limiter_budget_cap_db=limiter_cap,
+        clipper_max_share_db=C.CLIPPER_MAX_SHARE_DB if clipper_cap is None else min(C.CLIPPER_MAX_SHARE_DB, clipper_cap),
         genre=genre,
         style=style,
         category=category,
@@ -268,8 +338,8 @@ def build_target_context(
         tolerance_low_db=tol_low,
         tolerance_high_db=tol_high,
         preferred_lufs=round(preferred, 2),
-        acceptable_min_lufs=round(preferred - below, 2),
-        acceptable_max_lufs=round(preferred + C.LOUDNESS_WINDOW_ABOVE_LU, 2),
+        acceptable_min_lufs=round(min_lufs, 2),
+        acceptable_max_lufs=round(max_lufs, 2),
         max_lufs_reduce_db=float(style_profile.get("max_lufs_reduce_db", -2.0)),
         target_crest_db=float(np.clip(target_crest, 5.0, 14.5)),
         max_stereo_width=float(np.clip(width, 0.0, 1.4)),

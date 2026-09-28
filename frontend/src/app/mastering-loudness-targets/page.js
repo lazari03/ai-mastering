@@ -160,7 +160,7 @@ export default function LoudnessTargetsPage() {
             </table>
           </TableWrap>
           <p className="text-[14px] text-text-secondary">
-            True peak is held at -1.0 dBTP for every genre. Each genre name links to how the rest of the chain shifts for that material.
+            True peak is held at -2.0 dBTP when the master is louder than -14 LUFS (Spotify&apos;s guidance for loud masters in lossy transcoding) and -1.0 dBTP otherwise. Choose the Streaming delivery target to land at -14 LUFS for Spotify, YouTube, Tidal and Amazon, or Apple Music for -16. Each genre name links to how the rest of the chain shifts for that material.
           </p>
         </div>
       </Section>

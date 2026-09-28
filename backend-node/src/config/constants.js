@@ -87,3 +87,16 @@ export const FLAVOURS_BY_CATEGORY = {
 };
 
 export const AUDIO_DECODE_EXTS = new Set([".mp3", ".m4a", ".aac", ".ogg", ".wma", ".mp4", ".webm"]);
+
+// Where the master is going — mirrors backend/params.py:DELIVERY_TARGETS.
+// Streaming services play everything at a reference loudness (Spotify,
+// YouTube, Tidal, Amazon -14 LUFS; Apple Music -16) and turn louder masters
+// down; the engine also drops the true-peak ceiling to -2 dBTP for any
+// master louder than -14 LUFS, per Spotify's transcoding guidance.
+export const DELIVERY_TARGETS = [
+  { key: "auto", label: "Genre best practice", referenceLufs: null },
+  { key: "streaming", label: "Streaming (Spotify, YouTube, Tidal, Amazon)", referenceLufs: -14 },
+  { key: "apple", label: "Apple Music", referenceLufs: -16 },
+  { key: "loud", label: "Loud (club / DJ)", referenceLufs: null },
+];
+export const DELIVERY_KEYS = DELIVERY_TARGETS.map((d) => d.key);

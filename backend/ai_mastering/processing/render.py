@@ -218,11 +218,13 @@ def render_plan(audio: np.ndarray, sr: int, plan: MasteringPlan, measure_stages:
     peak_pre = peak_percentile_db(x, sr)
     lim = plan.limiter
     clip_share = float(plan.clipper.get("share_db", 0.0)) if plan.clipper.get("enabled") else 0.0
-    max_gain = C.LIMITER_CEILING_DBTP + float(lim["budget_db"]) + clip_share - peak_pre
+    ceiling = float(lim.get("ceiling_dbtp", C.LIMITER_CEILING_DBTP))
+    max_gain = ceiling + float(lim["budget_db"]) + clip_share - peak_pre
     planned = float(plan.loudness["target_lufs"])
     target = min(planned, lufs_pre + max_gain)
     bus_params = {
         "target_lufs": target,
+        "ceiling_dbtp": ceiling,
         "clipper_enabled": bool(plan.clipper.get("enabled")),
         "clipper_max_reduction_db": float(plan.clipper.get("share_db", 0.0)),
         "limiter_release_ms": float(lim["release_ms"]),

@@ -29,6 +29,33 @@ function titleizePresetKey(key) {
     .join(" ");
 }
 
+// Built-in presets are written as adaptive INTENTS ("boost up to 0.5 dB if
+// needed", "aim for -10.5 LUFS") and steer the adaptive engine; a literal
+// chain (explicit gain_db / target_lufs_i) runs on the manual-chain engine.
+// Same rule as backend/ai_mastering/planning/preset_intent.py — Python makes
+// the final routing call, this only drives the UI and which chips apply.
+const INTENT_KEYS = new Set([
+  "preferred_direction",
+  "max_adjustment_db",
+  "requires_detected_need",
+  "requires_detected_problem",
+  "preferred_lufs_i",
+  "acceptable_lufs_i",
+  "max_amount",
+  "max_drive_db",
+  "max_width_delta",
+]);
+
+function hasIntentKey(value) {
+  if (Array.isArray(value)) return value.some(hasIntentKey);
+  if (value && typeof value === "object") return Object.entries(value).some(([k, v]) => INTENT_KEYS.has(k) || hasIntentKey(v));
+  return false;
+}
+
+export function isIntentPreset(preset) {
+  return Boolean(preset?.adaptive?.enabled) || hasIntentKey(preset?.processing);
+}
+
 export function normalizePreset(name, value, extra = {}) {
   return {
     name,
@@ -44,7 +71,10 @@ export function normalizePreset(name, value, extra = {}) {
     category: value?.category || null,
     flavour: value?.flavour || null,
     direction: value?.direction || null,
-    kind: value?.kind || (value?.processing ? "chain" : "settings"),
+    // "direction" = adaptive intent preset, "chain" = literal manual chain,
+    // "settings" = genre/style/tweaks only.
+    kind: value?.processing ? (isIntentPreset(value) ? "direction" : "chain") : value?.kind || "settings",
+    adaptive: value?.adaptive || null,
     updated_at: value?.updated_at || null,
     use_stem_separation: Boolean(value?.use_stem_separation),
     output_format: value?.output_format || "wav",

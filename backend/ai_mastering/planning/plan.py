@@ -487,7 +487,7 @@ def _plan_loudness(profile: SourceProfile, context: TargetContext, limiter: dict
         notes.append("source already inside the acceptable range at/above preferred loudness: level unchanged")
     else:
         desired = context.preferred_lufs
-    headroom_gain = C.LIMITER_CEILING_DBTP + limiter["budget_db"] + (clipper.get("share_db", 0.0) if clipper.get("enabled") else 0.0) - profile.peak_p995_db
+    headroom_gain = limiter["ceiling_dbtp"] + limiter["budget_db"] + (clipper.get("share_db", 0.0) if clipper.get("enabled") else 0.0) - profile.peak_p995_db
     achievable = lufs + headroom_gain
     target = min(desired, achievable)
     constrained = achievable < desired - 0.05
@@ -518,14 +518,14 @@ def _plan_limiter_and_clipper(profile: SourceProfile, context: TargetContext, re
     # would fall below this: the genre's master crest, raised by up to 3 dB
     # for sources with healthy transients in genres that prize them.
     crest_floor = context.target_crest_db + 3.0 * profile.transient_health * transient_priority
-    limiter = {"ceiling_dbtp": C.LIMITER_CEILING_DBTP, "budget_db": budget["budget_db"], "budget_reasons": budget["reasons"], "release_ms": round(release, 1), "crest_floor_db": round(crest_floor, 2)}
+    limiter = {"ceiling_dbtp": context.ceiling_dbtp, "budget_db": budget["budget_db"], "budget_reasons": budget["reasons"], "release_ms": round(release, 1), "crest_floor_db": round(crest_floor, 2)}
 
     desired_gain = context.preferred_lufs - profile.integrated_lufs
-    needed_gr = profile.peak_p995_db + desired_gain - C.LIMITER_CEILING_DBTP
+    needed_gr = profile.peak_p995_db + desired_gain - context.ceiling_dbtp
     transient_risk = profile.transient_health * transient_priority
     allowed = bool(context.transient_safety.get("allow_clipper_bypass", True))
     if needed_gr > budget["budget_db"] + 0.3 and transient_risk < 0.45 and profile.already_limited_score < 0.5 and not (profile.clipping or {}).get("detected"):
-        share = round(C.CLIPPER_MAX_SHARE_DB * (1.0 - profile.transient_health), 3)
+        share = round(context.clipper_max_share_db * (1.0 - profile.transient_health), 3)
         clipper = {"enabled": share > 0.1, "share_db": share, "reason": f"loudness needs {needed_gr:.1f} dB peak reduction > limiter budget {budget['budget_db']:.1f} dB; transient risk {transient_risk:.2f} low"}
     else:
         why = []

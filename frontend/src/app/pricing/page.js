@@ -143,7 +143,7 @@ export default function PricingPage() {
         <Checklist
           columns={2}
           items={[
-            { title: "The same engine.", body: "Analysis first, corrections only where needed, a true-peak limiter at −1 dBTP and a verification pass — on every plan." },
+            { title: "The same engine.", body: "Analysis first, corrections only where needed, a true-peak limiter at −1 dBTP (−2 dBTP for loud masters, per Spotify) and a verification pass — on every plan." },
             { title: "Free analysis tools.", body: "Chord Detector, Key Finder, BPM Finder, Chord Progression Finder and the LUFS Meter are free and unlimited." },
             { title: "Level-matched A/B.", body: "Compare original and master at matched loudness, so louder never wins by default." },
             { title: "Codec preview.", body: `Hear the master after ${PRODUCT.codecPreviews.join(", ")} encoding before you release.` },

@@ -8,21 +8,22 @@ export const DEMO_MASTER = {
  "genre": "pop",
  "rendered": {
   "date": "2026-09-28",
-  "engine_commit": "434aeed",
+  "engine_commit": "de1a473",
   "style": "modern",
-  "tier": "standard"
+  "tier": "standard",
+  "delivery": "auto"
  },
  "before_lufs": -15.89,
- "after_lufs": -10.17,
+ "after_lufs": -11.26,
  "analysis_before": {
   "integrated_lufs": -15.888,
   "true_peak_db": -2.91,
   "loudness_range_lu": 2.206
  },
  "analysis_after": {
-  "integrated_lufs": -10.167,
-  "true_peak_db": -1.017,
-  "loudness_range_lu": 1.8
+  "integrated_lufs": -11.255,
+  "true_peak_db": -2.017,
+  "loudness_range_lu": 1.82
  },
  "quality_control": {
   "passed": true,
@@ -30,8 +31,8 @@ export const DEMO_MASTER = {
    {
     "id": "limiter_gain_reduction",
     "status": "warn",
-    "message": "Limiter gain reduction of 5.5dB is moderate \u2014 worth listening for pumping.",
-    "value": 5.493
+    "message": "Limiter gain reduction of 5.4dB is moderate \u2014 worth listening for pumping.",
+    "value": 5.378
    },
    {
     "id": "rendering_integrity",
@@ -48,20 +49,20 @@ export const DEMO_MASTER = {
    {
     "id": "true_peak",
     "status": "pass",
-    "message": "True peak -1.02dBTP is within the -1.0dBTP ceiling.",
-    "value": -1.017
+    "message": "True peak -2.02dBTP is within the -2.0dBTP ceiling.",
+    "value": -2.017
    },
    {
     "id": "plr",
     "status": "pass",
     "message": "Peak-to-loudness ratio of 9.2dB is healthy.",
-    "value": 9.15
+    "value": 9.237
    },
    {
     "id": "dynamics_preservation",
     "status": "pass",
     "message": "Dynamic range change (-4.5dB) is within normal mastering bounds.",
-    "value": 4.532
+    "value": 4.453000000000001
    },
    {
     "id": "saturation_amount",
@@ -73,7 +74,7 @@ export const DEMO_MASTER = {
     "id": "phase_correlation",
     "status": "pass",
     "message": "Phase correlation 0.64 is mono-safe.",
-    "value": 0.6383
+    "value": 0.6393
    },
    {
     "id": "mono_compatibility",
@@ -85,25 +86,25 @@ export const DEMO_MASTER = {
     "id": "output_silence",
     "status": "pass",
     "message": "Rendered master has audible signal.",
-    "value": -13.356
+    "value": -14.435
    },
    {
     "id": "channel_balance",
     "status": "pass",
     "message": "L/R channels balanced within 0.2dB.",
-    "value": 0.17668390835655146
+    "value": 0.1763324873042773
    },
    {
     "id": "loudness_sanity",
     "status": "pass",
-    "message": "Final integrated loudness (-10.2 LUFS) is plausible.",
-    "value": -10.167
+    "message": "Final integrated loudness (-11.3 LUFS) is plausible.",
+    "value": -11.255
    },
    {
     "id": "dc_offset",
     "status": "pass",
     "message": "No meaningful DC offset in the final master.",
-    "value": -70.72209406193127
+    "value": -72.52184778309523
    }
   ],
   "warn_count": 1,
@@ -111,30 +112,30 @@ export const DEMO_MASTER = {
  },
  "processing_applied": {
   "limiter": {
-   "limiter_gain_reduction_db": 5.493,
-   "pre_clipper_peak_db": 3.826,
-   "pre_limiter_peak_db": 3.826,
-   "post_limiter_peak_db": -1.673,
-   "combined_peak_reduction_db": 4.843,
+   "limiter_gain_reduction_db": 5.378,
+   "pre_clipper_peak_db": 2.711,
+   "pre_limiter_peak_db": 2.711,
+   "post_limiter_peak_db": -2.673,
+   "combined_peak_reduction_db": 4.728,
    "clipper_applied": false,
    "clipper_gain_reduction_db": 0.0,
    "release_ms": 129.3,
-   "loudness_recovery_db": 0.849,
+   "loudness_recovery_db": 0.835,
    "loudness_recovery_iterations": 1,
-   "gr_at_p995_peaks_db": 4.033,
+   "gr_at_p995_peaks_db": 3.919,
    "budget_db": 4.619
   },
   "delivery_check": {
    "format": "mp3",
    "checked": "decoded MP3",
-   "ceiling_dbtp": -0.5,
+   "ceiling_dbtp": -1.5,
    "gain_trim_db": 0.0,
    "encodes": 1,
    "passed": true,
    "finite": true,
    "clipped_samples": 0,
-   "sample_peak_dbfs": -1.22,
-   "true_peak_dbtp": -1.03
+   "sample_peak_dbfs": -2.33,
+   "true_peak_dbtp": -2.04
   },
   "mastering_diagnostics": {
    "engine": "adaptive_plan_v2",
@@ -814,7 +815,7 @@ export const DEMO_MASTER = {
      "actionable": true
     }
    },
-   "backoff_applied": false,
+   "backoff_applied": true,
    "mastering_plan": {
     "eq_decisions": [
      {
@@ -868,9 +869,9 @@ export const DEMO_MASTER = {
       "micro_need": 0.0,
       "macro_need": 0.0,
       "inputs": {
-       "limiter_only_achievable_lufs": -7.8,
+       "limiter_only_achievable_lufs": -8.8,
        "acceptable_min_lufs": -13.78,
-       "loudness_shortfall_lu": -5.98,
+       "loudness_shortfall_lu": -4.98,
        "crest_db": 16.198,
        "short_term_crest_db": 12.523,
        "lra_lu": 2.206,
@@ -897,7 +898,7 @@ export const DEMO_MASTER = {
      {
       "stage": "compression",
       "problem": "micro_dynamics",
-      "reason": "need 0.00 below 0.20 (limiter alone reaches -7.8 LUFS vs acceptable min -13.8; transient health 0.53; already-limited 0.00)"
+      "reason": "need 0.00 below 0.20 (limiter alone reaches -8.8 LUFS vs acceptable min -13.8; transient health 0.53; already-limited 0.00)"
      },
      {
       "stage": "glue_compression",
@@ -933,8 +934,8 @@ export const DEMO_MASTER = {
      "acceptable_min_lufs": -13.78,
      "acceptable_max_lufs": -9.0,
      "desired_lufs": -10.0,
-     "achievable_lufs_by_budget": -7.8,
-     "target_lufs": -10.0,
+     "achievable_lufs_by_budget": -8.8,
+     "target_lufs": -11.1,
      "constrained_by_limiter_budget": false,
      "notes": []
     }
@@ -944,91 +945,91 @@ export const DEMO_MASTER = {
     "flags": [],
     "regions": {
      "sub_30_55": {
-      "actual_db": 0.387,
+      "actual_db": 0.42,
       "planned_db": 0.741,
-      "collateral_db": -0.354
+      "collateral_db": -0.321
      },
      "low_end_40_120": {
-      "actual_db": 0.528,
+      "actual_db": 0.548,
       "planned_db": 0.579,
-      "collateral_db": -0.051
+      "collateral_db": -0.031
      },
      "low_mid_120_500": {
-      "actual_db": 0.561,
+      "actual_db": 0.566,
       "planned_db": 0.444,
-      "collateral_db": 0.117
+      "collateral_db": 0.122
      },
      "mid_500_4k": {
-      "actual_db": -0.122,
+      "actual_db": -0.121,
       "planned_db": -0.087,
-      "collateral_db": -0.035
+      "collateral_db": -0.034
      },
      "hf_4k_14k": {
-      "actual_db": -0.285,
+      "actual_db": -0.281,
       "planned_db": -0.362,
-      "collateral_db": 0.078
+      "collateral_db": 0.081
      },
      "air_14k_up": {
-      "actual_db": -0.15,
+      "actual_db": -0.143,
       "planned_db": -0.19,
-      "collateral_db": 0.041
+      "collateral_db": 0.048
      }
     },
     "dynamics": {
      "crest_before_db": 16.198,
-     "crest_after_db": 11.666,
-     "crest_change_db": -4.532,
-     "short_term_crest_change_db": -1.187,
+     "crest_after_db": 11.745,
+     "crest_change_db": -4.453,
+     "short_term_crest_change_db": -1.136,
      "short_term_crest_before_db": 12.523,
-     "short_term_crest_after_db": 11.336,
+     "short_term_crest_after_db": 11.387,
      "lra_before_lu": 2.206,
-     "lra_after_lu": 1.8,
+     "lra_after_lu": 1.82,
      "plr_before_db": 12.978,
-     "plr_after_db": 9.15
+     "plr_after_db": 9.237
     },
     "limiter": {
-     "gr_at_p995_peaks_db": 4.033,
+     "gr_at_p995_peaks_db": 3.919,
      "budget_db": 4.619,
-     "max_gr_db": 5.493
+     "max_gr_db": 5.378
     },
-    "true_peak_db": -1.017,
+    "true_peak_db": -2.017,
     "problem_outcomes": {
      "insufficient_sub": {
       "outside_window_before_db": 17.849,
-      "outside_window_after_db": 17.666,
+      "outside_window_after_db": 17.646,
       "improved": true,
       "unchanged": false
      },
      "thin_body": {
       "outside_window_before_db": 2.816,
-      "outside_window_after_db": 2.2,
+      "outside_window_after_db": 2.189,
       "improved": true,
       "unchanged": false
      },
      "harsh_upper_mids": {
       "outside_window_before_db": 0.484,
-      "outside_window_after_db": 0.412,
+      "outside_window_after_db": 0.416,
       "improved": false,
       "unchanged": true
      },
      "excessive_brightness": {
       "outside_window_before_db": 1.455,
-      "outside_window_after_db": 1.014,
+      "outside_window_after_db": 1.017,
       "improved": true,
       "unchanged": false
      }
     },
     "stereo": {
      "width_before": 0.4798,
-     "width_after": 0.47,
+     "width_after": 0.4692,
      "correlation_before": 0.6259,
-     "correlation_after": 0.6383,
+     "correlation_after": 0.6393,
      "low_end_width_before": 0.0569,
-     "low_end_width_after": 0.0594
+     "low_end_width_after": 0.0592
     },
     "loudness": {
-     "integrated_lufs": -10.167,
-     "target_lufs": -10.0,
+     "integrated_lufs": -11.255,
+     "target_lufs": -11.1,
      "acceptable_min_lufs": -13.78,
      "acceptable_max_lufs": -9.0,
      "in_acceptable_range": true

@@ -117,6 +117,8 @@ def build_plan_for_analysis(
     tier: str = "standard",
     reference_relative_db: dict | None = None,
     reference_spectral_balance: dict | None = None,
+    preset_intent: dict | None = None,
+    delivery: str | None = None,
 ):
     """measurement -> diagnosis -> planning, as three explicit steps.
     Returns (profile, context, problems, plan)."""
@@ -125,7 +127,7 @@ def build_plan_for_analysis(
     profile = SourceProfile.from_dict(analysis["source_profile"])
     if reference_relative_db is None and reference_spectral_balance:
         reference_relative_db = _reference_relative_from_shares(reference_spectral_balance, profile.band_layout)
-    context = build_target_context(profile.band_layout, genre, tags, style, category, flavour, reference_relative_db)
+    context = build_target_context(profile.band_layout, genre, tags, style, category, flavour, reference_relative_db, preset_intent=preset_intent, delivery=delivery)
     problems = detect_mastering_problems(profile, context)
     plan = build_mastering_plan(profile, context, problems, tier=tier)
     return profile, context, problems, plan
@@ -260,6 +262,8 @@ def compute_processing_params(
     flavour: str | None = None,
     tier: str = "standard",
     reference_relative_db: dict | None = None,
+    preset_intent: dict | None = None,
+    delivery: str | None = None,
 ) -> dict:
     """Source-dependent mastering parameters.
 
@@ -278,7 +282,8 @@ def compute_processing_params(
         raise ValueError(f"Unknown mastering category: {category}")
     tags = list(tags or [])
     profile, context, problems, plan = build_plan_for_analysis(
-        analysis, genre, tags, style, category, flavour, tier, reference_relative_db, reference_spectral_balance
+        analysis, genre, tags, style, category, flavour, tier, reference_relative_db, reference_spectral_balance,
+        preset_intent=preset_intent, delivery=delivery,
     )
     return legacy_params_from_plan(plan, context, profile, problems, analysis, genre, tags, style, category, flavour, context.reference_used)
 

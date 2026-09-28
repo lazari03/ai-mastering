@@ -4,9 +4,9 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
 
-import { AUDIO_DECODE_EXTS, CATEGORIES, FLAVOURS_BY_CATEGORY, GENRES, STYLES, TAGS } from "../config/constants.js";
+import { AUDIO_DECODE_EXTS, CATEGORIES, DELIVERY_KEYS, FLAVOURS_BY_CATEGORY, GENRES, STYLES, TAGS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
-import { getMixPresetByName } from "./presetsService.js";
+import { getMixPresetByName, isIntentPreset } from "./presetsService.js";
 
 export const execFileAsync = promisify(execFile);
 
@@ -51,6 +51,7 @@ async function resolveConfig(input, uid) {
     processing = null,
     category = null,
     flavour = null,
+    delivery = "auto",
   } = input;
 
   const resolved = {
@@ -73,6 +74,11 @@ async function resolveConfig(input, uid) {
     // "processing" block) routes /master to preset_dsp_engine instead of
     // the genre-based adaptive engine. See resolveConfig's mix_preset branch.
     fullPreset: null,
+    // True when fullPreset is an adaptive-intent preset (the built-ins) —
+    // it steers the adaptive engine, so objective/flavour chips and a
+    // reference track still apply. False for a literal manual chain.
+    presetIsIntent: false,
+    delivery: delivery || "auto",
   };
 
   if (mix_preset) {
@@ -99,7 +105,9 @@ async function resolveConfig(input, uid) {
         processing: preset.processing,
         quality_control: preset.quality_control,
         output: preset.output,
+        adaptive: preset.adaptive || null,
       };
+      resolved.presetIsIntent = isIntentPreset(preset);
     }
   }
 
@@ -126,6 +134,9 @@ async function resolveConfig(input, uid) {
   // set for preset_dsp_engine — genre/style/tags are cosmetic labels on it,
   // not engine inputs, so they're not validated against the app's fixed
   // enums here. Mirrors backend/app/services/mastering_service.py.
+  if (!DELIVERY_KEYS.includes(resolved.delivery)) {
+    throw new Error(`Invalid delivery target '${resolved.delivery}'. Options: ${DELIVERY_KEYS.join(", ")}`);
+  }
   if (!resolved.fullPreset) {
     if (!resolved.genre || !GENRES.includes(resolved.genre)) {
       throw new Error(`Invalid genre. Options: ${GENRES.join(", ")}`);
@@ -383,11 +394,13 @@ export async function processMastering({ file, referenceFile = null, fields, uid
     tweaks: JSON.stringify(config.tweaks || {}),
     output_format: config.output_format,
     tier: config.tier,
+    delivery: config.delivery,
   };
   // Category/flavour only apply to the adaptive engine — a full preset spec
   // is a literal instruction set, same reasoning as the reference-file guard
   // right below.
-  if (config.category && !config.fullPreset) {
+  const literalChain = Boolean(config.fullPreset) && !config.presetIsIntent;
+  if (config.category && !literalChain) {
     pythonFields.category = config.category;
     if (config.flavour) {
       pythonFields.flavour = config.flavour;
@@ -401,7 +414,7 @@ export async function processMastering({ file, referenceFile = null, fields, uid
   // Spectral matching only applies to the adaptive engine — a full preset
   // spec is a literal instruction set, there's no "target spectral balance"
   // slot in it to override.
-  if (referenceFile && !config.fullPreset) {
+  if (referenceFile && !literalChain) {
     files.reference_file = { path: referenceFile.path, filename: referenceFile.originalname || "reference.wav" };
   }
 

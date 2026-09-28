@@ -95,7 +95,7 @@ export const STYLE_DELTAS = [
 
 // From ai_mastering/bus_processing.py's true-peak limiter defaults.
 export const LIMITER_SPEC = [
-  { label: "True-peak ceiling", value: "-1.0 dBTP", note: "Applied regardless of genre or style." },
+  { label: "True-peak ceiling", value: "-2.0 / -1.0 dBTP", note: "-2.0 dBTP for masters louder than -14 LUFS (Spotify's guidance for lossy transcoding), -1.0 dBTP otherwise." },
   { label: "Oversampling", value: "4x", note: "Catches inter-sample peaks a sample-peak limiter misses." },
   { label: "Lookahead", value: "3 ms", note: "Enough to catch transients without a hearable pre-response." },
   { label: "Release", value: "40–250 ms", note: "Set per track from its tempo and crest factor — about a fifth of a beat, longer for dynamic material, so the limiter breathes with the groove." },
