@@ -160,6 +160,7 @@ export default function ABMasterPlayer({
     loadedSrc: null,
     usedFallback: false,
     scrub: null, // 0..1 while dragging on the waveform
+    wantPlay: false, // Play pressed, not paused since — honoured once buffers decode
   });
   eng.current.gainsDb = { before: beforeGainDb, after: afterGainDb };
   eng.current.matchEnabled = levelMatched;
@@ -249,7 +250,16 @@ export default function ABMasterPlayer({
   const play = () => {
     const e = eng.current;
     if (!e.graph) return;
-    if (e.graph.ctx.state === "suspended") e.graph.ctx.resume();
+    // iOS routes Web Audio through the "ambient" session by default, which
+    // the ring/silent switch mutes — the player looked like it was playing
+    // and made no sound. "playback" is what a music player uses.
+    try {
+      if (navigator.audioSession) navigator.audioSession.type = "playback";
+    } catch {
+      // not supported
+    }
+    if (e.graph.ctx.state !== "running") e.graph.ctx.resume().catch(() => {});
+    e.wantPlay = true;
     handoff();
     if (e.usingBuffers) {
       if (e.offset >= e.duration - 0.05) e.offset = 0;
@@ -263,6 +273,7 @@ export default function ABMasterPlayer({
 
   const pause = () => {
     const e = eng.current;
+    e.wantPlay = false;
     if (e.usingBuffers) {
       e.offset = position();
       stopSources();
@@ -341,6 +352,7 @@ export default function ABMasterPlayer({
       if (e.usingBuffers && e.playing && pos >= e.duration) {
         stopSources();
         e.playing = false;
+        e.wantPlay = false;
         e.offset = 0;
         setIsPlaying(false);
         setCurrentTime(0);
@@ -462,6 +474,17 @@ export default function ABMasterPlayer({
         e.duration = Math.max(before.duration, after.duration);
         setDuration(e.duration);
         setReady(true);
+        // Play was pressed but the streamed file never started (Safari
+        // rejecting the stream, a slow first byte): start from the buffers
+        // now instead of leaving a "playing" button with no sound.
+        const audio = audioRef.current;
+        if (e.wantPlay && !e.usingBuffers && e.graph && audio?.paused) {
+          e.usingBuffers = true;
+          e.offset = Math.min(audio.currentTime || 0, e.duration);
+          applyGains(true);
+          startSources(e.offset);
+          setIsPlaying(true);
+        }
       })
       .catch(() => {
         // Keep the streaming element path.
@@ -602,7 +625,10 @@ export default function ABMasterPlayer({
         className="hidden"
         onPlay={() => !eng.current.usingBuffers && setIsPlaying(true)}
         onPause={() => !eng.current.usingBuffers && setIsPlaying(false)}
-        onEnded={() => !eng.current.usingBuffers && setIsPlaying(false)}
+        onEnded={() => {
+          eng.current.wantPlay = false;
+          if (!eng.current.usingBuffers) setIsPlaying(false);
+        }}
         onLoadedMetadata={(event) => {
           if (!eng.current.buffers) {
             eng.current.duration = event.currentTarget.duration || 0;

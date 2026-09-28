@@ -1063,19 +1063,31 @@ router.post("/codec-preview", expensiveLimiter, async (req, res) => {
 // Codec previews and (usually) mastered/original files live in the Python
 // service's own storage now, not Node's — see masteringService.js's
 // pythonApiBaseUrl comment for why.
-async function proxyFromPython(pythonPath, res, notFoundMessage) {
+async function proxyFromPython(pythonPath, res, notFoundMessage, req = null) {
+  // Byte ranges pass straight through (Starlette's FileResponse serves
+  // them). Safari refuses to play an <audio> source that can't answer a
+  // Range request with 206 — without this the in-app A/B was silent there.
+  const range = req?.headers.range;
   let upstream;
   try {
-    upstream = await fetch(`${settings.pythonApiBaseUrl}${pythonPath}`);
+    upstream = await fetch(`${settings.pythonApiBaseUrl}${pythonPath}`, range ? { headers: { Range: range } } : undefined);
   } catch (error) {
     return res.status(502).json({ detail: `Cannot reach Python service: ${error.message}` });
+  }
+  if (upstream.status === 416) {
+    const contentRange = upstream.headers.get("content-range");
+    if (contentRange) res.setHeader("Content-Range", contentRange);
+    return res.status(416).end();
   }
   if (!upstream.ok) {
     return res.status(upstream.status === 404 ? 404 : 502).json({ detail: notFoundMessage });
   }
+  res.status(upstream.status);
   res.setHeader("Content-Type", upstream.headers.get("content-type") || "application/octet-stream");
-  const contentLength = upstream.headers.get("content-length");
-  if (contentLength) res.setHeader("Content-Length", contentLength);
+  for (const header of ["content-length", "content-range", "accept-ranges"]) {
+    const value = upstream.headers.get(header);
+    if (value) res.setHeader(header, value);
+  }
 
   // Streamed straight through, not buffered — a mastered WAV can be tens
   // of MB, and the previous Buffer.from(await upstream.arrayBuffer())
@@ -1104,7 +1116,7 @@ router.get("/download-codec-preview/:jobId/:codec", async (req, res) => {
   if (!(await ownsJob(req.user.uid, jobId))) {
     return res.status(404).json({ detail: "Codec preview not found — run /codec-preview first" });
   }
-  return proxyFromPython(`/download-codec-preview/${jobId}/${codec}`, res, "Codec preview not found — run /codec-preview first");
+  return proxyFromPython(`/download-codec-preview/${jobId}/${codec}`, res, "Codec preview not found — run /codec-preview first", req);
 });
 
 router.get("/download/:jobId.:ext", async (req, res) => {
@@ -1121,7 +1133,7 @@ router.get("/download/:jobId.:ext", async (req, res) => {
   if (fs.existsSync(localPath)) {
     return res.download(localPath);
   }
-  return proxyFromPython(`/download/${jobId}.${ext}`, res, "File not found");
+  return proxyFromPython(`/download/${jobId}.${ext}`, res, "File not found", req);
 });
 
 router.get("/original/:jobId", async (req, res) => {
@@ -1146,7 +1158,7 @@ router.get("/original/:jobId", async (req, res) => {
   if (chosen) {
     return res.sendFile(path.join(settings.uploadDir, chosen));
   }
-  return proxyFromPython(`/original/${req.params.jobId}`, res, "Original not found");
+  return proxyFromPython(`/original/${req.params.jobId}`, res, "Original not found", req);
 });
 
 // Always 16-bit PCM WAV (see mastering_service.py:_make_browser_preview) —
@@ -1160,7 +1172,7 @@ router.get("/preview/:jobId", async (req, res) => {
   if (!(await ownsJob(req.user.uid, req.params.jobId))) {
     return res.status(404).json({ detail: "Preview not found" });
   }
-  return proxyFromPython(`/preview/${req.params.jobId}`, res, "Preview not found");
+  return proxyFromPython(`/preview/${req.params.jobId}`, res, "Preview not found", req);
 });
 
 // LEGACY share links (HMAC-signed ?token=, minted before opaque share

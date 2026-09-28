@@ -26,7 +26,10 @@ import { startUploadSweep } from "./middleware/cleanupUploads.js";
 // too). ownsJob() inside each route still checks the resolved uid actually
 // owns the requested job either way — this only replaces *how* the uid is
 // established, not the ownership check itself.
-const DOWNLOAD_PATH_PREFIXES = ["/download/", "/download-codec-preview/", "/original/"];
+// /preview/ is the result page's "After" source (<audio src> + fetch for
+// the instant A/B) — without it here every preview request 401'd and the
+// player could only limp along on the full-size /download fallback.
+const DOWNLOAD_PATH_PREFIXES = ["/download/", "/download-codec-preview/", "/original/", "/preview/"];
 
 function isDownloadPath(reqPath) {
   return DOWNLOAD_PATH_PREFIXES.some((prefix) => reqPath.startsWith(prefix));
