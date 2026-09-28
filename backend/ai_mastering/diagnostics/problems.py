@@ -61,6 +61,9 @@ class Problem:
     bands: list = field(default_factory=list)
     frequency_class: str | None = None  # low | mid | high (tonal)
     actionable: bool = True
+    # The user's reference track asked for this difference (see
+    # target_model.reference_shift_db) — planning lowers its confidence bar.
+    reference_driven: bool = False
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -173,9 +176,20 @@ def _detect_tonal(profile: SourceProfile, context: TargetContext) -> list[Proble
             persistence = min(persistence, 0.6)  # too short to establish persistence
         reliability = float(np.mean([_band_reliability(profile, b, direction) for b in bands]))
 
-        magnitude_conf = 1.0 - float(np.exp(-mean_outside / C.CONFIDENCE_MAGNITUDE_SCALE_DB))
+        # Reference-driven: the reference moved these bands' target in the
+        # direction that opened this gap (raised target -> deficit, lowered
+        # target -> excess) by a meaningful amount.
+        shifts = np.array([context.reference_shift_db.get(b["name"], 0.0) for b in bands])
+        ref_shift = float(np.sum(shifts * octs) / np.sum(octs))
+        reference_driven = bool(ref_shift * (-1.0 if direction == "excess" else 1.0) >= C.REFERENCE_MIN_SHIFT_DB)
+        # A blind problem has to prove itself by how far it sits OUTSIDE the
+        # window. A reference-driven one is a requested destination: its
+        # size is the whole gap to the reference target, and confidence is
+        # about whether that gap is measured reliably and persistently.
+        correction = abs(mean_dev) if reference_driven else mean_outside
+        magnitude_conf = 1.0 - float(np.exp(-correction / C.CONFIDENCE_MAGNITUDE_SCALE_DB))
         confidence = reliability * magnitude_conf * ((1.0 - C.CONFIDENCE_PERSISTENCE_WEIGHT) + C.CONFIDENCE_PERSISTENCE_WEIGHT * persistence)
-        severity = float(np.clip(mean_outside / C.SEVERITY_FULL_SCALE_DB, 0.0, 1.0))
+        severity = float(np.clip(correction / C.SEVERITY_FULL_SCALE_DB, 0.0, 1.0))
         excess_name, deficit_name, cls = _region_for(center)
         problems.append(
             Problem(
@@ -189,7 +203,10 @@ def _detect_tonal(profile: SourceProfile, context: TargetContext) -> list[Proble
                 measured_deviation_db=mean_dev,
                 bands=[b["name"] for b in bands],
                 frequency_class=cls,
+                reference_driven=reference_driven,
                 evidence={
+                    "reference_shift_db": round(ref_shift, 3),
+                    "correction_db": round(correction, 3),
                     "outside_window_db": round(mean_outside, 3),
                     "persistence": round(persistence, 3),
                     "reliability": round(reliability, 3),

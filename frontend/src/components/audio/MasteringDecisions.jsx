@@ -157,6 +157,7 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
                   <span key={`${m.hz}-${m.problem}`} className="block">
                     {t(m.dynamic ? "decisions.moveDynamic" : "decisions.move", { problem: humanizeProblem(m.problem), hz: formatHz(m.hz) })}{" "}
                     <span className="whitespace-nowrap font-mono text-text-primary">{fmtDb(m.gainDb)} dB</span>
+                    {m.fromReference ? <span className="ml-1.5 text-[12px] text-accent">· {t("decisions.fromReference")}</span> : null}
                   </span>
                 ))
               : r.noted.length

@@ -138,6 +138,9 @@ class TargetContext:
     preservation_priorities: dict = field(default_factory=dict)
     transient_safety: dict = field(default_factory=dict)
     reference_used: bool = False
+    # dB the reference moved each band's target (0 when no reference) —
+    # lets problem detection tell reference-driven differences apart.
+    reference_shift_db: dict[str, float] = field(default_factory=dict)
     intent_notes: list[str] = field(default_factory=list)
     style_profile: dict = field(default_factory=dict)
     # Delivery: where the master is going, and the true-peak ceiling that
@@ -219,17 +222,28 @@ def build_target_context(
     target = _smooth_octave(bands, target)  # no step edges at legacy band borders
 
     reference_used = False
+    reference_shift: dict[str, float] = {}
     if reference_relative_db:
         common = [b for b in bands if b["name"] in reference_relative_db]
         if len(common) >= len(bands) - 2:
             ref_smooth = _smooth_octave(common, reference_relative_db)
             for b in common:
-                target[b["name"]] += C.REFERENCE_CURVE_WEIGHT * (ref_smooth[b["name"]] - target[b["name"]])
+                shift = C.REFERENCE_CURVE_WEIGHT * (ref_smooth[b["name"]] - target[b["name"]])
+                target[b["name"]] += shift
+                reference_shift[b["name"]] = shift
             reference_used = True
             notes.append(f"reference moved the tonal target {int(C.REFERENCE_CURVE_WEIGHT * 100)}% toward its octave-smoothed curve")
 
     tol_low = {b["name"]: tolerance_for(b["center_hz"]) for b in bands}
     tol_high = dict(tol_low)
+    # Same treatment tags/objective/presets get (see shift_region): where the
+    # reference asks for a different balance, the window narrows on that
+    # side, so the difference is actionable instead of being absorbed as
+    # "within tolerance". Before this a reference changed nothing.
+    for name, shift in reference_shift.items():
+        if abs(shift) >= C.REFERENCE_MIN_SHIFT_DB:
+            side = tol_low if shift > 0 else tol_high
+            side[name] *= C.INTENT_TOLERANCE_NARROWING
 
     def shift_region(lo: float, hi: float, delta_db: float, why: str) -> None:
         if abs(delta_db) < 1e-6:
@@ -350,6 +364,7 @@ def build_target_context(
         preservation_priorities=priorities,
         transient_safety=dict(profile.get("transient_safety", {})),
         reference_used=reference_used,
+        reference_shift_db={k: round(v, 3) for k, v in reference_shift.items()},
         intent_notes=notes,
         style_profile=dict(style_profile),
     )

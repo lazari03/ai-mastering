@@ -90,6 +90,9 @@ export function summarizeDecisions(result) {
   const evaluation = diag.evaluation || {};
   const problems = diag.detected_problems || {};
   const eq = [...(plan.eq_decisions || []), ...(plan.dynamic_eq_decisions || []).map((d) => ({ ...d, dynamic: true }))];
+  // Problems the user's reference track asked for (see backend
+  // diagnostics/problems.py reference_driven) — shown as such.
+  const referenceKinds = new Set(Object.values(problems).filter((p) => p.reference_driven).map((p) => p.kind));
 
   // ---- tonal regions ----------------------------------------------------
   const regions = REGIONS.map((region) => {
@@ -104,6 +107,7 @@ export function summarizeDecisions(result) {
         // Dynamic-EQ decisions carry a prose reason, not a problem key.
         problem: d.problem || (d.dynamic ? "intermittent_build_up" : String(d.reason || "").replace(/^measured_/, "")),
         dynamic: Boolean(d.dynamic),
+        fromReference: referenceKinds.has(d.problem),
         confidence: d.confidence ?? null,
       }));
     const detectedOnly = Object.values(problems).filter(

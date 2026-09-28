@@ -871,7 +871,9 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
 
     const result = await processMastering({
       file: masterFile,
-      referenceFile: preview ? null : referenceFile,
+      // The preview matches its master here too: only the mix is cut to
+      // 30 s; the reference's full spectrum still steers the tone.
+      referenceFile,
       uid: req.user.uid,
       fields: {
         genre: req.body.genre || null,

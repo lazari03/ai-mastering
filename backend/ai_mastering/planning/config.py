@@ -115,6 +115,24 @@ REFERENCE_CURVE_WEIGHT = 0.6
 # Explicit user intent (tags / category tweak_bias) shifts the target curve
 # and narrows the tolerance on the requested side by this factor.
 INTENT_TOLERANCE_NARROWING = 0.5
+# A reference track is an explicit instruction ("sound like this"), so a
+# tonal difference it creates doesn't have to clear the blind-mastering
+# confidence bar: the required confidence drops by this much (floored at
+# REFERENCE_MIN_CONFIDENCE). Reference shifts smaller than
+# REFERENCE_MIN_SHIFT_DB are treated as noise, not intent.
+REFERENCE_CONFIDENCE_RELIEF = 0.3
+REFERENCE_MIN_CONFIDENCE = 0.3
+REFERENCE_MIN_SHIFT_DB = 0.75
+# How far a reference-driven EQ move may go. Above the blind caps
+# (EQ_MAX_BOOST_DB / EQ_MAX_CUT_DB) because the user supplied the target,
+# still well inside mastering territory; the change budget, evaluation and
+# final QC all still apply to the result.
+REFERENCE_EQ_MAX_BOOST_DB = {"low": 3.0, "mid": 2.0, "high": 2.5}
+REFERENCE_EQ_MAX_CUT_DB = 4.0
+# Share of the gap to the reference target a reference-driven move closes
+# (the target itself sits REFERENCE_CURVE_WEIGHT of the way to the
+# reference, so the master lands ~half-way to the reference's balance).
+REFERENCE_EQ_FRACTION = 0.8
 # dB of target shift per unit of category tweak_bias (tweak_bias is -1..1).
 INTENT_TWEAK_TO_TARGET_DB = 2.0
 

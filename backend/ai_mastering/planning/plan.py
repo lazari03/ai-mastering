@@ -133,14 +133,21 @@ def _required_confidence(p: Problem) -> tuple[str, float]:
 
 
 def _eq_from_problem(p: Problem, profile: SourceProfile, sr: int) -> EQDecision:
-    outside = float(p.evidence["outside_window_db"])
+    outside = float(p.evidence.get("correction_db", p.evidence["outside_window_db"]))
+    max_cut = C.REFERENCE_EQ_MAX_CUT_DB if p.reference_driven else C.EQ_MAX_CUT_DB
+    max_boost = (C.REFERENCE_EQ_MAX_BOOST_DB if p.reference_driven else C.EQ_MAX_BOOST_DB)[p.frequency_class or "mid"]
     lo_hz, hi_hz = float(p.evidence["lo_hz"]), float(p.evidence["hi_hz"])
     layout = profile.band_layout
     bottom, top = layout[0]["lo_hz"], layout[-1]["hi_hz"]
-    if p.direction == "excess":
-        gain = -min(C.EQ_MAX_CUT_DB, outside * C.EQ_CUT_FRACTION) * (0.5 + 0.5 * p.confidence)
+    if p.reference_driven:
+        amount = min(max_cut if p.direction == "excess" else max_boost, outside * C.REFERENCE_EQ_FRACTION) * (0.5 + 0.5 * p.confidence)
+        gain = -amount if p.direction == "excess" else amount
+        if p.direction != "excess" and (profile.clipping or {}).get("detected"):
+            gain *= 0.7
+    elif p.direction == "excess":
+        gain = -min(max_cut, outside * C.EQ_CUT_FRACTION) * (0.5 + 0.5 * p.confidence)
     else:
-        gain = min(C.EQ_MAX_BOOST_DB[p.frequency_class or "mid"], outside * C.EQ_BOOST_FRACTION) * p.confidence
+        gain = min(max_boost, outside * C.EQ_BOOST_FRACTION) * p.confidence
         if (profile.clipping or {}).get("detected"):
             gain *= 0.7
 
@@ -183,6 +190,10 @@ def _enforce_eq_constraints(decisions: list[EQDecision], profile: SourceProfile,
     ]
     hf_names = [b["name"] for b in layout if b["center_hz"] >= C.HF_BUDGET_START_HZ]
     hf_budget = C.HF_BOOST_BUDGET_DB * context.hf_boost_multiplier
+    if any(p.reference_driven and p.direction == "deficit" and p.frequency_class == "high" for p in problems):
+        # The user's reference asks for a brighter top end: the blind 1 dB
+        # budget would cap that at a token move.
+        hf_budget = max(hf_budget, C.REFERENCE_EQ_MAX_BOOST_DB["high"] * context.hf_boost_multiplier)
 
     for _ in range(12):
         auto = [d for d in decisions if d.source == "automatic" and abs(d.gain_db) >= 1e-3]
@@ -254,6 +265,10 @@ def _plan_eq(profile: SourceProfile, context: TargetContext, problems: list[Prob
         if p.category != "tonal" or p.kind.startswith("sibilance") or not p.bands:
             continue
         gate_name, required = _required_confidence(p)
+        if p.reference_driven:
+            # Asked for by the user's reference, not guessed blind.
+            required = max(C.REFERENCE_MIN_CONFIDENCE, required - C.REFERENCE_CONFIDENCE_RELIEF)
+            gate_name = f"reference-relaxed {gate_name}"
         if not p.actionable or p.confidence < required:
             rejected.append({"stage": "eq", "problem": p.kind, "reason": f"confidence {p.confidence:.2f} below {gate_name} gate {required:.2f}"})
             continue
