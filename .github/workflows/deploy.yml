@@ -82,8 +82,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: backend/requirements.txt
+          # No `cache: pip` — the install below is skipped on most pushes,
+          # so the pip cache dir never exists and setup-python's post step
+          # fails the job ("cache folder path ... doesn't exist on disk").
 
       - name: Python DSP service — syntax check
         working-directory: backend
