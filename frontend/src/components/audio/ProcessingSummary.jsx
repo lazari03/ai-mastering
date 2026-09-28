@@ -134,7 +134,7 @@ export default function ProcessingSummary({ result }) {
     <div className="space-y-3 text-xs text-text-secondary">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full border border-border-subtle px-2.5 py-1 uppercase tracking-[0.1em] text-text-primary">
-          Engine: {applied.engine === "preset_dsp_engine" ? "Preset DSP" : "Adaptive DSP"}
+          Engine: {applied.engine === "preset_dsp_engine" ? "Manual chain (not adaptive)" : "Adaptive DSP"}
         </span>
         {applied.tier ? (
           <span className="rounded-full border border-border-subtle bg-accent/10 px-2.5 py-1 uppercase tracking-[0.1em] text-accent">

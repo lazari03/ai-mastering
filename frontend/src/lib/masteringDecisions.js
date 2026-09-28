@@ -16,6 +16,56 @@ const REGIONS = [
 ];
 
 const round1 = (n) => Math.round(n * 10) / 10;
+const firstFinite = (...vals) => {
+  const hit = vals.map(Number).find((v) => Number.isFinite(v));
+  return hit === undefined ? NaN : hit;
+};
+
+// Passed / passed with warnings / failed — from the final QC report, plus
+// the check on the delivered file. A master with QC warnings is never
+// summarized as a plain "passed".
+export function qcVerdict(result, evaluation = {}) {
+  const qc = result?.quality_control || {};
+  const warnings = (qc.checks || []).filter((c) => c.status === "warn").map((c) => c.message);
+  const failures = (qc.checks || []).filter((c) => c.status === "fail").map((c) => c.message);
+  const failed = qc.passed === false || evaluation.passed === false || failures.length > 0;
+  const delivery = result?.processing_applied?.delivery_check || null;
+  return {
+    status: failed ? "failed" : warnings.length ? "warned" : "passed",
+    passed: !failed,
+    warnings,
+    failures,
+    delivery: delivery
+      ? {
+          format: delivery.format,
+          passed: delivery.passed !== false,
+          truePeak: Number.isFinite(delivery.true_peak_dbtp) ? round1(delivery.true_peak_dbtp) : null,
+          clipped: Number(delivery.clipped_samples) || 0,
+          trimDb: Number(delivery.gain_trim_db) > 0 ? round1(delivery.gain_trim_db) : 0,
+        }
+      : null,
+  };
+}
+
+// A full preset / Pro manual chain runs the literal chain, not the adaptive
+// plan — so there are no "decisions" to show, and it must not be presented
+// as if there were. What there is: the chain's stages, every value the
+// safety limits pulled back, the QC verdict and the delivery check.
+export function summarizeManualChain(result) {
+  const applied = result?.processing_applied;
+  if (!applied || applied.chain_type !== "manual") return null;
+  const lim = applied.limiter || {};
+  return {
+    stages: (applied.stages || []).filter((s) => s !== "input"),
+    adjustments: applied.safety_adjustments || [],
+    recovery: applied.qc_recovery || null,
+    limiterMaxDb: Number.isFinite(lim.limiter_gain_reduction_db) ? round1(lim.limiter_gain_reduction_db) : null,
+    limiterLoudHitsDb: Number.isFinite(lim.gr_at_p995_peaks_db) ? round1(lim.gr_at_p995_peaks_db) : null,
+    beforeLufs: Number.isFinite(result.before_lufs) ? round1(result.before_lufs) : null,
+    afterLufs: Number.isFinite(result.after_lufs) ? round1(result.after_lufs) : null,
+    verification: qcVerdict(result),
+  };
+}
 
 export function formatHz(hz) {
   if (!Number.isFinite(hz)) return "";
@@ -77,16 +127,24 @@ export function summarizeDecisions(result) {
   const compressionOn = Boolean(comp.enabled || comp.multiband?.enabled || comp.glue?.enabled);
   const rejectedComp = (plan.rejected_decisions || []).find((r) => r.stage === "compression");
   const dyn = evaluation.dynamics || {};
-  // Without compression the limiter can still shave real dB off the peaks;
-  // calling that "preserved" would oversell restraint.
-  const limiterGr = Number(result.processing_applied?.limiter?.limiter_gain_reduction_db ?? evaluation.limiter?.max_gr_db);
+  // Two limiter numbers, not one: the deepest single dip (one hit can take
+  // a lot without it being audible) and the reduction across the loud hits
+  // (99.5th-percentile peaks — what decides whether drums still punch).
+  // Status is judged on the loud hits, where it's audible; the deepest dip
+  // only escalates it past the QC fail line.
+  const limiterMax = firstFinite(evaluation.limiter?.max_gr_db, result.processing_applied?.limiter?.limiter_gain_reduction_db);
+  const limiterLoudHits = firstFinite(evaluation.limiter?.gr_at_p995_peaks_db, result.processing_applied?.limiter?.gr_at_p995_peaks_db);
+  const limiterBudget = firstFinite(evaluation.limiter?.budget_db, result.processing_applied?.limiter?.budget_db);
   const clipperGr = Number(result.processing_applied?.limiter?.clipper_gain_reduction_db ?? 0);
-  const limiterWorked = Number.isFinite(limiterGr) && limiterGr >= 1.5;
+  const judgedGr = Number.isFinite(limiterLoudHits) ? limiterLoudHits : limiterMax;
+  const limiterWorked = Number.isFinite(judgedGr) && judgedGr >= 1.5;
   const crestLoss = Number(dyn.crest_before_db) - Number(dyn.crest_after_db);
-  const heavyControl = limiterGr > 3 || clipperGr > 2 || crestLoss > 6 || result.quality_control?.passed === false;
+  const heavyControl = judgedGr > 3 || limiterMax > 6 || clipperGr > 2 || crestLoss > 6 || result.quality_control?.passed === false;
   const dynamics = {
     status: heavyControl ? "heavy" : compressionOn ? "corrected" : limiterWorked || clipperGr >= 0.5 ? "light" : "preserved",
-    limiterGrDb: Number.isFinite(limiterGr) ? round1(limiterGr) : null,
+    limiterMaxDb: Number.isFinite(limiterMax) ? round1(limiterMax) : null,
+    limiterLoudHitsDb: Number.isFinite(limiterLoudHits) ? round1(limiterLoudHits) : null,
+    limiterBudgetDb: Number.isFinite(limiterBudget) ? round1(limiterBudget) : null,
     clipperGrDb: Number.isFinite(clipperGr) ? round1(clipperGr) : null,
     multiband: Boolean(comp.multiband?.enabled),
     glue: Boolean(comp.glue?.enabled),
@@ -124,7 +182,7 @@ export function summarizeDecisions(result) {
   // ---- verification ----------------------------------------------------
   const outcomes = evaluation.problem_outcomes || {};
   const verification = {
-    passed: evaluation.passed !== false && result.quality_control?.passed !== false,
+    ...qcVerdict(result, evaluation),
     backoffApplied: Boolean(diag.backoff_applied),
     flags: evaluation.flags || [],
     improved: Object.values(outcomes).filter((o) => o.improved).length,
@@ -153,5 +211,6 @@ export function detailedMetrics(result) {
     { key: "crest", before: pick(ev.dynamics?.crest_before_db, sb.crest_db), after: pick(ev.dynamics?.crest_after_db), unit: "dB" },
     { key: "correlation", before: pick(sb.stereo_correlation, ev.stereo?.correlation_before), after: pick(ev.stereo?.correlation_after), unit: "" },
     { key: "limiterGr", before: null, after: pick(ev.limiter?.max_gr_db), unit: "dB" },
+    { key: "limiterLoudHits", before: null, after: pick(ev.limiter?.gr_at_p995_peaks_db), unit: "dB" },
   ].filter((m) => Number.isFinite(m.before) || Number.isFinite(m.after));
 }

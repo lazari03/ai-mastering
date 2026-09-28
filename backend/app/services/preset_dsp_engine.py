@@ -8,13 +8,17 @@ from scipy.signal import butter, sosfiltfilt
 
 import numba
 
-from ai_mastering.ab_analysis import build_ab_report
-from ai_mastering.audio_utils import MASTER_SR, _ab_gain_match, _analysis_from_audio, _db, _load_audio, _true_peak_db
-from ai_mastering.bus_processing import _soft_clip, _true_peak_limiter
-from ai_mastering.dsp_filters import _dynamic_eq_narrowband, _lr4_highpass, _oversampled_distortion
-from ai_mastering.quality_control import rebalance_channels, run_quality_control, validate_input_signal
+import copy
 
-"""Interprets the full professional-preset JSON schema used by
+from ai_mastering.ab_analysis import build_ab_report
+from ai_mastering.analysis.dynamics import peak_percentile_db
+from ai_mastering.audio_utils import MASTER_SR, _ab_gain_match, _analysis_from_audio, _db, _load_audio, _true_peak_db
+from ai_mastering.bus_processing import _limiter_reduction_db, _soft_clip, _true_peak_limiter
+from ai_mastering.dsp_filters import _dynamic_eq_narrowband, _lr4_highpass, _oversampled_distortion
+from ai_mastering.planning import config as C
+from ai_mastering.quality_control import InvalidAudioError, rebalance_channels, run_quality_control, validate_input_signal
+
+"""MANUAL CHAIN ENGINE. Interprets the full professional-preset JSON schema used by
 mixing_presets.json (input/highpass/eq/bus_compressor/dynamic_eq/saturation/
 stereo/clipper/limiter/quality_control/output) and actually renders it,
 instead of the schema being parsed but unused. A preset generated externally
@@ -267,26 +271,133 @@ def _dither_for_bit_depth(stereo: np.ndarray, bit_depth: int, noise_shaping: boo
 # ---------------------------------------------------------------- limiter --
 
 
-def _apply_limiter(stereo: np.ndarray, sr: int, cfg: dict) -> np.ndarray:
-    if not cfg:
-        return stereo
+def _apply_limiter(stereo: np.ndarray, sr: int, cfg: dict, trim_db: float = 0.0) -> tuple[np.ndarray, dict]:
+    """Loudness target (if any), then the shared true-peak limiter — with the
+    adaptive engine's limiter damage budget: if reaching the target would
+    take more than C.LIMITER_BUDGET_MAX_DB off the loud hits, the target is
+    lowered instead. `trim_db` lowers the level further (used by the final
+    QC recovery pass). Returns the audio and a report of what happened."""
     meter = pyln.Meter(sr)
+    report = {"requested_target_lufs": None, "budget_trim_db": 0.0, "recovery_trim_db": round(trim_db, 2)}
     target_lufs = cfg.get("target_lufs_i")
     if target_lufs is not None:
+        report["requested_target_lufs"] = float(target_lufs)
         loudness = float(meter.integrated_loudness(stereo))
         if np.isfinite(loudness):
             stereo = pyln.normalize.loudness(stereo, loudness, float(target_lufs))
 
-    ceiling_db = float(cfg.get("ceiling_dbtp", -1.0))
+    ceiling_db = float(cfg.get("ceiling_dbtp", C.LIMITER_CEILING_DBTP))
     if not stereo.size:
-        return stereo
+        return stereo, report
+    loud_hits_db = peak_percentile_db(stereo, sr)
+    needed_gr_db = loud_hits_db - ceiling_db
+    if needed_gr_db > C.LIMITER_BUDGET_MAX_DB:
+        report["budget_trim_db"] = round(needed_gr_db - C.LIMITER_BUDGET_MAX_DB, 2)
+    total_trim_db = report["budget_trim_db"] + trim_db
+    if total_trim_db > 0:
+        stereo = stereo * _db_to_lin(-total_trim_db)
+    pre = stereo
     # Same gain-only oversampled lookahead limiter the adaptive engine's
     # professional tier uses (ai_mastering/bus_processing.py) — a real
     # limiter (anticipates peaks, smooths release) rather than a single
     # scalar trim after the fact. Still never boosts, still not
     # pedalboard.Limiter — that one applies makeup gain toward its ceiling,
     # which would undo the LUFS target just set above.
-    return np.asarray(_true_peak_limiter(stereo, sr, ceiling_db=ceiling_db), dtype=np.float32)
+    limited = np.asarray(_true_peak_limiter(pre, sr, ceiling_db=ceiling_db), dtype=np.float32)
+    report["max_gr_db"] = round(_limiter_reduction_db(pre, limited), 3)
+    report["gr_at_p995_peaks_db"] = round(max(0.0, peak_percentile_db(pre, sr) - peak_percentile_db(limited, sr)), 3)
+    report["budget_db"] = C.LIMITER_BUDGET_MAX_DB
+    return limited, report
+
+
+# ---------------------------------------------------------------- safety ---
+#
+# A full preset is a manual chain: the tonal moves (EQ, width) are the
+# user's, and stay theirs within wide bounds. The stages that decide how a
+# master survives delivery — peak ceiling, how hard the limiter and clipper
+# work, saturation drive — are held to the adaptive engine's own limits
+# (ai_mastering/planning/config.py), so an imported or hand-built chain
+# can't ship something the adaptive engine would refuse to. Every value
+# that gets pulled back is reported, never changed silently.
+
+MANUAL_EQ_MAX_DB = 6.0
+MANUAL_COMPRESSOR_MAX_RATIO = 4.0
+MANUAL_COMPRESSOR_MAX_GR_DB = 6.0
+MANUAL_DYNAMIC_EQ_MAX_GR_DB = 6.0
+MANUAL_MAX_TARGET_LUFS = -7.0
+MANUAL_SIDE_GAIN_RANGE = (-1.0, 0.5)
+MANUAL_MONO_BELOW_MAX_HZ = 300.0
+MANUAL_HEADROOM_RANGE_DB = (-24.0, -1.0)
+# Saturation drive is amount * 60 dB in this engine (see _apply_saturation),
+# so the adaptive engine's max drive maps to this amount.
+MANUAL_SATURATION_MAX_AMOUNT = C.SATURATION_MAX_DRIVE_DB / 60.0
+
+# Final-QC failures a quieter render can fix. Anything else (NaN, silence,
+# phase cancellation) means the chain itself is broken — refuse delivery.
+RECOVERABLE_QC_FAILURES = {"limiter_gain_reduction", "dynamics_preservation", "plr", "true_peak", "clipping"}
+RECOVERY_TRIMS_DB = (2.0, 4.0, 6.0)
+
+
+def _clamp(adjustments: list[str], label: str, value: float, lo: float, hi: float, why: str) -> float:
+    clamped = float(np.clip(value, lo, hi))
+    if abs(clamped - value) > 1e-9:
+        adjustments.append(f"{label}: {value:g} -> {clamped:g} ({why})")
+    return clamped
+
+
+def enforce_safety_limits(processing: dict, quality_control: dict | None) -> tuple[dict, float, list[str]]:
+    """Returns (safe processing copy, true-peak ceiling, adjustments)."""
+    p = copy.deepcopy(processing or {})
+    adj: list[str] = []
+
+    inp = p.get("input")
+    if inp and "headroom_target_db" in inp:
+        inp["headroom_target_db"] = _clamp(adj, "input.headroom_target_db", float(inp["headroom_target_db"]), *MANUAL_HEADROOM_RANGE_DB, "input gain staging range")
+
+    for i, band in enumerate(p.get("eq") or []):
+        if "gain_db" in band:
+            band["gain_db"] = _clamp(adj, f"eq[{i}].gain_db", float(band["gain_db"]), -MANUAL_EQ_MAX_DB, MANUAL_EQ_MAX_DB, f"manual EQ limited to ±{MANUAL_EQ_MAX_DB:g} dB")
+
+    comp = p.get("bus_compressor")
+    if comp:
+        comp["ratio"] = _clamp(adj, "bus_compressor.ratio", float(comp.get("ratio", 2.0)), 1.0, MANUAL_COMPRESSOR_MAX_RATIO, "bus compression ratio cap")
+        comp["max_gain_reduction_db"] = _clamp(adj, "bus_compressor.max_gain_reduction_db", float(comp.get("max_gain_reduction_db", 3.0)), 0.0, MANUAL_COMPRESSOR_MAX_GR_DB, "bus compression reduction cap")
+
+    for i, band in enumerate(p.get("dynamic_eq") or []):
+        if "max_gain_reduction_db" in band:
+            band["max_gain_reduction_db"] = -_clamp(adj, f"dynamic_eq[{i}].max_gain_reduction_db", abs(float(band["max_gain_reduction_db"])), 0.0, MANUAL_DYNAMIC_EQ_MAX_GR_DB, "dynamic EQ reduction cap")
+
+    sat = p.get("saturation")
+    if sat and sat.get("enabled"):
+        sat["amount"] = _clamp(adj, "saturation.amount", float(sat.get("amount", 0.03)), 0.0, MANUAL_SATURATION_MAX_AMOUNT, f"saturation drive capped at {C.SATURATION_MAX_DRIVE_DB:g} dB like the adaptive engine")
+
+    st = p.get("stereo")
+    if st:
+        if st.get("low_end_mono_below_hz"):
+            st["low_end_mono_below_hz"] = _clamp(adj, "stereo.low_end_mono_below_hz", float(st["low_end_mono_below_hz"]), 20.0, MANUAL_MONO_BELOW_MAX_HZ, "mono-bass cutoff range")
+        for i, band in enumerate(st.get("bands") or []):
+            if "gain" in band:
+                band["gain"] = _clamp(adj, f"stereo.bands[{i}].gain", float(band["gain"]), *MANUAL_SIDE_GAIN_RANGE, "width change range")
+
+    clip = p.get("clipper")
+    if clip and clip.get("enabled"):
+        clip["drive_db"] = _clamp(adj, "clipper.drive_db", float(clip.get("drive_db", 0.0)), 0.0, C.CLIPPER_MAX_SHARE_DB, f"clipper limited to {C.CLIPPER_MAX_SHARE_DB:g} dB like the adaptive engine")
+
+    lim = p.get("limiter")
+    if not lim:
+        # No limiter in the chain still gets the delivery ceiling — never
+        # a bare scalar trim, never an unguarded peak.
+        p["limiter"] = lim = {}
+        adj.append(f"limiter: none in the chain -> added a {C.LIMITER_CEILING_DBTP:g} dBTP true-peak safety limiter")
+    lim["ceiling_dbtp"] = _clamp(adj, "limiter.ceiling_dbtp", float(lim.get("ceiling_dbtp", C.LIMITER_CEILING_DBTP)), -6.0, C.LIMITER_CEILING_DBTP, "delivery ceiling")
+    if lim.get("target_lufs_i") is not None:
+        lim["target_lufs_i"] = _clamp(adj, "limiter.target_lufs_i", float(lim["target_lufs_i"]), -30.0, MANUAL_MAX_TARGET_LUFS, "loudness target cap")
+
+    qc_ceiling = float((quality_control or {}).get("true_peak_ceiling_dbtp", lim["ceiling_dbtp"]))
+    ceiling = _clamp(adj, "quality_control.true_peak_ceiling_dbtp", qc_ceiling, -6.0, C.LIMITER_CEILING_DBTP, "delivery ceiling")
+    # The limiter must aim at least as low as what QC will check.
+    lim["ceiling_dbtp"] = min(lim["ceiling_dbtp"], ceiling)
+    return p, ceiling, adj
 
 
 # ------------------------------------------------------------------ main ---
@@ -313,29 +424,16 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
     # matter which engine rendered the master.
     analysis_before = _analysis_from_audio(stereo, sr)
 
+    processing, ceiling_db, safety_adjustments = enforce_safety_limits(processing, preset.get("quality_control"))
+
     stereo = _apply_input_stage(stereo, processing.get("input"))
     stereo = _apply_highpass(stereo, sr, processing.get("highpass_filter"))
     stereo = _apply_static_eq(stereo, sr, processing.get("eq"))
     stereo = _apply_bus_compressor(stereo, sr, processing.get("bus_compressor"))
     stereo = _apply_dynamic_eq(stereo, sr, processing.get("dynamic_eq"))
     stereo = _apply_saturation(stereo, sr, processing.get("saturation"))
-    stereo = _apply_stereo(stereo, sr, processing.get("stereo"))
+    pre_dynamics = _apply_stereo(stereo, sr, processing.get("stereo"))
 
-    pre_limiter_true_peak_db = _true_peak_db(stereo) if stereo.size else 0.0
-    stereo = _apply_clipper(stereo, processing.get("clipper"))
-    stereo = _apply_limiter(stereo, sr, processing.get("limiter"))
-    post_limiter_true_peak_db = _true_peak_db(stereo) if stereo.size else 0.0
-
-    peak = float(np.max(np.abs(stereo))) if stereo.size else 0.0
-    if peak > 0.999:
-        stereo = stereo * (0.999 / peak)
-
-    limiter_report = {
-        "limiter_gain_reduction_db": round(max(0.0, pre_limiter_true_peak_db - post_limiter_true_peak_db), 3),
-        "pre_limiter_peak_db": round(pre_limiter_true_peak_db, 3),
-        "post_limiter_peak_db": round(post_limiter_true_peak_db, 3),
-        "true_peak_aware": bool(processing.get("limiter")),
-    }
     # Field shape the shared QC/AB modules expect from a processing-params
     # dict — this engine interprets a literal preset spec rather than
     # computing per-band deltas from analysis, so eq_correction is reported
@@ -350,16 +448,41 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
         "flavour": None,
     }
 
-    ceiling_db = float((preset.get("quality_control") or {}).get("true_peak_ceiling_dbtp", -1.0))
-    analysis_after = _analysis_from_audio(stereo, sr)
-    quality_control = run_quality_control(
-        analysis_before=analysis_before,
-        analysis_after=analysis_after,
-        mastered_audio=stereo,
-        processing_params=qc_params,
-        limiter_report=limiter_report,
-        true_peak_ceiling_db=ceiling_db,
-    )
+    def render_bus(trim_db: float, clipper_cfg: dict | None):
+        x = _apply_clipper(pre_dynamics, clipper_cfg)
+        clipper_gr = max(0.0, _true_peak_db(pre_dynamics) - _true_peak_db(x)) if clipper_cfg and clipper_cfg.get("enabled") else 0.0
+        limited, lim = _apply_limiter(x, sr, processing["limiter"], trim_db=trim_db)
+        report = {
+            # Deepest single reduction anywhere in the track, and the
+            # reduction across the loud hits (99.5th-percentile peaks) —
+            # the same two numbers the adaptive engine reports.
+            "limiter_gain_reduction_db": lim.get("max_gr_db", 0.0),
+            "gr_at_p995_peaks_db": lim.get("gr_at_p995_peaks_db", 0.0),
+            "clipper_gain_reduction_db": round(clipper_gr, 3),
+            "budget_db": lim.get("budget_db"),
+            "budget_trim_db": lim.get("budget_trim_db", 0.0),
+            "recovery_trim_db": lim.get("recovery_trim_db", 0.0),
+            "requested_target_lufs": lim.get("requested_target_lufs"),
+            "post_limiter_peak_db": round(_true_peak_db(limited), 3) if limited.size else 0.0,
+            "true_peak_aware": True,
+        }
+        after = _analysis_from_audio(limited, sr)
+        qc = run_quality_control(
+            analysis_before=analysis_before,
+            analysis_after=after,
+            mastered_audio=limited,
+            processing_params=qc_params,
+            limiter_report=report,
+            true_peak_ceiling_db=ceiling_db,
+        )
+        return limited, report, after, qc
+
+    stereo, limiter_report, analysis_after, quality_control = render_bus(0.0, processing.get("clipper"))
+    if limiter_report["budget_trim_db"] > 0:
+        safety_adjustments.append(
+            f"limiter: loudness lowered {limiter_report['budget_trim_db']:.1f} dB to keep limiter reduction on the loud hits within {C.LIMITER_BUDGET_MAX_DB:g} dB"
+        )
+
     qc_corrections = []
     failing_ids = {c["id"] for c in quality_control["checks"] if c["status"] == "fail"}
     if "channel_balance" in failing_ids:
@@ -378,6 +501,29 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
             limiter_report=limiter_report,
             true_peak_ceiling_db=ceiling_db,
         )
+
+    # Final QC gates delivery, same rule as the adaptive engine: a failed
+    # master is never written. Level-related failures get quieter,
+    # clipper-free re-renders of the same chain; anything else — or no
+    # passing candidate — means no file.
+    recovery = None
+    if not quality_control["passed"]:
+        failed = {c["id"] for c in quality_control["checks"] if c["status"] == "fail"}
+        if not failed.issubset(RECOVERABLE_QC_FAILURES):
+            raise InvalidAudioError(f"Manual chain failed final quality control ({', '.join(sorted(failed))}); no master was delivered.")
+        for trim_db in RECOVERY_TRIMS_DB:
+            c_audio, c_report, c_after, c_qc = render_bus(trim_db, None)
+            if c_qc["passed"]:
+                stereo, limiter_report, analysis_after, quality_control = c_audio, c_report, c_after, c_qc
+                recovery = {"failed_checks": sorted(failed), "clipper_disabled": True, "level_lowered_db": trim_db}
+                safety_adjustments.append(
+                    f"final QC failed ({', '.join(sorted(failed))}) -> re-rendered with the clipper off and {trim_db:g} dB less level"
+                )
+                break
+        if recovery is None:
+            raise InvalidAudioError(
+                f"Manual chain failed final quality control ({', '.join(sorted(failed))}) even at {RECOVERY_TRIMS_DB[-1]:g} dB lower level; no master was delivered."
+            )
     quality_control["corrections_applied"] = qc_corrections
 
     output_cfg = preset.get("output") or {}
@@ -417,7 +563,13 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
         "ab_analysis": ab_analysis,
         "processing_applied": {
             "engine": "preset_dsp_engine",
+            # A literal, user-specified chain — not the adaptive engine's
+            # measure-then-decide plan. The UI labels it as such.
+            "chain_type": "manual",
             "stages": list(processing.keys()),
+            "safety_adjustments": safety_adjustments,
+            "qc_recovery": recovery,
+            "limiter": limiter_report,
             "input_validation": input_validation,
             "quality_control_corrections": qc_corrections,
         },

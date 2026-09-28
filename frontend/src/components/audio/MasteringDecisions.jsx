@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 
 import { useLanguage } from "@/lib/i18n";
-import { summarizeDecisions, detailedMetrics, formatHz, humanizeProblem } from "@/lib/masteringDecisions";
+import { summarizeDecisions, summarizeManualChain, detailedMetrics, formatHz, humanizeProblem } from "@/lib/masteringDecisions";
 import { trackEvent } from "@/lib/analytics";
 
 // "What Auralith changed" — built only from the engine's recorded decisions
@@ -40,6 +40,90 @@ function Row({ label, status, t, children }) {
   );
 }
 
+// Both limiter numbers, always together: the deepest single reduction
+// alone overstates what you hear, the loud-hits figure alone hides one
+// hard-hit moment.
+function LimiterLine({ dynamics, t }) {
+  if (dynamics.limiterMaxDb == null && dynamics.limiterLoudHitsDb == null) return null;
+  return (
+    <span className="block">
+      {t("decisions.dyn.limiter", { max: fmtNum(dynamics.limiterMaxDb), hits: fmtNum(dynamics.limiterLoudHitsDb) })}
+      {dynamics.limiterBudgetDb != null ? <span className="text-[12px]"> {t("decisions.dyn.budget", { b: fmtNum(dynamics.limiterBudgetDb) })}</span> : null}
+    </span>
+  );
+}
+
+function Verification({ verification, t }) {
+  const { status, warnings, failures, delivery } = verification;
+  return (
+    <>
+      <span className="block">
+        {status === "failed"
+          ? t("decisions.verify.failed")
+          : status === "warned"
+            ? t(warnings.length === 1 ? "decisions.verify.warnedOne" : "decisions.verify.warnedMany", { n: warnings.length })
+            : t("decisions.verify.passed")}
+      </span>
+      {[...failures, ...warnings].map((message) => (
+        <span key={message} className="mt-0.5 block text-[12px]">
+          <span aria-hidden="true">{failures.includes(message) ? "✕ " : "! "}</span>
+          {message}
+        </span>
+      ))}
+      {delivery ? (
+        <span className="mt-0.5 block text-[12px]">
+          {t(delivery.format === "mp3" ? "decisions.verify.deliveryMp3" : "decisions.verify.deliveryWav", {
+            tp: fmtNum(delivery.truePeak),
+            clipped: delivery.clipped,
+          })}
+          {delivery.trimDb ? ` ${t("decisions.verify.deliveryTrim", { db: fmtNum(delivery.trimDb) })}` : ""}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+// Full preset / Pro manual parameters: the literal chain, labelled as such.
+function ManualChainReport({ manual, t }) {
+  return (
+    <section className="decisions-card rounded-[20px] border border-border-subtle bg-white/60 p-4 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="m-0 text-[18px] font-semibold text-text-primary">{t("manual.title")}</h2>
+        <span className="rounded-full border border-border-subtle px-2.5 py-0.5 text-[11px] font-semibold text-text-secondary">{t("manual.badge")}</span>
+      </div>
+      <p className="m-0 mt-1 text-[12px] text-text-secondary">{t("manual.intro")}</p>
+      <ul className="m-0 mt-3 list-none p-0">
+        <Row label={t("manual.chain")} t={t}>
+          {manual.stages.length ? manual.stages.map((s) => s.replace(/_/g, " ")).join(" → ") : "—"}
+        </Row>
+        <Row label={t("manual.safety")} t={t}>
+          {manual.adjustments.length ? (
+            <>
+              <span className="block">{t("manual.safety.adjusted", { n: manual.adjustments.length })}</span>
+              {manual.adjustments.map((a) => (
+                <span key={a} className="mt-0.5 block font-mono text-[11px]">{a}</span>
+              ))}
+            </>
+          ) : (
+            t("manual.safety.none")
+          )}
+        </Row>
+        <Row label={t("decisions.dynamics")} t={t}>
+          <LimiterLine dynamics={manual} t={t} />
+        </Row>
+        {manual.beforeLufs != null && manual.afterLufs != null ? (
+          <Row label={t("decisions.loudness")} t={t}>
+            <span className="font-mono text-text-primary">{t("decisions.loud.change", { b: fmtNum(manual.beforeLufs), a: fmtNum(manual.afterLufs) })}</span>
+          </Row>
+        ) : null}
+        <Row label={t("decisions.verify")} t={t}>
+          <Verification verification={manual.verification} t={t} />
+        </Row>
+      </ul>
+    </section>
+  );
+}
+
 const fmtDb = (n) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toFixed(1)}`;
 const fmtNum = (n, digits = 1) => (Number.isFinite(n) ? n.toFixed(digits) : "—");
 
@@ -48,7 +132,10 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
   const [open, setOpen] = useState(false);
   const detailsId = useId();
   const summary = summarizeDecisions(result);
-  if (!summary) return null;
+  if (!summary) {
+    const manual = summarizeManualChain(result);
+    return manual ? <ManualChainReport manual={manual} t={t} /> : null;
+  }
   const { regions, dynamics, stereo, loudness, verification, counts } = summary;
   const metrics = detailedMetrics(result);
 
@@ -87,11 +174,14 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
             {dynamics.status === "corrected"
               ? [dynamics.multiband ? t("decisions.dyn.multiband") : null, dynamics.glue ? t("decisions.dyn.glue") : null].filter(Boolean).join(" · ")
               : dynamics.status === "light" || dynamics.status === "heavy"
-                ? t("decisions.dyn.peakControl", { limiter: fmtNum(dynamics.limiterGrDb), clipper: fmtNum(dynamics.clipperGrDb) })
+                ? dynamics.clipperGrDb >= 0.1
+                  ? t("decisions.dyn.clipper", { clipper: fmtNum(dynamics.clipperGrDb) })
+                  : null
                 : dynamics.limiterOnly
                   ? t("decisions.dyn.limiterOnly")
                   : t("decisions.dyn.preserved")}
           </span>
+          <LimiterLine dynamics={dynamics} t={t} />
           {dynamics.crestBefore != null && dynamics.crestAfter != null ? (
             <span className="block text-[12px]">{t("decisions.dyn.crest", { b: fmtNum(dynamics.crestBefore), a: fmtNum(dynamics.crestAfter) })}</span>
           ) : null}
@@ -124,7 +214,7 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
         </Row>
 
         <Row label={t("decisions.verify")} t={t}>
-          <span className="block">{t(verification.passed ? "decisions.verify.passed" : "decisions.verify.failed")}</span>
+          <Verification verification={verification} t={t} />
           {verification.checked ? <span className="block text-[12px]">{t("decisions.verify.improved", { i: verification.improved, n: verification.checked })}</span> : null}
           {verification.backoffApplied ? <span className="block text-[12px]">{t("decisions.verify.backoff")}</span> : null}
         </Row>

@@ -15,7 +15,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Can I keep an artist's sound consistent across releases?",
-    a: "Yes — save an Artist Profile: the genre, style, objective and direction (warm, punchy, open…) that define their sound. Every new track is still analyzed and corrected on its own terms, then leaned toward that character, so releases sound related without copying one track's EQ onto another. Studios that need an exact processing chain can import one as JSON. Profiles are private to your account.",
+    a: "Yes — save an Artist Profile: the genre, style, objective and direction (warm, punchy, open…) that define their sound. Every new track is still analyzed and corrected on its own terms, then leaned toward that character, so releases sound related without copying one track's EQ onto another. Studios that need an exact processing chain can import one as JSON — that runs as a manual chain, exactly as written rather than adapted per track, but held to the same peak, limiter and quality-check limits, and it won't deliver a file that fails them. Profiles are private to your account.",
   },
   {
     q: "Why does my mono source sound mono after mastering?",

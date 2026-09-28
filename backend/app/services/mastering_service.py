@@ -6,9 +6,13 @@ import subprocess
 import uuid
 from pathlib import Path
 
+import numpy as np
+import soundfile as sf
 from fastapi import HTTPException, UploadFile
 
 from adaptive_mastering import analyze_for_preview, master_track as run_adaptive_mastering
+from ai_mastering.audio_utils import _true_peak_db
+from ai_mastering.planning import config as engine_config
 from ai_mastering.quality_control import InvalidAudioError
 from params import list_categories, list_flavours, list_genres, list_styles, list_tags
 
@@ -182,24 +186,84 @@ def _decode_input_if_required(job_id: str, input_path: Path, input_ext: str, lab
     return processing_input_path
 
 
-def _convert_output(wav_mastered_path: Path, output_path: Path, output_ext: str) -> None:
-    if output_ext == "mp3":
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-i",
-            str(wav_mastered_path),
-            "-codec:a",
-            "libmp3lame",
-            "-b:a",
-            "320k",
-            str(output_path),
-        ]
+# The file a customer downloads is what has to be safe, not the float
+# buffer QC measured before it was written or encoded. WAV: exact PCM of
+# what QC saw, re-read and re-checked. MP3: lossy encoding reshapes peaks
+# (overshoot of a few tenths of a dB is normal), so the encoded file is
+# decoded and measured, and re-encoded slightly quieter if it overshoots.
+DELIVERY_WAV_TOLERANCE_DB = 0.15
+# MP3 is judged against a looser line than the WAV: the decoder's own
+# reconstruction is part of the measurement, and -0.5 dBTP decoded is
+# still clear of clipping on playback.
+DELIVERY_MP3_TOLERANCE_DB = 0.5
+DELIVERY_MP3_MAX_ENCODES = 4
+CLIP_THRESHOLD = 0.9999
+
+
+def _read_delivered_audio(path: Path, ext: str) -> np.ndarray:
+    if ext != "mp3":
+        audio, _ = sf.read(str(path), dtype="float32", always_2d=True)
+        return audio
+    decoded = path.with_name(f"{path.stem}_delivery_check.wav")
+    cmd = ["ffmpeg", "-y", "-i", str(path), "-c:a", "pcm_f32le", str(decoded)]
+    try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
         if result.returncode != 0:
-            raise HTTPException(500, f"FFmpeg MP3 conversion failed: {result.stderr[-800:]}")
-    else:
-        wav_mastered_path.replace(output_path)
+            raise HTTPException(500, f"Couldn't decode the delivered MP3 to verify it: {result.stderr[-400:]}")
+        audio, _ = sf.read(str(decoded), dtype="float32", always_2d=True)
+        return audio
+    finally:
+        decoded.unlink(missing_ok=True)
+
+
+def _measure_delivered(audio: np.ndarray) -> dict:
+    finite = bool(np.all(np.isfinite(audio)))
+    safe = np.nan_to_num(audio)
+    peak = float(np.max(np.abs(safe))) if safe.size else 0.0
+    return {
+        "finite": finite,
+        "clipped_samples": int(np.count_nonzero(np.abs(safe) >= CLIP_THRESHOLD)),
+        "sample_peak_dbfs": round(float(20.0 * np.log10(max(peak, 1e-12))), 2),
+        "true_peak_dbtp": round(float(_true_peak_db(safe)), 2) if safe.size else -120.0,
+    }
+
+
+def _encode_mp3(wav_path: Path, output_path: Path, trim_db: float) -> None:
+    cmd = ["ffmpeg", "-y", "-i", str(wav_path)]
+    if trim_db > 0:
+        cmd += ["-af", f"volume=-{trim_db:.2f}dB"]
+    cmd += ["-codec:a", "libmp3lame", "-b:a", "320k", str(output_path)]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+    if result.returncode != 0:
+        raise HTTPException(500, f"FFmpeg MP3 conversion failed: {result.stderr[-800:]}")
+
+
+def deliver_and_verify(wav_mastered_path: Path, output_path: Path, output_ext: str, ceiling_db: float = engine_config.LIMITER_CEILING_DBTP) -> dict:
+    """Writes the deliverable and verifies the file itself. Returns the
+    check report; raises (and removes the file) if it can't be made safe."""
+    if output_ext != "mp3":
+        if wav_mastered_path != output_path:
+            wav_mastered_path.replace(output_path)
+        measured = _measure_delivered(_read_delivered_audio(output_path, "wav"))
+        passed = measured["finite"] and measured["clipped_samples"] == 0 and measured["true_peak_dbtp"] <= ceiling_db + DELIVERY_WAV_TOLERANCE_DB
+        report = {"format": "wav", "checked": "written file", "ceiling_dbtp": ceiling_db, "gain_trim_db": 0.0, "encodes": 0, "passed": passed, **measured}
+        if not passed:
+            output_path.unlink(missing_ok=True)
+            raise HTTPException(500, f"The mastered file failed its final delivery check ({report}); no master was delivered.")
+        return report
+
+    limit = ceiling_db + DELIVERY_MP3_TOLERANCE_DB
+    trim_db = 0.0
+    measured: dict = {}
+    for encode in range(1, DELIVERY_MP3_MAX_ENCODES + 1):
+        _encode_mp3(wav_mastered_path, output_path, trim_db)
+        measured = _measure_delivered(_read_delivered_audio(output_path, "mp3"))
+        if measured["finite"] and measured["clipped_samples"] == 0 and measured["true_peak_dbtp"] <= limit:
+            return {"format": "mp3", "checked": "decoded MP3", "ceiling_dbtp": round(limit, 2), "gain_trim_db": round(trim_db, 2), "encodes": encode, "passed": True, **measured}
+        overshoot = max(measured["true_peak_dbtp"] - limit, 0.0)
+        trim_db += overshoot + 0.1
+    output_path.unlink(missing_ok=True)
+    raise HTTPException(500, f"The encoded MP3 still overshoots after {DELIVERY_MP3_MAX_ENCODES} encodes ({measured}); no master was delivered.")
 
 
 def make_browser_preview(wav_mastered_path: Path, preview_path: Path) -> None:
@@ -301,8 +365,13 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
         except Exception as exc:  # pragma: no cover
             raise HTTPException(500, f"Adaptive mastering failed: {type(exc).__name__}: {exc}") from exc
 
-    _convert_output(wav_mastered_path, output_path, output_ext)
-    # wav_mastered_path still exists after _convert_output either way —
+    delivery_check = deliver_and_verify(wav_mastered_path, output_path, output_ext)
+    mastering_result.setdefault("processing_applied", {})["delivery_check"] = delivery_check
+    if delivery_check["gain_trim_db"] > 0:
+        mastering_result.setdefault("source_warnings", []).append(
+            f"The MP3 encoder overshot the peak ceiling, so the MP3 was encoded {delivery_check['gain_trim_db']:.1f} dB quieter than the WAV master."
+        )
+    # wav_mastered_path still exists after deliver_and_verify either way —
     # untouched for an mp3 output_ext (ffmpeg reads it, writes a separate
     # output_path), and a same-path no-op rename for the wav case (the
     # common one: output_ext defaults to "wav", so wav_mastered_path and
