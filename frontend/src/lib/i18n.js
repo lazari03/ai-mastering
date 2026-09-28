@@ -62,6 +62,16 @@ const DICT = {
   "hero.pillar.preserve.body": { en: "Leaves what already works alone.", sq: "E lë të paprekur atë që funksionon." },
   "hero.pillar.verify": { en: "Verify", sq: "Verifiko" },
   "hero.pillar.verify.body": { en: "Re-measures the result and backs off if needed.", sq: "Rimat rezultatin dhe zbut nëse duhet." },
+  "hearIt.eyebrow": { en: "Hear it", sq: "Dëgjoje" },
+  "hearIt.title": { en: "One mix, before and after.", sq: "Një miks, para dhe pas." },
+  "hearIt.body": {
+    en: "Real output of the current engine on this track — nothing re-touched. Flip between Before and After while it plays: the switch is instant and keeps your place, so you hear exactly what changed.",
+    sq: "Rezultati real i motorit aktual në këtë këngë — pa asnjë ndërhyrje. Ndërro mes Para dhe Pas gjatë luajtjes: kalimi është i menjëhershëm dhe ruan vendin, që të dëgjosh saktësisht çfarë ndryshoi.",
+  },
+  "hearIt.matchedNote": {
+    en: "Levels matched — both sides play at the same loudness, so you're comparing tone and dynamics, not volume. The real master is {db} dB louder.",
+    sq: "Nivelet e përputhura — të dyja anët luhen me të njëjtin volum, që të krahasosh tonin dhe dinamikën, jo volumin. Masteri real është {db} dB më i fortë.",
+  },
   "hero.demo.loudness": { en: "Loudness", sq: "Zëri" },
   "hero.demo.truePeak": { en: "True peak", sq: "Kulmi" },
   "hero.demo.decisions": { en: "Decisions", sq: "Vendime" },

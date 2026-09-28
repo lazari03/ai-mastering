@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { motion } from "motion/react";
 
@@ -53,11 +54,19 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
 
   const googleDisabled = busy || (isSignup && !termsAccepted);
 
-  return (
+  // Rendered into <body>, not where it's used: every caller sits inside
+  // positioned/transformed page sections, and a fixed overlay inside one of
+  // those is trapped in its stacking context — on the homepage hero the
+  // panel next to it painted over the dialog.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-text-primary/40 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-text-primary/40 p-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-labelledby="chord-gate-title"
@@ -188,6 +197,7 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
           {t("login.google")}
         </button>
       </div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }

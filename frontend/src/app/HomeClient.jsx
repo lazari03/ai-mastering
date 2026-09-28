@@ -17,6 +17,7 @@ import BeforeAfterPlayer from "@/components/marketing/BeforeAfterPlayer";
 import GenreShowcase from "@/components/marketing/GenreShowcase";
 import SectionHeading from "@/components/marketing/SectionHeading";
 import HeroQuickTry from "@/components/marketing/HeroQuickTry";
+import HearTheDifference from "@/components/marketing/HearTheDifference";
 import MasteringDecisions from "@/components/audio/MasteringDecisions";
 import LoudnessMeter from "@/components/audio/LoudnessMeter";
 import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
@@ -133,8 +134,13 @@ export default function HomeClient() {
           }}
         />
 
-        <div className="relative mx-auto grid max-w-[1280px] grid-cols-1 gap-14 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1fr)] lg:items-center lg:gap-20 [&>*]:min-w-0">
-          <div>
+        {/* Text left, the upload panel right (it replaced the demo player
+            here: trying your own track is the hero's job; hearing ours is
+            the next section's). Three grid children so that on phones the
+            order is text -> panel -> pillars, keeping the panel near the
+            top, while on desktop the panel spans both rows on the right. */}
+        <div className="relative mx-auto grid max-w-[1280px] grid-cols-1 gap-x-20 gap-y-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1fr)] lg:items-center [&>*]:min-w-0">
+          <div className="lg:col-start-1 lg:row-start-1">
             <p className="eyebrow m-0 text-dark-text-secondary">{t("hero.eyebrow")}</p>
 
             {/* Capped at 4.25rem, not the 5.75rem the type scale would
@@ -153,71 +159,28 @@ export default function HomeClient() {
             <p className="mt-5 max-w-[50ch] text-[15px] leading-[1.55] text-dark-text-secondary sm:mt-7 sm:text-[17px] sm:leading-[1.6]" style={{ textWrap: "pretty" }}>
               {t("hero.body")}
             </p>
-
-            {/* The try panel replaces the old "Master a Track Free" button
-                row: a signup link as the first action meant 4 in 5 engaged
-                visitors never tried anything. Upload and the sample run
-                with no account; signup stays one line below it. */}
-            <HeroQuickTry />
-
-            {/* Analyze → Correct → Preserve → Verify: what the engine does,
-                instead of spec counts (presets, engines) in the hero. */}
-            <ol className="m-0 mt-14 grid list-none grid-cols-2 gap-x-8 gap-y-5 border-t border-dark-border-subtle p-0 pt-9 sm:grid-cols-4">
-              {["analyze", "correct", "preserve", "verify"].map((k, i) => (
-                <li key={k}>
-                  <p className="m-0 font-mono text-[11px] text-dark-text-secondary">{String(i + 1).padStart(2, "0")}</p>
-                  <p className="m-0 mt-1.5 text-[15px] font-semibold text-dark-text-primary">{t(`hero.pillar.${k}`)}</p>
-                  <p className="m-0 mt-1 text-[12px] leading-snug text-dark-text-secondary">{t(`hero.pillar.${k}.body`)}</p>
-                </li>
-              ))}
-            </ol>
           </div>
 
-          {BEFORE_AFTER_DEMOS[0] ? (
-            // Double-bezel: the real player is the inner core, seated in
-            // an outer tray with a concentric radius.
-            //
-            // Sits fully inside the band. An earlier version pushed it
-            // past the bottom edge (negative margin to control reserved
-            // space, transform to control where it actually sat) so it
-            // broke the dark/cream seam as a depth cue — but a panel
-            // hanging out of the section it belongs to reads as a
-            // layout escaping its container, not as deliberate
-            // layering, so the band simply contains it now. Keeping it
-            // in flow also means no magic numbers to retune whenever
-            // the hero copy changes length.
-            <div id="hero-player" className="bezel bezel-on-dark relative z-10 scroll-mt-28">
-              <div className="bezel-core p-3 sm:p-4">
-                <BeforeAfterPlayer large {...BEFORE_AFTER_DEMOS[0]} />
-                {/* Real numbers from this demo's own master (content/demoMaster.js),
-                    not a genre target dressed up as a measurement. */}
-                <dl className="m-0 mt-3 grid grid-cols-3 gap-2 rounded-[1.25rem] bg-black/[0.03] p-4 text-left sm:p-5">
-                  <div>
-                    <dt className="text-[10px] uppercase tracking-[0.14em] text-text-secondary">{t("hero.demo.loudness")}</dt>
-                    <dd className="m-0 mt-1 font-mono text-[13px] text-text-primary sm:text-[15px]">
-                      {DEMO_MASTER.before_lufs.toFixed(1)} → {DEMO_MASTER.after_lufs.toFixed(1)}
-                      <span className="text-text-secondary"> LUFS</span>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[10px] uppercase tracking-[0.14em] text-text-secondary">{t("hero.demo.truePeak")}</dt>
-                    <dd className="m-0 mt-1 font-mono text-[13px] text-text-primary sm:text-[15px]">
-                      {DEMO_MASTER.analysis_before.true_peak_db.toFixed(1)} → {DEMO_MASTER.analysis_after.true_peak_db.toFixed(1)}
-                      <span className="text-text-secondary"> dBTP</span>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[10px] uppercase tracking-[0.14em] text-text-secondary">{t("hero.demo.decisions")}</dt>
-                    <dd className="m-0 mt-1 text-[13px] text-text-primary sm:text-[15px]">
-                      {t("hero.demo.counts", { c: DEMO_COUNTS.corrections, u: DEMO_COUNTS.untouched })}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
-          ) : null}
+          {/* Upload, or try the sample — no account needed. */}
+          <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
+            <HeroQuickTry />
+          </div>
+
+          {/* Analyze → Correct → Preserve → Verify: what the engine does,
+              instead of spec counts (presets, engines) in the hero. */}
+          <ol className="m-0 grid list-none grid-cols-2 gap-x-8 gap-y-5 border-t border-dark-border-subtle p-0 pt-9 sm:grid-cols-4 lg:col-start-1 lg:row-start-2">
+            {["analyze", "correct", "preserve", "verify"].map((k, i) => (
+              <li key={k}>
+                <p className="m-0 font-mono text-[11px] text-dark-text-secondary">{String(i + 1).padStart(2, "0")}</p>
+                <p className="m-0 mt-1.5 text-[15px] font-semibold text-dark-text-primary">{t(`hero.pillar.${k}`)}</p>
+                <p className="m-0 mt-1 text-[12px] leading-snug text-dark-text-secondary">{t(`hero.pillar.${k}.body`)}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
+
+      <HearTheDifference />
 
       <section id="how-it-listens" className="reveal mt-24 scroll-mt-28">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16 [&>*]:min-w-0">
@@ -244,7 +207,7 @@ export default function HomeClient() {
         </div>
       </section>
 
-      {/* The hero above already shows BEFORE_AFTER_DEMOS[0] — this section
+      {/* HearTheDifference above already plays BEFORE_AFTER_DEMOS[0] — this section
           is for ADDITIONAL genre examples only (slice(1)), never a repeat
           of the hero's own demo. Renders nothing at all while only one
           demo exists (see beforeAfterDemos.js's own comment: "add more

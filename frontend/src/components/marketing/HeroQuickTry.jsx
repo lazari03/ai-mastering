@@ -116,7 +116,7 @@ export default function HeroQuickTry() {
   };
 
   return (
-    <div className="bezel bezel-on-dark relative z-10 mt-7 max-w-[560px] sm:mt-9">
+    <div className="bezel bezel-on-dark relative z-10 w-full">
       <div className="bezel-core p-4 sm:p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <p className="m-0 text-[15px] font-semibold text-text-primary">{t("heroTry.title")}</p>
@@ -173,7 +173,7 @@ export default function HeroQuickTry() {
               before: DEMO_MASTER.before_lufs.toFixed(1),
               after: DEMO_MASTER.after_lufs.toFixed(1),
             })}{" "}
-            <a href="#hero-player" className="font-semibold underline decoration-black/20 underline-offset-4 hover:text-accent">
+            <a href="#hear-it" className="font-semibold underline decoration-black/20 underline-offset-4 hover:text-accent">
               {t("heroTry.sampleListen")}
             </a>
             <p className="m-0 mt-2 text-text-secondary">{t("heroTry.sampleNext")}</p>
