@@ -62,6 +62,75 @@ def _madmom_label_to_display(label: str) -> str:
     return NOTE_NAMES[pc] + ("m" if quality == "min" else "")
 
 
+# 4/4 assumed. RhythmExtractor2013 gives beats but not downbeats, and
+# guessing a meter from beat intervals alone is unreliable; 4/4 covers the
+# overwhelming majority of the popular material this tool is used on. The
+# UI treats this as a display grouping only — nothing in the analysis
+# depends on it being right.
+_BEATS_PER_BAR = 4
+
+# How far a boundary may be pulled, as a FRACTION of the local beat
+# interval — not an absolute number of seconds.
+#
+# An absolute tolerance cannot work: at 120 bpm beats are 0.5 s apart, so
+# any constant of 0.25 s means every possible timestamp is within reach of
+# some beat and the guard never fires — syncopation gets flattened onto
+# the grid along with the jitter. As a fraction, a change on the "and"
+# (half a beat away) is always safely outside the window at any tempo,
+# while detector jitter of a few tens of milliseconds is always inside it.
+_SNAP_TOLERANCE_BEATS = 0.25
+
+
+def _snap_segments_to_beats(segments: list[dict], beats: list[float]) -> list[dict]:
+    """Quantise chord boundaries onto detected beats.
+
+    The chord recogniser reports where the harmony actually changed in the
+    audio, which is rarely exactly on a beat. Rendered on a grid those few
+    tens of milliseconds read as the chart sliding against the song. This
+    pulls each boundary to its nearest beat when one is close enough,
+    leaving genuinely off-beat changes where they are.
+
+    Returns segments with boundaries still non-overlapping and ordered;
+    zero-length results are left for _drop_short_segments to remove.
+    """
+    if not segments or len(beats) < 2:
+        return segments
+
+    import bisect
+
+    def nearest_beat(t: float) -> float:
+        i = bisect.bisect_left(beats, t)
+        candidates = []
+        if i > 0:
+            candidates.append(beats[i - 1])
+        if i < len(beats):
+            candidates.append(beats[i])
+        if not candidates:
+            return t
+        best = min(candidates, key=lambda b: abs(b - t))
+        # Local interval, not a global average: live/human tempo drifts,
+        # and a window sized from the wrong part of the song would snap
+        # too eagerly in fast sections and not at all in slow ones.
+        j = beats.index(best)
+        neighbours = [abs(best - beats[k]) for k in (j - 1, j + 1) if 0 <= k < len(beats)]
+        interval = min(neighbours) if neighbours else 0.5
+        return best if abs(best - t) <= interval * _SNAP_TOLERANCE_BEATS else t
+
+    snapped = [dict(seg) for seg in segments]
+    for seg in snapped:
+        seg["start"] = round(nearest_beat(float(seg["start"])), 3)
+        seg["end"] = round(nearest_beat(float(seg["end"])), 3)
+
+    # Re-seal the timeline: a boundary that moved must move for both the
+    # segment that ends there and the one that starts there, or the grid
+    # develops gaps and overlaps that are visible as flicker during
+    # playback.
+    for i in range(len(snapped) - 1):
+        if snapped[i]["end"] != snapped[i + 1]["start"]:
+            snapped[i]["end"] = snapped[i + 1]["start"]
+    return [seg for seg in snapped if seg["end"] > seg["start"]]
+
+
 def _drop_short_segments(segments: list[dict], min_seconds: float = _MIN_SEGMENT_SECONDS) -> list[dict]:
     # Fold segments shorter than min_seconds into a neighbor (extending the
     # neighbor's boundary so total time coverage never gaps), then re-merge
@@ -106,8 +175,16 @@ def analyze_chords_from_path(audio_path: str) -> dict:
     audio = es.MonoLoader(filename=str(audio_path))()
     duration = float(len(audio)) / 44100.0
 
-    tempo, _beats, beat_confidence, _, _intervals = es.RhythmExtractor2013(method="multifeature")(audio)
+    # beats were previously discarded as `_beats`. They are the single most
+    # useful thing this extractor produces for display: chord boundaries
+    # from the recogniser are raw acoustic timings that land wherever the
+    # model happened to switch, typically a few tens of milliseconds off
+    # the actual beat. Shown on a grid, that reads as the chart drifting
+    # against the music. Snapping to these beats is what a Chordify-style
+    # view is really doing.
+    tempo, beats, beat_confidence, _, _intervals = es.RhythmExtractor2013(method="multifeature")(audio)
     tempo = float(tempo)
+    beats = [float(b) for b in beats]
 
     key, scale, key_strength = es.KeyExtractor()(audio)
     key_label = f"{key} {scale}"
@@ -122,9 +199,18 @@ def analyze_chords_from_path(audio_path: str) -> dict:
         for start, end, label in raw_segments
     ]
     segments = _drop_short_segments(segments)
+    # Order matters: snap first (so boundaries sit on beats), then drop
+    # shorts again — snapping can collapse a segment to zero length when
+    # two changes fall either side of one beat.
+    segments = _drop_short_segments(_snap_segments_to_beats(segments, beats))
 
     return {
         "bpm": round(tempo, 1),
+        # Exposed so the UI can lay chords on a real beat/bar grid instead
+        # of a flat wrapping list. Rounded to ms — anything finer is below
+        # the accuracy of the detector and just inflates the payload.
+        "beats": [round(b, 3) for b in beats],
+        "beats_per_bar": _BEATS_PER_BAR,
         "key": key_label,
         "duration": round(duration, 2),
         "chords": segments,

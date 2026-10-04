@@ -27,6 +27,8 @@ import {
 } from "../services/polarService.js";
 import {
   consumeMasterQuota,
+  refundMasterQuota,
+  refundExtraCredit,
   PLAN_MASTER_LIMITS,
   consumeExtraCredit,
   consumeStemQuota,
@@ -838,6 +840,36 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
         });
       }
     }
+
+    // ---- RESERVE THE SLOT NOW, BEFORE RENDERING -----------------------
+    //
+    // The snapshot check above is a read, and a read cannot gate a
+    // resource. Previously the slot was only consumed AFTER the render,
+    // so N concurrent requests from a user with 1 remaining all passed
+    // the read, all rendered, and all returned a finished master. The
+    // atomic consume then correctly refused the extras — but the files
+    // were already delivered and the refusal only reached a console.error.
+    // Five parallel requests = five masters, one deduction.
+    //
+    // consumeMasterQuota/consumeExtraCredit are already transactional, so
+    // calling them HERE makes the deduction itself the gate: concurrent
+    // callers serialise and all but the allowed ones get false.
+    //
+    // The guarantee this replaces — "never bill for a render that failed"
+    // — is preserved by refunding in the catch below.
+    const reserved = mustConsumeQuota
+      ? await consumeMasterQuota(req.user.uid, quotaLimit, plan).catch(() => false)
+      : mustConsumeCredit
+        ? await consumeExtraCredit(req.user.uid).catch(() => false)
+        : true;
+
+    if (!reserved) {
+      // Lost a race against the user's own concurrent request. Not an
+      // error state — their allowance genuinely just ran out.
+      return res.status(402).json({
+        detail: "That used your last available master — another render of yours claimed it first. Buy a single master or upgrade in Settings → Billing.",
+      });
+    }
   }
 
   try {
@@ -905,25 +937,43 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     // Still doesn't fail the response on error — the user already has
     // their file; a Firestore hiccup here is one unbilled render, logged,
     // not a broken master.
-    if (mustConsumeQuota) {
-      try {
-        await consumeMasterQuota(req.user.uid, quotaLimit, plan);
-      } catch (error) {
-        console.error("Failed to consume master quota after successful render:", error.message);
-      }
-    } else if (mustConsumeCredit) {
-      try {
-        await consumeExtraCredit(req.user.uid);
-      } catch (error) {
-        console.error("Failed to consume extra master credit after successful render:", error.message);
-      }
-    }
+    // The master slot was already reserved before the render (see the
+    // reservation block above) — nothing to consume here. A failed render
+    // gives it back in the catch below.
 
     // Independent of the master quota/credit consumption above — a
     // stem-separated render spends from BOTH counters when applicable
     // (its master-count slot AND its stem sub-limit slot), not one or the
     // other, since they're two separately-metered resources.
-    if (mustConsumeStemQuota) {
+    // Only bill for stem separation if it ACTUALLY RAN.
+    //
+    // The Python engine treats a Demucs failure as non-fatal: it catches
+    // the exception, sets stem_separation.status = "unavailable" and
+    // finishes an ordinary non-stem master (see mastering.py's
+    // `except Exception` around the stem block). That is the right call
+    // for the audio — the user still gets a usable file instead of a
+    // failed job — but it means "the render succeeded" is NOT the same
+    // question as "did they get the thing they paid for".
+    //
+    // Billing on render success alone charged a 4.99 EUR stem credit for
+    // a plain master, with nothing in the UI saying separation had been
+    // skipped. Taking money and silently delivering less is a refund, not
+    // a complaint.
+    // "applied" is the ONLY success value the engine emits
+    // (stem_separation.py). The others are "unavailable" (Demucs threw)
+    // and "skipped" (not requested). Matching the success value
+    // explicitly, rather than excluding known failures, means an
+    // unrecognised future status errs toward NOT charging — the safe
+    // direction, and loud in the logs rather than silent.
+    const STEM_APPLIED = "applied";
+    const stemStatus = result?.stem_separation?.status || null;
+    const stemSeparationRan = stemStatus === STEM_APPLIED;
+
+    if (!stemSeparationRan && (mustConsumeStemQuota || mustConsumeStemCredit)) {
+      console.warn(
+        `Stem separation did not run for job ${jobId} (status=${stemStatus ?? "missing"}) — not charging the stem quota/credit.`,
+      );
+    } else if (mustConsumeStemQuota) {
       try {
         await consumeStemQuota(req.user.uid);
       } catch (error) {
@@ -955,7 +1005,20 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
       ab_gain_match: result.ab_gain_match,
       processing_applied: result.processing_applied,
       target_profile_used: result.target_profile_used,
-      source_warnings: result.source_warnings,
+      // Separation silently not happening is exactly the case that made
+      // the billing bug invisible: the file came back fine, just without
+      // stems. Surfaced through the warnings channel the result view
+      // already renders, so the user learns it from the product rather
+      // than by comparing waveforms.
+      source_warnings: [
+        ...(result.source_warnings || []),
+        ...(useStemSeparation && !stemSeparationRan
+          ? [
+              "Stem separation didn't run on this track, so it was mastered as a single mix — you have not been charged for it." +
+                (result?.stem_separation?.reason ? ` (${result.stem_separation.reason})` : ""),
+            ]
+          : []),
+      ],
       quality_control: result.quality_control,
     });
     if (preview) {
@@ -991,6 +1054,27 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     }
     return res.json({ ...result, preview });
   } catch (error) {
+    // Give the reserved slot back. The slot is now taken BEFORE the
+    // render (that is what makes concurrency safe), so a render that
+    // throws has already spent it — without this, a crashed or
+    // capacity-rejected job would silently cost the user a master.
+    //
+    // Best-effort and never allowed to mask the real failure: if the
+    // refund itself throws, the user still gets the original error, and
+    // the lost slot is logged for manual correction rather than
+    // swallowing the reason their render failed.
+    if (mustConsumeQuota || mustConsumeCredit) {
+      try {
+        if (mustConsumeQuota) await refundMasterQuota(req.user.uid, plan);
+        else await refundExtraCredit(req.user.uid);
+      } catch (refundError) {
+        console.error(
+          `Failed to refund master slot for uid ${req.user.uid} after a failed render — slot lost, needs manual correction:`,
+          refundError.message,
+        );
+      }
+    }
+
     if (!preview) {
       recordServerEvent("master_failed", {
         uid: req.user.uid,

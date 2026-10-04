@@ -422,7 +422,19 @@ export async function processMastering({ file, referenceFile = null, fields, uid
   try {
     result = await postMultipartToPython("/master", { fields: pythonFields, files });
   } catch (error) {
-    throw new Error(`Mastering failed: ${error.message}`);
+    // Re-wrap WITHOUT losing error.status. postMultipartToPython
+    // deliberately attaches the upstream status so the Python service's
+    // 503 ("at capacity", see its _master_slots concurrency cap) can
+    // reach the client as a retryable error — and the /master route
+    // checks exactly that (`error?.status === 503 ? 503 : 400`).
+    //
+    // A bare `new Error(...)` here dropped it, so that check could never
+    // be true for /master and a transient capacity error was reported as
+    // a permanent 400, indistinguishable from a bad upload. Only the
+    // message is wrapped; the status rides along.
+    throw Object.assign(new Error(`Mastering failed: ${error.message}`), {
+      status: error?.status,
+    });
   }
 
   return {

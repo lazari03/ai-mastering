@@ -54,6 +54,19 @@ class ChordAnalysisResponse(BaseModel):
     # so older clients and cached results stay valid.
     bpm_confidence: float | None = None
     key_confidence: float | None = None
+    # Detected beat positions in seconds, and how many to group per bar.
+    # The UI lays chords on this grid (ChordGrid.jsx) instead of a flat
+    # list, and chord boundaries are snapped to these server-side.
+    #
+    # These MUST be declared here: FastAPI filters the handler's return
+    # value through this response_model, so a field the model does not
+    # know about is dropped silently — the service returned 63 beats and
+    # the endpoint delivered none, with no error anywhere.
+    #
+    # Optional, because a track whose tempo cannot be tracked legitimately
+    # has no grid, and older cached results predate these fields.
+    beats: list[float] | None = None
+    beats_per_bar: int | None = None
 
 
 class AnalyzeResponse(BaseModel):

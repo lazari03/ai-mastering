@@ -6,6 +6,7 @@ import { postAnalyzeChords } from "@/network/http/client";
 import { uploadStatusText } from "@/lib/uploadProgress";
 import { trackEvent } from "@/lib/analytics";
 import { Spinner } from "@/components/ui/Spinner";
+import ChordGrid from "@/components/audio/ChordGrid";
 import { useLanguage } from "@/lib/i18n";
 
 function formatDuration(seconds) {
@@ -44,7 +45,19 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
   const [upload, setUpload] = useState(null);
   const [error, setError] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
+  // Drives the chord grid's playhead. Kept alongside activeIndex rather
+  // than replacing it: activeIndex is a cheap integer the chip list can
+  // compare, this is the continuous value the bar grid needs.
+  const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef(null);
+
+  const seekTo = (seconds) => {
+    const el = audioRef.current;
+    if (!el || !Number.isFinite(seconds)) return;
+    el.currentTime = seconds;
+    setCurrentTime(seconds);
+    if (el.paused) el.play().catch(() => {});
+  };
 
   // Chord detection is unconditionally free — no quota, no credits, no
   // subscription to check (see backend-node's /analyze-chords).
@@ -81,6 +94,7 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
     const currentTime = audioRef.current?.currentTime;
     if (!chords || currentTime == null) return;
     // ponytail: linear scan over beat-length list, fine at this size. Binary search if tracks get much longer.
+    setCurrentTime(currentTime);
     const idx = chords.findIndex((c) => currentTime >= c.start && currentTime < c.end);
     if (idx !== activeIndex) setActiveIndex(idx);
   };
@@ -136,21 +150,16 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
 
           <audio ref={audioRef} src={previewUrl || undefined} controls onTimeUpdate={onTimeUpdate} className="w-full" />
 
-          <div className="rounded-xl border border-border-subtle bg-white/60 p-4">
-            <p className="m-0 mb-2.5 text-[11px] uppercase tracking-[0.12em] text-text-secondary">{t("chordDetector.chordProgression")}</p>
+          <div className="rounded-[1.25rem] bg-white/60 p-4 ring-1 ring-inset ring-black/[0.06] sm:p-5">
             {chordChips.length ? (
-              <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
-                {chordChips.map((c, idx) => (
-                  <span
-                    key={`${c.start}-${c.chord}`}
-                    className={`rounded-lg border px-3.5 py-2 text-sm font-semibold transition ${
-                      idx === activeIndex ? "border-accent bg-accent/10 text-text-primary" : "border-border-subtle bg-bg text-text-secondary"
-                    }`}
-                  >
-                    {c.chord}
-                  </span>
-                ))}
-              </div>
+              <ChordGrid
+                chords={chordChips}
+                beats={analysis.beats || []}
+                beatsPerBar={analysis.beats_per_bar || 4}
+                currentTime={currentTime}
+                duration={analysis.duration}
+                onSeek={previewUrl ? seekTo : undefined}
+              />
             ) : (
               <p className="m-0 text-sm leading-relaxed text-text-secondary">{t("chordDetector.noChords")}</p>
             )}

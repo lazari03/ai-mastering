@@ -97,6 +97,67 @@ async function consumeCredit(uid, field) {
 
 // ---- Master quota (Free lifetime trial + Studio/All-Access monthly) ---
 
+// ---- Refunds (release a reserved slot) --------------------------------
+// Needed because a master slot is now RESERVED before the render rather
+// than consumed after it (see masteringRoutes.js's /master). Reserving
+// first is what makes concurrency safe — the atomic consume is the gate,
+// so two simultaneous requests cannot both pass it. The cost is that a
+// render which then fails has already taken the slot, so it has to be
+// given back.
+//
+// All three mirror their consume counterpart's shape exactly, and all
+// three clamp at zero: a double refund (a retry path firing twice) must
+// never mint credit the user never had.
+
+async function refundLifetime(uid, field) {
+  const db = getFirestore();
+  return db.runTransaction(async (tx) => {
+    const ref = userDoc(uid);
+    const doc = await tx.get(ref);
+    const used = Number(doc.data()?.[field]?.used || 0);
+    if (used <= 0) return false;
+    tx.set(ref, { [field]: { used: used - 1 } }, { merge: true });
+    return true;
+  });
+}
+
+async function refundMonthly(uid, field) {
+  const db = getFirestore();
+  return db.runTransaction(async (tx) => {
+    const ref = userDoc(uid);
+    const doc = await tx.get(ref);
+    const quota = doc.data()?.[field];
+    // Only refund within the same month the slot was taken. After a month
+    // boundary `used` already reset to 0, and decrementing would hand out
+    // an extra master against the new month's allowance.
+    if (!quota || quota.month !== currentMonthKey()) return false;
+    const used = Number(quota.used || 0);
+    if (used <= 0) return false;
+    tx.set(ref, { [field]: { month: currentMonthKey(), used: used - 1 } }, { merge: true });
+    return true;
+  });
+}
+
+async function refundCredit(uid, field) {
+  const db = getFirestore();
+  return db.runTransaction(async (tx) => {
+    const ref = userDoc(uid);
+    const doc = await tx.get(ref);
+    const credits = Number(doc.data()?.[field] || 0);
+    tx.set(ref, { [field]: credits + 1 }, { merge: true });
+    return true;
+  });
+}
+
+export async function refundMasterQuota(uid, plan) {
+  if (plan === "free") return refundLifetime(uid, "freeMasterUsage");
+  return refundMonthly(uid, "masterQuota");
+}
+export const refundExtraCredit = (uid) => refundCredit(uid, "extraMasterCredits");
+export const refundStemQuota = (uid) => refundMonthly(uid, "stemQuota");
+export const refundExtraStemCredit = (uid) => refundCredit(uid, "extraStemCredits");
+
+
 export async function getMasterQuotaStatus(uid, plan) {
   const limit = PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free;
   if (plan === "free") {
