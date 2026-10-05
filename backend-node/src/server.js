@@ -1,3 +1,7 @@
+// Must be the first import: it checks the Node version before any native
+// addon (better-sqlite3) gets a chance to segfault. See the module docs.
+import "./config/requireNodeVersion.js";
+
 import fs from "node:fs";
 
 import cors from "cors";

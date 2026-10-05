@@ -15,6 +15,28 @@ from .analysis.spectral import analyze_spectrum, sibilance_evidence
 EPS = 1e-9
 MASTER_SR = 44100
 
+# Rates the chain is delivered at unchanged. Everything in the DSP path
+# already takes `sr` as a parameter (filters, meters, limiter, analysis
+# bands), so there is nothing special about 44.1 kHz except that it used
+# to be forced. A 48 kHz upload — standard for anything cut to picture,
+# and common in music sessions — was silently downsampled and returned at
+# the wrong rate, which is an unrequested quality loss and a delivery
+# spec mismatch.
+#
+# Anything outside this set (unusual or very high rates) still converts to
+# MASTER_SR: supporting a rate end to end means every stage is exercised
+# at it, and these four are the ones that actually occur.
+SUPPORTED_MASTER_RATES = (44100, 48000, 88200, 96000)
+
+
+def resolve_master_sr(source_sr: int | float | None) -> int:
+    """The rate a render should run and deliver at, given the source."""
+    try:
+        rate = int(round(float(source_sr)))
+    except (TypeError, ValueError):
+        return MASTER_SR
+    return rate if rate in SUPPORTED_MASTER_RATES else MASTER_SR
+
 ANALYSIS_BANDS = {
     "sub_bass_20_60hz": (20.0, 60.0),
     "bass_60_250hz": (60.0, 250.0),

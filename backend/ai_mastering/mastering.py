@@ -10,6 +10,7 @@ from .ab_analysis import build_ab_report, build_decision_report
 from .analysis.profile import SourceProfile
 from .audio_utils import (
     MASTER_SR,
+    resolve_master_sr,
     _ab_gain_match,
     _analysis_from_audio,
     _load_audio,
@@ -128,7 +129,19 @@ def master_track(
 
     Every decision and its reason is returned under
     processing_applied["mastering_diagnostics"]."""
-    audio_stereo, sr = _load_audio(input_path, sr=MASTER_SR)
+    # Render AT the source's own rate when it is one we deliver natively
+    # (see resolve_master_sr). Previously every job was forced to 44.1 kHz,
+    # so a 48 kHz mix came back resampled — a quality loss nobody asked
+    # for, and the wrong delivery spec for anything going to picture.
+    #
+    # Stem separation is the exception, handled where it runs: the Demucs
+    # model is 44.1 kHz, so that path stays at MASTER_SR.
+    try:
+        _probe_sr = int(sf.info(str(input_path)).samplerate)
+    except Exception:
+        _probe_sr = MASTER_SR
+    render_sr = resolve_master_sr(_probe_sr)
+    audio_stereo, sr = _load_audio(input_path, sr=render_sr)
 
     # Input validation — signal integrity before anything else touches the
     # audio. Raises InvalidAudioError for unusable input; DC offset is

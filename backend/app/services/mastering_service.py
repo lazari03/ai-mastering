@@ -204,6 +204,15 @@ def _decode_input_if_required(job_id: str, input_path: Path, input_ext: str, lab
         # reference track's — both can need decoding in the same request,
         # and without this they'd collide on the same output filename.
         decoded_wav_path = settings.upload_dir / f"{job_id}_{label}_internal.wav"
+        # No "-ar": the source sample rate is preserved. Forcing 44100 here
+        # resampled every 48 kHz upload (standard for anything cut to video,
+        # and common in music sessions) before a single mastering decision
+        # was made, and delivered it back at the wrong rate.
+        #
+        # pcm_f32le, not pcm_s16le: this is the DECODE step feeding a
+        # mastering chain, so quantising to 16 bits here discards headroom
+        # and adds quantisation noise ahead of every process that follows.
+        # Float costs disk on a temp file that is deleted after the render.
         decode_cmd = [
             "ffmpeg",
             "-y",
@@ -211,10 +220,8 @@ def _decode_input_if_required(job_id: str, input_path: Path, input_ext: str, lab
             str(input_path),
             "-ac",
             "2",
-            "-ar",
-            "44100",
             "-codec:a",
-            "pcm_s16le",
+            "pcm_f32le",
             str(decoded_wav_path),
         ]
         decode_result = subprocess.run(decode_cmd, capture_output=True, text=True, timeout=180)
