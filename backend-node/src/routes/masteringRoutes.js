@@ -749,9 +749,11 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
   // the standard path for Free past the trial, or a top-up for paid plans
   // that don't want to wait for the monthly reset. Chord detection is free
   // and ungated (see /analyze-chords).
-  // Checked (not consumed) here and only actually spent after a
-  // successful render below, so a render that fails midway never costs
-  // the user a slot or a credit.
+  // Decided here and RESERVED before the render (see the reservation
+  // block below); a render that fails gives the slot back in the catch.
+  // It used to be consumed only after a successful render, which left the
+  // gate as a plain read that concurrent requests could all pass.
+  // Previews never reach any of this — the whole block is !preview.
   let mustConsumeQuota = false;
   let mustConsumeCredit = false;
   let mustConsumeStemQuota = false;
