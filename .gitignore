@@ -7,6 +7,9 @@
 # --- Secrets / local env --- (.env.example files are templates, kept)
 .env
 .env.local
+# Timestamped backups taken before editing .env — same secrets, same rules.
+.env.bak*
+*.env.bak*
 .env.*.local
 
 # --- Python ---
