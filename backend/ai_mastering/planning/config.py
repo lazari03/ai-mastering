@@ -15,6 +15,9 @@ Conventions
 
 from __future__ import annotations
 
+import os
+from contextlib import contextmanager
+
 # ---------------------------------------------------------------------------
 # High-resolution spectral analysis
 # ---------------------------------------------------------------------------
@@ -136,6 +139,12 @@ REFERENCE_EQ_FRACTION = 0.8
 # dB of target shift per unit of category tweak_bias (tweak_bias is -1..1).
 INTENT_TWEAK_TO_TARGET_DB = 2.0
 
+# Range over which the measured spectrum is level-aligned to the target
+# (median of the per-band difference; see diagnostics.level_alignment_db).
+# Sub and extreme air are left out: they vary most between healthy mixes
+# and would make the alignment itself noisy.
+ALIGNMENT_RANGE_HZ = (40.0, 14000.0)
+
 # ---------------------------------------------------------------------------
 # Problem detection / confidence
 # ---------------------------------------------------------------------------
@@ -172,6 +181,10 @@ EQ_MAX_BOOST_DB = {"low": 1.5, "mid": 1.0, "high": 1.0}
 EQ_MAX_AUTOMATED_NODES = 6
 EQ_MIN_NODE_GAIN_DB = 0.15     # smaller moves are dropped as inaudible
 EQ_Q_RANGE = (0.5, 2.5)        # broad mastering moves only
+# Clusters wider than this (octaves) are covered by two bells instead of
+# one Q-clamped bell that spills past the cluster (see plan._split_wide_bell).
+WIDE_BELL_SPLIT_OCT = 2.5
+EQ_WIDE_BELL_PART_GAIN = 0.8
 # Cumulative HF boost budget: max positive EQ response anywhere >= 4 kHz,
 # summed over every automated filter.
 HF_BOOST_BUDGET_DB = 1.0
@@ -257,3 +270,110 @@ LIMITER_BUDGET_OVERSHOOT_TOLERANCE_DB = 1.0
 LRA_COLLAPSE_FRACTION = 0.5
 BACKOFF_MIN_SEVERITY = 0.3
 MAX_BACKOFF_RENDERS = 1
+
+
+# ---------------------------------------------------------------------------
+# Correction calibration
+# ---------------------------------------------------------------------------
+# How readily the engine acts on a measured tonal problem, and how much of
+# it it corrects. Each profile sets the same group of values above; nothing
+# else in the engine changes between them. The values above are the
+# CONSERVATIVE profile (the engine's original tuning) and are what the
+# selected profile is applied over.
+#
+# Measured on calibrated synthetic mixes with a known injected flaw
+# (backend/benchmark/gate_audit.py, pop/modern), dB of the flaw corrected:
+#
+#                       4 dB flaw        6 dB flaw        healthy mix (+/-2 dB ripple)
+#   conservative        0.00 - 0.25      0.00 - 1.27      untouched
+#   balanced            0.26 - 0.65      1.00 - 1.79      untouched
+#   assertive           0.47 - 0.99      1.56 - 2.29      <= 0.56 dB total movement
+#
+# Conservative left a 6 dB dark, dull-air, boxy or recessed-mid mix
+# completely uncorrected — a master that is only louder. Balanced corrects
+# every category without touching a single healthy fixture, so it is the
+# default. Which one SOUNDS right is a listening decision: render a track
+# at all three with backend/benchmark/calibration_ab.py and pick by ear.
+#
+# Select with MASTERING_CALIBRATION=<name> (read once at import).
+# apply_calibration()/calibration() rebind module globals: they are for
+# single-threaded tools (benchmarks, A/B renders), never per request.
+
+_BASE_TONAL_TOLERANCE_DB = TONAL_TOLERANCE_DB
+
+
+def _tolerance(scale: float) -> tuple[tuple[float, float], ...]:
+    """Scale the window over the main range only. Sub (<45 Hz) and extreme
+    air (>14 kHz) keep their wide windows whatever the profile: they vary
+    most between healthy masters (and codecs/taste roll off the top), so a
+    narrower window there turned "mixes differ" into "boost 18-20 kHz"."""
+    return tuple((upper, tol if (upper <= 45.0 or upper > 14000.0) else round(tol * scale, 3)) for upper, tol in _BASE_TONAL_TOLERANCE_DB)
+
+
+CALIBRATIONS: dict[str, dict] = {
+    "conservative": {
+        "REQUIRED_CONFIDENCE": dict(REQUIRED_CONFIDENCE),
+        "TONAL_TOLERANCE_DB": _tolerance(1.0),
+        "CONFIDENCE_MAGNITUDE_SCALE_DB": CONFIDENCE_MAGNITUDE_SCALE_DB,
+        "EQ_CUT_FRACTION": EQ_CUT_FRACTION,
+        "EQ_BOOST_FRACTION": EQ_BOOST_FRACTION,
+        "EQ_MAX_CUT_DB": EQ_MAX_CUT_DB,
+        "EQ_MAX_BOOST_DB": dict(EQ_MAX_BOOST_DB),
+        "HF_BOOST_BUDGET_DB": HF_BOOST_BUDGET_DB,
+    },
+    "balanced": {
+        # Same asymmetry as conservative (cut < low < mid < HF boost),
+        # lower bar. The tolerance window shrinks 25% and the magnitude
+        # scale drops to 1.25 dB: conservative required a flaw to clear a
+        # wide window AND then ~1.75 dB more to reach 63% confidence,
+        # double-counting the same uncertainty.
+        "REQUIRED_CONFIDENCE": {"cut": 0.30, "boost_low": 0.40, "boost_mid": 0.45, "boost_high": 0.50, "dynamic_eq": 0.45, "deesser": 0.50},
+        "TONAL_TOLERANCE_DB": _tolerance(0.75),
+        "CONFIDENCE_MAGNITUDE_SCALE_DB": 1.25,
+        "EQ_CUT_FRACTION": 0.7,
+        "EQ_BOOST_FRACTION": 0.6,
+        "EQ_MAX_CUT_DB": 4.0,
+        "EQ_MAX_BOOST_DB": {"low": 2.5, "mid": 2.0, "high": 2.0},
+        "HF_BOOST_BUDGET_DB": 2.0,
+    },
+    "assertive": {
+        "REQUIRED_CONFIDENCE": {"cut": 0.25, "boost_low": 0.33, "boost_mid": 0.38, "boost_high": 0.42, "dynamic_eq": 0.40, "deesser": 0.45},
+        "TONAL_TOLERANCE_DB": _tolerance(0.65),
+        "CONFIDENCE_MAGNITUDE_SCALE_DB": 1.0,
+        "EQ_CUT_FRACTION": 0.8,
+        "EQ_BOOST_FRACTION": 0.7,
+        "EQ_MAX_CUT_DB": 5.0,
+        "EQ_MAX_BOOST_DB": {"low": 3.0, "mid": 2.5, "high": 2.5},
+        "HF_BOOST_BUDGET_DB": 2.5,
+    },
+}
+DEFAULT_CALIBRATION = "balanced"
+_active_calibration = "conservative"
+
+
+def apply_calibration(name: str) -> str:
+    """Make `name` the active calibration profile; returns the previous one."""
+    global _active_calibration
+    if name not in CALIBRATIONS:
+        raise ValueError(f"unknown mastering calibration {name!r} (expected one of {', '.join(CALIBRATIONS)})")
+    previous = _active_calibration
+    for key, value in CALIBRATIONS[name].items():
+        globals()[key] = dict(value) if isinstance(value, dict) else value
+    _active_calibration = name
+    return previous
+
+
+def active_calibration() -> str:
+    return _active_calibration
+
+
+@contextmanager
+def calibration(name: str):
+    previous = apply_calibration(name)
+    try:
+        yield
+    finally:
+        apply_calibration(previous)
+
+
+apply_calibration(os.environ.get("MASTERING_CALIBRATION", "").strip() or DEFAULT_CALIBRATION)

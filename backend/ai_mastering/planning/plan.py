@@ -17,7 +17,8 @@ from dataclasses import asdict, dataclass, field
 import numpy as np
 
 from ..analysis.profile import SourceProfile
-from ..diagnostics.problems import Problem, problems_to_dict
+from ..diagnostics.problems import Problem, aligned_targets_db, problems_to_dict
+from ..engines import get_engine
 from ..processing.eq import band_response_db, q_for_bandwidth
 from . import config as C
 from .budgets import calculate_change_budget, calculate_compression_need, calculate_limiter_budget
@@ -164,6 +165,30 @@ def _eq_from_problem(p: Problem, profile: SourceProfile, sr: int) -> EQDecision:
     return EQDecision(filter_type=ftype, frequency_hz=freq, gain_db=gain, q=q, confidence=p.confidence, reason=reason, problem=p.kind)
 
 
+def _split_wide_bell(d: EQDecision, p: Problem) -> list[EQDecision]:
+    """One bell cannot cover a very wide cluster: its Q bottoms out at
+    EQ_Q_RANGE[0], so a 30-300 Hz deficit became a Q-0.5 bell at 118 Hz
+    whose skirts lifted 200-500 Hz as much as the bass it was meant for
+    (raising the bed under the kick, which measured as lost punch). Above
+    WIDE_BELL_SPLIT_OCT the cluster is covered by two bells, one per
+    log-half, each sized to its half and carrying EQ_WIDE_BELL_PART_GAIN
+    of the gain so the overlap in the middle doesn't over-deliver."""
+    width = float(p.bandwidth_oct or 0.0)
+    if d.filter_type != "bell" or width <= C.WIDE_BELL_SPLIT_OCT:
+        return [d]
+    lo, hi = float(p.evidence["lo_hz"]), float(p.evidence["hi_hz"])
+    mid = float(np.sqrt(lo * hi))
+    q = float(np.clip(q_for_bandwidth(0.5 * width * 0.9), *C.EQ_Q_RANGE))
+    parts = []
+    for a, b in ((lo, mid), (mid, hi)):
+        part = copy.deepcopy(d)
+        part.frequency_hz, part.q = max(float(np.sqrt(a * b)), 35.0), q
+        part.gain_db = d.gain_db * C.EQ_WIDE_BELL_PART_GAIN
+        part.notes.append(f"{width:.1f}-octave cluster covered by two bells")
+        parts.append(part)
+    return parts
+
+
 def _shrink(d: EQDecision, sr: int, note: str) -> None:
     if d.filter_type == "bell" and d.q < C.EQ_Q_RANGE[1]:
         d.q = min(C.EQ_Q_RANGE[1], d.q * 1.25)
@@ -261,6 +286,15 @@ def _enforce_eq_constraints(decisions: list[EQDecision], profile: SourceProfile,
 
 def _plan_eq(profile: SourceProfile, context: TargetContext, problems: list[Problem], sr: int, eq_budget_db: float, rejected: list, notes: list) -> list[EQDecision]:
     candidates = []
+    # The plan's own confident diagnosis of HF excess (harshness, cymbal or
+    # brightness build-up) is stronger evidence than the global scores
+    # below: a +6.5 dB harsh source scored 0.49 against the 0.5 block and,
+    # once the gates were recalibrated, got an air shelf on top of its
+    # harshness cut.
+    hf_excess = next(
+        (p for p in problems if p.category == "tonal" and p.direction == "excess" and p.frequency_class == "high" and p.actionable and p.confidence >= C.REQUIRED_CONFIDENCE["cut"]),
+        None,
+    )
     for p in problems:
         if p.category != "tonal" or p.kind.startswith("sibilance") or not p.bands:
             continue
@@ -277,11 +311,15 @@ def _plan_eq(profile: SourceProfile, context: TargetContext, problems: list[Prob
             if src_hf >= 0.5:
                 rejected.append({"stage": "eq", "problem": p.kind, "reason": f"HF boost blocked: source already bright/harsh vs neutral curve (score {src_hf:.2f})"})
                 continue
+            if hf_excess is not None and not p.reference_driven:
+                rejected.append({"stage": "eq", "problem": p.kind, "reason": f"HF boost blocked: {hf_excess.kind} diagnosed in the same source (confidence {hf_excess.confidence:.2f})"})
+                continue
         d = _eq_from_problem(p, profile, sr)
         if abs(d.gain_db) < C.EQ_MIN_NODE_GAIN_DB:
             rejected.append({"stage": "eq", "problem": p.kind, "reason": f"correction {d.gain_db:+.2f} dB below audibility floor"})
             continue
-        candidates.append((p.severity * p.confidence, d))
+        for part in _split_wide_bell(d, p):
+            candidates.append((p.severity * p.confidence, part))
 
     candidates.sort(key=lambda t: t[0], reverse=True)
     for _, d in candidates[C.EQ_MAX_AUTOMATED_NODES:]:
@@ -305,6 +343,7 @@ def _plan_dynamic_eq(profile: SourceProfile, context: TargetContext, problems: l
     from ..analysis.spectral import fraction_above
 
     layout = profile.band_layout
+    targets = aligned_targets_db(profile, context)
     candidates = []
     for b in layout:
         if not (100.0 <= b["center_hz"] <= 9000.0):
@@ -313,7 +352,7 @@ def _plan_dynamic_eq(profile: SourceProfile, context: TargetContext, problems: l
         pct = profile.segment_percentiles.get(name)
         if not pct:
             continue
-        limit = context.tonal_target_db[name] + context.tolerance_high_db[name]
+        limit = targets[name] + context.tolerance_high_db[name]
         frac_hot = fraction_above(pct, limit)
         p90_excess = float(pct.get("90", pct.get("90.0", 0.0))) - limit
         if 0.08 <= frac_hot <= 0.6 and p90_excess > 1.0:
@@ -392,7 +431,7 @@ def _plan_compression(profile: SourceProfile, context: TargetContext, tier: str,
     plan = {"need": need, "multiband": {"enabled": False}, "glue": {"enabled": False}, "enabled": False}
     if micro >= C.COMPRESSION_MIN_NEED:
         ratio = 1.0 + micro * (C.COMPRESSION_MAX_RATIO - 1.0)
-        band_names = ("sub", "punch", "low_mid", "high_mid", "high") if tier == "professional" else ("low", "low_mid", "high_mid", "high")
+        band_names = get_engine(tier).compression_bands
         low_factor = 0.7 * (1.0 - 0.5 * profile.low_end_impact * low_priority)
         factors = {"sub": 0.4, "low": low_factor, "punch": low_factor, "low_mid": 1.0, "high_mid": 0.9, "high": 0.7}
         extra_attack = {"sub": 30.0, "low": 10.0, "punch": 10.0}

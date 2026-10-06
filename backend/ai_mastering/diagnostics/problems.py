@@ -77,14 +77,52 @@ def _ramp(x: float, lo: float, hi: float) -> float:
     return float(np.clip((x - lo) / max(hi - lo, 1e-9), 0.0, 1.0))
 
 
+def level_alignment_db(profile: SourceProfile, context: TargetContext) -> float:
+    """Level offset that best lines the measured spectrum up with the target:
+    the octave-weighted MEDIAN of (measured - target) across the main range.
+
+    Both curves are normalised so 300 Hz - 3 kHz averages 0 dB, but that
+    window is exactly where boxiness, mud and recessed mids live. A +6 dB
+    bump at 500 Hz - 1.5 kHz used to drag the whole normalisation up with
+    it: the bump read as +3 dB and every other band as -3 dB, so a boxy
+    mix was diagnosed as a thin, dull one. A median is not moved by a
+    flaw covering a minority of the spectrum, so the flaw keeps its real
+    size and the rest of the spectrum reads as healthy. On a balanced mix
+    the offset is ~0, i.e. nothing changes."""
+    lo, hi = C.ALIGNMENT_RANGE_HZ
+    cutoff = profile.codec_cutoff_hz
+    devs, weights = [], []
+    for b in profile.band_layout:
+        name = b["name"]
+        if name not in context.tonal_target_db or not (lo <= b["center_hz"] <= hi):
+            continue
+        if cutoff and b["lo_hz"] >= cutoff * 0.98:
+            continue  # removed by an encoder, not part of the mix's balance
+        devs.append(float(profile.spectral_bands[name] - context.tonal_target_db[name]))
+        weights.append(float(np.log2(b["hi_hz"] / b["lo_hz"])))
+    if not devs:
+        return 0.0
+    order = np.argsort(devs)
+    cum = np.cumsum(np.asarray(weights)[order])
+    return float(np.asarray(devs)[order][int(np.searchsorted(cum, 0.5 * cum[-1]))])
+
+
+def aligned_targets_db(profile: SourceProfile, context: TargetContext) -> dict[str, float]:
+    """The tonal target shifted by level_alignment_db — what every
+    measured-vs-target comparison should use."""
+    offset = level_alignment_db(profile, context)
+    return {k: v + offset for k, v in context.tonal_target_db.items()}
+
+
 def tonal_deviation(profile: SourceProfile, context: TargetContext) -> dict:
-    """Per band: measured - target, and how far outside the window."""
+    """Per band: measured - (level-aligned) target, and how far outside the window."""
+    targets = aligned_targets_db(profile, context)
     out = {}
     for b in profile.band_layout:
         name = b["name"]
-        if name not in context.tonal_target_db:
+        if name not in targets:
             continue
-        dev = float(profile.spectral_bands[name] - context.tonal_target_db[name])
+        dev = float(profile.spectral_bands[name] - targets[name])
         tol_hi = context.tolerance_high_db[name]
         tol_lo = context.tolerance_low_db[name]
         if dev > tol_hi:
@@ -111,6 +149,7 @@ def _band_reliability(profile: SourceProfile, band: dict, direction: str) -> flo
 
 def _detect_tonal(profile: SourceProfile, context: TargetContext) -> list[Problem]:
     dev = tonal_deviation(profile, context)
+    targets = aligned_targets_db(profile, context)
     layout = [b for b in profile.band_layout if b["name"] in dev]
     signs = [int(np.sign(dev[b["name"]]["outside_db"])) for b in layout]
 
@@ -162,7 +201,7 @@ def _detect_tonal(profile: SourceProfile, context: TargetContext) -> list[Proble
         pers = []
         for b in bands:
             name = b["name"]
-            target = context.tonal_target_db[name]
+            target = targets[name]
             pct = profile.segment_percentiles.get(name)
             if not pct:
                 pers.append(0.5)

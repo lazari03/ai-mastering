@@ -22,7 +22,8 @@ SOURCE
 
 | Responsibility | Module |
 |---|---|
-| Tunable constants (all of them) | `planning/config.py` |
+| Tunable constants (all of them) + correction calibrations | `planning/config.py` |
+| What differs between the Standard and Professional engines | `engines.py` |
 | Hi-res spectrum, stereo per region, resonances, sibilance, codec cutoff | `analysis/spectral.py` |
 | Vectorised BS.1770 loudness / LRA / series | `analysis/loudness.py` |
 | Peak percentile, clipping runs, BPM confidence | `analysis/dynamics.py` |
@@ -45,9 +46,14 @@ SOURCE
 * **Confidence** = magnitude beyond the window × temporal persistence
   (fraction of ~1.5 s segments that agree) × measurement reliability (FFT
   bins per band, content above noise floor, lossy-codec cutoff).
-* **Asymmetric gates** (`REQUIRED_CONFIDENCE`): cut 0.42 < low boost 0.58 <
-  mid boost 0.66 < HF boost 0.74. HF boosts are additionally blocked when
-  the source is already bright/harsh against the neutral curve.
+* **Level alignment**: measured and target curves are lined up by the
+  median of their per-band difference (`diagnostics.level_alignment_db`),
+  so a flaw inside the 300 Hz-3 kHz normalisation window keeps its real size.
+* **Asymmetric gates** (`REQUIRED_CONFIDENCE`): cut < low boost < mid boost
+  < HF boost, at every calibration (`CALIBRATIONS`; the default `balanced`
+  is 0.30 < 0.40 < 0.45 < 0.50). HF boosts are additionally blocked when
+  the source is already bright/harsh against the neutral curve, or when
+  the plan diagnoses HF excess in the same source.
 * **EQ constraints** are checked on the exact filter response: never push a
   band diagnosed in the opposite direction, protect healthy 40–120 Hz from
   neighbouring cuts, a cumulative HF-boost budget across ALL filters, and a

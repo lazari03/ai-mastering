@@ -22,18 +22,13 @@ from scipy.signal import resample_poly
 from ..analysis.dynamics import peak_percentile_db
 from ..analysis.loudness import FastMeter
 from ..analysis.spectral import analyze_spectrum
-from ..bus_processing import _bus_process, _bus_process_pro
+from ..engines import get_engine
 from ..dsp_filters import _bandpass, _complementary_split, _deess, _envelope_db, _lr4_lowpass
 from ..planning import config as C
 from ..planning.plan import MasteringPlan
 from .eq import apply_eq, apply_eq_mono
 
 EPS = 1e-12
-
-_BAND_SPLITS = {
-    "standard": ((250.0, 2000.0, 6000.0), ("low", "low_mid", "high_mid", "high")),
-    "professional": ((90.0, 250.0, 2000.0, 6000.0), ("sub", "punch", "low_mid", "high_mid", "high")),
-}
 
 
 def _lufs(meter: FastMeter, x: np.ndarray) -> float:
@@ -103,7 +98,7 @@ def _saturate(x: np.ndarray, sr: int, drive_db: float, reference_db: float, over
 
 
 def render_plan(audio: np.ndarray, sr: int, plan: MasteringPlan, measure_stages: bool = True) -> dict:
-    tier = "professional" if plan.tier == "professional" else "standard"
+    engine = get_engine(plan.tier)
     meter = FastMeter(sr)
     stages: list[dict] = []
     report: dict = {"stages_run": []}
@@ -144,7 +139,7 @@ def render_plan(audio: np.ndarray, sr: int, plan: MasteringPlan, measure_stages:
     # 3. compression — only if the plan found a need
     comp = plan.compression
     if comp.get("multiband", {}).get("enabled"):
-        crossovers, names = _BAND_SPLITS[tier]
+        crossovers, names = engine.compression_crossovers_hz, engine.compression_bands
         left = _complementary_split(x[:, 0], sr, crossovers, names)
         right = _complementary_split(x[:, 1], sr, crossovers, names)
         out = np.zeros_like(x)
@@ -232,8 +227,7 @@ def render_plan(audio: np.ndarray, sr: int, plan: MasteringPlan, measure_stages:
         "target_dynamic_range_db": float(plan.target_context.get("target_crest_db", 8.0)),
         "glue_enabled": False,
     }
-    bus_fn = _bus_process_pro if tier == "professional" else _bus_process
-    y, lufs_gain_db, loudness_guard, limiter_report = bus_fn(x, sr, bus_params, apply_glue_compression=False)
+    y, lufs_gain_db, loudness_guard, limiter_report = engine.bus(x, sr, bus_params, apply_glue_compression=False)
     total_gain_db = float(lufs_gain_db) + float(limiter_report.get("loudness_recovery_db", 0.0)) - float(loudness_guard.get("attenuation_db", 0.0))
     peak_post = peak_percentile_db(y, sr)
     limiter_report["gr_at_p995_peaks_db"] = round(max(0.0, peak_pre + float(lufs_gain_db) + float(limiter_report.get("loudness_recovery_db", 0.0)) - peak_post - float(loudness_guard.get("attenuation_db", 0.0))), 3)

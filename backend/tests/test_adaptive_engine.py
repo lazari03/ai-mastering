@@ -183,11 +183,15 @@ def test_dark_source_gets_confident_bounded_hf_correction():
     assert max(response(plan, C.HF_BUDGET_START_HZ, 20000)) <= C.HF_BOOST_BUDGET_DB * 1.4 + 1e-6
 
 
-def test_slightly_dark_source_is_left_alone():
-    """Boosting HF needs strong evidence: a mild deficit inside the
-    tolerance window must not produce a boost."""
+def test_slightly_dark_source_gets_at_most_a_gentle_lift():
+    """Boosting HF needs strong evidence. A mild (-3.5 dB) deficit gets no
+    boost on the conservative calibration, and at most a gentle one on the
+    default: well under half the deficit, nowhere above 1 dB."""
+    with C.calibration("conservative"):
+        _, _, _, plan = plan_for("slightly_dark")
+        assert not [d for d in auto_eq(plan) if d.gain_db > 0 and d.frequency_hz >= 2000]
     _, _, _, plan = plan_for("slightly_dark")
-    assert not [d for d in auto_eq(plan) if d.gain_db > 0 and d.frequency_hz >= 2000]
+    assert max(response(plan, 2000, 20000)) <= 1.0
 
 
 def test_bright_harsh_source_gets_no_hf_boost():
@@ -199,17 +203,26 @@ def test_bright_harsh_source_gets_no_hf_boost():
 
 def test_boosts_need_more_confidence_than_cuts():
     """Same-sized deviation, opposite sign: the excess is corrected, the
-    deficit of equal size in the same region is not (asymmetric gates)."""
+    deficit of equal size in the same region less so (asymmetric gates,
+    fractions and caps), on every calibration."""
     base = dict(seconds=20.0, seed=5)
     up = SourceProfile.from_dict(_analysis_from_audio(make_mix(offsets_db=[(3000, 20000, 5.0)], **base), SR)["source_profile"])
     down = SourceProfile.from_dict(_analysis_from_audio(make_mix(offsets_db=[(3000, 20000, -5.0)], **base), SR)["source_profile"])
-    results = {}
-    for name, prof in (("up", up), ("down", down)):
-        ctx = build_target_context(prof.band_layout, "pop", [], "modern")
-        plan = build_mastering_plan(prof, ctx, detect_mastering_problems(prof, ctx))
-        results[name] = auto_eq(plan)
-    assert any(d.gain_db < 0 for d in results["up"])
-    assert not any(d.gain_db > 0 for d in results["down"])
+    for calibration in C.CALIBRATIONS:
+        with C.calibration(calibration):
+            results = {}
+            for name, prof in (("up", up), ("down", down)):
+                ctx = build_target_context(prof.band_layout, "pop", [], "modern")
+                plan = build_mastering_plan(prof, ctx, detect_mastering_problems(prof, ctx))
+                results[name] = auto_eq(plan)
+            cut = max((-d.gain_db for d in results["up"] if d.gain_db < 0), default=0.0)
+            boost = max((d.gain_db for d in results["down"] if d.gain_db > 0), default=0.0)
+            assert cut > 0.0, calibration
+            # The deficit is corrected strictly less than the equal excess...
+            assert boost < cut, calibration
+            # ...and not at all on the conservative calibration.
+            if calibration == "conservative":
+                assert boost == 0.0
 
 
 def test_every_automatic_decision_is_backed_by_a_measured_problem():
@@ -316,7 +329,10 @@ def test_regression_plan_targets_upper_bass_and_never_boosts_strong_highs():
     profile, _, problems, plan = plan_for("regression")
     eq = auto_eq(plan)
     cuts = [d for d in eq if d.gain_db < 0]
-    assert cuts and all(120 <= d.frequency_hz <= 550 for d in cuts)
+    assert any(120 <= d.frequency_hz <= 550 for d in cuts)
+    # Any other cut addresses a region this fixture really has in excess
+    # (+4 dB at 5.5-10 kHz), never the healthy low end or mids.
+    assert all(120 <= d.frequency_hz <= 550 or 5500 <= d.frequency_hz <= 10000 for d in cuts)
     # No broad bass cut: the healthy kick/sub region is protected.
     assert min(response(plan, 40, 120)) >= -C.EQ_MAX_LOW_END_COLLATERAL_DB - 0.05
     # No boost reaching the already-strong 5.5-10 kHz region.

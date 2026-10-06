@@ -6,6 +6,9 @@ services:
       MASTERING_ENV: production
       MASTERING_CORS_ORIGINS: http://node-api:8000
       MASTERING_FILE_RETENTION_HOURS: ${MASTERING_FILE_RETENTION_HOURS:-48}
+      # How readily the engine corrects measured tonal problems:
+      # conservative | balanced | assertive (see backend/ai_mastering/planning/config.py).
+      MASTERING_CALIBRATION: ${MASTERING_CALIBRATION:-balanced}
     volumes:
       - mastering_uploads:/app/uploads
       - mastering_outputs:/app/outputs

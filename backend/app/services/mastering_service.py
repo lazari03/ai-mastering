@@ -12,6 +12,7 @@ from fastapi import HTTPException, UploadFile
 
 from adaptive_mastering import analyze_for_preview, master_track as run_adaptive_mastering
 from ai_mastering.audio_utils import _true_peak_db
+from ai_mastering.engines import ENGINES
 from ai_mastering.planning import config as engine_config
 from ai_mastering.quality_control import InvalidAudioError
 from ai_mastering.planning.preset_intent import is_intent_preset, resolve_genre, resolve_style
@@ -21,7 +22,7 @@ from app.core.config import settings
 from app.services.preset_dsp_engine import render_preset_master
 from app.services.presets_service import get_mixing_preset
 
-ALLOWED_TIERS = {"standard", "professional"}
+ALLOWED_TIERS = set(ENGINES)
 
 
 AUDIO_DECODE_EXTS = {".mp3", ".m4a", ".aac", ".ogg", ".wma", ".mp4", ".webm"}

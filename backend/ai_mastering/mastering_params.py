@@ -5,7 +5,7 @@ import numpy as np
 from params import GENRE_TARGET_PROFILES, MASTERING_CATEGORY_PROFILES, MASTERING_STYLE_PROFILES
 
 from .analysis.profile import SourceProfile
-from .diagnostics.problems import detect_mastering_problems
+from .diagnostics.problems import detect_mastering_problems, tonal_deviation
 from .planning.plan import apply_user_tweaks_to_plan, build_mastering_plan
 from .planning.target_model import build_target_context
 from .processing.eq import band_response_db
@@ -189,7 +189,7 @@ def legacy_params_from_plan(plan, context, profile: SourceProfile, problems: lis
     st = plan.stereo
     side_gain_db = float(st.get("side_gain_db", 0.0)) + float(st.get("user_side_gain_db", 0.0))
     tilt_target = float(np.polyfit(np.log2([b["center_hz"] for b in profile.band_layout if 50 <= b["center_hz"] <= 16000]), [context.tonal_target_db[b["name"]] for b in profile.band_layout if 50 <= b["center_hz"] <= 16000], 1)[0])
-    dev = {b: {"deviation_db": round(profile.spectral_bands[b] - context.tonal_target_db[b], 2)} for b in context.tonal_target_db}
+    dev = {b: {"deviation_db": round(v["deviation_db"], 2)} for b, v in tonal_deviation(profile, context).items()}
     for p in problems:
         for b in p.bands:
             dev[b]["problem"] = p.kind

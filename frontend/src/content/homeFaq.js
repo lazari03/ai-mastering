@@ -11,7 +11,7 @@ export const HOME_FAQ = [
   },
   {
     q: "What's the difference between Standard and Professional?",
-    a: `Both run the same analysis, the same correction logic, the same true-peak limiter and the same verification. Professional adds finer low-end control — separate sub and punch bands instead of one low band — and a transient-aware clipper the engine can use before the limiter to reach loudness with less limiting. Standard is what your ${PRODUCT.freeMasters} free masters and the ${PLANS.indie.label} plan use; Professional comes with ${PLANS.studio.label} and ${PLANS.pro.label}.`,
+    a: `Both run the same analysis, the same correction decisions and the same delivery checks, so a Standard master is never a cut-down one. Professional changes how the loudest moments are handled: its limiter eases into each peak instead of clamping it, which keeps more of the drums' punch at the same loudness, and when compression is needed it gives the sub and the kick/bass their own bands. Standard is what your ${PRODUCT.freeMasters} free masters and the ${PLANS.indie.label} plan use; Professional comes with ${PLANS.studio.label} and ${PLANS.pro.label}.`,
   },
   {
     q: "Can I keep an artist's sound consistent across releases?",

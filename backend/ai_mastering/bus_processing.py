@@ -181,10 +181,69 @@ def _true_peak_limiter(
     return limited.astype(np.float32)
 
 
+def _release_curve(gain: np.ndarray, sr: int, release_ms: float) -> np.ndarray:
+    """One-pole release applied to a gain curve, starting from its first
+    value (see _true_peak_limiter for why the initial state matters)."""
+    alpha = float(np.exp(-1.0 / (sr * max(release_ms, 1.0) / 1000.0)))
+    out, _ = lfilter([1 - alpha], [1, -alpha], gain, zi=[alpha * float(gain[0])])
+    return np.asarray(out)
+
+
+def _true_peak_limiter_ramped(
+    stereo: np.ndarray, sr: int, ceiling_db: float = -1.0, lookahead_ms: float = 3.0, ramp_ms: float = 2.0, release_ms: float = 60.0
+) -> np.ndarray:
+    """Professional engine limiter: gain-only true-peak limiting with a
+    RAMPED attack.
+
+    _true_peak_limiter anticipates a peak with a forward minimum (hold), so
+    its gain drops as a step `lookahead_ms` before the peak. A step in gain
+    is a click: it multiplies the music by a discontinuity and spreads
+    distortion across the spectrum, most audibly on sustained bass and
+    vocals under a hit. Here every downward step is instead approached by
+    a straight ramp over the `ramp_ms` before it. Everything from the step
+    on (hold through the peak, release after it) is identical to the
+    standard limiter. A symmetric smoothing of the gain was tried first and
+    rejected: it also extended the reduction past each peak, into the
+    drum's own attack, and cost measurable punch.
+
+    The ramp is the lower envelope of lines rising from each held gain:
+        g[n] = min over k in [0, R) of  h[n+k] + (1 - h[n+k]) * k / R
+    The k = 0 term is h[n] itself, so g <= h <= the requirement
+    everywhere. The ceiling guarantee is the standard limiter's, and the
+    final 4x trim stays as the backstop.
+
+    Detection is the same 4x-oversampled true-peak requirement. The extra
+    cost is one pass per ramp sample per render, which is why this is a
+    tier feature."""
+    ceiling = float(10.0 ** (ceiling_db / 20.0))
+    stereo = np.asarray(stereo, dtype=np.float32)
+    up = _oversample4(stereo)
+    abs_up = np.max(np.abs(up), axis=1)
+    if float(abs_up.max()) <= ceiling:
+        return stereo
+    n = stereo.shape[0]
+    required = np.minimum(1.0, ceiling / (abs_up + EPS))[: n * 4].reshape(n, 4).min(axis=1).astype(np.float32)
+    lookahead = max(1, int(sr * lookahead_ms / 1000.0))
+    held = minimum_filter1d(required, size=lookahead, origin=-(lookahead // 2))
+    R = max(1, int(sr * ramp_ms / 1000.0))
+    padded = np.concatenate([held, np.ones(R, dtype=held.dtype)])
+    ramped = held.copy()
+    for k in range(1, R):
+        future = padded[k : k + n]
+        np.minimum(ramped, future + (1.0 - future) * (k / R), out=ramped)
+    final_gain = np.minimum(ramped, _release_curve(ramped, sr, release_ms)).astype(np.float32)
+    limited = stereo * final_gain[:, np.newaxis]
+    true_peak_db = _true_peak_db(limited)
+    if true_peak_db > ceiling_db:
+        limited = limited * (10.0 ** ((ceiling_db - true_peak_db) / 20.0))
+    return limited.astype(np.float32)
+
+
 def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compression: bool = True) -> tuple[np.ndarray, float, dict, dict]:
-    """Professional-tier bus stage: glue-compression/gain-staging, clipper,
-    true-peak limiting and loudness recovery (the standard tier's
-    _bus_process now uses the same gain-only limiter)."""
+    """Professional-engine bus stage: gain staging, clipper, ramped-attack
+    true-peak limiting (_true_peak_limiter_ramped) and loudness recovery.
+    Same structure, guards and reporting as the standard _bus_process; the
+    limiting chain is the difference."""
     stereo_pb = np.ascontiguousarray(stereo.T, dtype=np.float32)
 
     if apply_glue_compression and bool(params.get("glue_enabled", True)):
@@ -224,7 +283,7 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
     clipper_gain_reduction_db = float(max(0.0, pre_clip_peak_db - _true_peak_db(clipped))) if clipper_enabled else 0.0
 
     limiter_release_ms = float(params.get("limiter_release_ms", 60.0))
-    limited = _true_peak_limiter(clipped, sr, ceiling_db=ceiling_db, release_ms=limiter_release_ms)
+    limited = _true_peak_limiter_ramped(clipped, sr, ceiling_db=ceiling_db, release_ms=limiter_release_ms)
 
     pre_peak_db = pre_clip_peak_db
     post_peak_db = _true_peak_db(limited)
@@ -232,7 +291,7 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
 
     measured_lufs = float(meter.integrated_loudness(limited))
     limited, measured_lufs, recovery_gain_db, recovery_iterations = _recover_undershot_loudness(
-        render_candidate=lambda gain_db: _true_peak_limiter(
+        render_candidate=lambda gain_db: _true_peak_limiter_ramped(
             _soft_clip(pre_limiter * (10.0 ** (gain_db / 20.0)), ceiling_db=clip_ceiling_db, max_reduction_db=clip_share) if clipper_enabled else pre_limiter * (10.0 ** (gain_db / 20.0)),
             sr,
             ceiling_db=ceiling_db,

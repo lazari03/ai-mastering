@@ -17,6 +17,7 @@ from .audio_utils import (
     reference_spectrum_only,
 )
 from .band_levels import band_levels_db, loudness_matched_band_deltas
+from .engines import get_engine
 from .evaluation.backoff import derive_backoff_plan
 from .evaluation.evaluate import evaluate_master
 from .mastering_params import _apply_user_tweaks, compute_processing_params, legacy_params_from_plan, public_params
@@ -365,7 +366,8 @@ def master_track(
     }
 
     public = public_params(processing_params)
-    band_names = ("sub", "punch", "low_mid", "high_mid", "high") if tier == "professional" else ("low", "low_mid", "high_mid", "high")
+    engine = get_engine(tier)
+    band_names = engine.compression_bands
     processing_applied = {
         "spectral_match_source": public.get("spectral_match_source", "genre_profile"),
         "spectral_tilt": {
@@ -389,6 +391,7 @@ def master_track(
         },
         "dynamic_eq": plan.to_dict()["dynamic_eq_decisions"],
         "tier": tier,
+        "engine": engine.describe(),
         "deesser_strength": round(float(public.get("deesser_strength", 0.0)), 3),
         "saturation_amount": round(float(public["saturation_amount"]), 4),
         "width_adjustment": round(float(public["side_gain"]), 4),
