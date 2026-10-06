@@ -198,7 +198,7 @@ const DICT = {
   "faq.q2": { en: HOME_FAQ[1].q, sq: "Cili është ndryshimi midis Standard dhe Professional?" },
   "faq.a2": {
     en: HOME_FAQ[1].a,
-    sq: "Të dy përdorin të njëjtën analizë, të njëjtat vendime korrigjimi dhe të njëjtat kontrolle dorëzimi, ndaj një master Standard nuk është kurrë version i cunguar. Professional ndryshon mënyrën si trajtohen momentet më të forta: limituesi i tij hyn gradualisht në çdo kulm në vend që ta shtrëngojë menjëherë, gjë që ruan më shumë nga goditja e daulleve në të njëjtin volum, dhe kur nevojitet kompresim, sub-i dhe kick/basi marrin breza të veçantë. Standard përdoret nga masterat falas dhe plani Indie; Professional vjen me Studio dhe All-Access.",
+    sq: "Të dy përdorin të njëjtën analizë, të njëjtat vendime korrigjimi dhe të njëjtat kontrolle dorëzimi, ndaj një master Standard nuk është kurrë version i cunguar. Professional ndryshon mënyrën si trajtohen momentet më të forta: limituesi i tij hyn gradualisht në çdo kulm në vend që ta shtrëngojë menjëherë, dhe kur nevojitet kompresim, sub-i dhe kick/basi marrin breza të veçantë. Standard përdoret nga masterat falas dhe plani Indie; Professional vjen me Studio dhe All-Access.",
   },
   "faq.q3": { en: HOME_FAQ[2].q, sq: "Mund ta mbaj tingullin e një artisti të qëndrueshëm ndër botime?" },
   "faq.a3": {
@@ -588,7 +588,7 @@ const DICT = {
   "console.custom": { en: "Custom", sq: "I Personalizuar" },
   "console.engine": { en: "Engine", sq: "Motori" },
   "console.standard": { en: "Standard", sq: "Standard" },
-  "console.professionalOption": { en: "Professional (punch-preserving limiter)", sq: "Professional (limitues që ruan goditjen)" },
+  "console.professionalOption": { en: "Professional (ramped-attack limiter)", sq: "Professional (limitues me sulm gradual)" },
   "console.studioPlanSuffix": { en: " — Studio plan", sq: " — plani Studio" },
   "console.needsStudio": { en: "Needs the Studio plan or higher.", sq: "Kërkon planin Studio ose më lart." },
   "console.genre": { en: "Genre", sq: "Zhanri" },
@@ -969,8 +969,8 @@ const DICT = {
   },
   "help.topic3.q": { en: "What's the difference between Standard and Professional?", sq: "Cili është ndryshimi midis Standard dhe Professional?" },
   "help.topic3.a": {
-    en: "Both engines run the same analysis, correction decisions and delivery checks. Professional's limiter eases into each peak instead of clamping it, keeping more of the drums' punch at the same loudness, and when compression is needed the sub and kick/bass get their own bands. Standard is used by free masters and Indie; Professional comes with Studio and All-Access — pick it from the Engine dropdown when mastering.",
-    sq: "Të dy motorët përdorin të njëjtën analizë, vendime korrigjimi dhe kontrolle dorëzimi. Limituesi i Professional hyn gradualisht në çdo kulm në vend që ta shtrëngojë menjëherë, duke ruajtur më shumë nga goditja e daulleve në të njëjtin volum, dhe kur nevojitet kompresim, sub-i dhe kick/basi marrin breza të veçantë. Standard përdoret nga masterat falas dhe Indie; Professional vjen me Studio dhe All-Access — zgjidhe nga menuja Engine gjatë masterizimit.",
+    en: "Both engines run the same analysis, correction decisions and delivery checks. Professional's limiter eases into each peak instead of clamping it, and when compression is needed the sub and kick/bass get their own bands. Standard is used by free masters and Indie; Professional comes with Studio and All-Access — pick it from the Engine dropdown when mastering.",
+    sq: "Të dy motorët përdorin të njëjtën analizë, vendime korrigjimi dhe kontrolle dorëzimi. Limituesi i Professional hyn gradualisht në çdo kulm në vend që ta shtrëngojë menjëherë, dhe kur nevojitet kompresim, sub-i dhe kick/basi marrin breza të veçantë. Standard përdoret nga masterat falas dhe Indie; Professional vjen me Studio dhe All-Access — zgjidhe nga menuja Engine gjatë masterizimit.",
   },
   "help.topic4.q": { en: "How do I keep an artist's sound consistent across releases?", sq: "Si ta mbaj tingullin e një artisti të qëndrueshëm ndër botime?" },
   "help.topic4.a": {

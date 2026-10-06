@@ -17,6 +17,13 @@ better (see benchmark/engine_compare.py):
   HF ducking under hits (5th percentile -1.76 vs -1.62 dB). A symmetric
   (box) smoothing was tried first and rejected: cleaner on paper, but it
   extended reduction past each peak and LOST punch (0.653).
+
+  In the FULL bus (loudness recovery included; benchmark/engine_compare.py)
+  most of that gap closes: punch loss 0.390 vs 0.526 on the drum mix at
+  -10 LUFS, but on real tracks the engines are within noise (pop demo
+  -10 LUFS: 0.095 vs 0.070 in Standard's favour; post-rock: 0.206 vs
+  0.212). The difference is real but marginal: do not market it as more
+  than "a smoother limiter".
 * **Multiband compression split.** When the plan enables compression,
   Professional splits the low end into sub (<90 Hz) and punch (90-250 Hz),
   so kick/bass fundamentals get their own attack instead of sharing one
@@ -68,10 +75,10 @@ PROFESSIONAL = EngineSpec(
     compression_crossovers_hz=(90.0, 250.0, 2000.0, 6000.0),
     compression_bands=("sub", "punch", "low_mid", "high_mid", "high"),
     bus=_bus_process_pro,
-    limiter="ramped-attack true-peak limiter: keeps more drum punch at the same loudness",
+    limiter="ramped-attack true-peak limiter (2 ms ramp into each gain step)",
     features=(
         "everything in Standard",
-        "ramped-attack limiter: keeps more of the drums' punch at the same loudness and ceiling",
+        "ramped-attack limiter: eases into each peak instead of stepping",
         "5-band compression with separate sub and punch bands",
     ),
 )
