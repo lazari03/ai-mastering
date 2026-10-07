@@ -240,6 +240,18 @@ def _build_candidate(label, premaster_audio, sr, plan, processing_params, profil
     )
 
 
+def _vocal_enhancement_status(requested: bool, stem_metadata: dict) -> str:
+    """not_requested | failed | unchanged (measured, nothing needed) | applied"""
+    if not requested:
+        return "not_requested"
+    if stem_metadata.get("status") != "applied":
+        return "failed"
+    v = stem_metadata.get("vocal_processing", {})
+    a = stem_metadata.get("music_processing", {})
+    rides = any(abs(float(g)) > 1e-6 for g in stem_metadata.get("decisions", {}).get("section_vocal_gain_db", {}).values())
+    return "unchanged" if v.get("unchanged") and a.get("unchanged") and not rides else "applied"
+
+
 def _candidate_summary(c: Candidate) -> dict:
     return {
         "label": c.label,
@@ -281,8 +293,10 @@ def master_track(
     # so a 48 kHz mix came back resampled — a quality loss nobody asked
     # for, and the wrong delivery spec for anything going to picture.
     #
-    # Stem separation is the exception, handled where it runs: the Demucs
-    # model is 44.1 kHz, so that path stays at MASTER_SR.
+    # Stem separation runs at this same rate: Demucs works at 44.1 kHz
+    # internally and its stems are resampled back to `sr` on load
+    # (stem_separation._load_stems), so stems, sections and the pre-master
+    # all share one clock.
     try:
         _probe_sr = int(sf.info(str(input_path)).samplerate)
     except Exception:
@@ -329,12 +343,13 @@ def master_track(
     section_info = _detect_song_sections(audio_stereo, sr)
     premaster_audio = audio_stereo
     stem_metadata = {"status": "skipped", "reason": "disabled" if not enable_stem_separation else "not_requested"}
-    if _is_stem_separation_requested(tags, tweaks, analysis_before, enable_stem_separation=enable_stem_separation):
+    stems_requested = _is_stem_separation_requested(tags, tweaks, analysis_before, enable_stem_separation=enable_stem_separation)
+    if stems_requested:
         # Opt-in vocal/accompaniment stem path (unchanged behaviour): it
         # prepares a re-balanced pre-master; the plan-driven chain below
         # then masters that pre-master.
         try:
-            vocals, accompaniment, stem_metadata = _separate_vocal_stems(input_path)
+            vocals, accompaniment, stem_metadata = _separate_vocal_stems(input_path, sr=sr, n_samples=audio_stereo.shape[0])
             # Measure first, then decide: section vocal rides, arrangement
             # space and vocal-chain moves happen only where the vocal
             # measurably doesn't sit right (stem_decisions.py). No moves ->
@@ -530,6 +545,7 @@ def master_track(
             "renders": renders,
             "initial_failures": [f"{f.source}:{f.kind}" for f in initial.verdict.failures],
             "loudness_shortfall_lu": final.verdict.loudness["shortfall_vs_requested_lu"],
+            "vocal_enhancement": _vocal_enhancement_status(stems_requested, stem_metadata),
         },
         "mastering_diagnostics": diagnostics,
     }
@@ -545,6 +561,18 @@ def master_track(
         if issue["issue"] == "overly_narrow_stereo" and analysis_before.get("near_mono_source"):
             continue
         source_warnings.append(f"Mix note ({issue['issue']}): {issue['detail']}")
+
+    vocal_status = _vocal_enhancement_status(stems_requested, stem_metadata)
+    if vocal_status == "failed":
+        # The user explicitly asked for vocal enhancement: a silent fallback
+        # to the full-mix master would misrepresent what they got.
+        source_warnings.insert(
+            0,
+            "Vocal enhancement was requested but could not run (vocal/instrument separation failed), "
+            "so this master was made from the full mix without it.",
+        )
+    elif vocal_status == "unchanged":
+        source_warnings.append("Vocal enhancement: the vocal was measured and already sits correctly in the mix, so it was left unchanged.")
 
     if final.label == "transparent_fallback":
         source_warnings.insert(

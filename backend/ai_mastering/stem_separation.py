@@ -26,7 +26,29 @@ def _is_stem_separation_requested(tags: list[str], tweaks: dict | None, analysis
     )
 
 
-def _separate_vocal_stems(input_path: str | Path, max_threads: int | None = None) -> tuple[np.ndarray, np.ndarray, dict]:
+def _fit_length(x: np.ndarray, n: int) -> np.ndarray:
+    if x.shape[0] >= n:
+        return x[:n]
+    return np.pad(x, ((0, n - x.shape[0]), (0, 0)))
+
+
+def _load_stems(vocal_path: str | Path, music_path: str | Path, sr: int, n_samples: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """Load Demucs stems AT THE PIPELINE'S RATE. Demucs writes at its model
+    rate (44.1 kHz); a 48/88.2/96 kHz job must resample them, or every
+    filter frequency, section time and the summed pre-master itself would
+    be wrong by the rate ratio (a 44.1 kHz stem played as 48 kHz is ~8.8%
+    fast and sharp). Trimmed/padded to the source length so the stems line
+    up sample-for-sample with the mix they came from."""
+    vocals, sr_v = _load_audio(vocal_path, sr=sr)
+    accompaniment, sr_m = _load_audio(music_path, sr=sr)
+    if sr_v != sr or sr_m != sr:
+        raise RuntimeError(f"stems loaded at {sr_v}/{sr_m} Hz, pipeline runs at {sr} Hz")
+    if n_samples is not None:
+        vocals, accompaniment = _fit_length(vocals, n_samples), _fit_length(accompaniment, n_samples)
+    return vocals, accompaniment
+
+
+def _separate_vocal_stems(input_path: str | Path, max_threads: int | None = None, sr: int = MASTER_SR, n_samples: int | None = None) -> tuple[np.ndarray, np.ndarray, dict]:
     with tempfile.TemporaryDirectory(prefix="ai_mastering_demucs_") as temp_dir:
         model_candidates = ["htdemucs_ft", "htdemucs"]
         failure_text = "demucs separation failed"
@@ -79,14 +101,12 @@ def _separate_vocal_stems(input_path: str | Path, max_threads: int | None = None
         if vocal_path is None or music_path is None:
             raise RuntimeError(failure_text)
 
-        vocals, sr_v = _load_audio(vocal_path, sr=MASTER_SR)
-        accompaniment, sr_m = _load_audio(music_path, sr=MASTER_SR)
-        if sr_v != MASTER_SR or sr_m != MASTER_SR:
-            raise RuntimeError("Unexpected stem sample rate")
+        vocals, accompaniment = _load_stems(vocal_path, music_path, sr, n_samples)
 
         metadata = {
             "status": "applied",
             "engine": f"demucs_{chosen_model or 'unknown'}",
+            "sample_rate": int(sr),
             "vocal_path": str(vocal_path),
             "music_path": str(music_path),
         }
