@@ -33,7 +33,7 @@ const VISITOR_LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
 const SESSION_LAST_SEEN_THROTTLE_MS = 2 * 60 * 1000;
 
 const MAX_EVENTS_PER_REQUEST = 25;
-const MAX_PROP_KEYS = 30; // server master_completed carries ~22 flat DSP metrics (masteringTelemetry.js)
+const MAX_PROP_KEYS = 30; // server master_completed carries ~27 flat props (3 route + masteringTelemetry.js)
 const MAX_STRING_LEN = 300;
 const MAX_PATH_LEN = 300;
 

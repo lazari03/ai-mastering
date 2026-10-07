@@ -5,7 +5,6 @@ from pathlib import Path
 
 import numpy as np
 import soundfile as sf
-from pedalboard import Pedalboard, Reverb
 
 from .ab_analysis import build_ab_report, build_decision_report
 from .analysis.profile import SourceProfile
@@ -33,6 +32,7 @@ from .processing.eq import apply_eq
 from .processing.render import render_plan
 from .quality_control import CHANNEL_IMBALANCE_WARN_DB, DC_OFFSET_THRESHOLD_DB, InvalidAudioError, rebalance_channels, run_quality_control, validate_input_signal
 from .section_detection import _db_to_lin, _detect_song_sections, _section_gain_db_envelope
+from .stem_decisions import measure_vocal_relationship, plan_stem_moves
 from .stem_separation import _is_stem_separation_requested, _process_accompaniment_stem, _process_vocal_stem, _separate_vocal_stems
 
 # Peak the stem pre-master sum is scaled down to (about -1 dBFS) when the
@@ -335,43 +335,38 @@ def master_track(
         # then masters that pre-master.
         try:
             vocals, accompaniment, stem_metadata = _separate_vocal_stems(input_path)
-            processed_vocals, vocal_processing = _process_vocal_stem(vocals, sr, processing_params)
-            vocal_auto_db = _section_gain_db_envelope(
-                total_samples=processed_vocals.shape[0],
-                sr=sr,
-                section_info=section_info,
-                gains_db={"chorus": 0.30, "bridge": 0.15, "final_chorus": 0.36},
-                ramp_s=0.65,
-            )
-            processed_vocals *= _db_to_lin(vocal_auto_db)[:, np.newaxis]
-            vocal_reverb_send_db = _section_gain_db_envelope(
-                total_samples=processed_vocals.shape[0],
-                sr=sr,
-                section_info=section_info,
-                gains_db={"chorus": -26.0, "bridge": -28.0, "final_chorus": -24.5},
-                ramp_s=0.65,
-            )
-            vocal_reverb_send = np.clip(_db_to_lin(vocal_reverb_send_db), 0.0, 0.09)
-            reverb_fx = Pedalboard([Reverb(room_size=0.52, damping=0.38, width=1.0, wet_level=1.0, dry_level=0.0)])
-            vocal_wet = np.asarray(reverb_fx(np.ascontiguousarray(processed_vocals.T, dtype=np.float32), sr).T, dtype=np.float32)
+            # Measure first, then decide: section vocal rides, arrangement
+            # space and vocal-chain moves happen only where the vocal
+            # measurably doesn't sit right (stem_decisions.py). No moves ->
+            # the stems recombine to the original mix.
+            vocal_measurements = measure_vocal_relationship(vocals, accompaniment, sr, section_info)
+            moves = plan_stem_moves(vocal_measurements, processing_params)
+            processed_vocals, vocal_processing = _process_vocal_stem(vocals, sr, moves)
+            if any(abs(v) > 1e-6 for v in moves["section_vocal_gain_db"].values()):
+                vocal_auto_db = _section_gain_db_envelope(
+                    total_samples=processed_vocals.shape[0],
+                    sr=sr,
+                    section_info=section_info,
+                    gains_db=moves["section_vocal_gain_db"],
+                    ramp_s=0.65,
+                )
+                processed_vocals = processed_vocals * _db_to_lin(vocal_auto_db)[:, np.newaxis]
+            processed_music, music_processing = _process_accompaniment_stem(accompaniment, sr, moves)
             # Float gain staging, no sample clipping before the mastering
             # limiter: the sum may exceed 0 dBFS here, so it is scaled as a
             # whole to keep headroom, and the limiter downstream does the
             # peak control it is designed (and measured) for.
-            processed_vocals = processed_vocals + (vocal_wet * vocal_reverb_send[:, np.newaxis])
-            processed_music, music_processing = _process_accompaniment_stem(accompaniment, sr, processing_params)
-            premaster_audio = (processed_music + processed_vocals).astype(np.float32)
+            n = min(processed_music.shape[0], processed_vocals.shape[0])
+            premaster_audio = (processed_music[:n] + processed_vocals[:n]).astype(np.float32)
             stem_peak = float(np.max(np.abs(premaster_audio))) if premaster_audio.size else 0.0
             if stem_peak > _STEM_PREMASTER_PEAK:
                 premaster_audio = (premaster_audio * (_STEM_PREMASTER_PEAK / stem_peak)).astype(np.float32)
             stem_metadata.update(
                 {
+                    "vocal_measurements": vocal_measurements,
+                    "decisions": moves,
                     "vocal_processing": vocal_processing,
                     "music_processing": music_processing,
-                    "automation": {
-                        "vocal_gain_db": {"chorus": 0.30, "bridge": 0.15, "final_chorus": 0.36},
-                        "vocal_reverb_send_db": {"chorus": -26.0, "bridge": -28.0, "final_chorus": -24.5},
-                    },
                 }
             )
         except Exception as exc:
@@ -527,6 +522,15 @@ def master_track(
         "mix_diagnosis": public.get("mix_diagnosis", []),
         "post_render_overshoot_corrections": [],
         "transient_qc": transient_qc,
+        # Which candidate shipped, surfaced at the top level (not only deep
+        # in diagnostics) so the UI and telemetry can't miss a fallback.
+        "delivery": {
+            "candidate": final.label,
+            "transparent_fallback": final.label == "transparent_fallback",
+            "renders": renders,
+            "initial_failures": [f"{f.source}:{f.kind}" for f in initial.verdict.failures],
+            "loudness_shortfall_lu": final.verdict.loudness["shortfall_vs_requested_lu"],
+        },
         "mastering_diagnostics": diagnostics,
     }
 
@@ -541,6 +545,20 @@ def master_track(
         if issue["issue"] == "overly_narrow_stereo" and analysis_before.get("near_mono_source"):
             continue
         source_warnings.append(f"Mix note ({issue['issue']}): {issue['detail']}")
+
+    if final.label == "transparent_fallback":
+        source_warnings.insert(
+            0,
+            "Minimal-processing master: every corrective version of the full master still failed verification "
+            f"({', '.join(sorted({f.kind for f in initial.verdict.failures}))}), so this file is gain and limiting only "
+            "(plus your own tweaks). It is safe, but it is not a full master of this mix.",
+        )
+    shortfall = float(final.verdict.loudness["shortfall_vs_requested_lu"])
+    if shortfall > C.LOUDNESS_SHORTFALL_WARN_LU:
+        source_warnings.append(
+            f"Loudness held back: delivered {final.verdict.loudness['integrated_lufs']:.1f} LUFS, {shortfall:.1f} LU below the "
+            f"requested {final.verdict.loudness['requested_target_lufs']:.1f} LUFS, to stay inside this mix's dynamics budget."
+        )
 
     ab_analysis = build_ab_report(
         analysis_before=analysis_before,

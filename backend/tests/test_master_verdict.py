@@ -369,3 +369,24 @@ def test_injected_brightening_stage_is_caught_and_not_delivered(source, tmp_path
     measured = result["level_diagnostics"]["loudness_matched_band_deltas_db"]
     assert measured["high_6000_20000hz"] <= GuardrailConfig().absolute_max_high_boost_db
     assert measured["kick_bass_60_120hz"] >= -GuardrailConfig().absolute_max_low_end_loss_db
+
+
+def test_transparent_fallback_is_surfaced_not_buried(source, tmp_path, monkeypatch):
+    real = mastering.validate_render
+    calls = {"n": 0}
+
+    def fail_until_fallback(**kw):
+        calls["n"] += 1
+        r = real(**kw)
+        if calls["n"] < C.MAX_CANDIDATE_RENDERS:
+            r.failures.append(GuardrailFailure("tilt_drift", 0.9, 0.3, None, "eq_high_shelf_and_saturation", "forced"))
+            r.passed = False
+        return r
+
+    monkeypatch.setattr(mastering, "validate_render", fail_until_fallback)
+    result = master_track(str(source), str(tmp_path / "out.wav"), "pop", [])
+    delivery = result["processing_applied"]["delivery"]
+    assert delivery["candidate"] == "transparent_fallback" and delivery["transparent_fallback"]
+    assert delivery["renders"] == C.MAX_CANDIDATE_RENDERS
+    assert "guardrail:tilt_drift" in delivery["initial_failures"]
+    assert result["source_warnings"][0].startswith("Minimal-processing master")

@@ -907,6 +907,10 @@ const DICT = {
   "manual.safety.none": { en: "Every setting was within the delivery safety limits", sq: "Çdo cilësim ishte brenda kufijve të sigurisë" },
   "manual.safety.adjusted": { en: "{n} settings were pulled back to stay within the delivery safety limits:", sq: "{n} cilësime u ulën për të qëndruar brenda kufijve të sigurisë:" },
   "decisions.verify.improved": { en: "{i} of {n} detected problems measurably improved", sq: "{i} nga {n} problemet u përmirësuan në mënyrë të matshme" },
+  "decisions.verify.fallback": {
+    en: "Every full version of this master failed a quality check, so you got a minimal-processing master (gain and limiting only, plus your own tweaks). It is safe, but it is not a full master of this mix.",
+    sq: "Çdo version i plotë i këtij masteri dështoi në një kontroll cilësie, ndaj more një master me përpunim minimal (vetëm fitim dhe kufizim, plus rregullimet e tua). Është i sigurt, por nuk është master i plotë i kësaj miksimi.",
+  },
   "decisions.verify.backoff": { en: "The first pass changed more than planned, so a gentler version was rendered", sq: "Kalimi i parë ndryshoi më shumë se sa ishte planifikuar, ndaj u krijua një version më i butë" },
   "decisions.details.show": { en: "View detailed analysis", sq: "Shiko analizën e detajuar" },
   "decisions.details.hide": { en: "Hide detailed analysis", sq: "Fshih analizën e detajuar" },

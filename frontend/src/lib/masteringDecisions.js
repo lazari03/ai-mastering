@@ -188,6 +188,7 @@ export function summarizeDecisions(result) {
   const verification = {
     ...qcVerdict(result, evaluation),
     backoffApplied: Boolean(diag.backoff_applied),
+    transparentFallback: Boolean(result?.processing_applied?.delivery?.transparent_fallback),
     flags: evaluation.flags || [],
     improved: Object.values(outcomes).filter((o) => o.improved).length,
     checked: Object.keys(outcomes).length,

@@ -230,6 +230,10 @@ export default function AdminBehaviorPage() {
                     ["Avg limiter reduction", data.engine.avgLimiterGrDb != null ? `${data.engine.avgLimiterGrDb} dB` : "—"],
                     ["Avg loudness change", data.engine.avgLoudnessChangeLu != null ? `${data.engine.avgLoudnessChangeLu} LU` : "—"],
                     ["Renders with diagnostics", data.engine.withDiagnostics],
+                    ["First render delivered", data.engine.withCandidateTelemetry ? `${data.engine.initialCandidateRate}%` : "—"],
+                    ["Corrective render delivered", data.engine.withCandidateTelemetry ? `${data.engine.correctiveCandidateRate}%` : "—"],
+                    ["Minimal-processing fallback", data.engine.withCandidateTelemetry ? `${data.engine.fallbackRate}%` : "—"],
+                    ["Avg renders per master", data.engine.avgRenders ?? "—"],
                   ].map(([label, value]) => (
                     <div key={label} className="rounded-xl border border-white/10 p-3">
                       <p className="m-0 text-[11px] text-zinc-500">{label}</p>
@@ -241,6 +245,11 @@ export default function AdminBehaviorPage() {
                   <AdminTable columns={[{ key: "key", label: "Tier" }, { key: "count", label: "Masters" }, { key: "share", label: "Share", render: pctCell("share") }]} rows={data.engine.byTier.map((r) => ({ ...r, id: r.key }))} />
                   <AdminTable columns={[{ key: "key", label: "Genre" }, { key: "count", label: "Masters" }, { key: "share", label: "Share", render: pctCell("share") }]} rows={data.engine.byGenre.map((r) => ({ ...r, id: r.key }))} />
                 </div>
+                {data.engine.initialFailureKinds?.length ? (
+                  <div className="mt-4">
+                    <AdminTable columns={[{ key: "key", label: "Why the first render was rejected" }, { key: "count", label: "Masters" }, { key: "share", label: "Share", render: pctCell("share") }]} rows={data.engine.initialFailureKinds.map((r) => ({ ...r, id: r.key }))} />
+                  </div>
+                ) : null}
               </>
             ) : (
               <p className="m-0 text-sm text-zinc-500">No finished masters in this range yet.</p>

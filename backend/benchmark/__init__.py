@@ -48,6 +48,27 @@ and a note on drums, bass, highs and pumping. Unblind with
 `listening_key.json` afterwards. Loudness is matched with gain only, so
 nobody wins by being louder.
 
+## 4. Regression + threshold calibration (every engine change)
+
+```
+python -m benchmark.regression --corpus benchmark/corpus --write benchmark/baselines/main.json   # once, then commit it
+python -m benchmark.regression --corpus benchmark/corpus --baseline benchmark/baselines/main.json  # per change; exit 1 on drift
+```
+
+Records per track: source/master LUFS, true peak, PLR, short-term crest and
+LRA change, transient retention, low-end and HF actual/collateral change,
+unplanned low-end/HF movement, tilt drift, stereo correlation, limiter GR
+(p99.5 and max), the delivered candidate, render count, first-render
+verdict failures and final warnings. `report.md` also shows how close the
+corpus sits to every verdict threshold (headroom p5/p50/min) — the evidence
+for re-tuning the hand-authored limits. Baselines hold numbers only and are
+safe to commit. Engine tags (not corpus labels) go in meta.json as
+`"tags_for_engine": [...]`.
+
+Aim for 50–100 mixes: rock, EDM, hip-hop, acoustic, metal, lo-fi, bright,
+dark, bass-heavy, thin, crushed, dynamic, mono, low-bitrate MP3 sources,
+44.1/48/96 kHz.
+
 ## What the flags mean
 
 `benchmark/metrics.py`, limits shared with the engine's guardrails

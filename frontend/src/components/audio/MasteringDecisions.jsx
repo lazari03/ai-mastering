@@ -217,7 +217,14 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
         <Row label={t("decisions.verify")} t={t}>
           <Verification verification={verification} t={t} />
           {verification.checked ? <span className="block text-[12px]">{t("decisions.verify.improved", { i: verification.improved, n: verification.checked })}</span> : null}
-          {verification.backoffApplied ? <span className="block text-[12px]">{t("decisions.verify.backoff")}</span> : null}
+          {verification.transparentFallback ? (
+            <span className="block text-[12px]">
+              <span aria-hidden="true">! </span>
+              {t("decisions.verify.fallback")}
+            </span>
+          ) : verification.backoffApplied ? (
+            <span className="block text-[12px]">{t("decisions.verify.backoff")}</span>
+          ) : null}
         </Row>
       </ul>
 

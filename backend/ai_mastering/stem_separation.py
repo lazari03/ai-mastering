@@ -7,10 +7,9 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-from pedalboard import Compressor, HighShelfFilter, NoiseGate, PeakFilter, Pedalboard
+from pedalboard import Compressor, HighShelfFilter, PeakFilter, Pedalboard
 
-from .audio_utils import EPS, MASTER_SR, _analysis_from_audio, _db, _load_audio, _rms, _smooth_envelope
-from .dsp_filters import _lr4_highpass, _to_pedalboard_shape
+from .audio_utils import EPS, MASTER_SR, _db, _load_audio, _rms
 from .mastering_params import _sanitize_tweaks
 
 DEMUCS_CACHE_DIR = Path.home() / ".cache" / "demucs"
@@ -94,74 +93,44 @@ def _separate_vocal_stems(input_path: str | Path, max_threads: int | None = None
         return vocals, accompaniment, metadata
 
 
-def _process_vocal_stem(vocals: np.ndarray, sr: int, params: dict) -> tuple[np.ndarray, dict]:
-    vocal_analysis = _analysis_from_audio(vocals, sr)
-    mono = np.mean(vocals, axis=1)
-    mono = _lr4_highpass(mono, 90.0, sr)
-
-    # Vocal rider-style automation to keep vocal integrated before compression.
-    env = _smooth_envelope(mono, sr, window_ms=75.0)
-    env_ref = float(np.percentile(env, 65))
-    rider_db = np.clip((env_ref - env) / max(env_ref, EPS) * 3.0, -1.2, 1.2)
-    rider_lin = np.power(10.0, rider_db / 20.0).astype(np.float32)
-    mono = (mono * rider_lin).astype(np.float32)
-
-    rms_db = _db(_rms(mono))
-    gate_threshold = float(np.clip(rms_db - 18.0, -45.0, -24.0))
-    deesser_gain = float(np.clip(-1.0 - (params.get("deesser_strength", 0.0) * 2.0), -4.0, -0.8))
-    presence_gain = float(np.clip(params.get("vocal_presence_gain_db", 0.0), -0.8, 1.1))
-    harsh_cut = -1.4 if vocal_analysis["spectral_balance"]["high_mid_2000_4000hz"] > 0.18 else -0.6
-    air_gain = float(np.clip(0.35 + (presence_gain * 0.15), 0.2, 0.8))
-
-    vocal_board = Pedalboard(
-        [
-            NoiseGate(threshold_db=gate_threshold, ratio=1.8, attack_ms=5.0, release_ms=120.0),
-            Compressor(threshold_db=-20.0, ratio=1.9, attack_ms=18.0, release_ms=130.0),
-            PeakFilter(cutoff_frequency_hz=320.0, gain_db=-0.8, q=0.9),
-            PeakFilter(cutoff_frequency_hz=2900.0, gain_db=presence_gain, q=1.0),
-            PeakFilter(cutoff_frequency_hz=3600.0, gain_db=harsh_cut, q=1.25),
-            HighShelfFilter(cutoff_frequency_hz=6500.0, gain_db=deesser_gain, q=0.8),
-            HighShelfFilter(cutoff_frequency_hz=12000.0, gain_db=air_gain, q=0.7),
-        ]
-    )
-    compressed_mono = np.asarray(vocal_board(_to_pedalboard_shape(mono), sr)[0], dtype=np.float32)
-
-    # Parallel vocal compression for density without flattening transients.
-    parallel_board = Pedalboard([
-        Compressor(threshold_db=-30.0, ratio=3.6, attack_ms=6.0, release_ms=100.0),
-    ])
-    parallel_mono = np.asarray(parallel_board(_to_pedalboard_shape(mono), sr)[0], dtype=np.float32)
-    processed_mono = (compressed_mono * 0.76) + (parallel_mono * 0.24)
-
-    dry_mix = 0.2
-    processed_mono = (processed_mono * (1.0 - dry_mix)) + (mono * dry_mix)
-    processed_vocals = np.stack([processed_mono, processed_mono], axis=1)
-    processed_vocals *= float(np.clip(1.0 + (params.get("vocal_presence_gain_db", 0.0) * 0.06), 0.92, 1.08))
-
-    return processed_vocals.astype(np.float32), {
-        "gate_threshold_db": round(gate_threshold, 3),
-        "presence_gain_db": round(presence_gain, 3),
-        "deesser_gain_db": round(deesser_gain, 3),
-        "harsh_cut_db": round(harsh_cut, 3),
-        "air_gain_db": round(air_gain, 3),
-    }
+def _apply_board(stereo: np.ndarray, sr: int, board: Pedalboard) -> np.ndarray:
+    # Same chain on both channels (stereo is kept: the vocal stem carries
+    # the mix's own vocal ambience and width).
+    return np.asarray(board(np.ascontiguousarray(stereo.T, dtype=np.float32), sr).T, dtype=np.float32)
 
 
-def _process_accompaniment_stem(accompaniment: np.ndarray, sr: int, params: dict) -> tuple[np.ndarray, dict]:
-    mono = np.mean(accompaniment, axis=1)
-    vocal_space_cut = float(np.clip(-0.6 - (params.get("vocal_presence_gain_db", 0.0) * 0.25), -1.2, -0.2))
-    mud_cut = float(np.clip(-0.3 - max(0.0, params["per_band_gain_changes_db"].get("low_mid_250_500hz", 0.0)) * 0.15, -1.0, 0.0))
+def _process_vocal_stem(vocals: np.ndarray, sr: int, moves: dict) -> tuple[np.ndarray, dict]:
+    """Apply ONLY the measured vocal moves from stem_decisions.plan_stem_moves.
+    With no moves the stem is returned untouched, so vocals + accompaniment
+    recombine to the original mix."""
+    vocals = np.asarray(vocals, dtype=np.float32)
+    plugins = []
+    ratio = float(moves.get("vocal_compression_ratio", 1.0))
+    if ratio > 1.01:
+        thr = float(_db(_rms(vocals)) + 6.0)
+        plugins.append(Compressor(threshold_db=thr, ratio=ratio, attack_ms=18.0, release_ms=130.0))
+    for freq, key, q in ((320.0, "vocal_low_mid_cut_db", 0.9), (2900.0, "vocal_presence_gain_db", 1.0), (3600.0, "vocal_harsh_cut_db", 1.25)):
+        g = float(moves.get(key, 0.0))
+        if abs(g) > 0.05:
+            plugins.append(PeakFilter(cutoff_frequency_hz=freq, gain_db=g, q=q))
+    for freq, key in ((6500.0, "vocal_deess_shelf_db"), (12000.0, "vocal_air_gain_db")):
+        g = float(moves.get(key, 0.0))
+        if abs(g) > 0.05:
+            plugins.append(HighShelfFilter(cutoff_frequency_hz=freq, gain_db=g, q=0.8))
+    if not plugins:
+        return vocals, {"applied": [], "unchanged": True}
+    processed = _apply_board(vocals, sr, Pedalboard(plugins))
+    if ratio > 1.01:
+        # Level-match the levelled vocal back to its own RMS so compression
+        # changes dynamics, not the vocal-to-accompaniment balance.
+        processed *= float(_rms(vocals) / max(_rms(processed), EPS))
+    return processed.astype(np.float32), {"applied": [type(p).__name__ for p in plugins], "unchanged": False}
 
-    stem_board = Pedalboard(
-        [
-            PeakFilter(cutoff_frequency_hz=320.0, gain_db=mud_cut, q=0.9),
-            PeakFilter(cutoff_frequency_hz=2600.0, gain_db=vocal_space_cut, q=0.95),
-        ]
-    )
 
-    left = np.asarray(stem_board(_to_pedalboard_shape(accompaniment[:, 0]), sr)[0], dtype=np.float32)
-    right = np.asarray(stem_board(_to_pedalboard_shape(accompaniment[:, 1]), sr)[0], dtype=np.float32)
-    return np.stack([left, right], axis=1), {
-        "vocal_space_cut_db": round(vocal_space_cut, 3),
-        "mud_cut_db": round(mud_cut, 3),
-    }
+def _process_accompaniment_stem(accompaniment: np.ndarray, sr: int, moves: dict) -> tuple[np.ndarray, dict]:
+    accompaniment = np.asarray(accompaniment, dtype=np.float32)
+    cut = float(moves.get("accompaniment_presence_cut_db", 0.0))
+    if abs(cut) <= 0.05:
+        return accompaniment, {"vocal_space_cut_db": 0.0, "unchanged": True}
+    processed = _apply_board(accompaniment, sr, Pedalboard([PeakFilter(cutoff_frequency_hz=2600.0, gain_db=cut, q=0.95)]))
+    return processed, {"vocal_space_cut_db": round(cut, 3), "unchanged": False}
