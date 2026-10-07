@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -9,23 +10,34 @@ from pedalboard import Pedalboard, Reverb
 from .ab_analysis import build_ab_report, build_decision_report
 from .analysis.profile import SourceProfile
 from .audio_utils import (
+    EPS,
     MASTER_SR,
+    _db,
+    _rms,
     resolve_master_sr,
     _ab_gain_match,
     _analysis_from_audio,
     _load_audio,
     reference_spectrum_only,
 )
-from .band_levels import band_levels_db, loudness_matched_band_deltas
-from .evaluation.backoff import derive_backoff_plan
-from .evaluation.evaluate import evaluate_master
+from .band_levels import band_levels_db
+from .analysis.loudness import FastMeter
+from .evaluation.backoff import derive_corrective_plan, derive_transparent_plan
+from .evaluation.evaluate import MasterEvaluation, evaluate_master
+from .evaluation.verdict import MasterVerdict, build_verdict
 from .mastering_params import _apply_user_tweaks, compute_processing_params, legacy_params_from_plan, public_params
-from .output_validation import validate_render
+from .output_validation import GuardrailConfig, ValidationResult, validate_render
+from .planning.plan import MasteringPlan
 from .planning import config as C
+from .processing.eq import apply_eq
 from .processing.render import render_plan
-from .quality_control import InvalidAudioError, rebalance_channels, run_quality_control, validate_input_signal
+from .quality_control import CHANNEL_IMBALANCE_WARN_DB, DC_OFFSET_THRESHOLD_DB, InvalidAudioError, rebalance_channels, run_quality_control, validate_input_signal
 from .section_detection import _db_to_lin, _detect_song_sections, _section_gain_db_envelope
 from .stem_separation import _is_stem_separation_requested, _process_accompaniment_stem, _process_vocal_stem, _separate_vocal_stems
+
+# Peak the stem pre-master sum is scaled down to (about -1 dBFS) when the
+# recombined stems would otherwise exceed it.
+_STEM_PREMASTER_PEAK = 0.891
 
 __all__ = ["master_track", "InvalidAudioError", "analyze_for_preview", "preview_processing_params"]
 
@@ -81,7 +93,83 @@ def preview_processing_params(
     return public_params(_apply_user_tweaks(processing_params, analysis, tweaks or {}))
 
 
-def _render_and_evaluate(premaster_audio, sr, plan, profile, analysis_before, context):
+@dataclass(frozen=True)
+class Candidate:
+    """One complete, self-consistent render attempt. Every reported field of
+    a delivered master (plan, params, QC, evaluation, guardrails, limiter
+    report, transient QC, verdict) is read from the ONE candidate that was
+    delivered — never re-assembled from several attempts."""
+
+    label: str
+    plan: MasteringPlan
+    processing_params: dict
+    render: dict
+    audio: np.ndarray
+    analysis_after: dict
+    evaluation: MasterEvaluation
+    quality_control: dict
+    guardrails: ValidationResult
+    guardrail_deltas_db: dict
+    planned_guardrail_deltas_db: dict
+    verdict: MasterVerdict
+    actions: tuple = ()
+
+
+class _GuardrailReference:
+    """Source-side guardrail measurements, computed once per job: the
+    premaster's band levels and loudness. Each candidate's render, and its
+    plan's EQ-only prediction, are measured against these at the premaster's
+    loudness, on exactly the same basis."""
+
+    def __init__(self, premaster: np.ndarray, sr: int):
+        self.audio = premaster
+        self.sr = sr
+        self.meter = FastMeter(sr)
+        self.lufs = self._lufs(premaster)
+        self.levels = band_levels_db(premaster, sr)
+        self._eq_cache: dict = {}
+
+    def _lufs(self, x: np.ndarray) -> float:
+        try:
+            v = float(self.meter.integrated_loudness(x))
+        except Exception:
+            v = -70.0
+        return v if np.isfinite(v) else -70.0
+
+    def matched_deltas(self, audio: np.ndarray) -> dict:
+        gain_db = float(np.clip(self.lufs - self._lufs(audio), -24.0, 24.0))
+        matched = np.asarray(audio, dtype=np.float32) * (10.0 ** (gain_db / 20.0))
+        after = band_levels_db(matched, self.sr)
+        return {k: round(float(after[k] - self.levels[k]), 3) for k in self.levels}
+
+    def eq_deltas(self, decisions: list) -> dict:
+        """What the planned static EQ alone does to the guardrail bands."""
+        active = [d for d in decisions if abs(float(d.gain_db)) > 1e-3]
+        if not active:
+            return {k: 0.0 for k in self.levels}
+        key = tuple((d.filter_type, round(float(d.frequency_hz), 3), round(float(d.gain_db), 4), round(float(d.q), 4)) for d in active)
+        if key not in self._eq_cache:
+            self._eq_cache[key] = self.matched_deltas(apply_eq(self.audio, active, self.sr))
+        return self._eq_cache[key]
+
+
+def _integrity_corrections(audio: np.ndarray) -> tuple[np.ndarray, list[str]]:
+    """The two narrow corrections final QC used to apply AFTER evaluation
+    (channel balance, residual DC) — applied before any measurement now, so
+    every number reported describes the audio actually delivered."""
+    corrections = []
+    ch_db = [_db(_rms(audio[:, ch])) for ch in range(audio.shape[1])]
+    if len(ch_db) > 1 and max(ch_db) - min(ch_db) > CHANNEL_IMBALANCE_WARN_DB:
+        audio = rebalance_channels(audio)
+        corrections.append("channel_balance: rebalanced L/R to the quieter channel's level")
+    dc = np.mean(audio, axis=0)
+    if any(abs(float(v)) > EPS and _db(abs(float(v))) > DC_OFFSET_THRESHOLD_DB for v in dc):
+        audio = (audio - dc[np.newaxis, :]).astype(np.float32)
+        corrections.append("dc_offset: removed residual DC offset from the final render")
+    return audio, corrections
+
+
+def _build_candidate(label, premaster_audio, sr, plan, processing_params, profile, analysis_before, context, reference: _GuardrailReference, requested_target_lufs, actions=()) -> Candidate:
     render = render_plan(premaster_audio, sr, plan)
     audio = render["audio"]
     # Absolute output safety, independent of any adaptive decision: never
@@ -89,8 +177,10 @@ def _render_and_evaluate(premaster_audio, sr, plan, profile, analysis_before, co
     peak = float(np.max(np.abs(audio))) if audio.size else 0.0
     if peak >= 0.999:
         audio = (audio * (0.999 / peak)).astype(np.float32)
-        render["audio"] = audio
         render["report"]["final_sample_peak_trim_db"] = round(20.0 * np.log10(0.999 / peak), 3)
+    audio, corrections = _integrity_corrections(audio)
+    render["audio"] = audio
+
     analysis_after = _analysis_from_audio(audio, sr)
     master_profile = SourceProfile.from_dict(analysis_after["source_profile"])
     evaluation = evaluate_master(
@@ -104,7 +194,62 @@ def _render_and_evaluate(premaster_audio, sr, plan, profile, analysis_before, co
         context=context,
         render=render,
     )
-    return render, analysis_after, evaluation
+    ceiling = float(plan.limiter["ceiling_dbtp"])
+    quality_control = run_quality_control(
+        analysis_before=analysis_before,
+        analysis_after=analysis_after,
+        mastered_audio=audio,
+        processing_params=processing_params,
+        limiter_report=render["limiter_report"],
+        true_peak_ceiling_db=ceiling,
+    )
+    quality_control["corrections_applied"] = corrections
+
+    # The loudness guardrail checks the render against the target THIS plan
+    # could reach inside its limiter budget; the gap to what was requested
+    # is reported by the verdict, not hidden.
+    effective_target = float(render["report"].get("bus", {}).get("budget_capped_target_lufs", plan.loudness["target_lufs"]))
+    deltas = reference.matched_deltas(audio)
+    planned = reference.eq_deltas(plan.eq_decisions)
+    user = reference.eq_deltas([d for d in plan.eq_decisions if d.source != "automatic"])
+    guardrails = validate_render(
+        band_deltas_db=deltas,
+        true_peak_dbtp=float(analysis_after["true_peak_db"]),
+        rendered_lufs=float(analysis_after["integrated_lufs"]),
+        target_lufs=effective_target,
+        transient_delta=float(evaluation.transients["delta"]),
+        config=GuardrailConfig(max_true_peak_dbtp=ceiling + C.TRUE_PEAK_TOLERANCE_DB),
+        planned_deltas_db=planned,
+        user_deltas_db=user,
+    )
+    verdict = build_verdict(evaluation, quality_control, guardrails, requested_target_lufs=requested_target_lufs, effective_target_lufs=effective_target)
+    return Candidate(
+        label=label,
+        plan=plan,
+        processing_params=processing_params,
+        render=render,
+        audio=audio,
+        analysis_after=analysis_after,
+        evaluation=evaluation,
+        quality_control=quality_control,
+        guardrails=guardrails,
+        guardrail_deltas_db=deltas,
+        planned_guardrail_deltas_db=planned,
+        verdict=verdict,
+        actions=tuple(actions),
+    )
+
+
+def _candidate_summary(c: Candidate) -> dict:
+    return {
+        "label": c.label,
+        "passed": c.verdict.passed,
+        "failures": [f"{f.source}:{f.kind}" for f in c.verdict.failures],
+        "integrated_lufs": round(float(c.analysis_after["integrated_lufs"]), 2),
+        "target_lufs": float(c.plan.loudness["target_lufs"]),
+        "collateral_score": c.evaluation.collateral_score,
+        "actions": list(c.actions),
+    }
 
 
 def master_track(
@@ -124,8 +269,10 @@ def master_track(
 ) -> dict:
     """SOURCE -> high-resolution analysis -> SourceProfile -> problem
     detection -> confidence -> budgets -> target context -> MasteringPlan
-    -> DSP render -> post-master analysis -> MasterEvaluation -> (at most
-    one) conservative backoff render -> final master.
+    -> candidate render -> evaluation + QC + guardrails (one MasterVerdict)
+    -> stage-attributed corrective candidates / transparent fallback, all
+    inside one render budget -> the first passing candidate is written.
+    If no candidate passes, InvalidAudioError and no file.
 
     Every decision and its reason is returned under
     processing_applied["mastering_diagnostics"]."""
@@ -207,9 +354,16 @@ def master_track(
             vocal_reverb_send = np.clip(_db_to_lin(vocal_reverb_send_db), 0.0, 0.09)
             reverb_fx = Pedalboard([Reverb(room_size=0.52, damping=0.38, width=1.0, wet_level=1.0, dry_level=0.0)])
             vocal_wet = np.asarray(reverb_fx(np.ascontiguousarray(processed_vocals.T, dtype=np.float32), sr).T, dtype=np.float32)
-            processed_vocals = np.clip(processed_vocals + (vocal_wet * vocal_reverb_send[:, np.newaxis]), -1.0, 1.0)
+            # Float gain staging, no sample clipping before the mastering
+            # limiter: the sum may exceed 0 dBFS here, so it is scaled as a
+            # whole to keep headroom, and the limiter downstream does the
+            # peak control it is designed (and measured) for.
+            processed_vocals = processed_vocals + (vocal_wet * vocal_reverb_send[:, np.newaxis])
             processed_music, music_processing = _process_accompaniment_stem(accompaniment, sr, processing_params)
-            premaster_audio = np.clip(processed_music + processed_vocals, -1.0, 1.0).astype(np.float32)
+            premaster_audio = (processed_music + processed_vocals).astype(np.float32)
+            stem_peak = float(np.max(np.abs(premaster_audio))) if premaster_audio.size else 0.0
+            if stem_peak > _STEM_PREMASTER_PEAK:
+                premaster_audio = (premaster_audio * (_STEM_PREMASTER_PEAK / stem_peak)).astype(np.float32)
             stem_metadata.update(
                 {
                     "vocal_processing": vocal_processing,
@@ -223,130 +377,81 @@ def master_track(
         except Exception as exc:
             stem_metadata = {"status": "unavailable", "reason": str(exc)[:300]}
 
-    # --- render, evaluate, (at most one) backoff -----------------------------
+    # --- candidates: render -> evaluate -> one verdict -> correct -------------
+    # Analyze -> Plan -> Render candidate -> Evaluate + QC + guardrails (one
+    # MasterVerdict) -> attribute failures -> reduce the responsible stages
+    # -> render the next candidate ... -> deliver the first candidate whose
+    # verdict passes. Bounded by C.MAX_CANDIDATE_RENDERS in total. Nothing
+    # is written to disk until a candidate has passed every check.
     initial_plan_dict = plan.to_dict()
-    render, analysis_after, evaluation = _render_and_evaluate(premaster_audio, sr, plan, profile, analysis_before, context)
-    initial_evaluation = evaluation
-    backoff_info = {"applied": False, "attempted": False}
-    renders = 1
-    if not evaluation.passed and renders <= C.MAX_BACKOFF_RENDERS:
-        backoff_plan, actions = derive_backoff_plan(plan, evaluation)
-        if backoff_plan is not None:
-            renders += 1
-            b_render, b_after, b_eval = _render_and_evaluate(premaster_audio, sr, backoff_plan, profile, analysis_before, context)
-            keep = b_eval.collateral_score < evaluation.collateral_score or (b_eval.passed and not evaluation.passed)
-            backoff_info = {
-                "attempted": True,
-                "applied": bool(keep),
-                "actions": actions,
-                "initial_collateral_score": evaluation.collateral_score,
-                "backoff_collateral_score": b_eval.collateral_score,
-                "reason": "backoff render evaluated better" if keep else "backoff render did not evaluate better; kept the initial render",
-            }
-            if keep:
-                plan, render, analysis_after, evaluation = backoff_plan, b_render, b_after, b_eval
+    requested_target = float(plan.loudness["target_lufs"])
+    reference = _GuardrailReference(premaster_audio, sr)
+    base_params = processing_params
 
-    stereo_processed = render["audio"]
+    def params_for(candidate_plan: MasteringPlan) -> dict:
+        refreshed = legacy_params_from_plan(
+            candidate_plan, context, profile, base_params["_problems"], analysis_before,
+            genre, list(tags or []), style, category, flavour, context.reference_used,
+        )
+        refreshed["user_tweaks"] = base_params.get("user_tweaks", {})
+        refreshed["tweak_summary"] = base_params.get("tweak_summary", {})
+        return refreshed
+
+    def build(label: str, candidate_plan: MasteringPlan, params: dict, actions=()) -> Candidate:
+        return _build_candidate(label, premaster_audio, sr, candidate_plan, params, profile, analysis_before, context, reference, requested_target, actions)
+
+    candidates = [build("initial", plan, base_params)]
+    while not candidates[-1].verdict.passed and len(candidates) < 1 + C.MAX_CORRECTIVE_RENDERS:
+        last = candidates[-1]
+        next_plan, actions = derive_corrective_plan(last.plan, last.verdict, last.evaluation)
+        if next_plan is None:
+            break
+        candidates.append(build(f"corrective_{len(candidates)}", next_plan, params_for(next_plan), actions))
+    if not candidates[-1].verdict.passed and len(candidates) < C.MAX_CANDIDATE_RENDERS and any(c.verdict.correctable for c in candidates):
+        last = candidates[-1]
+        fallback_plan, actions = derive_transparent_plan(last.plan, last.verdict, last.evaluation)
+        candidates.append(build("transparent_fallback", fallback_plan, params_for(fallback_plan), actions))
+
+    # The first passing candidate is the one closest to the original plan:
+    # every later candidate only removed processing.
+    final = next((c for c in candidates if c.verdict.passed), None)
+    if final is None:
+        failed = sorted({f"{f.source}:{f.kind}" for f in candidates[-1].verdict.failures})
+        raise InvalidAudioError(f"No mastering candidate passed final verification ({', '.join(failed)}); no master was delivered.")
+    initial = candidates[0]
+    renders = len(candidates)
+
+    plan = final.plan
+    processing_params = final.processing_params
+    render = final.render
+    analysis_after = final.analysis_after
+    evaluation = final.evaluation
+    quality_control = final.quality_control
+    stereo_processed = final.audio
     limiter_report = render["limiter_report"]
     loudness_guard = render["loudness_guard"]
     lufs_gain_db = render["lufs_gain_db"]
-
-    # Keep the reported legacy parameter view in sync with the plan that
-    # actually produced the final audio.
-    if backoff_info.get("applied"):
-        refreshed = legacy_params_from_plan(
-            plan, context, profile, processing_params["_problems"], analysis_before,
-            genre, list(tags or []), style, category, flavour, context.reference_used,
-        )
-        refreshed["user_tweaks"] = processing_params.get("user_tweaks", {})
-        refreshed["tweak_summary"] = processing_params.get("tweak_summary", {})
-        processing_params = refreshed
-
     ev = evaluation.to_dict()
+
+    recovered = final is not initial
+    backoff_info = {
+        "attempted": renders > 1,
+        "applied": recovered,
+        "actions": [a for c in candidates[1 : candidates.index(final) + 1] for a in c.actions],
+        "initial_collateral_score": initial.evaluation.collateral_score,
+        "final_collateral_score": evaluation.collateral_score,
+        "reason": (
+            f"initial render failed verification ({', '.join(f.kind for f in initial.verdict.failures)}); delivered '{final.label}'"
+            if recovered
+            else "initial render passed verification"
+        ),
+    }
     transient_qc = dict(ev["transients"])
     transient_qc["corrective_action"] = (
-        {"attempted": True, "applied": backoff_info["applied"], "reduced": "; ".join(backoff_info.get("actions", []))}
-        if backoff_info.get("attempted") and any(f["kind"] == "transient_loss" for f in initial_evaluation.flags)
+        {"attempted": True, "applied": True, "reduced": "; ".join(backoff_info["actions"])}
+        if recovered and any(f.domain in ("transients", "dynamics") for f in initial.verdict.failures)
         else None
     )
-
-    # Final quality control — measured on the rendered signal. Corrective
-    # action here stays deliberately narrow (channel balance, DC offset).
-    quality_control = run_quality_control(
-        analysis_before=analysis_before,
-        analysis_after=analysis_after,
-        mastered_audio=stereo_processed,
-        processing_params=processing_params,
-        limiter_report=limiter_report,
-        true_peak_ceiling_db=float(plan.limiter["ceiling_dbtp"]),
-    )
-    qc_corrections = []
-    non_passing_ids = {c["id"] for c in quality_control["checks"] if c["status"] != "pass"}
-    if "channel_balance" in non_passing_ids:
-        stereo_processed = rebalance_channels(stereo_processed)
-        qc_corrections.append("channel_balance: rebalanced L/R to the quieter channel's level")
-    if "dc_offset" in non_passing_ids:
-        stereo_processed = stereo_processed - np.mean(stereo_processed, axis=0, keepdims=True).astype(np.float32)
-        qc_corrections.append("dc_offset: removed residual DC offset from the final render")
-    if qc_corrections:
-        analysis_after = _analysis_from_audio(stereo_processed, sr)
-        quality_control = run_quality_control(
-            analysis_before=analysis_before,
-            analysis_after=analysis_after,
-            mastered_audio=stereo_processed,
-            processing_params=processing_params,
-            limiter_report=limiter_report,
-            true_peak_ceiling_db=float(plan.limiter["ceiling_dbtp"]),
-        )
-
-    # Evaluation checks planned tonal moves; final QC checks the actual
-    # deliverable. A tonal pass cannot overrule a dynamics or limiter fail.
-    # Try quieter, clipper-free renders before committing any output file.
-    if not quality_control["passed"]:
-        recoverable = {"limiter_gain_reduction", "dynamics_preservation"}
-        failed = {c["id"] for c in quality_control["checks"] if c["status"] == "fail"}
-        if not failed.issubset(recoverable):
-            raise InvalidAudioError(f"Master failed final quality control: {', '.join(sorted(failed))}")
-        base_plan = plan
-        recovered = False
-        for reduction_db in (2.0, 4.0, 6.0):
-            candidate_plan = base_plan.copy()
-            candidate_plan.clipper["enabled"] = False
-            candidate_plan.clipper["share_db"] = 0.0
-            candidate_plan.loudness["target_lufs"] = round(float(base_plan.loudness["target_lufs"]) - reduction_db, 2)
-            candidate_render, candidate_after, candidate_evaluation = _render_and_evaluate(
-                premaster_audio, sr, candidate_plan, profile, analysis_before, context,
-            )
-            candidate_params = legacy_params_from_plan(
-                candidate_plan, context, profile, processing_params["_problems"], analysis_before,
-                genre, list(tags or []), style, category, flavour, context.reference_used,
-            )
-            candidate_qc = run_quality_control(
-                analysis_before=analysis_before,
-                analysis_after=candidate_after,
-                mastered_audio=candidate_render["audio"],
-                processing_params=candidate_params,
-                limiter_report=candidate_render["limiter_report"],
-                true_peak_ceiling_db=float(candidate_plan.limiter["ceiling_dbtp"]),
-            )
-            renders += 1
-            if candidate_qc["passed"] and candidate_evaluation.passed:
-                plan, render, analysis_after, evaluation = candidate_plan, candidate_render, candidate_after, candidate_evaluation
-                stereo_processed = render["audio"]
-                limiter_report, loudness_guard, lufs_gain_db = render["limiter_report"], render["loudness_guard"], render["lufs_gain_db"]
-                ev = evaluation.to_dict()
-                transient_qc = {**ev["transients"], "corrective_action": {"applied": True, "reduced": f"clipper disabled; target lowered {reduction_db:.1f} dB"}}
-                candidate_params["user_tweaks"] = processing_params.get("user_tweaks", {})
-                candidate_params["tweak_summary"] = processing_params.get("tweak_summary", {})
-                processing_params = candidate_params
-                quality_control = candidate_qc
-                qc_corrections = []
-                backoff_info = {"attempted": True, "applied": True, "reason": "final QC failed; accepted a safer render", "actions": [f"clipper disabled; loudness target lowered {reduction_db:.1f} dB"]}
-                recovered = True
-                break
-        if not recovered:
-            raise InvalidAudioError("No mastering candidate passed final quality control; no master was delivered.")
-    quality_control["corrections_applied"] = qc_corrections
 
     sf.write(str(output_path), stereo_processed, sr, subtype="PCM_24")
 
@@ -355,13 +460,18 @@ def master_track(
         "source_profile": analysis_before["source_profile"],
         "detected_problems": plan.detected_problems,
         "mastering_plan": plan.to_dict(),
-        "initial_plan": initial_plan_dict if backoff_info.get("applied") else None,
+        "initial_plan": initial_plan_dict if recovered else None,
         "render": render["report"],
         "evaluation": ev,
-        "initial_evaluation": initial_evaluation.to_dict() if backoff_info.get("attempted") else None,
-        "backoff_applied": bool(backoff_info.get("applied")),
+        "initial_evaluation": initial.evaluation.to_dict() if renders > 1 else None,
+        "verdict": final.verdict.to_dict(),
+        "initial_verdict": initial.verdict.to_dict() if renders > 1 else None,
+        "candidates": [_candidate_summary(c) for c in candidates],
+        "delivered_candidate": final.label,
+        "backoff_applied": recovered,
         "backoff": backoff_info,
         "renders": renders,
+        "render_budget": C.MAX_CANDIDATE_RENDERS,
     }
 
     public = public_params(processing_params)
@@ -445,34 +555,18 @@ def master_track(
 
     decision_report = build_decision_report(public, limiter_report, [], transient_qc, plan=plan.to_dict(), evaluation=ev, backoff=backoff_info)
 
-    # Absolute-level guardrails (7-ish bands, see band_levels.py) — kept as
-    # an independent cross-check of the evaluation above.
-    try:
-        guardrail_deltas = loudness_matched_band_deltas(
-            source_audio=audio_stereo,
-            rendered_audio=stereo_processed,
-            sr=sr,
-            source_lufs=float(analysis_before["integrated_lufs"]),
-            rendered_lufs=float(analysis_after["integrated_lufs"]),
-        )
-        guardrail_result = validate_render(
-            band_deltas_db=guardrail_deltas,
-            true_peak_dbtp=float(analysis_after["true_peak_db"]),
-            rendered_lufs=float(analysis_after["integrated_lufs"]),
-            target_lufs=float(plan.loudness["target_lufs"]),
-            transient_delta=float(transient_qc["delta"]),
-        )
-        level_diagnostics = {
-            "status": "ok",
-            "method": "STFT n_fft=4096 hop=1024, mean gated frame power per band, dB; render gain-matched to source LUFS",
-            "input_band_levels_db": {k: round(v, 2) for k, v in band_levels_db(audio_stereo, sr).items()},
-            "output_band_levels_db": {k: round(v, 2) for k, v in band_levels_db(stereo_processed, sr).items()},
-            "loudness_matched_band_deltas_db": guardrail_deltas,
-            "guardrails": guardrail_result.as_dict(),
-            "stages_to_reduce_if_rerendering": guardrail_result.blamed_stages(),
-        }
-    except Exception as exc:  # never let diagnostics break a real render
-        level_diagnostics = {"status": "unavailable", "reason": str(exc)[:300]}
+    # The guardrails already gated delivery (they are part of the verdict);
+    # this only reports what the delivered candidate measured.
+    level_diagnostics = {
+        "status": "ok",
+        "method": "STFT n_fft=4096 hop=1024, mean gated frame power per band, dB; render gain-matched to the premaster's LUFS; planned = premaster through the plan's static EQ only",
+        "input_band_levels_db": {k: round(v, 2) for k, v in reference.levels.items()},
+        "output_band_levels_db": {k: round(v, 2) for k, v in band_levels_db(stereo_processed, sr).items()},
+        "loudness_matched_band_deltas_db": final.guardrail_deltas_db,
+        "planned_band_deltas_db": final.planned_guardrail_deltas_db,
+        "guardrails": final.guardrails.as_dict(),
+        "stages_to_reduce_if_rerendering": final.guardrails.blamed_stages(),
+    }
 
     return {
         "analysis_before": analysis_before,

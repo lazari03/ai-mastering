@@ -256,4 +256,23 @@ ANY_BAND_COLLATERAL_TOLERANCE_DB = 2.0
 LIMITER_BUDGET_OVERSHOOT_TOLERANCE_DB = 1.0
 LRA_COLLAPSE_FRACTION = 0.5
 BACKOFF_MIN_SEVERITY = 0.3
-MAX_BACKOFF_RENDERS = 1
+
+# ---------------------------------------------------------------------------
+# Candidate rendering / recovery (mastering.py, evaluation/verdict.py)
+# ---------------------------------------------------------------------------
+# GLOBAL render budget for one job, every candidate counted: the initial
+# render, up to MAX_CORRECTIVE_RENDERS verdict-driven corrections, and one
+# transparent (limiter/output-only) fallback. Nothing renders outside it.
+MAX_CORRECTIVE_RENDERS = 2
+MAX_CANDIDATE_RENDERS = 1 + MAX_CORRECTIVE_RENDERS + 1
+# Dynamics relief (dB of peak reduction) asked for by a failure whose
+# checker gives no dB overshoot (transient score, LRA), and the margin
+# added on top of a measured overshoot so the re-render clears the limit
+# rather than landing on it.
+RECOVERY_NOMINAL_RELIEF_DB = 1.5
+RECOVERY_RELIEF_MARGIN_DB = 0.25
+# Landing this far below the REQUESTED loudness is reported as a verdict
+# warning (never a failure: it is the engine protecting the source).
+LOUDNESS_SHORTFALL_WARN_LU = 1.0
+# Matches the true-peak tolerance QC and the evaluator already use.
+TRUE_PEAK_TOLERANCE_DB = 0.15
