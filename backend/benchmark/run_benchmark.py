@@ -100,7 +100,7 @@ def main() -> int:
                 input_path=str(track / "mix.wav"),
                 output_path=str(mastered_path),
                 genre=meta.get("genre", "pop"),
-                tags=[],
+                tags=meta.get("tags", []),
                 tweaks={},
                 style=meta.get("style", "modern"),
                 tier=args.tier,
