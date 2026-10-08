@@ -50,8 +50,9 @@ _DOMAIN = {
     "output_silence": "integrity",
     "channel_balance": "integrity",
     "loudness_target_missed": "loudness",
+    "added_distortion": "distortion",
 }
-DOMAINS = ("tonal", "dynamics", "transients", "stereo", "true_peak", "loudness", "integrity")
+DOMAINS = ("tonal", "dynamics", "transients", "distortion", "stereo", "true_peak", "loudness", "integrity")
 
 # Failure kinds a re-render can plausibly fix by reducing processing.
 # Anything else (NaN output, a silent render, a source that is itself out
@@ -59,7 +60,7 @@ DOMAINS = ("tonal", "dynamics", "transients", "stereo", "true_peak", "loudness",
 CORRECTABLE = {
     "low_end_loss", "hf_growth", "high_frequency_boost", "band_collateral", "excessive_band_change", "tilt_drift",
     "limiter_over_budget", "crest_collapse", "lra_collapse", "limiter_gain_reduction", "dynamics_preservation", "plr",
-    "transient_loss", "unsafe_correlation", "loudness_target_missed",
+    "transient_loss", "unsafe_correlation", "loudness_target_missed", "added_distortion",
 }
 
 
@@ -125,7 +126,7 @@ def _relief_for(kind: str, measured, limit) -> float:
 _QC_FAIL_LIMITS = {"limiter_gain_reduction": 6.0, "dynamics_preservation": 9.0, "plr": 4.0}
 
 
-def build_verdict(evaluation, quality_control: dict, guardrails, requested_target_lufs: float, effective_target_lufs: float) -> MasterVerdict:
+def build_verdict(evaluation, quality_control: dict, guardrails, requested_target_lufs: float, effective_target_lufs: float, distortion: dict | None = None) -> MasterVerdict:
     failures: list[VerdictIssue] = []
     warnings: list[VerdictIssue] = []
 
@@ -176,6 +177,34 @@ def build_verdict(evaluation, quality_control: dict, guardrails, requested_targe
         if issue.domain in ("dynamics", "transients"):
             issue.relief_db = _relief_for(g.name, issue.measured, issue.limit)
         failures.append(issue)
+
+    if distortion is not None:
+        worst = float(distortion.get("worst_db", -120.0))
+        if worst > C.MAX_ADDED_DISTORTION_DB:
+            failures.append(
+                VerdictIssue(
+                    source="distortion",
+                    kind="added_distortion",
+                    domain="distortion",
+                    measured=round(worst, 2),
+                    limit=C.MAX_ADDED_DISTORTION_DB,
+                    blamed_stage=distortion.get("blamed_stage"),
+                    detail=f"processing added {worst:.1f} dB of distortion relative to the master (limit {C.MAX_ADDED_DISTORTION_DB:.0f} dB)",
+                    relief_db=C.RECOVERY_NOMINAL_RELIEF_DB,
+                )
+            )
+        elif worst > C.MAX_ADDED_DISTORTION_DB - C.ADDED_DISTORTION_WARN_MARGIN_DB:
+            warnings.append(
+                VerdictIssue(
+                    source="distortion",
+                    kind="added_distortion",
+                    domain="distortion",
+                    measured=round(worst, 2),
+                    limit=C.MAX_ADDED_DISTORTION_DB,
+                    blamed_stage=distortion.get("blamed_stage"),
+                    detail=f"added distortion {worst:.1f} dB is within {C.ADDED_DISTORTION_WARN_MARGIN_DB:.0f} dB of the limit",
+                )
+            )
 
     lufs = float(evaluation.loudness["integrated_lufs"])
     shortfall = round(float(requested_target_lufs) - lufs, 2)

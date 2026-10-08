@@ -483,10 +483,22 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
 
 def reference_spectrum_only(audio_stereo: np.ndarray, sr: int) -> dict:
     """Hi-res relative spectrum of a reference track (plus the legacy
-    7-band shares) from one STFT pass — the reference's loudness/dynamics
-    are deliberately not measured, they must not leak into the render."""
+    7-band shares) from one STFT pass. Its loudness/dynamics are measured
+    separately (reference_dynamics) and only ever inform the target
+    context — they never set a render value directly."""
     spectral = analyze_spectrum(_ensure_stereo(audio_stereo).astype(np.float32), sr)
     return {"relative_db": spectral["relative_db"], "legacy_shares": spectral["legacy_shares"]}
+
+
+def reference_dynamics(audio_stereo: np.ndarray, sr: int) -> dict:
+    """The reference's loudness, peak-to-loudness, crest, LRA and stereo
+    image, measured with the same analysis the source gets. Used only as
+    bounded CONTEXT for target selection (planning/target_model.py): it
+    never sets a processing value directly, and the reference's transient
+    character is deliberately not used."""
+    p = _analysis_from_audio(_ensure_stereo(audio_stereo).astype(np.float32), sr)["source_profile"]
+    keys = ("integrated_lufs", "true_peak_db", "plr_db", "crest_db", "short_term_crest_db", "lra_lu", "stereo_width", "stereo_correlation")
+    return {k: (round(float(p[k]), 3) if p.get(k) is not None else None) for k in keys}
 
 
 def analyze_track(path: str | Path, sr: int = MASTER_SR) -> dict:

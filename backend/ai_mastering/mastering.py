@@ -17,11 +17,13 @@ from .audio_utils import (
     _ab_gain_match,
     _analysis_from_audio,
     _load_audio,
+    reference_dynamics,
     reference_spectrum_only,
 )
 from .band_levels import band_levels_db
 from .analysis.loudness import FastMeter
 from .evaluation.backoff import derive_corrective_plan, derive_transparent_plan
+from .evaluation.distortion import added_distortion_db
 from .evaluation.evaluate import MasterEvaluation, evaluate_master
 from .evaluation.verdict import MasterVerdict, build_verdict
 from .mastering_params import _apply_user_tweaks, compute_processing_params, legacy_params_from_plan, public_params
@@ -112,6 +114,7 @@ class Candidate:
     guardrail_deltas_db: dict
     planned_guardrail_deltas_db: dict
     verdict: MasterVerdict
+    distortion: dict
     actions: tuple = ()
 
 
@@ -222,7 +225,9 @@ def _build_candidate(label, premaster_audio, sr, plan, processing_params, profil
         planned_deltas_db=planned,
         user_deltas_db=user,
     )
-    verdict = build_verdict(evaluation, quality_control, guardrails, requested_target_lufs=requested_target_lufs, effective_target_lufs=effective_target)
+    distortion = added_distortion_db(reference.audio, audio, sr)
+    distortion["blamed_stage"] = "saturation" if plan.saturation.get("enabled") else "bus"
+    verdict = build_verdict(evaluation, quality_control, guardrails, requested_target_lufs=requested_target_lufs, effective_target_lufs=effective_target, distortion=distortion)
     return Candidate(
         label=label,
         plan=plan,
@@ -236,6 +241,7 @@ def _build_candidate(label, premaster_audio, sr, plan, processing_params, profil
         guardrail_deltas_db=deltas,
         planned_guardrail_deltas_db=planned,
         verdict=verdict,
+        distortion=distortion,
         actions=tuple(actions),
     )
 
@@ -260,6 +266,7 @@ def _candidate_summary(c: Candidate) -> dict:
         "integrated_lufs": round(float(c.analysis_after["integrated_lufs"]), 2),
         "target_lufs": float(c.plan.loudness["target_lufs"]),
         "collateral_score": c.evaluation.collateral_score,
+        "added_distortion_db": c.distortion.get("worst_db"),
         "actions": list(c.actions),
     }
 
@@ -313,15 +320,19 @@ def master_track(
     analysis_before = _analysis_from_audio(audio_stereo, sr)
 
     reference_relative_db = None
+    reference_dyn = None
     reference_info = {"used": False}
     if reference_track_path:
-        # Only the reference's spectral SHAPE is used, and only as context
-        # (it moves the acceptable tonal target part of the way) — its
-        # loudness/dynamics never leak into this render.
+        # The reference is CONTEXT, never a copy: its spectral shape moves
+        # the tonal target part of the way (bass shift capped), and its
+        # loudness / crest / width pull the genre's targets part of the way
+        # inside bounds (planning/target_model.py). Its transient character
+        # is not used: the limiter budget stays this source's own.
         reference_audio, reference_sr = _load_audio(reference_track_path, sr=MASTER_SR)
         ref = reference_spectrum_only(reference_audio, reference_sr)
         reference_relative_db = ref["relative_db"]
-        reference_info = {"used": True, "spectral_balance": ref["legacy_shares"], "relative_spectrum_db": ref["relative_db"]}
+        reference_dyn = reference_dynamics(reference_audio, reference_sr)
+        reference_info = {"used": True, "spectral_balance": ref["legacy_shares"], "relative_spectrum_db": ref["relative_db"], "dynamics": reference_dyn}
 
     processing_params = compute_processing_params(
         analysis_before,
@@ -334,11 +345,15 @@ def master_track(
         reference_relative_db=reference_relative_db,
         preset_intent=preset_intent,
         delivery=delivery,
+        reference_dynamics=reference_dyn,
     )
     processing_params = _apply_user_tweaks(processing_params, analysis_before, tweaks or {})
     plan = processing_params["_plan"]
     context = processing_params["_context"]
     profile = processing_params["_profile"]
+    if reference_info.get("used"):
+        reference_info["mode"] = "tonal_and_dynamics_context"
+        reference_info["context_changes"] = (context.reference_dynamics or {}).get("changes", {})
 
     section_info = _detect_song_sections(audio_stereo, sr)
     premaster_audio = audio_stereo
@@ -475,6 +490,7 @@ def master_track(
         "evaluation": ev,
         "initial_evaluation": initial.evaluation.to_dict() if renders > 1 else None,
         "verdict": final.verdict.to_dict(),
+        "added_distortion": final.distortion,
         "initial_verdict": initial.verdict.to_dict() if renders > 1 else None,
         "candidates": [_candidate_summary(c) for c in candidates],
         "delivered_candidate": final.label,

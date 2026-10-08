@@ -61,7 +61,11 @@ TOLERANCES = {
     "stereo_correlation": 0.03,
     "limiter_gr_p995_db": 0.5,
     "limiter_max_gr_db": 0.75,
+    "added_distortion_db": 1.0,
 }
+# Below this many tracks a genre's numbers are reported but not treated as
+# calibration evidence.
+MIN_TRACKS_PER_GENRE = 5
 # Categorical fields: any change is reported.
 EXACT = ("delivered_candidate", "renders", "initial_failures", "final_warnings")
 
@@ -96,6 +100,7 @@ def measure(result: dict) -> dict:
         "stereo_correlation": round(float(after.get("stereo_correlation", 1.0)), 3),
         "limiter_gr_p995_db": round(float(ev["limiter"]["gr_at_p995_peaks_db"]), 2),
         "limiter_max_gr_db": round(float(ev["limiter"]["max_gr_db"]), 2),
+        "added_distortion_db": round(float(diag["added_distortion"]["worst_db"]), 2),
         "delivered_candidate": diag["delivered_candidate"],
         "renders": int(diag["renders"]),
         "initial_failures": sorted(f"{f['source']}:{f['kind']}" for f in (diag["initial_verdict"] or diag["verdict"])["failures"]),
@@ -121,7 +126,7 @@ def run_corpus(corpus: Path, tier_override: str | None = None) -> dict:
                     style=meta.get("style", "modern"),
                     tier=tier_override or meta.get("tier", "standard"),
                 )
-                out[track.name] = measure(result)
+                out[track.name] = {"genre": meta.get("genre", "pop"), **measure(result)}
             except Exception as exc:  # a rejected master is a result, not a crash
                 out[track.name] = {"error": f"{type(exc).__name__}: {exc}"[:400]}
         print(f"{track.name}: {_one_line(out[track.name])}", flush=True)
@@ -176,21 +181,34 @@ def calibration(tracks: dict) -> dict:
         "hf_collateral_db": (lambda m: C.HF_COLLATERAL_TOLERANCE_DB - m["hf_collateral_db"], f"evaluation HF_COLLATERAL_TOLERANCE_DB={C.HF_COLLATERAL_TOLERANCE_DB}"),
         "plr_db": (lambda m: m["plr_db"] - 4.0, "QC plr fail < 4.0 dB"),
         "limiter_max_gr_db": (lambda m: 6.0 - m["limiter_max_gr_db"], "QC limiter_gain_reduction fail > 6.0 dB"),
+        "added_distortion_db": (lambda m: C.MAX_ADDED_DISTORTION_DB - m["added_distortion_db"], f"verdict MAX_ADDED_DISTORTION_DB={C.MAX_ADDED_DISTORTION_DB}"),
     }
     ok = [m for m in tracks.values() if "error" not in m]
-    out = {}
-    for name, (headroom, rule) in checks.items():
-        vals = np.array([headroom(m) for m in ok], dtype=float)
-        if not vals.size:
-            continue
-        out[name] = {
-            "rule": rule,
-            "headroom_p5": round(float(np.percentile(vals, 5)), 3),
-            "headroom_p50": round(float(np.percentile(vals, 50)), 3),
-            "headroom_min": round(float(vals.min()), 3),
-            "beyond_limit": int(np.sum(vals < 0)),
-            "tracks": int(vals.size),
-        }
+
+    def summarise(rows: list[dict]) -> dict:
+        res = {}
+        for name, (headroom, rule) in checks.items():
+            vals = np.array([headroom(m) for m in rows if m.get(name) is not None], dtype=float)
+            if not vals.size:
+                continue
+            res[name] = {
+                "rule": rule,
+                "headroom_p5": round(float(np.percentile(vals, 5)), 3),
+                "headroom_p50": round(float(np.percentile(vals, 50)), 3),
+                "headroom_min": round(float(vals.min()), 3),
+                "beyond_limit": int(np.sum(vals < 0)),
+                "tracks": int(vals.size),
+            }
+        return res
+
+    out = summarise(ok)
+    # Per genre: the evidence for genre-specific thresholds (a limit that
+    # every rock track sits on and every acoustic track clears by 6 dB is
+    # one limit too few). Small groups are reported but flagged.
+    by_genre = {}
+    for genre in sorted({m.get("genre", "pop") for m in ok}):
+        rows = [m for m in ok if m.get("genre", "pop") == genre]
+        by_genre[genre] = {"tracks": len(rows), "too_few_to_calibrate": len(rows) < MIN_TRACKS_PER_GENRE, "thresholds": summarise(rows)}
     cand: dict[str, int] = {}
     fails: dict[str, int] = {}
     for m in ok:
@@ -199,6 +217,7 @@ def calibration(tracks: dict) -> dict:
             fails[f] = fails.get(f, 0) + 1
     return {
         "thresholds": out,
+        "by_genre": by_genre,
         "delivered_candidates": cand,
         "initial_failure_kinds": dict(sorted(fails.items(), key=lambda kv: -kv[1])),
         "rejected_tracks": sorted(t for t, m in tracks.items() if "error" in m),
@@ -215,6 +234,11 @@ def render_markdown(snapshot: dict, drift: list[dict] | None) -> str:
     lines += ["## Threshold calibration (headroom before failing; negative = beyond)", "", "| metric | rule | min | p5 | p50 | beyond |", "|---|---|---|---|---|---|"]
     for name, c in cal["thresholds"].items():
         lines.append(f"| {name} | {c['rule']} | {c['headroom_min']} | {c['headroom_p5']} | {c['headroom_p50']} | {c['beyond_limit']}/{c['tracks']} |")
+    if cal.get("by_genre"):
+        lines += ["", "## Per-genre headroom (min / p50)", "", "| genre | tracks | " + " | ".join(cal["thresholds"]) + " |", "|---|---|" + "---|" * len(cal["thresholds"])]
+        for genre, g in cal["by_genre"].items():
+            cells = [f"{g['thresholds'][k]['headroom_min']} / {g['thresholds'][k]['headroom_p50']}" if k in g["thresholds"] else "—" for k in cal["thresholds"]]
+            lines.append(f"| {genre}{' (few)' if g['too_few_to_calibrate'] else ''} | {g['tracks']} | " + " | ".join(cells) + " |")
     if drift is not None:
         lines += ["", f"## Drift vs baseline: {len(drift)}", ""]
         lines += [f"- {d['track']} · {d['metric']}: {d.get('baseline')} -> {d.get('current')}" + (f" (Δ {d['delta']}, tol {d['tolerance']})" if "delta" in d else "") for d in drift] or ["none"]

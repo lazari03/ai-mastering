@@ -28,10 +28,13 @@ def test_snapshot_records_the_metrics_and_detects_drift(tmp_path):
     track = snap["tracks"]["bass_heavy"]
     for key in ("source_lufs", "master_lufs", "true_peak_dbtp", "plr_db", "short_term_crest_change_db", "lra_change_lu",
                 "transient_retention", "low_end_actual_db", "hf_actual_db", "tilt_drift_db_per_oct", "stereo_correlation",
-                "limiter_gr_p995_db", "delivered_candidate", "renders", "initial_failures"):
+                "limiter_gr_p995_db", "added_distortion_db", "delivered_candidate", "renders", "initial_failures", "genre"):
         assert key in track, key
     assert snap["calibration"]["thresholds"]["tilt_drift_db_per_oct"]["tracks"] == 2
-    assert "Threshold calibration" in (tmp_path / "r1" / "report.md").read_text()
+    assert snap["calibration"]["by_genre"]["pop"]["tracks"] == 2
+    assert snap["calibration"]["by_genre"]["pop"]["too_few_to_calibrate"]
+    report = (tmp_path / "r1" / "report.md").read_text()
+    assert "Threshold calibration" in report and "Per-genre headroom" in report
 
     # Same engine, same corpus: no drift.
     assert regression.compare(snap["tracks"], snap["tracks"]) == []
