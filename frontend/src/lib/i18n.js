@@ -34,8 +34,8 @@ const DICT = {
   "hero.title1": { en: "Master your music.", sq: "Masterizo muzikën tënde." },
   "hero.title2": { en: "Keep what makes it yours.", sq: "Ruaj atë që e bën tëndën." },
   "hero.body": {
-    en: "Professional automated mastering built on adaptive DSP. Auralith analyzes your mix before deciding what to change — and what to leave alone.",
-    sq: "Masterizim profesional i automatizuar, i ndërtuar mbi DSP adaptiv. Auralith analizon miksin tënd para se të vendosë çfarë të ndryshojë — dhe çfarë të lërë ashtu siç është.",
+    en: "Automated audio mastering built on adaptive DSP. Auralith analyzes your mix before deciding what to change — and what to leave alone.",
+    sq: "Masterizim i automatizuar i audios, i ndërtuar mbi DSP adaptiv. Auralith analizon miksin tënd para se të vendosë çfarë të ndryshojë — dhe çfarë të lërë ashtu siç është.",
   },
   "hero.ctaPrimary": { en: "Master a Track Free", sq: "Masterizo Falas" },
   "heroTry.title": { en: "Try it on your track", sq: "Provoje me këngën tënde" },
@@ -44,8 +44,8 @@ const DICT = {
   "heroTry.hint": { en: "Loudness, true peak & range in seconds", sq: "Zëri, kulmi i vërtetë dhe diapazoni në sekonda" },
   "heroTry.sampleFailed": { en: "Couldn't load the sample track", sq: "Shembulli nuk u ngarkua" },
   "heroTry.sampleAfter": {
-    en: "That's the raw mix. Auralith mastered this same track from {before} to {after} LUFS.",
-    sq: "Ky është miksi i papërpunuar. Auralith e masterizoi këtë këngë nga {before} në {after} LUFS.",
+    en: "That's the original audio. Auralith mastered this same track from {before} to {after} LUFS.",
+    sq: "Ky është audioja origjinale. Auralith e masterizoi këtë këngë nga {before} në {after} LUFS.",
   },
   "heroTry.sampleListen": { en: "Hear the before / after", sq: "Dëgjo para / pas" },
   "heroTry.sampleNext": {
@@ -57,7 +57,7 @@ const DICT = {
   "hero.pillar.analyze": { en: "Analyze", sq: "Analizo" },
   "hero.pillar.analyze.body": { en: "Measures loudness, tone, dynamics and stereo first.", sq: "Mat së pari zërin, tonin, dinamikën dhe stereon." },
   "hero.pillar.correct": { en: "Correct", sq: "Korrigjo" },
-  "hero.pillar.correct.body": { en: "Fixes only what the measurements justify.", sq: "Rregullon vetëm atë që justifikojnë matjet." },
+  "hero.pillar.correct.body": { en: "Applies targeted adjustments guided by the track's analysis.", sq: "Zbaton përshtatje të synuara, të udhëhequra nga analiza e këngës." },
   "hero.pillar.preserve": { en: "Preserve", sq: "Ruaj" },
   "hero.pillar.preserve.body": { en: "Leaves what already works alone.", sq: "E lë të paprekur atë që funksionon." },
   "hero.pillar.verify": { en: "Verify", sq: "Verifiko" },
@@ -82,7 +82,7 @@ const DICT = {
   "listens.analyze.title": { en: "Analyze", sq: "Analizo" },
   "listens.analyze.body": { en: "Loudness, tonal balance, dynamics, transients and stereo are measured before a single sample changes.", sq: "Zëri, balanca tonale, dinamika, transientet dhe stereo maten para se të ndryshojë ndonjë mostër." },
   "listens.master.title": { en: "Master", sq: "Masterizo" },
-  "listens.master.body": { en: "Only confident problems get a correction, sized to what your mix needs. Genre and style set the destination, not a fixed chain.", sq: "Vetëm problemet e sigurta korrigjohen, sa i nevojitet miksit. Zhanri dhe stili caktojnë destinacionin, jo një zinxhir fiks." },
+  "listens.master.body": { en: "Measured characteristics guide adjustments, with safeguards against excessive processing. Genre and style set the destination, not a fixed chain.", sq: "Karakteristikat e matura udhëheqin përshtatjet, me masa mbrojtëse kundër përpunimit të tepruar. Zhanri dhe stili caktojnë destinacionin, jo një zinxhir fiks." },
   "listens.verify.title": { en: "Verify", sq: "Verifiko" },
   "listens.verify.body": { en: "The result is re-measured. If a move overshot, a gentler version is rendered instead.", sq: "Rezultati rimatet. Nëse një lëvizje e tejkaloi, krijohet një version më i butë." },
   "listens.note": { en: "Numbers are from the full-resolution master of the demo track.", sq: "Numrat janë nga masteri me rezolucion të plotë i këngës demo." },
@@ -146,8 +146,8 @@ const DICT = {
   "features.f5.eyebrow": { en: "Delivery", sq: "Dërgesa" },
   "features.f5.title": { en: "Codec Preview", sq: "Parapamje Kodeku" },
   "features.f5.body": {
-    en: "Hear what actually reaches a listener after MP3, AAC, or Opus compression — a real encode/decode round-trip, not an estimate.",
-    sq: "Dëgjo çfarë arrin realisht te dëgjuesi pas kompresimit MP3, AAC, ose Opus — një cikël real kodimi/dekodimi, jo një vlerësim.",
+    en: "Preview how MP3, AAC, and Opus encoding may affect your master using an encode/decode round-trip.",
+    sq: "Dëgjo si mund të ndikojë kodimi MP3, AAC dhe Opus te masteri yt, përmes një cikli kodimi dhe dekodimi.",
   },
   "features.f6.eyebrow": { en: "Separation", sq: "Ndarje" },
   "features.f6.title": { en: "Stem-Aware Mastering", sq: "Masterizim me Ndarje Instrumentesh" },
@@ -317,7 +317,7 @@ const DICT = {
   "gallery.img3.caption": { en: "Built for people who mix for a living", sq: "Ndërtuar për njerëz që miksojnë për jetesë" },
 
   "pricing.eyebrow": { en: "Pricing", sq: "Çmimet" },
-  "pricing.title": { en: "Four plans. No confusing add-ons.", sq: "Katër plane. Pa shtesa konfuze." },
+  "pricing.title": { en: "Four plans, with optional pay-per-use services.", sq: "Katër plane, me shërbime opsionale me pagesë sipas përdorimit." },
   "pricing.subtitle": {
     en: "Start free with 3 full masters, no card required — a one-time trial, not a monthly allowance. Upgrade only when you actually need more.",
     sq: "Fillo falas me 3 masterë të plotë, pa kartë — një provë një-herëshe, jo një kuotë mujore. Përmirëso vetëm kur të nevojitet më shumë.",
