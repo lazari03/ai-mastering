@@ -33,6 +33,15 @@ COPY . .
 ENV TORCH_HOME=/app/.cache/torch \
     XDG_CACHE_HOME=/app/.cache
 
+# Uploads and masters MUST live where docker-compose.yml mounts the
+# persistent volumes (/app/uploads, /app/outputs). Without these,
+# app/core/config.py's default resolves to the PARENT of /app — i.e.
+# /uploads and /outputs inside the container's throwaway filesystem — and
+# every deploy (which recreates this container) deleted every master and
+# upload, leaving job records whose downloads/previews 404 ("File not found").
+ENV MASTERING_UPLOAD_DIR=/app/uploads \
+    MASTERING_OUTPUT_DIR=/app/outputs
+
 EXPOSE 8001
 
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
