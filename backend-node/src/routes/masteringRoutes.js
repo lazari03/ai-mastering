@@ -717,6 +717,15 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
       code: "EMAIL_NOT_VERIFIED",
     });
   }
+  // Anonymous sessions exist for the public try-before-signup tools. A
+  // final master spends the 3-master Free trial, and anonymous uids are
+  // free to mint by script — every one would get a fresh trial.
+  if (!preview && req.user?.isAnonymous) {
+    return res.status(403).json({
+      detail: "Create a free account to master a full track — previews stay free without one.",
+      code: "ACCOUNT_REQUIRED",
+    });
+  }
 
   // Request validation happens BEFORE any quota/credit is reserved: a
   // request rejected here must never cost the user a master. (It used to

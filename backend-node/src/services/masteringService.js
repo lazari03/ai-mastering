@@ -95,7 +95,10 @@ async function resolveConfig(input, uid) {
       resolved.category = preset.category;
       resolved.flavour = preset.flavour || null;
     }
-    resolved.use_stem_separation = Boolean(preset.use_stem_separation);
+    // Stem separation is NOT taken from the preset: it is a metered, paid
+    // feature, gated and billed in /master from the request's own flag. A
+    // preset (imported JSON included) setting it here turned stems on after
+    // that gate — free stems on any plan, previews included.
     resolved.output_format = preset.output_format === "mp3" ? "mp3" : "wav";
     if (preset.processing) {
       resolved.fullPreset = {
