@@ -352,7 +352,7 @@ async function resolveShare(req, res) {
 
 function sharedFilename(job, jobId) {
   const ext = job.output_format || "wav";
-  const base = (job.original_filename || `master_${jobId}`).replace(/\.[^./\\]+$/, "").replace(/[^\w\s.-]+/g, "_").trim();
+  const base = (job.original_filename || `master_${jobId}`).replace(/\.[^./\\]+$/, "").replace(/[^\w .-]+/g, "_").trim(); // literal space, not \s: U+3000 / newlines are invalid in a header
   return `${base || "master"}_mastered.${ext}`;
 }
 
@@ -527,6 +527,11 @@ router.post("/billing/change-plan", async (req, res) => {
   const productKey = CHECKOUT_ITEM_TO_PRODUCT_KEY[req.body?.item];
   if (!productKey) {
     return res.status(400).json({ detail: `Unknown item "${req.body?.item}"` });
+  }
+  // Only subscription plans can be switched to; one-time items (single
+  // master, stem separation) are bought through /billing/checkout.
+  if (!productKey.startsWith("plan")) {
+    return res.status(400).json({ detail: `"${req.body?.item}" is a one-time purchase, not a plan — buy it from Billing instead.` });
   }
   try {
     const result = await changeSubscriptionPlan(req.user.uid, productKey);

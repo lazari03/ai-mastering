@@ -1447,7 +1447,7 @@ export function LanguageProvider({ children }) {
   // replace rather than a real ICU/format library.
   const t = useCallback(
     (key, params) => {
-      const raw = DICT[key]?.[lang] || DICT[key]?.en || key;
+      const raw = DICT[key]?.[lang] ?? DICT[key]?.en ?? key; // ?? not ||: an intentionally empty translation stays empty instead of falling back to English
       if (!params) return raw;
       return Object.entries(params).reduce((acc, [name, value]) => acc.replaceAll(`{${name}}`, value), raw);
     },

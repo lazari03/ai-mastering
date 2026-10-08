@@ -114,7 +114,9 @@ function parseImportedPreset(raw, artistName) {
       style,
       tags,
       tweaks: normalizeTweaks(raw.tweaks),
-      use_stem_separation: Boolean(raw.use_stem_separation),
+      // Never from an imported file: stems are a paid, metered feature
+      // gated in /master from the request (see masteringService.js).
+      use_stem_separation: false,
       output_format: outputFormat,
       // Preserved verbatim — this is what makes an imported "full" preset a
       // real professional mix instead of an approximation via genre/tags.
@@ -177,9 +179,20 @@ export async function importCustomPreset(jsonText, artistName, uid) {
     throw new Error("Preset file is not valid JSON");
   }
 
-  const { slug, artist } = parseImportedPreset(raw, artistName);
+  const parsed = parseImportedPreset(raw, artistName);
+  const { artist } = parsed;
+  let { slug } = parsed;
+  // Same rules as createUserPreset: never silently overwrite an existing
+  // preset (or shadow a built-in), and respect the per-user limit — import
+  // skipped both, allowing unlimited presets of up to 1 MB each.
+  const col = artistsCollection(uid);
+  const existing = await col.doc(slug).get();
+  const shadowsBuiltIn = (await listBuiltInPresets()).some((p) => p.name === slug);
+  if (existing.exists || shadowsBuiltIn) slug = `${slug}_${Date.now().toString(36).slice(-4)}`;
+  const count = (await listCustomPresets(uid)).length;
+  if (count >= MAX_USER_PRESETS) throw new Error(`You can keep up to ${MAX_USER_PRESETS} artist profiles — delete one first.`);
   const record = { ...artist, created_at: new Date() };
-  await artistsCollection(uid).doc(slug).set(record);
+  await col.doc(slug).set(record);
   invalidateCustomPresets(uid);
 
   return toPresetShape(slug, record);

@@ -38,6 +38,15 @@ router.post("/webhooks/polar", express.raw({ type: "application/json" }), async 
       await logWebhookFailure("verification_failed", error);
       return res.status(403).send("");
     }
+    // validateEvent verifies the signature BEFORE parsing the type, so this
+    // is an authentic event the installed SDK doesn't model (e.g.
+    // subscription.paused / .resumed). Acknowledge it — a 400 made Polar
+    // retry it forever and filled webhookFailures. reconcileAllSubscriptions
+    // still picks up any state change it carried.
+    if (error?.name === "SDKValidationError" && String(error.message).includes("Unknown event type")) {
+      console.warn("Polar webhook: unhandled event type acknowledged:", error.message);
+      return res.status(202).send("");
+    }
     console.error("Polar webhook verification threw unexpectedly:", error);
     await logWebhookFailure("verification_error", error);
     return res.status(400).send("");

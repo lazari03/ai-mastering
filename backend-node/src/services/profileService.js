@@ -57,7 +57,10 @@ export async function saveProfile(uid, profile, email, signInProvider = null) {
   // stamp createdAt (read by the Telegram bot's /stats signup count, see
   // telegramService.js) and fire the admin notification, both exactly once
   // per account.
-  const isNewSignup = profile.termsAcceptedAt !== undefined;
+  // ...and only if the account has no createdAt yet: anyone could repeat the
+  // call with termsAcceptedAt and re-fire the alerts, the welcome email and
+  // the sign_up event (and reset createdAt) as often as they liked.
+  const isNewSignup = profile.termsAcceptedAt !== undefined && !(await userDoc(uid).get()).data()?.createdAt;
   if (isNewSignup) {
     record.createdAt = new Date();
   }
