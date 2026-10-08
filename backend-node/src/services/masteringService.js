@@ -457,5 +457,11 @@ export async function processMastering({ file, referenceFile = null, fields, uid
       engine: result.processing_applied?.engine || "adaptive_python_dsp",
     },
     target_profile_used: result.target_profile_used,
+    // Surfaced at the top level for the /master route's billing decision
+    // ("only charge for stems if separation actually ran"). It lives in
+    // processing_applied on the Python side; the route read a top-level
+    // field that was never set, so stems were never billed and every stem
+    // job was told "you have not been charged".
+    stem_separation: result.processing_applied?.stem_separation ?? null,
   };
 }

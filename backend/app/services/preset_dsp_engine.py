@@ -12,7 +12,7 @@ import copy
 
 from ai_mastering.ab_analysis import build_ab_report
 from ai_mastering.analysis.dynamics import peak_percentile_db
-from ai_mastering.audio_utils import MASTER_SR, _ab_gain_match, _analysis_from_audio, _db, _load_audio, _true_peak_db
+from ai_mastering.audio_utils import MASTER_SR, _ab_gain_match, _analysis_from_audio, _db, _load_audio, _true_peak_db, resolve_master_sr
 from ai_mastering.bus_processing import _limiter_reduction_db, _soft_clip, _true_peak_limiter
 from ai_mastering.dsp_filters import _dynamic_eq_narrowband, _lr4_highpass, _oversampled_distortion
 from ai_mastering.planning import config as C
@@ -78,9 +78,10 @@ def _apply_highpass(stereo: np.ndarray, sr: int, cfg: dict) -> np.ndarray:
         return stereo
     freq = _safe_freq(float(cfg.get("frequency_hz", 20.0)), sr)
     slope = float(cfg.get("slope_db_oct", 12.0))
-    # Each pedalboard HighpassFilter stage is a 2nd-order (12dB/oct) section;
-    # cascade enough of them to approximate the requested slope.
-    stages = max(1, round(slope / 12.0))
+    # pedalboard's HighpassFilter is FIRST order (6 dB/oct — measured 5.9).
+    # This used to assume 12 dB/oct per stage, so every preset got half
+    # the slope it asked for (24 -> 12 dB/oct).
+    stages = max(1, round(slope / 6.0))
     board = Pedalboard([HighpassFilter(cutoff_frequency_hz=freq) for _ in range(stages)])
     return board(stereo.T, sr).T
 
@@ -408,7 +409,13 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
     professional preset JSON against real audio. `preset` is one preset
     object — same shape as an entry in mixing_presets.json."""
     processing = preset.get("processing") or {}
-    stereo, sr = _load_audio(input_path, sr=MASTER_SR)
+    # Native rate (44.1/48/88.2/96 kHz), same rule as the adaptive engine —
+    # this path used to resample every 48 kHz source to 44.1 kHz.
+    try:
+        probe_sr = int(sf.info(str(input_path)).samplerate)
+    except Exception:
+        probe_sr = MASTER_SR
+    stereo, sr = _load_audio(input_path, sr=resolve_master_sr(probe_sr))
 
     # Same input-validation/DC-offset-correction stage the adaptive engine
     # runs (ai_mastering/quality_control.py) — one engineering-integrity
@@ -536,7 +543,15 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
         # dithering at all, no preset-level toggle needed for this.
         stereo = _dither_for_bit_depth(stereo, 16, noise_shaping=True)
 
-    sf.write(str(output_wav_path), stereo, sr, subtype=subtype)
+    if subtype == "PCM_16":
+        # Write the integers themselves. libsndfile converts float to 16-bit
+        # with a 32767 scale, while the dither quantised to a 1/32768 grid:
+        # above half scale the dithered values were re-rounded (undithered)
+        # by up to 1 LSB on write. Integer data is written verbatim.
+        pcm = np.clip(np.round(np.asarray(stereo, dtype=np.float64) * 32768.0), -32768, 32767).astype(np.int16)
+        sf.write(str(output_wav_path), pcm, sr, subtype="PCM_16")
+    else:
+        sf.write(str(output_wav_path), stereo, sr, subtype=subtype)
 
     ab_analysis = build_ab_report(
         analysis_before=analysis_before,

@@ -92,3 +92,13 @@ def test_requested_vocal_enhancement_failure_is_reported_to_the_user(tmp_path, f
     assert result["processing_applied"]["stem_separation"]["status"] == "unavailable"
     assert result["processing_applied"]["delivery"]["vocal_enhancement"] == "failed"
     assert result["source_warnings"][0].startswith("Vocal enhancement was requested but could not run")
+
+
+def test_explicit_stem_request_runs_without_any_vocal_tag(tmp_path, fake_demucs):
+    """The UI sends use_stem_separation=true with no 'better_vocals' tag.
+    That explicit (paid) request alone must run separation."""
+    src, out = tmp_path / "in.wav", tmp_path / "out.wav"
+    sf.write(str(src), make_mix(seconds=10.0, seed=9), SR44)
+    result = master_track(str(src), str(out), "pop", [], enable_stem_separation=True)
+    assert result["processing_applied"]["stem_separation"]["status"] == "applied"
+    assert result["processing_applied"]["delivery"]["vocal_enhancement"] in ("applied", "unchanged")

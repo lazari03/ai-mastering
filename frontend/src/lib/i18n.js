@@ -1199,6 +1199,22 @@ const DICT = {
     en: "Levels matched — both sides play at the same loudness, so you're comparing tone and dynamics rather than volume. The master is {db} dB louder in the downloaded file.",
     sq: "Nivelet të barazuara — të dyja anët luajnë me të njëjtin volum, kështu që krahason tonin dhe dinamikën, jo volumin. Masteri është {db} dB më i lartë në skedarin e shkarkuar.",
   },
+  "result.levelMatchedQuieter": {
+    en: "Levels matched — both sides play at the same loudness, so you're comparing tone and dynamics rather than volume. The master is {db} dB quieter in the downloaded file.",
+    sq: "Nivelet të barazuara — të dyja anët luajnë me të njëjtin volum, kështu që krahason tonin dhe dinamikën, jo volumin. Masteri është {db} dB më i qetë në skedarin e shkarkuar.",
+  },
+  "result.realLevels": {
+    en: "Playing at real levels — the master is {db} dB louder, exactly as you'll download it. Match levels to judge tone without volume influencing you.",
+    sq: "Po luhet në nivelet reale — masteri është {db} dB më i lartë, saktësisht si do ta shkarkosh. Barazo nivelet për ta gjykuar tonin pa ndikimin e volumit.",
+  },
+  "result.realLevelsQuieter": {
+    en: "Playing at real levels — the master is {db} dB quieter, exactly as you'll download it. Match levels to judge tone without volume influencing you.",
+    sq: "Po luhet në nivelet reale — masteri është {db} dB më i qetë, saktësisht si do ta shkarkosh. Barazo nivelet për ta gjykuar tonin pa ndikimin e volumit.",
+  },
+  "result.fileGone": {
+    en: "This master's audio is no longer on the server. Master the track again to listen or download.",
+    sq: "Audioja e këtij masteri nuk ndodhet më në server. Masterizoje këngën përsëri për ta dëgjuar ose shkarkuar.",
+  },
   "thankYou.backToApp": { en: "Back to the app", sq: "Kthehu te aplikacioni" },
 
   "shared.missingToken": { en: "This link is missing its access token.", sq: "Kësaj lidhjeje i mungon tokeni i qasjes." },

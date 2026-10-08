@@ -422,3 +422,19 @@ def test_peak_overshoot_is_trimmed_measured_and_re_rendered_not_failed(source, t
     assert _true_peak_db(written) <= ceiling + C.TRUE_PEAK_TOLERANCE_DB
     assert _true_peak_db(written) == pytest.approx(result["analysis_after"]["true_peak_db"], abs=0.1)
     assert float(pyln.Meter(sr).integrated_loudness(written)) == pytest.approx(result["analysis_after"]["integrated_lufs"], abs=0.1)
+
+
+def test_a_quieter_master_explains_why(tmp_path):
+    """A hot, clipped, already-mastered upload (like a +2.9 dBTP MP3) comes
+    back quieter for peak safety — the result must say so and why."""
+    x = make_mix(seconds=12.0, seed=12, drum_level=1.2, lufs=-9.0)
+    x = np.clip(x * 10 ** (4 / 20), -1.0, 1.0) * 10 ** (2.5 / 20)  # clipped, then overs above 0 dBFS
+    src = tmp_path / "hot.wav"
+    sf.write(str(src), x.astype(np.float32), SR, subtype="FLOAT")
+    result = master_track(str(src), str(tmp_path / "out.wav"), "rock", [])
+    if result["analysis_after"]["integrated_lufs"] < result["analysis_before"]["integrated_lufs"] - 1.0:
+        note = result["source_warnings"][0]
+        assert note.startswith("This master is") and "quieter than your upload" in note
+        assert "dBTP" in note
+    else:  # pragma: no cover — documents the scenario if the plan changes
+        pytest.skip("source was not turned down; nothing to explain")

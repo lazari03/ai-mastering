@@ -215,14 +215,44 @@ def _oversample4(audio: np.ndarray, factor: int = _TP_OVERSAMPLE) -> np.ndarray:
     return resample_poly(x, int(factor), 1, axis=0).astype(np.float32)
 
 
+# Oversampling a whole song at once held a full copy at the oversampled
+# rate: a 16x true-peak check on a 4-minute 48 kHz track took +2.5 GB of
+# RAM (+7.6 GB for 6 minutes at 96 kHz), several times per render. A peak
+# is local and resample_poly's filter only reaches ~10 input samples per
+# side (half-length 10 x factor at the oversampled rate), so the signal is
+# processed in chunks with _TP_CHUNK_PAD samples of real context on each
+# side: identical results, memory bounded by the chunk.
+_TP_CHUNK = 1 << 18
+_TP_CHUNK_PAD = 512
+
+
+def _oversampled_peak_per_sample(audio: np.ndarray, factor: int = _TP_OVERSAMPLE) -> np.ndarray:
+    """Per input sample, the largest |value| over its `factor` oversampled
+    sub-samples and all channels — what a true-peak meter or detector needs,
+    without materialising the whole oversampled signal."""
+    x = np.asarray(audio, dtype=np.float32)
+    if x.ndim == 1:
+        x = x[:, np.newaxis]
+    n = x.shape[0]
+    out = np.empty(n, dtype=np.float32)
+    for start in range(0, n, _TP_CHUNK):
+        stop = min(n, start + _TP_CHUNK)
+        lo, hi = max(0, start - _TP_CHUNK_PAD), min(n, stop + _TP_CHUNK_PAD)
+        up = resample_poly(x[lo:hi], int(factor), 1, axis=0)
+        a = (start - lo) * factor
+        seg = np.abs(up[a : a + (stop - start) * factor]).max(axis=1)
+        out[start:stop] = seg.reshape(stop - start, factor).max(axis=1)
+    return out
+
+
 def _true_peak_db(audio_stereo: np.ndarray, oversample_factor: int = _TP_OVERSAMPLE) -> float:
     """True peak in dBTP. Accurate to ~0.07 dB of a 32x reference across
     the whole band, including above 15 kHz where the previous
-    implementation lost up to 3.8 dB."""
+    implementation lost up to 3.8 dB. Chunked (see _TP_CHUNK)."""
     x = np.asarray(audio_stereo, dtype=np.float32)
     if x.size == 0:
         return _db(0.0)
-    return _db(float(np.max(np.abs(_oversample4(x, oversample_factor)))))
+    return _db(float(np.max(_oversampled_peak_per_sample(x, oversample_factor))))
 
 
 def _short_term_lufs_series(audio_stereo: np.ndarray, sr: int) -> list[float]:

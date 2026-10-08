@@ -10,20 +10,17 @@ import numpy as np
 from pedalboard import Compressor, HighShelfFilter, PeakFilter, Pedalboard
 
 from .audio_utils import EPS, MASTER_SR, _db, _load_audio, _rms
-from .mastering_params import _sanitize_tweaks
 
 DEMUCS_CACHE_DIR = Path.home() / ".cache" / "demucs"
 DEMUCS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _is_stem_separation_requested(tags: list[str], tweaks: dict | None, analysis: dict, enable_stem_separation: bool = False) -> bool:
-    if not enable_stem_separation:
-        return False
-    sanitized = _sanitize_tweaks(tweaks)
-    return (
-        "better_vocals" in tags
-        or abs(sanitized.get("presence", 0.0)) >= 0.2
-    )
+    """The user's explicit stem-separation request (a paid, metered
+    feature) is what decides. It used to ALSO require a "better_vocals"
+    tag or a presence tweak, so turning the option on in the UI — which
+    sends neither — silently skipped separation."""
+    return bool(enable_stem_separation)
 
 
 def _fit_length(x: np.ndarray, n: int) -> np.ndarray:

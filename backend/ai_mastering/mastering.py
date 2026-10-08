@@ -604,6 +604,27 @@ def master_track(
             f"requested {final.verdict.loudness['requested_target_lufs']:.1f} LUFS, to stay inside this mix's dynamics budget."
         )
 
+    quieter_by = float(analysis_before["integrated_lufs"]) - float(analysis_after["integrated_lufs"])
+    if quieter_by > 1.0:
+        # A loud, already-mastered upload often comes back QUIETER. That is
+        # the engine choosing peak safety over level, and it must say why
+        # instead of leaving the user to assume the master is worse.
+        reasons = []
+        src_tp = float(analysis_before.get("true_peak_db", -99.0))
+        ceiling = float(plan.limiter["ceiling_dbtp"])
+        if src_tp > ceiling:
+            reasons.append(f"your upload peaks at {src_tp:+.1f} dBTP and delivery needs {ceiling:.0f} dBTP or lower")
+        if (profile.clipping or {}).get("detected"):
+            reasons.append("it already contains clipped samples, so it was not limited harder (that would add distortion)")
+        if float(analysis_before["integrated_lufs"]) > float(plan.loudness["acceptable_max_lufs"]):
+            reasons.append(f"it is louder than this genre/delivery range (up to {plan.loudness['acceptable_max_lufs']:.1f} LUFS)")
+        source_warnings.insert(
+            0,
+            f"This master is {quieter_by:.1f} dB quieter than your upload"
+            + (": " + "; ".join(reasons) + "." if reasons else ", to stay inside safe peak and dynamics limits.")
+            + " Use Match levels to compare tone fairly.",
+        )
+
     ab_analysis = build_ab_report(
         analysis_before=analysis_before,
         analysis_after=analysis_after,
