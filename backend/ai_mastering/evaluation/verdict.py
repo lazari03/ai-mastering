@@ -61,7 +61,13 @@ CORRECTABLE = {
     "low_end_loss", "hf_growth", "high_frequency_boost", "band_collateral", "excessive_band_change", "tilt_drift",
     "limiter_over_budget", "crest_collapse", "lra_collapse", "limiter_gain_reduction", "dynamics_preservation", "plr",
     "transient_loss", "unsafe_correlation", "loudness_target_missed", "added_distortion",
+    # A true-peak overshoot or full-scale samples on a RENDER (the source
+    # can't cause them: the limiter sets the peak) mean the bus was driven
+    # too hard — less drive fixes it, so it gets a re-render, not a failed job.
+    "true_peak_over_ceiling", "true_peak", "clipping",
 }
+# Domains whose failures are relieved by the clipper -> limiter -> ... ladder.
+RELIEF_DOMAINS = ("dynamics", "transients", "distortion", "true_peak")
 
 
 @dataclass
@@ -116,6 +122,8 @@ def _relief_for(kind: str, measured, limit) -> float:
         return C.RECOVERY_NOMINAL_RELIEF_DB
     if kind in ("limiter_over_budget", "crest_collapse", "limiter_gain_reduction", "dynamics_preservation"):
         return max(m - lim, 0.0) + C.RECOVERY_RELIEF_MARGIN_DB
+    if kind in ("true_peak_over_ceiling", "true_peak"):
+        return max(m - lim, 0.0) + C.RECOVERY_RELIEF_MARGIN_DB
     if kind == "plr":
         return max(lim - m, 0.0) + C.RECOVERY_RELIEF_MARGIN_DB
     return C.RECOVERY_NOMINAL_RELIEF_DB
@@ -141,7 +149,7 @@ def build_verdict(evaluation, quality_control: dict, guardrails, requested_targe
             blamed_stage=f.get("blamed_stage"),
             detail=f.get("detail", ""),
         )
-        if issue.domain in ("dynamics", "transients"):
+        if issue.domain in RELIEF_DOMAINS or kind == "clipping":
             issue.relief_db = _relief_for(kind, issue.measured, issue.limit)
         blocking = kind in ("clipping", "true_peak_over_ceiling") or f["severity"] >= C.BACKOFF_MIN_SEVERITY
         (failures if blocking else warnings).append(issue)
@@ -156,10 +164,10 @@ def build_verdict(evaluation, quality_control: dict, guardrails, requested_targe
             domain=_DOMAIN.get(kind, "integrity"),
             measured=c.get("value"),
             limit=_QC_FAIL_LIMITS.get(kind),
-            blamed_stage="bus" if kind in _QC_FAIL_LIMITS else None,
+            blamed_stage="bus" if kind in _QC_FAIL_LIMITS or kind in ("true_peak", "clipping") else None,
             detail=c["message"],
         )
-        if issue.domain in ("dynamics", "transients"):
+        if issue.domain in RELIEF_DOMAINS or kind == "clipping":
             issue.relief_db = _relief_for(kind, issue.measured, issue.limit)
         (failures if c["status"] == "fail" else warnings).append(issue)
 
@@ -174,7 +182,7 @@ def build_verdict(evaluation, quality_control: dict, guardrails, requested_targe
             detail=g.detail,
             basis=g.basis,
         )
-        if issue.domain in ("dynamics", "transients"):
+        if issue.domain in RELIEF_DOMAINS:
             issue.relief_db = _relief_for(g.name, issue.measured, issue.limit)
         failures.append(issue)
 

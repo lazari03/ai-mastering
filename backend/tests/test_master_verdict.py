@@ -390,3 +390,35 @@ def test_transparent_fallback_is_surfaced_not_buried(source, tmp_path, monkeypat
     assert delivery["renders"] == C.MAX_CANDIDATE_RENDERS
     assert "guardrail:tilt_drift" in delivery["initial_failures"]
     assert result["source_warnings"][0].startswith("Minimal-processing master")
+
+
+def test_peak_overshoot_is_trimmed_measured_and_re_rendered_not_failed(source, tmp_path, monkeypatch):
+    """A render whose bus overshoots (simulated: +4 dB after the limiter on
+    the first render only) is sample-peak trimmed, the TRIMMED audio is what
+    the verdict measures, the true-peak failure is relieved by a corrective
+    render, and the written file matches what the verdict measured."""
+    from ai_mastering.audio_utils import _true_peak_db
+    import pyloudnorm as pyln
+
+    real = mastering.render_plan
+    calls = {"n": 0}
+
+    def overshoot_once(*a, **k):
+        calls["n"] += 1
+        out = real(*a, **k)
+        if calls["n"] == 1:
+            out["audio"] = (out["audio"] * 10 ** (4.0 / 20.0)).astype(np.float32)
+        return out
+
+    monkeypatch.setattr(mastering, "render_plan", overshoot_once)
+    out = tmp_path / "out.wav"
+    result = master_track(str(source), str(out), "pop", [])
+    diag = result["mastering_diagnostics"]
+    first = diag["candidates"][0]
+    assert any(f.endswith("true_peak") or f.endswith("true_peak_over_ceiling") for f in first["failures"]), first
+    assert diag["delivered_candidate"].startswith("corrective")
+    written, sr = sf.read(str(out), dtype="float32", always_2d=True)
+    ceiling = result["target_profile_used"]["true_peak_ceiling_dbtp"]
+    assert _true_peak_db(written) <= ceiling + C.TRUE_PEAK_TOLERANCE_DB
+    assert _true_peak_db(written) == pytest.approx(result["analysis_after"]["true_peak_db"], abs=0.1)
+    assert float(pyln.Meter(sr).integrated_loudness(written)) == pytest.approx(result["analysis_after"]["integrated_lufs"], abs=0.1)

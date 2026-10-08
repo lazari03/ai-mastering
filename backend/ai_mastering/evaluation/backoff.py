@@ -262,6 +262,11 @@ def derive_corrective_plan(plan: MasteringPlan, verdict, evaluation) -> tuple[Ma
             relief_why.append(f"{issue.kind}: {issue.detail}")
             if issue.blamed_stage in ("multiband_compression", "glue_compression"):
                 relief_first.append("compression")
+        elif issue.domain == "true_peak" or issue.kind == "clipping":
+            # The render's peaks overshot the ceiling: back the bus off by
+            # the measured overshoot (clipper share, then limiter drive).
+            relief = max(relief, float(issue.relief_db))
+            relief_why.append(f"{issue.kind}: {issue.detail}")
         elif issue.domain == "distortion":
             # Nonlinear stages first (they make harmonics by design), then
             # the limiter's drive; loudness only for what's still missing.
@@ -311,7 +316,7 @@ def derive_transparent_plan(plan: MasteringPlan, verdict=None, evaluation=None) 
     new.stereo["side_high_shelf_db"] = 0.0
     new.stereo["enabled"] = bool(new.stereo.get("lf_mono", {}).get("enabled") or abs(float(new.stereo.get("user_side_gain_db", 0.0))) > 1e-3)
     if verdict is not None and evaluation is not None:
-        relief = max((float(f.relief_db) for f in verdict.failures if f.domain in ("dynamics", "transients", "distortion")), default=0.0)
+        relief = max((float(f.relief_db) for f in verdict.failures if f.domain in ("dynamics", "transients", "distortion", "true_peak") or f.kind == "clipping"), default=0.0)
         if relief > 0.0:
             gr = float(getattr(evaluation, "limiter", {}).get("gr_at_p995_peaks_db", new.limiter["budget_db"]))
             remaining = _relief_ladder(new, relief, gr, (), actions, "transparent fallback")

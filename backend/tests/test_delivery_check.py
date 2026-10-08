@@ -24,6 +24,7 @@ def test_clean_wav_passes_and_is_reported(tmp_path):
     sf.write(str(wav), _at_peak(make_mix(seconds=6.0, seed=1), -1.2), SR, subtype="PCM_24")
     report = deliver_and_verify(wav, wav, "wav")
     assert report["passed"] and report["clipped_samples"] == 0 and report["true_peak_dbtp"] <= -1.0
+    assert report["integrated_lufs"] is not None
 
 
 def test_clipped_wav_is_refused_and_removed(tmp_path):
@@ -48,3 +49,10 @@ def test_hot_mp3_is_trimmed_until_the_decoded_file_is_safe(tmp_path):
     assert report["true_peak_dbtp"] <= decoded_limit and report["clipped_samples"] == 0
     assert report["gain_trim_db"] > 0 and report["encodes"] >= 2
     assert mp3.exists()
+    # The MP3's own loudness is reported, and it is quieter than the WAV
+    # by about the trim the encoder overshoot forced.
+    import pyloudnorm as pyln
+
+    wav_audio, _ = sf.read(str(wav), dtype="float32", always_2d=True)
+    wav_lufs = float(pyln.Meter(SR).integrated_loudness(wav_audio))
+    assert report["integrated_lufs"] == pytest.approx(wav_lufs - report["gain_trim_db"], abs=0.3)
