@@ -23,7 +23,7 @@ from ..analysis.dynamics import peak_percentile_db
 from ..analysis.loudness import FastMeter
 from ..analysis.spectral import analyze_spectrum
 from ..bus_processing import _bus_process, _bus_process_pro
-from ..dsp_filters import _bandpass, _complementary_split, _deess, _envelope_db, _lr4_lowpass
+from ..dsp_filters import _active_percentile_db, _bandpass, _complementary_split, _deess, _envelope_db, _lr4_lowpass
 from ..planning import config as C
 from ..planning.plan import MasteringPlan
 from .eq import apply_eq, apply_eq_mono
@@ -132,7 +132,7 @@ def render_plan(audio: np.ndarray, sr: int, plan: MasteringPlan, measure_stages:
             n_mid = _bandpass(mid, sr, d.frequency_hz, d.q)
             n_side = _bandpass(side, sr, d.frequency_hz, d.q)
             env = _envelope_db(n_mid, sr, d.release_ms)
-            thr = float(np.percentile(env, d.threshold_percentile))
+            thr = _active_percentile_db(env, d.threshold_percentile)
             red = np.clip(env - thr, 0.0, d.max_reduction_db)
             gain = 10.0 ** (-red / 20.0)
             mid = (mid - n_mid + n_mid * gain).astype(np.float32)

@@ -154,6 +154,9 @@ def analyze_spectrum(audio_stereo: np.ndarray, sr: int) -> dict:
 
     mid_band = np.zeros((len(bands), n_frames), dtype=np.float64)
     side_band = np.zeros((len(bands), n_frames), dtype=np.float64)
+    # Re<M S*> per band: the part of the side signal that is just a scaled
+    # copy of the mid — L/R level imbalance or panning, not stereo width.
+    cross_band = np.zeros((len(bands), n_frames), dtype=np.float64)
     legacy_band = np.zeros(len(LEGACY_BANDS), dtype=np.float64)
     grid_frames = np.zeros((grid_hz.size, n_frames), dtype=np.float32)
     frame_power = np.zeros(n_frames, dtype=np.float64)
@@ -168,6 +171,7 @@ def analyze_spectrum(audio_stereo: np.ndarray, sr: int) -> dict:
         s_pow = (s_spec.real**2 + s_spec.imag**2).astype(np.float32) * scale
         mid_band[:, start:stop] = agg_hires @ m_pow.T
         side_band[:, start:stop] = agg_hires @ s_pow.T
+        cross_band[:, start:stop] = agg_hires @ ((m_spec.real * s_spec.real + m_spec.imag * s_spec.imag).astype(np.float32) * scale).T
         legacy_band += (agg_legacy @ m_pow.T).sum(axis=1)
         grid_frames[:, start:stop] = agg_grid @ m_pow.T
         frame_power[start:stop] = m_pow.sum(axis=1)
@@ -221,7 +225,24 @@ def analyze_spectrum(audio_stereo: np.ndarray, sr: int) -> dict:
     }
 
     # --- stereo per band / region ---------------------------------------
-    width_per_band = np.sqrt(mean_side / (mean_mid + EPS))
+    # Width = the side energy NOT explained by the mid (s - c^2/m), and
+    # correlation from the full L/R expression. Both used to assume equal-
+    # power channels: a mix with one channel hotter (or a panned mono
+    # source) has side energy that is a scaled copy of the mid, which read
+    # as "wide" and "decorrelated" — and LF mono then re-centred its low
+    # end, moving the whole mix's L/R balance (measured 4.5 dB on an 8 dB
+    # lopsided mix). For balanced material c = 0 and both reduce exactly
+    # to the old formulas.
+    mean_cross = cross_band[:, keep].mean(axis=1)
+
+    def _width(m: float, s_: float, c: float) -> float:
+        return float(np.sqrt(max(s_ - c * c / (m + EPS), 0.0) / (m + EPS)))
+
+    def _correlation(m: float, s_: float, c: float) -> float:
+        # L=M+S, R=M-S: Re<LR*> = m - s, |L|^2 |R|^2 = (m+s)^2 - 4c^2
+        return float((m - s_) / np.sqrt(max((m + s_) ** 2 - 4.0 * c * c, EPS)))
+
+    width_per_band = np.array([_width(m, s_, c) for m, s_, c in zip(mean_mid, mean_side, mean_cross)])
     stereo_regions = {}
     for name, (lo, hi) in C.STEREO_REGIONS_HZ.items():
         sel = (centers >= lo) & (centers < min(hi, sr / 2.0))
@@ -229,11 +250,13 @@ def analyze_spectrum(audio_stereo: np.ndarray, sr: int) -> dict:
             continue
         m_e = float(mean_mid[sel].sum())
         s_e = float(mean_side[sel].sum())
+        c_e = float(mean_cross[sel].sum())
         stereo_regions[name] = {
-            "width": round(float(np.sqrt(s_e / (m_e + EPS))), 4),
-            # With L=M+S, R=M-S and equal-power channels:
-            # corr = (|M|^2 - |S|^2) / (|M|^2 + |S|^2)
-            "correlation": round(float((m_e - s_e) / (m_e + s_e + EPS)), 4),
+            "width": round(_width(m_e, s_e, c_e), 4),
+            "correlation": round(float(np.clip(_correlation(m_e, s_e, c_e), -1.0, 1.0)), 4),
+            # Signed L - R level in this region (dB): imbalance is reported
+            # as balance, not mistaken for width.
+            "balance_db": round(float(10.0 * np.log10((m_e + s_e + 2 * c_e + EPS) / (m_e + s_e - 2 * c_e + EPS))), 2),
         }
 
     # --- summary descriptors --------------------------------------------

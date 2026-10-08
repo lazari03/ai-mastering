@@ -114,16 +114,26 @@ def _recover_undershot_loudness(
     """
     recovery_gain_db = 0.0
     iterations = 0
-    while measured_lufs < (target_lufs - tolerance_lufs) and iterations < max_iterations:
+    stop_reason = "target_reached"
+    while measured_lufs < (target_lufs - tolerance_lufs):
+        if iterations >= max_iterations:
+            stop_reason = "max_iterations"
+            break
         deficit_db = target_lufs - measured_lufs
         trial_gain_db = recovery_gain_db + min(deficit_db, step_db)
         trial_limited = render_candidate(trial_gain_db)
         trial_lufs = measure_lufs(trial_limited)
         trial_crest = _crest_factor_db(trial_limited)
 
+        # Whole-file crest after limiting is (ceiling - RMS level), so this
+        # floor is effectively a LOUDNESS cap for this genre/source: it is
+        # reported as such (stop_reason) instead of looking like a target
+        # that was simply missed.
         if trial_crest < crest_floor_db:
+            stop_reason = "crest_floor"
             break
         if (trial_lufs - measured_lufs) < min_gain_per_iteration_lufs:
+            stop_reason = "diminishing_returns"
             break
 
         recovery_gain_db = trial_gain_db
@@ -131,7 +141,7 @@ def _recover_undershot_loudness(
         measured_lufs = trial_lufs
         iterations += 1
 
-    return limited, measured_lufs, recovery_gain_db, iterations
+    return limited, measured_lufs, recovery_gain_db, iterations, stop_reason
 
 
 def _true_peak_limiter(
@@ -247,7 +257,7 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
     limiter_gain_reduction_db = _limiter_reduction_db(clipped, limited)
 
     measured_lufs = float(meter.integrated_loudness(limited))
-    limited, measured_lufs, recovery_gain_db, recovery_iterations = _recover_undershot_loudness(
+    limited, measured_lufs, recovery_gain_db, recovery_iterations, recovery_stop_reason = _recover_undershot_loudness(
         render_candidate=lambda gain_db: _true_peak_limiter(
             _soft_clip(pre_limiter * (10.0 ** (gain_db / 20.0)), ceiling_db=clip_ceiling_db, max_reduction_db=clip_share) if clipper_enabled else pre_limiter * (10.0 ** (gain_db / 20.0)),
             sr,
@@ -332,6 +342,11 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
         "true_peak_aware": True,
         "loudness_recovery_db": round(recovery_gain_db, 3),
         "loudness_recovery_iterations": recovery_iterations,
+        # Why recovery stopped: target_reached | crest_floor (the genre's
+        # dynamics floor acting as a loudness cap) | diminishing_returns
+        # (the limiter was absorbing the extra gain) | max_iterations.
+        "loudness_recovery_stop_reason": recovery_stop_reason,
+        "loudness_recovery_crest_floor_db": round(float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))), 2),
     }
 
     return np.asarray(limited, dtype=np.float32), gain_db, loudness_guard, limiter_report
@@ -414,7 +429,7 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
         return limited_c
 
     measured_lufs = float(meter.integrated_loudness(stereo_pb.T))
-    stereo_pb, measured_lufs, recovery_gain_db, recovery_iterations = _recover_undershot_loudness(
+    stereo_pb, measured_lufs, recovery_gain_db, recovery_iterations, recovery_stop_reason = _recover_undershot_loudness(
         render_candidate=_render_recovery_candidate,
         measure_lufs=lambda x: float(meter.integrated_loudness(x.T)),
         limited=stereo_pb,
@@ -467,6 +482,11 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
         "release_ms": round(limiter_release_ms, 1),
         "loudness_recovery_db": round(recovery_gain_db, 3),
         "loudness_recovery_iterations": recovery_iterations,
+        # Why recovery stopped: target_reached | crest_floor (the genre's
+        # dynamics floor acting as a loudness cap) | diminishing_returns
+        # (the limiter was absorbing the extra gain) | max_iterations.
+        "loudness_recovery_stop_reason": recovery_stop_reason,
+        "loudness_recovery_crest_floor_db": round(float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))), 2),
     }
 
     return np.asarray(stereo_pb.T, dtype=np.float32), gain_db, loudness_guard, limiter_report

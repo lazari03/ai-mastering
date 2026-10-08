@@ -65,6 +65,33 @@ def _ensure_stereo(audio: np.ndarray) -> np.ndarray:
     raise ValueError(f"Unsupported audio shape: {audio.shape}")
 
 
+# ITU-R BS.775 fold-down, by channel count, in the default WAVE/ffmpeg
+# channel order. Rows: L, R output; columns: input channels. LFE is
+# dropped (standard for a stereo downmix). Previously anything above two
+# channels kept only the first two, so a 5.1 WAV lost its centre channel
+# (usually the vocal) and both surrounds.
+_C = 0.7071
+_DOWNMIX = {
+    3: [[1, 0, _C], [0, 1, _C]],                                   # L R C
+    4: [[1, 0, _C, 0], [0, 1, 0, _C]],                             # L R Ls Rs (quad)
+    5: [[1, 0, _C, _C, 0], [0, 1, _C, 0, _C]],                     # L R C Ls Rs
+    6: [[1, 0, _C, 0, _C, 0], [0, 1, _C, 0, 0, _C]],               # L R C LFE Ls Rs (5.1)
+    8: [[1, 0, _C, 0, _C, 0, _C, 0], [0, 1, _C, 0, 0, _C, 0, _C]],  # 7.1: + Lb Rb
+}
+
+
+def _downmix_to_stereo(y: np.ndarray) -> np.ndarray:
+    """(channels, n) -> (2, n). Known layouts use the BS.775 matrix; any
+    other count folds even channels left, odd right, equal-weighted."""
+    ch = y.shape[0]
+    m = np.asarray(_DOWNMIX[ch], dtype=np.float32) if ch in _DOWNMIX else None
+    if m is None:
+        m = np.zeros((2, ch), dtype=np.float32)
+        m[0, 0::2] = 1.0 / max(1, len(range(0, ch, 2)))
+        m[1, 1::2] = 1.0 / max(1, len(range(1, ch, 2)))
+    return (m @ y.astype(np.float32)).astype(np.float32)
+
+
 def _load_audio(path: str | Path, sr: int = MASTER_SR) -> tuple[np.ndarray, int]:
     path = str(path)
     loaded_sr = sr
@@ -82,7 +109,7 @@ def _load_audio(path: str | Path, sr: int = MASTER_SR) -> tuple[np.ndarray, int]
                 y = np.stack([y, y], axis=0)
 
     if y.shape[0] > 2:
-        y = y[:2, :]
+        y = _downmix_to_stereo(y)
     if y.shape[0] == 1:
         y = np.repeat(y, 2, axis=0)
 

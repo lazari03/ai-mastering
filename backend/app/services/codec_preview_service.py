@@ -33,6 +33,14 @@ def _run_ffmpeg(args: list[str], timeout: int = 120) -> None:
         raise RuntimeError(f"ffmpeg failed: {result.stderr[-800:]}")
 
 
+def _codec_lag_samples(original: np.ndarray, roundtrip: np.ndarray, sr: int) -> int:
+    """Samples by which the decoded round-trip lags the original."""
+    from ai_mastering.evaluation.distortion import _align
+
+    _, _, lag = _align(original.mean(axis=1), roundtrip.mean(axis=1), sr)
+    return int(lag)
+
+
 def simulate_codec(input_wav_path: str, output_wav_path: str, codec_key: str = "mp3_128") -> dict:
     if codec_key not in SUPPORTED_CODECS:
         raise ValueError(f"Unknown codec preset '{codec_key}'. Options: {sorted(SUPPORTED_CODECS)}")
@@ -62,8 +70,14 @@ def simulate_codec(input_wav_path: str, output_wav_path: str, codec_key: str = "
     finally:
         measure_path.unlink(missing_ok=True)
 
-    # Codecs can shift block/frame boundaries by a handful of samples —
-    # trim to the shorter of the two before comparing.
+    # Encoders add priming delay (AAC in ADTS: ~2112 samples, never
+    # stripped on decode) — align by cross-correlation first, then trim to
+    # the overlap, so both analyses cover the same audio.
+    lag = _codec_lag_samples(original, roundtrip, sr)
+    if lag > 0:
+        roundtrip = roundtrip[lag:]
+    elif lag < 0:
+        original = original[-lag:]
     n = min(original.shape[0], roundtrip.shape[0])
     original = original[:n]
     roundtrip = roundtrip[:n]
@@ -84,6 +98,7 @@ def simulate_codec(input_wav_path: str, output_wav_path: str, codec_key: str = "
         "analysis_codec_preview": analysis_preview,
         "true_peak_delta_db": round(analysis_preview["true_peak_db"] - analysis_original["true_peak_db"], 3),
         "lufs_delta_db": round(analysis_preview["integrated_lufs"] - analysis_original["integrated_lufs"], 3),
+        "alignment_lag_samples": lag,
         "spectral_balance_change_db": spectral_balance_change_db,
         # Signed: negative means the codec discarded high-frequency content
         # (the classic lossy-encoder artifact under bitrate pressure).

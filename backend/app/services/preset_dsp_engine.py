@@ -16,7 +16,7 @@ from ai_mastering.audio_utils import MASTER_SR, _ab_gain_match, _analysis_from_a
 from ai_mastering.bus_processing import _limiter_reduction_db, _soft_clip, _true_peak_limiter
 from ai_mastering.dsp_filters import _dynamic_eq_narrowband, _lr4_highpass, _oversampled_distortion
 from ai_mastering.planning import config as C
-from ai_mastering.quality_control import InvalidAudioError, rebalance_channels, run_quality_control, validate_input_signal
+from ai_mastering.quality_control import InvalidAudioError, lr_balance_db, rebalance_channels, run_quality_control, validate_input_signal
 
 """MANUAL CHAIN ENGINE. Interprets the full professional-preset JSON schema used by
 mixing_presets.json (input/highpass/eq/bus_compressor/dynamic_eq/saturation/
@@ -424,6 +424,7 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
     # mastering_service.py maps it to a 400, same as the adaptive path).
     input_validation = validate_input_signal(stereo, sr)
     stereo = input_validation.pop("_corrected_audio")
+    source_lr_balance_db = lr_balance_db(stereo)
 
     # Full analysis (spectral balance, dynamic range, stereo width/
     # correlation, etc.) — same measurement function the adaptive engine
@@ -481,6 +482,7 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
             processing_params=qc_params,
             limiter_report=report,
             true_peak_ceiling_db=ceiling_db,
+            source_lr_balance_db=source_lr_balance_db,
         )
         return limited, report, after, qc
 
@@ -493,8 +495,8 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
     qc_corrections = []
     failing_ids = {c["id"] for c in quality_control["checks"] if c["status"] == "fail"}
     if "channel_balance" in failing_ids:
-        stereo = rebalance_channels(stereo)
-        qc_corrections.append("channel_balance: rebalanced L/R to the quieter channel's level")
+        stereo = rebalance_channels(stereo, source_lr_balance_db)
+        qc_corrections.append(f"channel_balance: L/R restored to the source's {source_lr_balance_db:+.1f} dB balance")
     if "dc_offset" in failing_ids:
         stereo = stereo - np.mean(stereo, axis=0, keepdims=True).astype(np.float32)
         qc_corrections.append("dc_offset: removed residual DC offset from the final render")
@@ -507,6 +509,7 @@ def render_preset_master(input_path: str, output_wav_path: str, preset: dict) ->
             processing_params=qc_params,
             limiter_report=limiter_report,
             true_peak_ceiling_db=ceiling_db,
+            source_lr_balance_db=source_lr_balance_db,
         )
 
     # Final QC gates delivery, same rule as the adaptive engine: a failed

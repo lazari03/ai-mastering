@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import numba
 import numpy as np
 from pedalboard import Distortion, Pedalboard
-from scipy.signal import butter, lfilter, resample_poly, sosfilt, sosfiltfilt
+from scipy.signal import butter, resample_poly, sosfilt, sosfiltfilt
 
 def _safe_filter(signal: np.ndarray, sos: np.ndarray) -> np.ndarray:
     if signal.shape[0] < 64:
@@ -13,6 +14,17 @@ def _safe_filter(signal: np.ndarray, sos: np.ndarray) -> np.ndarray:
         return sosfilt(sos, signal)
 
 
+# NOTE ON NAMING: _lr4_lowpass/_lr4_highpass are NOT Linkwitz-Riley 4th
+# order. They run a 2nd-order Butterworth through filtfilt TWICE: zero
+# phase, with an 8th-order (|B2|^4, ~48 dB/oct) magnitude. Zero phase is
+# what lets _complementary_split reconstruct exactly by subtraction; the
+# cost is symmetric pre-ringing (at a 90 Hz crossover ~5 ms carries 99% of
+# it). Measured alternatives were worse for this engine: a causal
+# subtractive split puts a +4.3 dB bump at 70 Hz into the upper band (its
+# compressor then reacts to it), and a single-pass zero-phase LR4 only cuts
+# the pre-ring from 5.4 to 4.1 ms. Pre-ringing is only audible where band
+# gains differ (multiband compression, bounded at a few dB). Names kept for
+# call-site stability.
 def _lr4_lowpass(signal: np.ndarray, cutoff_hz: float, sr: int) -> np.ndarray:
     nyq = sr * 0.5
     cutoff = min(max(cutoff_hz / nyq, 0.0005), 0.999)
@@ -88,13 +100,46 @@ def _bandpass(signal: np.ndarray, sr: int, center_hz: float, q: float) -> np.nda
     return sosfiltfilt(sos, signal)
 
 
-def _envelope_db(signal: np.ndarray, sr: int, release_ms: float) -> np.ndarray:
-    # One-pole follower on the release time constant (same approximation as
-    # preset_dsp_engine.py's dynamic EQ — attack folded in, fast enough on
-    # long tracks, close enough for "which parts of this narrow band are hot").
-    alpha = float(np.exp(-1.0 / (sr * max(release_ms, 1.0) / 1000.0)))
-    env = lfilter([1 - alpha], [1, -alpha], np.abs(signal))
+@numba.njit(cache=True)
+def _attack_release_follow(x: np.ndarray, a_att: float, a_rel: float) -> np.ndarray:
+    out = np.empty_like(x)
+    e = 0.0
+    for i in range(x.shape[0]):
+        v = x[i]
+        c = a_att if v > e else a_rel
+        e = c * e + (1.0 - c) * v
+        out[i] = e
+    return out
+
+
+def _envelope_db(signal: np.ndarray, sr: int, release_ms: float, attack_ms: float = 3.0) -> np.ndarray:
+    """Attack/release envelope follower on |signal|, in dB.
+
+    This used to be one one-pole filter on the RELEASE constant (70 ms+),
+    i.e. attack == release: a sibilant or a resonance burst was half over
+    before the detector caught up, so the de-esser / dynamic EQ acted late
+    and then held. A fast attack (3 ms) with the planned release is the
+    standard detector shape. Sample-recursive (rising vs falling picks the
+    coefficient), so it is JIT-compiled."""
+    a_att = float(np.exp(-1.0 / (sr * max(attack_ms, 0.1) / 1000.0)))
+    a_rel = float(np.exp(-1.0 / (sr * max(release_ms, 1.0) / 1000.0)))
+    env = _attack_release_follow(np.abs(np.asarray(signal, dtype=np.float64)), a_att, a_rel)
     return 20 * np.log10(env + 1e-9)
+
+
+# Envelope values this far below the band's loudest moment are silence /
+# fades / gaps, not "activity", and must not set a percentile threshold.
+ACTIVE_ENVELOPE_RANGE_DB = 50.0
+
+
+def _active_percentile_db(env_db: np.ndarray, percentile: float) -> float:
+    """Percentile of the envelope over ACTIVE samples only. Over the whole
+    file, long silences/quiet intros dragged the percentile down, so the
+    threshold sat lower — and the processor engaged on more ordinary
+    material — the more silence a track had."""
+    env_db = np.asarray(env_db)
+    active = env_db[env_db >= float(np.max(env_db)) - ACTIVE_ENVELOPE_RANGE_DB]
+    return float(np.percentile(active if active.size else env_db, percentile))
 
 
 def _dynamic_eq_narrowband(
@@ -115,7 +160,7 @@ def _dynamic_eq_narrowband(
         return signal
     narrow = _bandpass(signal, sr, center_hz, q)
     env_db = _envelope_db(narrow, sr, release_ms)
-    threshold_db = float(np.percentile(env_db, threshold_percentile))
+    threshold_db = _active_percentile_db(env_db, threshold_percentile)
     reduction_db = np.clip(env_db - threshold_db, 0.0, max_reduction_db)
     gain = 10.0 ** (-reduction_db / 20.0)
     return signal - narrow + narrow * gain

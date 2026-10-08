@@ -12,7 +12,6 @@ from .audio_utils import (
     EPS,
     MASTER_SR,
     _db,
-    _rms,
     resolve_master_sr,
     _ab_gain_match,
     _analysis_from_audio,
@@ -32,7 +31,16 @@ from .planning.plan import MasteringPlan
 from .planning import config as C
 from .processing.eq import apply_eq
 from .processing.render import render_plan
-from .quality_control import CHANNEL_IMBALANCE_WARN_DB, DC_OFFSET_THRESHOLD_DB, InvalidAudioError, rebalance_channels, run_quality_control, validate_input_signal
+from .quality_control import (
+    CHANNEL_IMBALANCE_ADDED_TOLERANCE_DB,
+    CHANNEL_IMBALANCE_WARN_DB,
+    DC_OFFSET_THRESHOLD_DB,
+    InvalidAudioError,
+    lr_balance_db,
+    rebalance_channels,
+    run_quality_control,
+    validate_input_signal,
+)
 from .section_detection import _db_to_lin, _detect_song_sections, _section_gain_db_envelope
 from .stem_decisions import measure_vocal_relationship, plan_stem_moves
 from .stem_separation import _is_stem_separation_requested, _process_accompaniment_stem, _process_vocal_stem, _separate_vocal_stems
@@ -130,6 +138,7 @@ class _GuardrailReference:
         self.meter = FastMeter(sr)
         self.lufs = self._lufs(premaster)
         self.levels = band_levels_db(premaster, sr)
+        self.lr_balance_db = lr_balance_db(premaster)
         self._eq_cache: dict = {}
 
     def _lufs(self, x: np.ndarray) -> float:
@@ -156,15 +165,17 @@ class _GuardrailReference:
         return self._eq_cache[key]
 
 
-def _integrity_corrections(audio: np.ndarray) -> tuple[np.ndarray, list[str]]:
+def _integrity_corrections(audio: np.ndarray, source_lr_balance_db: float) -> tuple[np.ndarray, list[str]]:
     """The two narrow corrections final QC used to apply AFTER evaluation
     (channel balance, residual DC) — applied before any measurement now, so
-    every number reported describes the audio actually delivered."""
+    every number reported describes the audio actually delivered. Channel
+    balance is only corrected when PROCESSING moved it away from the
+    source's own balance, and is restored to that balance (not to 0 dB)."""
     corrections = []
-    ch_db = [_db(_rms(audio[:, ch])) for ch in range(audio.shape[1])]
-    if len(ch_db) > 1 and max(ch_db) - min(ch_db) > CHANNEL_IMBALANCE_WARN_DB:
-        audio = rebalance_channels(audio)
-        corrections.append("channel_balance: rebalanced L/R to the quieter channel's level")
+    balance = lr_balance_db(audio)
+    if abs(balance) > CHANNEL_IMBALANCE_WARN_DB and abs(balance - source_lr_balance_db) > CHANNEL_IMBALANCE_ADDED_TOLERANCE_DB:
+        audio = rebalance_channels(audio, source_lr_balance_db)
+        corrections.append(f"channel_balance: L/R restored from {balance:+.1f} dB to the source's {source_lr_balance_db:+.1f} dB")
     dc = np.mean(audio, axis=0)
     if any(abs(float(v)) > EPS and _db(abs(float(v))) > DC_OFFSET_THRESHOLD_DB for v in dc):
         audio = (audio - dc[np.newaxis, :]).astype(np.float32)
@@ -181,7 +192,7 @@ def _build_candidate(label, premaster_audio, sr, plan, processing_params, profil
     if peak >= 0.999:
         audio = (audio * (0.999 / peak)).astype(np.float32)
         render["report"]["final_sample_peak_trim_db"] = round(20.0 * np.log10(0.999 / peak), 3)
-    audio, corrections = _integrity_corrections(audio)
+    audio, corrections = _integrity_corrections(audio, reference.lr_balance_db)
     render["audio"] = audio
 
     analysis_after = _analysis_from_audio(audio, sr)
@@ -205,6 +216,7 @@ def _build_candidate(label, premaster_audio, sr, plan, processing_params, profil
         processing_params=processing_params,
         limiter_report=render["limiter_report"],
         true_peak_ceiling_db=ceiling,
+        source_lr_balance_db=reference.lr_balance_db,
     )
     quality_control["corrections_applied"] = corrections
 
