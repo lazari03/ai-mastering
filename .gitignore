@@ -19,6 +19,9 @@ backend/venv312/
 backend/venv/
 
 # --- Node ---
+# Local npm download cache (never commit generated package cache)
+frontend/.npm-cache/
+
 node_modules/
 frontend/.next/
 
