@@ -200,11 +200,11 @@ def _issue_as_flag(issue, contributions: dict) -> dict:
     return {"kind": kind, "measured": issue.measured if issue.measured is not None else 0.0, "limit": issue.limit if issue.limit is not None else 0.0, "blamed_stage": stage, "detail": f"[{issue.source}] {issue.detail}"}
 
 
-def _relief_ladder(plan: MasteringPlan, relief_db: float, gr_p995_db: float, first: tuple[str, ...], actions: list, why: str) -> float:
+def _relief_ladder(plan: MasteringPlan, relief_db: float, gr_p995_db: float, first: tuple[str, ...], actions: list, why: str, skip: tuple[str, ...] = ()) -> float:
     """Free `relief_db` of peak reduction, cheapest-in-loudness first.
     Returns the relief still unaccounted for (0 when covered)."""
     remaining = float(relief_db)
-    order = list(dict.fromkeys([*first, "clipper", "limiter", "compression", "saturation"]))
+    order = [r for r in dict.fromkeys([*first, "clipper", "limiter", "compression", "saturation"]) if r not in skip]
     for rung in order:
         if remaining <= 0.05:
             break
@@ -281,7 +281,13 @@ def derive_corrective_plan(plan: MasteringPlan, verdict, evaluation) -> tuple[Ma
     if relief > 0.0:
         why = "; ".join(relief_why)[:300]
         gr = float(getattr(evaluation, "limiter", {}).get("gr_at_p995_peaks_db", new.limiter["budget_db"]))
-        remaining = _relief_ladder(new, relief, gr, tuple(relief_first), actions, why)
+        # A failure on the LIMITER's own gain reduction is not relieved by
+        # removing the clipper — the clipper was absorbing those peaks, so
+        # the limiter then takes more (measured 6.4 -> 6.9 dB, one wasted
+        # re-render). Go straight to limiter drive in that case.
+        dyn_kinds = {f.kind for f in verdict.failures if f.domain in ("dynamics", "transients")}
+        skip = ("clipper",) if dyn_kinds == {"limiter_gain_reduction"} else ()
+        remaining = _relief_ladder(new, relief, gr, tuple(relief_first), actions, why, skip)
         if remaining > 0.05:
             _lower_loudness(new, remaining, actions, why)
 

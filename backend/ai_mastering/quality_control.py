@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from .audio_utils import EPS, _db, _ensure_stereo, _rms, _true_peak_db
+from .planning import config as C
 
 # Real automated quality control (spec section 18) — every check here reads
 # the actual rendered waveform / actual measured analysis numbers, never a
@@ -158,7 +159,7 @@ def run_quality_control(
         )
 
     limiter_gr_db = float((limiter_report or {}).get("limiter_gain_reduction_db", 0.0))
-    if limiter_gr_db > 6.0:
+    if limiter_gr_db > C.QC_LIMITER_MAX_GR_DB:
         _add(
             checks,
             "limiter_gain_reduction",

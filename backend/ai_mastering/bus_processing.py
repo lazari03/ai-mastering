@@ -90,7 +90,8 @@ def _recover_undershot_loudness(
     step_db: float = 1.5,
     min_gain_per_iteration_lufs: float = 0.05,
     tolerance_lufs: float = 0.2,
-) -> tuple[np.ndarray, float, float, int]:
+    max_recovery_gain_db: float = float("inf"),
+) -> tuple[np.ndarray, float, float, int, str]:
     """The gain-only-down true-peak limiter (and, on the standard tier,
     pedalboard.Limiter) only ever correct for OVERSHOOT past the target —
     nothing upstream compensates for loudness the limiter itself throws
@@ -120,7 +121,13 @@ def _recover_undershot_loudness(
             stop_reason = "max_iterations"
             break
         deficit_db = target_lufs - measured_lufs
-        trial_gain_db = recovery_gain_db + min(deficit_db, step_db)
+        # Never push past the gain the caller's limiter caps allow (limiter
+        # damage budget on the loud hits, deepest-peak QC limit): recovery
+        # used to drive straight through them to reach the target LUFS.
+        trial_gain_db = min(recovery_gain_db + min(deficit_db, step_db), max_recovery_gain_db)
+        if trial_gain_db <= recovery_gain_db + 0.01:
+            stop_reason = "limiter_cap"
+            break
         trial_limited = render_candidate(trial_gain_db)
         trial_lufs = measure_lufs(trial_limited)
         trial_crest = _crest_factor_db(trial_limited)
@@ -275,6 +282,7 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
         # recovery stops sooner and leaves more headroom intact on exactly
         # the material that has the most punch to lose.
         crest_floor_db=float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))),
+        max_recovery_gain_db=float(params.get("max_recovery_gain_db", float("inf"))),
     )
     if recovery_iterations:
         final_input = pre_limiter * (10.0 ** (recovery_gain_db / 20.0))
@@ -344,7 +352,8 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
         "loudness_recovery_iterations": recovery_iterations,
         # Why recovery stopped: target_reached | crest_floor (the genre's
         # dynamics floor acting as a loudness cap) | diminishing_returns
-        # (the limiter was absorbing the extra gain) | max_iterations.
+        # (the limiter was absorbing the extra gain) | limiter_cap (the
+        # renderer's limiter caps) | max_iterations.
         "loudness_recovery_stop_reason": recovery_stop_reason,
         "loudness_recovery_crest_floor_db": round(float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))), 2),
     }
@@ -436,6 +445,7 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
         measured_lufs=measured_lufs,
         target_lufs=float(params["target_lufs"]),
         crest_floor_db=float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))),
+        max_recovery_gain_db=float(params.get("max_recovery_gain_db", float("inf"))),
     )
     if recovery_iterations:
         final_input = pre_limiter * (10.0 ** (recovery_gain_db / 20.0))
@@ -484,7 +494,8 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
         "loudness_recovery_iterations": recovery_iterations,
         # Why recovery stopped: target_reached | crest_floor (the genre's
         # dynamics floor acting as a loudness cap) | diminishing_returns
-        # (the limiter was absorbing the extra gain) | max_iterations.
+        # (the limiter was absorbing the extra gain) | limiter_cap (the
+        # renderer's limiter caps) | max_iterations.
         "loudness_recovery_stop_reason": recovery_stop_reason,
         "loudness_recovery_crest_floor_db": round(float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))), 2),
     }

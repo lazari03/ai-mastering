@@ -232,6 +232,12 @@ LIMITER_BUDGET_MAX_DB = 6.0
 LIMITER_BUDGET_MIN_DB = 0.5
 LIMITER_TRANSIENT_PENALTY_DB = 3.5
 LIMITER_CEILING_DBTP = -1.0
+# Deepest single-peak limiter gain reduction final QC accepts (above it:
+# fail — audible pumping/distortion risk). The renderer caps its gain push
+# so the loudest true peak stays inside it (with a small margin), instead
+# of rendering a master QC is bound to reject.
+QC_LIMITER_MAX_GR_DB = 6.0
+LIMITER_MAX_GR_MARGIN_DB = 0.3
 # Clipper absorbs at most this much in front of the limiter.
 CLIPPER_MAX_SHARE_DB = 1.0
 

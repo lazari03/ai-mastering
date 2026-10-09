@@ -20,6 +20,7 @@ from pedalboard import Compressor, Pedalboard
 from scipy.signal import resample_poly
 
 from ..analysis.dynamics import peak_percentile_db
+from ..audio_utils import _true_peak_db
 from ..analysis.loudness import FastMeter
 from ..analysis.spectral import analyze_spectrum
 from ..bus_processing import _bus_process, _bus_process_pro
@@ -220,6 +221,15 @@ def render_plan(audio: np.ndarray, sr: int, plan: MasteringPlan, measure_stages:
     clip_share = float(plan.clipper.get("share_db", 0.0)) if plan.clipper.get("enabled") else 0.0
     ceiling = float(lim.get("ceiling_dbtp", C.LIMITER_CEILING_DBTP))
     max_gain = ceiling + float(lim["budget_db"]) + clip_share - peak_pre
+    # The budget above is on the 99.5th-percentile peaks; final QC also
+    # rejects a master whose single deepest limiter reduction exceeds
+    # QC_LIMITER_MAX_GR_DB. Without this cap the first render could pass
+    # the budget and fail QC on the loudest hit, costing corrective
+    # re-renders (measured: 3 renders, 2.5x render time, same loudness).
+    tp_pre = _true_peak_db(x)
+    max_gain_peak = ceiling + C.QC_LIMITER_MAX_GR_DB - C.LIMITER_MAX_GR_MARGIN_DB + clip_share - tp_pre
+    capped_by_loudest_peak = max_gain_peak < max_gain
+    max_gain = min(max_gain, max_gain_peak)
     planned = float(plan.loudness["target_lufs"])
     target = min(planned, lufs_pre + max_gain)
     bus_params = {
@@ -231,6 +241,9 @@ def render_plan(audio: np.ndarray, sr: int, plan: MasteringPlan, measure_stages:
         "limiter_crest_floor_db": float(lim.get("crest_floor_db", plan.target_context.get("target_crest_db", 8.0))),
         "target_dynamic_range_db": float(plan.target_context.get("target_crest_db", 8.0)),
         "glue_enabled": False,
+        # Loudness recovery inside the bus may add gain only up to the same
+        # caps the target was limited by (see max_gain above).
+        "max_recovery_gain_db": max(0.0, (lufs_pre + max_gain) - target),
     }
     bus_fn = _bus_process_pro if tier == "professional" else _bus_process
     y, lufs_gain_db, loudness_guard, limiter_report = bus_fn(x, sr, bus_params, apply_glue_compression=False)
@@ -246,6 +259,7 @@ def render_plan(audio: np.ndarray, sr: int, plan: MasteringPlan, measure_stages:
         planned_target_lufs=round(planned, 2),
         budget_capped_target_lufs=round(target, 2),
         capped_by_limiter_budget=bool(target < planned - 0.05),
+        capped_by_loudest_peak=bool(capped_by_loudest_peak and target < planned - 0.05),
         total_gain_db=round(total_gain_db, 3),
     )
     return {

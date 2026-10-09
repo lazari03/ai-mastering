@@ -65,7 +65,7 @@ def test_loudness_recovery_reports_why_it_stopped(tmp_path):
     sf.write(str(src), make_mix(seconds=10.0, seed=5, drum_level=1.2), SR)
     result = master_track(str(src), str(tmp_path / "out.wav"), "rock", [])
     reason = result["processing_applied"]["limiter"]["loudness_recovery_stop_reason"]
-    assert reason in {"target_reached", "crest_floor", "diminishing_returns", "max_iterations"}
+    assert reason in {"target_reached", "crest_floor", "diminishing_returns", "limiter_cap", "max_iterations"}
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
