@@ -188,3 +188,19 @@ Minor, non-blocking (fix with R1 if convenient):
 - `--set audit_verdict=APPROVED` / `qa_verdict=…` is accepted on an open issue (`issue-resolve` overwrites these fields, so the impact is low). Consider adding them to `PROTECTED_FIELDS`.
 - `--files /etc/passwd` passes validation because `ROOT / "/abs"` resolves to the absolute path. Require relative paths inside ROOT.
 - kb.py still has no automated tests. The handoff already lists this as a risk.
+
+## 6. Re-review 2: AURALITH-QA-007 rework (kb.py at d2a7664) → **REJECTED**
+
+I read the diff with `git show HEAD -- .claude/knowledge/kb.py` and tested the guards against a scratch copy of the knowledge base (`$SCRATCH/kbaudit`, its own `git init`). The real knowledge base was not changed.
+
+**Fixed (verified):**
+- `issue-update --status` and `issue-add --status` now reject `DONE`, `done`, `Done`, `RESOLVED`, `resolved` and `Closed`.
+- `--set` now refuses `status`, `history`, `id`, `qa_verdict`, `audit_verdict`, `solution`, `fix_commit`, `resolved_date` and `regression_tests`.
+- `--files` now rejects `/etc/passwd`, `../x`, `a/../../x`, `deleted:/etc/passwd` and `deleted:a/../../b`.
+- Resolved issues still cannot be updated, so their history is append-only.
+
+**Still open (blocking):**
+- **R1b. Medium. kb.py:41 and kb.py:132/160.** The terminal-status check is a denylist matched with only `.upper()`, so it can be bypassed. Reproduction: `kb.py issue-update <ID> --agent a --status " DONE"`, or `"DONE "`, `"DONE."`, `"Resolved."`, fullwidth `ＤＯＮＥ`, `FIXED`, `COMPLETE`, `WONTFIX` or `VERIFIED`. Every one is accepted, recorded in history and shown in `kb.py issues` as the status. `issue-add --status " DONE"`, `COMPLETE` and `FIXED` are accepted too. Expected: only non-terminal workflow states are allowed. Required fix: an **allowlist**, either the states in use today (`OPEN, IN_PROGRESS, BLOCKED, READY_FOR_QA, READY_FOR_AUDIT, READY_FOR_REVIEW`) or a documented set, and reject everything else.
+- **R3b. Low. kb.py:201.** The `..` check runs on the raw string, and `Path("deleted:../x").parts == ('deleted:..', 'x')`, so `--files deleted:../x` is accepted (it produced H-0014 in the scratch copy). Required fix: apply `removeprefix("deleted:")` before both checks.
+
+**Minor (non-blocking):** `--set` compares keys exactly, so `Status=DONE`, `STATUS=DONE`, `" status=DONE"` and `"status =DONE"` are stored as separate fields next to the real `status`. This creates confusing duplicate fields but does not change the real status. Strip and casefold keys before checking them against `PROTECTED_FIELDS`, or reject keys that differ only by case or whitespace. kb.py still has no automated tests for these guards.

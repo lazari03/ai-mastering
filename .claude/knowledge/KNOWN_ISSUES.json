@@ -810,7 +810,7 @@
       "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md (QA lab review, finding 8)",
       "tests": [],
       "source": "docs/agent-reports/INDEPENDENT_AUDIT.md (QA lab review, finding 8)",
-      "validated_commit": "73a485e",
+      "validated_commit": "d2a7664",
       "history": [
         {
           "date": "2026-10-10",
@@ -840,6 +840,18 @@
           "agent": "technical-lead",
           "status": "READY_FOR_AUDIT",
           "note": "Rework after REJECTED H-0012: terminal statuses only via issue-resolve (issue-update/issue-add refuse DONE); verdict/solution fields protected from --set; --files must be repo-relative. All 4 bypasses refused on scratch copy; legit update OK."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_AUDIT",
+          "note": "audit: REJECTED (re-review 2: status allowlist needed; deleted:../ traversal)"
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "READY_FOR_AUDIT",
+          "note": "Rework 2 after REJECTED H-0014: status allowlist (OPEN_STATES) replaces denylist; --set keys stripped, case-normalized, shadow keys refused; deleted: stripped before path checks; new automated tests .claude/knowledge/test_kb.py (5 groups incl. every listed bypass) pass."
         }
       ]
     },

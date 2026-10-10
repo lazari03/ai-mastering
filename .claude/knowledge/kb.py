@@ -38,7 +38,9 @@ KB = Path(__file__).resolve().parent
 ROOT = KB.parents[1]
 LOG = ROOT / "test-results" / "runs" / "kb_access.log"
 PROTECTED_FIELDS = {"id", "status", "history", "qa_verdict", "audit_verdict", "solution", "fix_commit", "resolved_date", "regression_tests"}
-TERMINAL = {"DONE", "RESOLVED", "CLOSED"}  # reachable only through issue-resolve (Definition of Done)
+# Allowlist: these are the only states issue-add / issue-update may set. Any terminal state
+# (DONE) is reachable only through issue-resolve, which enforces the Definition of Done.
+OPEN_STATES = {"NEEDS_REVERIFICATION", "OPEN", "IN_PROGRESS", "READY_FOR_REVIEW", "READY_FOR_QA", "READY_FOR_AUDIT", "REJECTED", "BLOCKED"}
 
 # What "effective processing code" means for cache invalidation of audio results.
 DSP_HASH_GLOBS = [
@@ -129,8 +131,8 @@ def cmd_issue(a) -> None:
 
 
 def cmd_issue_add(a) -> None:
-    if a.status.upper() in TERMINAL:
-        sys.exit("new issues cannot start DONE; use issue-resolve after QA + audit")
+    if a.status not in OPEN_STATES:
+        sys.exit(f"status must be one of {sorted(OPEN_STATES)}")
     data = _load("KNOWN_ISSUES.json")
     dom = a.domain.upper()
     # Derived from the highest id in use (open + resolved), never trusted from a counter alone.
@@ -157,12 +159,16 @@ def cmd_issue_update(a) -> None:
     if not it:
         sys.exit(f"{a.id} is not open (resolved issues are append-only)")
     if a.status:
-        if a.status.upper() in TERMINAL:
-            sys.exit("terminal status only via `kb.py issue-resolve` (requires QA + APPROVED audit verdicts)")
+        if a.status not in OPEN_STATES:
+            sys.exit(f"status must be one of {sorted(OPEN_STATES)}; DONE only via `kb.py issue-resolve` (QA + APPROVED audit)")
         it["status"] = a.status
     for kv in a.set or []:
         k, _, v = kv.partition("=")
-        if k in PROTECTED_FIELDS:
+        k = k.strip()
+        if not k.isidentifier() or k.lower() in PROTECTED_FIELDS:
+            sys.exit(f"--set may not change {k!r}; use --status / issue-resolve (history is append-only)")
+        if any(f != k and f.lower() == k.lower() for f in it):
+            sys.exit(f"--set key {k!r} differs only in case from an existing field; use the exact name")
             sys.exit(f"--set may not change {k!r}; use --status / issue-resolve (history is append-only)")
         it[k] = v
     it["validated_commit"] = _head()
@@ -198,7 +204,8 @@ def cmd_issue_resolve(a) -> None:
 def cmd_handoff_add(a) -> None:
     if len(a.summary) > 300:
         sys.exit("summary must be <= 300 chars; put detail in an --evidence file")
-    outside = [f for f in _csv(a.files) if f != "(embargoed)" and (Path(f.removeprefix("deleted:")).is_absolute() or ".." in Path(f).parts)]
+    paths = [f.removeprefix("deleted:") for f in _csv(a.files) if f != "(embargoed)"]
+    outside = [f for f in paths if Path(f).is_absolute() or ".." in Path(f).parts]
     if outside:
         sys.exit(f"--files must be repo-relative paths: {outside}")
     missing = [f for f in _csv(a.files) if f != "(embargoed)" and not f.startswith("deleted:") and not (ROOT / f).exists()]
