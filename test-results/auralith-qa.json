@@ -1,8 +1,8 @@
 {
  "tool": "backend/benchmark/api_qa.py",
- "commit": "c88bc69",
+ "commit": "2b8a039",
  "code_hash": "e584db5a8f7cdd89",
- "date": "2026-10-10T18:24:13",
+ "date": "2026-10-10T18:28:05",
  "python": "3.12.3",
  "path_under_test": "uvicorn benchmark.qa_app \u2192 /api/master \u2192 run_in_worker \u2192 ai_mastering.master_track",
  "reused_cached_cases": 0,
@@ -541,6 +541,157 @@
     "form": {}
    },
    "input_hash": "d1605b61182bcc7d"
+  },
+  "c09_phase_inverted": {
+   "http_status": 400,
+   "processing_time_s": 13.8,
+   "error": "No mastering candidate passed final verification (guardrail:excessive_band_change, guardrail:high_frequency_boost, guardrail:tilt_drift, quality_control:dynamics_preservation, quality_control:phase_correlation); no master was delivered.",
+   "status": "FAIL",
+   "actual": "HTTP 400",
+   "input": {
+    "id": "c09_phase_inverted",
+    "category": "stereo phase problem (right channel polarity-inverted)",
+    "genre": "pop",
+    "seed": 9,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": "R *= -1",
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "f1a591d4df05b6f5"
+  },
+  "c10_mono_acoustic": {
+   "http_status": 200,
+   "processing_time_s": 9.8,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "9a7bd242881bbae53cb06752ad0a54a0",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -15.0,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 1,
+    "integrated_lufs": -21.32,
+    "short_term_max_lufs": -20.31,
+    "momentary_max_lufs": -19.47,
+    "loudness_range_lu": 2.44,
+    "true_peak_dbtp": -2.28,
+    "sample_peak_dbfs": -2.31,
+    "crest_factor_db": 17.02,
+    "energy_share_pct": {
+     "low_20_250": 82.3,
+     "mid_250_4k": 16.7,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 1.0,
+    "stereo_width_side_mid_db": -220.67,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -221.57
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -15.04,
+    "short_term_max_lufs": -14.06,
+    "momentary_max_lufs": -13.18,
+    "loudness_range_lu": 2.4,
+    "true_peak_dbtp": -1.0,
+    "sample_peak_dbfs": -1.01,
+    "crest_factor_db": 15.05,
+    "energy_share_pct": {
+     "low_20_250": 82.2,
+     "mid_250_4k": 16.8,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 1.0,
+    "stereo_width_side_mid_db": -223.94,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -80.63,
+     -80.63
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 3.27,
+    "low_end_change_db": -0.03,
+    "high_change_db": 0.03,
+    "punch_loss": 0.01,
+    "pumping_db": -0.0,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.006,
+     "sub_bass_35_60hz": 0.027,
+     "kick_bass_60_120hz": -0.016,
+     "upper_bass_120_250hz": -0.034,
+     "low_mid_250_500hz": 0.027,
+     "mid_500_2000hz": 0.032,
+     "high_mid_2000_4000hz": 0.032,
+     "presence_4000_6000hz": 0.032,
+     "high_6000_20000hz": 0.033
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.3,
+    "after_lufs": -15.0,
+    "source_warnings": [
+     "Source file has little to no stereo content (left/right channels are nearly identical) \u2014 mastering can't create real stereo separation that was never in the recording. The width/wider controls have nothing to widen here."
+    ],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 327.9,
+     "peak_child_rss_mb": 327.9,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 9.8
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c10_mono_acoustic/source.wav",
+    "master": "test-results/audio/c10_mono_acoustic/master.wav"
+   },
+   "input": {
+    "id": "c10_mono_acoustic",
+    "category": "mono material (1-channel file)",
+    "genre": "acoustic",
+    "seed": 10,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": "downmix to 1 channel",
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "fb4aec7d06948dc6"
   },
   "c19a_pcm16": {
    "http_status": 200,

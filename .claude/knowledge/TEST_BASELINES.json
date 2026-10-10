@@ -44,13 +44,13 @@
     "command": "cd backend && python -m benchmark.api_qa",
     "results_file": "test-results/auralith-qa.json",
     "report": "docs/agent-reports/QA_REPORT.md",
-    "commit": "c88bc69",
+    "commit": "2b8a039",
     "code_hash": "e584db5a8f7cdd89",
-    "date": "2026-10-10T18:24:13",
+    "date": "2026-10-10T18:28:05",
     "status_counts": {
-      "PASS": 4,
+      "PASS": 5,
       "PASS_WITH_ANOMALIES": 1,
-      "FAIL": 1
+      "FAIL": 2
     },
     "endpoints_pass": "17/17",
     "listening_status": "PENDING",
@@ -101,6 +101,32 @@
         "status": "PASS",
         "out_lufs": -17.29,
         "out_tp": -2.01,
+        "anomalies": [],
+        "dsp_components": [
+          "dsp.mastering_engine",
+          "dsp.eq",
+          "dsp.bus",
+          "dsp.evaluation"
+        ]
+      },
+      "c09_phase_inverted": {
+        "input_hash": "f1a591d4df05b6f5",
+        "status": "FAIL",
+        "out_lufs": null,
+        "out_tp": null,
+        "anomalies": [],
+        "dsp_components": [
+          "dsp.mastering_engine",
+          "dsp.eq",
+          "dsp.bus",
+          "dsp.evaluation"
+        ]
+      },
+      "c10_mono_acoustic": {
+        "input_hash": "fb4aec7d06948dc6",
+        "status": "PASS",
+        "out_lufs": -15.04,
+        "out_tp": -1.0,
         "anomalies": [],
         "dsp_components": [
           "dsp.mastering_engine",

@@ -55,6 +55,10 @@ progress.md
 # Audit reports are deliverables, not local notes.
 !docs/audits/*.md
 !docs/agent-reports/*.md
+# Public repository: the detailed security report can contain working
+# reproductions for unfixed issues. It stays local; the committed issue
+# memory carries only an embargoed summary until the fix is deployed.
+docs/agent-reports/SECURITY_REPORT.md
 !.claude/agents/*.md
 !.claude/knowledge/*.md
 !.claude/workflows/*.md
