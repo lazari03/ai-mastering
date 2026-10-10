@@ -2,12 +2,13 @@
   "_schema": "Latest verified test evidence. Reuse rule: a recorded result is valid only while code_hash == `kb.py codehash` AND input_hash matches. Otherwise re-run. Writers: qa-automation-engineer (api_qa is written by benchmark/api_qa.py), audio-dsp-engineer (synthetic_regression).",
   "python_suite": {
     "command": "cd backend && python -m pytest -q -p no:warnings",
-    "result": "229 passed",
-    "duration_s": 741,
+    "result": "254 passed",
+    "duration_s": 696,
     "python": "3.12 (uv venv)",
-    "commit": "c88bc69",
+    "commit": "fcf8d06",
     "date": "2026-10-10",
-    "executed_by": "technical-lead"
+    "executed_by": "technical-lead",
+    "note": "merged tree incl. security fix + AUDIO-004 fix"
   },
   "synthetic_regression": {
     "command": "cd backend && python -m benchmark.regression --synthetic --baseline benchmark/baselines/synthetic.json",
@@ -33,26 +34,31 @@
     "executed_by": "technical-lead"
   },
   "node_suite": {
-    "command": "cd backend-node && npm ci && npm test",
-    "result": "NOT RUN in this session yet"
+    "command": "cd backend-node && npm ci && npm run lint && npm test",
+    "result": "lint clean; 68/68",
+    "commit": "fcf8d06",
+    "date": "2026-10-10",
+    "executed_by": "technical-lead"
   },
   "frontend_build": {
     "command": "cd frontend && npm ci && npm run build",
-    "result": "NOT RUN in this session yet"
+    "result": "PASS (frontend-engineer discovery audit)",
+    "commit": "c88bc69",
+    "date": "2026-10-10"
   },
   "api_qa": {
     "command": "cd backend && python -m benchmark.api_qa",
     "results_file": "test-results/auralith-qa.json",
     "report": "docs/agent-reports/QA_REPORT.md",
-    "commit": "f1af9e1",
-    "code_hash": "ceb3292fd55b1bd1",
-    "date": "2026-10-10T19:47:47",
+    "commit": "fcf8d06",
+    "code_hash": "a5d9b116b8ee3056",
+    "date": "2026-10-10T20:38:42",
     "status_counts": {
       "PASS": 28,
       "PASS_WITH_ANOMALIES": 4,
       "FAIL": 1
     },
-    "endpoints_pass": "17/17",
+    "endpoints_pass": "10/11",
     "listening_status": "PENDING",
     "cases": {
       "c01_balanced_pop": {
