@@ -46,7 +46,12 @@ export default function LoginClient() {
   // in-app path (starts with "/"), never an external redirect target.
   const redirectTo = searchParams.get("redirect");
   useEffect(() => {
-    if (!loading && user) {
+    // Real accounts only: the free tools sign visitors in anonymously, and
+    // with browser-wide persistence that session outlives the tab. Bouncing
+    // it to /app would hide the login form from someone who came here to
+    // sign in. Signing up from here links the anonymous session instead
+    // (authStore.claimWithEmail / claimWithGoogle).
+    if (!loading && user && !user.isAnonymous) {
       router.replace(redirectTo && redirectTo.startsWith("/") ? redirectTo : "/app");
     }
   }, [loading, user, router, redirectTo]);

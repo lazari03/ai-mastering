@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 import SiteHeader from "@/components/marketing/SiteHeader";
 import ScrollReveal from "@/components/marketing/ScrollReveal";
 import Footer from "@/components/Footer";
 import { POSTS } from "@/content/posts";
 import { useLanguage } from "@/lib/i18n";
+import { useAuthStore } from "@/store/authStore";
 import { PLANS, PLAN_ORDER, BILLING_PERIODS, planPricing } from "@/lib/pricing";
 import { IconCheck } from "@/components/app/icons";
 import { CTA, planSignupHref } from "@/lib/internalLinks";
@@ -94,6 +96,17 @@ const DEMO_COUNTS = summarizeDecisions(DEMO_MASTER)?.counts || { corrections: 0,
 
 export default function HomeClient() {
   const { t, lang } = useLanguage();
+  const router = useRouter();
+  const { user, loading } = useAuthStore();
+  // Signed in, the homepage IS the dashboard. Anonymous Firebase users
+  // (the free tools sign visitors in anonymously) are still visitors and
+  // see the landing page. The page itself stays server-rendered for
+  // crawlers and signed-out visitors; this only redirects once auth has
+  // resolved in the browser.
+  const signedIn = !loading && Boolean(user) && !user.isAnonymous;
+  useEffect(() => {
+    if (signedIn) router.replace("/app");
+  }, [signedIn, router]);
   const pricingSectionRef = useRef(null);
   usePricingSectionView(pricingSectionRef);
   const [billing, setBilling] = useState("monthly");
