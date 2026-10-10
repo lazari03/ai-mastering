@@ -100,6 +100,10 @@ def test_mono_exported_to_one_side_is_mastered_as_mono_with_a_warning(tmp_path):
     rms = np.sqrt(np.mean(out**2, axis=0))
     assert rms.min() > 0.5 * rms.max(), "both sides carry the music"
     assert any("right channel of this file was silent" in w for w in result["source_warnings"])
+    # Each warning has a localizable twin (code + params + identical text).
+    codes = result["processing_applied"]["source_warning_codes"]
+    assert [c["text"] for c in codes] == result["source_warnings"]
+    assert any(c["code"] == "silent_channel_restored" and c["params"] == {"channel": "right"} for c in codes)
 
 
 def test_normal_stereo_is_not_touched_by_the_silent_channel_rule():
@@ -112,3 +116,21 @@ def test_normal_stereo_is_not_touched_by_the_silent_channel_rule():
 def test_both_channels_silent_is_still_refused():
     with pytest.raises(InvalidAudioError):
         validate_input_signal(np.zeros((SR * 2, 2), np.float32), SR)
+
+
+def test_very_quiet_audio_is_not_called_digital_silence():
+    # Same stop threshold as before; only the wording differs.
+    import numpy as np
+    from ai_mastering.quality_control import InvalidAudioError, validate_input_signal
+
+    quiet = (np.random.default_rng(0).standard_normal((44100, 2)) * 10 ** (-80 / 20)).astype(np.float32)
+    try:
+        validate_input_signal(quiet, 44100)
+        raise AssertionError("expected InvalidAudioError")
+    except InvalidAudioError as exc:
+        assert "too quiet" in str(exc) and "silence" not in str(exc)
+    try:
+        validate_input_signal(np.zeros((44100, 2), np.float32), 44100)
+        raise AssertionError("expected InvalidAudioError")
+    except InvalidAudioError as exc:
+        assert "digital silence" in str(exc)

@@ -12,6 +12,7 @@ import { shortenFilename } from "@/lib/format";
 import { LoadingBlock } from "@/components/ui/Spinner";
 import { trackEvent } from "@/lib/analytics";
 import InlineAlert from "@/components/ui/InlineAlert";
+import { localizeSourceWarnings } from "@/lib/masteringErrors";
 import ABMasterPlayer from "@/components/audio/ABMasterPlayer";
 
 /**
@@ -281,8 +282,8 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
         </div>
         {downloadError ? <InlineAlert size="xs" className="mt-2">{downloadError}</InlineAlert> : null}
 
-        {(job.source_warnings || []).map((warning) => (
-          <p key={warning} className="m-0 mt-3 flex gap-2.5 rounded-xl bg-amber-400/[0.08] px-4 py-3 text-[12px] leading-relaxed text-amber-900">
+        {localizeSourceWarnings(t, job.source_warnings, job.processing_applied).map((warning, i) => (
+          <p key={`${i}-${warning}`} className="m-0 mt-3 flex gap-2.5 rounded-xl bg-amber-400/[0.08] px-4 py-3 text-[12px] leading-relaxed text-amber-900">
             <span aria-hidden="true" className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
             {warning}
           </p>

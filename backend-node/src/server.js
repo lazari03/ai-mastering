@@ -11,7 +11,7 @@ import { settings } from "./config/settings.js";
 import { requireAuth } from "./middleware/auth.js";
 import { generalLimiter } from "./middleware/rateLimit.js";
 import { verifyDownloadToken } from "./services/downloadTokenService.js";
-import masteringRoutes from "./routes/masteringRoutes.js";
+import masteringRoutes, { reconcileReservations } from "./routes/masteringRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
 import adminUsersRoutes from "./routes/adminUsersRoutes.js";
@@ -210,4 +210,23 @@ if (settings.nodeEnv === "production" && settings.polarAccessToken) {
   };
   setTimeout(runReconciliation, 30 * 1000);
   setInterval(runReconciliation, RECONCILE_INTERVAL_MS);
+}
+
+// Render-reservation backstop (see reservationLedger.js): settles any
+// reservation whose request died before settling it — a restart mid-render,
+// a crash, a refund written while Firestore was down. Refunds undelivered
+// renders, completes delivered ones. Leases outlive the 19-min gateway
+// deadline, so a live render is never touched. Unref'd so it never holds
+// the process open; RESERVATION_RECONCILE_INTERVAL_MS=0 disables it.
+const RESERVATION_RECONCILE_MS = Number(process.env.RESERVATION_RECONCILE_INTERVAL_MS ?? 5 * 60 * 1000);
+if (RESERVATION_RECONCILE_MS > 0) {
+  const runReservationReconcile = () => {
+    reconcileReservations()
+      .then((summary) => {
+        if (summary.completed || summary.refunded || summary.errors) console.log("Reservation reconcile:", JSON.stringify(summary));
+      })
+      .catch((error) => console.error("Reservation reconcile pass failed:", error.message));
+  };
+  setTimeout(runReservationReconcile, 60 * 1000).unref();
+  setInterval(runReservationReconcile, RESERVATION_RECONCILE_MS).unref();
 }

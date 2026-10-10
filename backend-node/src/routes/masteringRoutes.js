@@ -9,7 +9,7 @@ import multer from "multer";
 import { GENRES, STYLES, TAGS, CATEGORIES, FLAVOURS_BY_CATEGORY, AUDIO_DECODE_EXTS, DELIVERY_TARGETS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
 import { invalidateCachedSession, requiresEmailVerification } from "../middleware/auth.js";
-import { processMastering, execFileAsync, deleteJobFiles, postMultipartToPython } from "../services/masteringService.js";
+import { processMastering, execFileAsync, deleteJobFiles, postMultipartToPython, cancelPythonJob } from "../services/masteringService.js";
 import { analyzeChords, previewCodec } from "../services/chordCleanService.js";
 import { getMixPresetByName, isIntentPreset, listMixPresets } from "../services/presetsService.js";
 import { importCustomPreset, deleteCustomPreset, createUserPreset, updateUserPreset } from "../services/customPresetsService.js";
@@ -26,7 +26,8 @@ import {
   changeSubscriptionPlan,
 } from "../services/polarService.js";
 import { PLAN_MASTER_LIMITS, STEM_MONTHLY_LIMIT, readUserData, entitlementsFromUserData } from "../services/entitlementsService.js";
-import { reserveRenderSlots, releaseRenderSlots } from "../services/renderReservation.js";
+import { createLedger, partsFor } from "../services/reservationLedger.js";
+import { UPSTREAM_TIMEOUT_MS } from "../services/pythonUpstream.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { subscribeToNewsletter } from "../services/newsletterService.js";
 import { getAuth } from "../config/firebase.js";
@@ -39,6 +40,35 @@ import { masteringDspProps } from "../services/masteringTelemetry.js";
 import { cutPreviewExcerpt } from "../services/previewExcerpt.js";
 
 const router = express.Router();
+
+const ledger = createLedger();
+
+async function refundWithRetry(reservationId, reason, attempts = 3) {
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await ledger.refund(reservationId, reason);
+    } catch (error) {
+      console.error(`Refund of reservation ${reservationId} failed (attempt ${i + 1}/${attempts}):`, error.message);
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250 * 4 ** i));
+    }
+  }
+  // Left open on purpose: the lease expires and reconcileReservations()
+  // refunds it (the job never got a record, so it reads as undelivered).
+  return null;
+}
+
+// Settles reservations whose owning request died (restart, crash, a refund
+// Firestore never accepted). Run periodically from server.js; safe to run
+// from several instances at once (each settle is a conditioned transition).
+export function reconcileReservations() {
+  return ledger.reconcileAbandoned({
+    jobDelivered: (uid, jobId) => ownsJob(uid, jobId),
+    onAbandoned: async (jobId) => {
+      await cancelPythonJob(jobId);
+      await deleteJobFiles(jobId).catch(() => {});
+    },
+  });
+}
 
 // Defense in depth, not the real protection — ffmpeg/soundfile already
 // reject anything that isn't actually decodable audio, so a mislabeled
@@ -774,9 +804,14 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
   let mustConsumeStemCredit = false;
   let quotaLimit = PLAN_MASTER_LIMITS.free;
   let plan = "free";
-  // What reserveRenderSlots actually took, so every exit path gives back
-  // exactly that and nothing else.
-  let reservedSlots = { master: null, stem: null };
+  // One id for the render end to end: the durable reservation
+  // (renderReservations/{jobId}), the Python job (so it can be cancelled)
+  // and the job record. Python accepts [A-Za-z0-9_-]{6,64}.
+  const jobId = crypto.randomUUID().replace(/-/g, "");
+  // Set once the reservation document exists; every exit path settles it
+  // (complete or refund) — and if this process dies first, the ledger's
+  // reconciler settles it from the lease (see server.js).
+  let reservationId = null;
 
   if (!preview) {
     // One snapshot for every pre-render check below. Fails CLOSED like
@@ -863,42 +898,47 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     // ---- RESERVE THE SLOT NOW, BEFORE RENDERING -----------------------
     //
     // The snapshot check above is a read, and a read cannot gate a
-    // resource. Previously the slot was only consumed AFTER the render,
-    // so N concurrent requests from a user with 1 remaining all passed
-    // the read, all rendered, and all returned a finished master. The
-    // atomic consume then correctly refused the extras — but the files
-    // were already delivered and the refusal only reached a console.error.
-    // Five parallel requests = five masters, one deduction.
-    //
-    // consumeMasterQuota/consumeExtraCredit are already transactional, so
-    // calling them HERE makes the deduction itself the gate: concurrent
-    // callers serialise and all but the allowed ones get false.
-    //
-    // The guarantee this replaces — "never bill for a render that failed"
-    // — is preserved by refunding in the catch below.
-    // The stem slot is reserved here too, not consumed after the render
-    // (see renderReservation.js): the consume is the gate for both.
-    const reservation = await reserveRenderSlots({
-      uid: req.user.uid,
+    // resource: N concurrent requests from a user with 1 remaining would
+    // all pass it. The reservation is the gate — it takes the counters and
+    // writes renderReservations/{jobId} in one transaction, so concurrent
+    // callers serialise and all but the allowed ones are refused here,
+    // before any render starts. Every later step (processing, completed,
+    // refunded) is a state-conditioned transition on that document, so a
+    // retry, a duplicate settle or a crash can never charge or refund
+    // twice (see reservationLedger.js).
+    const parts = partsFor({
       plan,
       quotaLimit,
+      stemLimit: STEM_MONTHLY_LIMIT,
       needs: {
         master: mustConsumeQuota ? "quota" : mustConsumeCredit ? "credit" : null,
         stem: mustConsumeStemQuota ? "quota" : mustConsumeStemCredit ? "credit" : null,
       },
     });
-    reservedSlots = reservation.reserved;
+    let reservation;
+    try {
+      reservation = await ledger.reserve({ reservationId: jobId, uid: req.user.uid, plan, jobId, parts });
+    } catch (error) {
+      // Fails CLOSED: no reservation, no render.
+      console.error("Render reservation failed, refusing the render:", error.message);
+      return res.status(503).json({ code: "billing_unavailable", detail: "Couldn't confirm your plan right now. Nothing was charged — try again in a minute." });
+    }
 
     if (!reservation.ok) {
       // Lost a race against the user's own concurrent request. Not an
       // error state — their allowance genuinely just ran out.
       return res.status(402).json({
+        code: reservation.failed === "stem" ? "stem_reservation_conflict" : "master_reservation_conflict",
         detail:
           reservation.failed === "stem"
             ? "That used your last available stem separation — another render of yours claimed it first. Buy an extra one in Settings → Billing."
             : "That used your last available master — another render of yours claimed it first. Buy a single master or upgrade in Settings → Billing.",
       });
     }
+    reservationId = jobId;
+    // Best-effort: "processing" is informational (the lease, not this
+    // state, is what the reconciler acts on).
+    await ledger.markProcessing(reservationId).catch((error) => console.error(`markProcessing ${reservationId} failed:`, error.message));
   }
 
   try {
@@ -922,6 +962,10 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     }
 
     const result = await processMastering({
+      jobId,
+      // Python stops the render before this gateway would give up on it,
+      // so a timed-out job never finishes into a result nobody receives.
+      deadlineEpochMs: Date.now() + UPSTREAM_TIMEOUT_MS,
       file: masterFile,
       // The preview matches its master here too: only the mix is cut to
       // 30 s; the reference's full spectrum still steers the tone.
@@ -989,16 +1033,25 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     const stemStatus = result?.stem_separation?.status || null;
     const stemSeparationRan = stemStatus === STEM_APPLIED;
 
-    if (!stemSeparationRan && reservedSlots.stem) {
-      console.warn(
-        `Stem separation did not run for job ${result?.job_id} (status=${stemStatus ?? "missing"}) — refunding the reserved stem ${reservedSlots.stem}.`,
-      );
-      await releaseRenderSlots({ uid: req.user.uid, plan, reserved: reservedSlots, parts: ["stem"] });
+    if (!stemSeparationRan && useStemSeparation) {
+      console.warn(`Stem separation did not run for job ${result?.job_id} (status=${stemStatus ?? "missing"}) — the reserved stem is refunded on completion.`);
     }
 
     // Recorded regardless of preview — ownsJob() needs this to exist for
     // the download routes to work at all, even for a preview. listJobs()
     // filters preview:true back out, so "My Masters" stays uncluttered.
+    // Code + text, like the engine's own warnings (source_warning_codes),
+    // so the result view can localize it.
+    const stemWarning =
+      useStemSeparation && !stemSeparationRan
+        ? {
+            code: "stems_not_run",
+            params: {},
+            text:
+              "Stem separation didn't run on this track, so it was mastered as a single mix — you have not been charged for it." +
+              (result?.stem_separation?.reason ? ` (${result.stem_separation.reason})` : ""),
+          }
+        : null;
     const recordJobPromise = recordJob(req.user.uid, {
       job_id: result.job_id,
       genre: req.body.genre || null,
@@ -1012,22 +1065,16 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
       analysis_before: result.analysis_before,
       analysis_after: result.analysis_after,
       ab_gain_match: result.ab_gain_match,
-      processing_applied: result.processing_applied,
+      processing_applied: stemWarning
+        ? { ...result.processing_applied, source_warning_codes: [...(result.processing_applied?.source_warning_codes || []), stemWarning] }
+        : result.processing_applied,
       target_profile_used: result.target_profile_used,
       // Separation silently not happening is exactly the case that made
       // the billing bug invisible: the file came back fine, just without
       // stems. Surfaced through the warnings channel the result view
       // already renders, so the user learns it from the product rather
       // than by comparing waveforms.
-      source_warnings: [
-        ...(result.source_warnings || []),
-        ...(useStemSeparation && !stemSeparationRan
-          ? [
-              "Stem separation didn't run on this track, so it was mastered as a single mix — you have not been charged for it." +
-                (result?.stem_separation?.reason ? ` (${result.stem_separation.reason})` : ""),
-            ]
-          : []),
-      ],
+      source_warnings: [...(result.source_warnings || []), ...(stemWarning ? [stemWarning.text] : [])],
       quality_control: result.quality_control,
     });
     if (preview) {
@@ -1050,6 +1097,29 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
       }
     }
 
+    if (reservationId) {
+      // Settle AFTER the job record exists: if this process dies between
+      // the two, the reconciler sees a delivered job and completes the
+      // reservation instead of refunding a master the user has.
+      let settled = null;
+      try {
+        settled = await ledger.complete(reservationId, { refundStem: !stemSeparationRan });
+      } catch (error) {
+        // Firestore unreachable: the charge stays held and the reconciler
+        // completes it once the lease expires (the job record exists).
+        // The user already has their master, so deliver it.
+        console.error(`Completing reservation ${reservationId} failed (reconciler will settle it):`, error.message);
+      }
+      if (settled && !settled.ok && settled.state === "refunded") {
+        // Already refunded (the reconciler gave up on this render). Never
+        // deliver a master that wasn't paid for: withdraw it.
+        console.error(`Reservation ${reservationId} was already refunded; withdrawing job ${result.job_id}.`);
+        await deleteJob(req.user.uid, result.job_id).catch(() => {});
+        await deleteJobFiles(result.job_id).catch(() => {});
+        return res.status(409).json({ code: "reservation_expired", detail: "This render took too long and was cancelled. You have not been charged — please try again." });
+      }
+    }
+
     if (!preview) {
       recordServerEvent("master_completed", {
         uid: req.user.uid,
@@ -1063,18 +1133,19 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     }
     return res.json({ ...result, preview, ...(preview ? { preview_excerpt_start_s: previewStartSeconds } : {}) });
   } catch (error) {
-    // Give the reserved slot back. The slot is now taken BEFORE the
-    // render (that is what makes concurrency safe), so a render that
-    // throws has already spent it — without this, a crashed or
-    // capacity-rejected job would silently cost the user a master.
-    //
-    // Best-effort and never allowed to mask the real failure: if the
-    // refund itself throws, the user still gets the original error, and
-    // the lost slot is logged for manual correction rather than
-    // swallowing the reason their render failed.
-    // Best-effort and never allowed to mask the real failure (see
-    // releaseRenderSlots).
-    await releaseRenderSlots({ uid: req.user.uid, plan, reserved: reservedSlots });
+    // Give the reserved slot back. The slot is taken BEFORE the render
+    // (that is what makes concurrency safe), so a render that throws has
+    // already spent it. Retried briefly; if Firestore stays down the
+    // reservation keeps its lease and the reconciler refunds it later —
+    // never allowed to mask the real failure.
+    if (reservationId) await refundWithRetry(reservationId, normalizeMasteringFailure(error));
+    // The gateway gave up waiting: make sure Python stops too and nothing
+    // it might still write is ever served (Python also stops itself at the
+    // propagated deadline; this covers a clock skew or a lost response).
+    if (error?.code === "processing_timeout" || error?.name === "UpstreamTimeoutError") {
+      await cancelPythonJob(jobId);
+      await deleteJobFiles(jobId).catch(() => {});
+    }
 
     if (!preview) {
       recordServerEvent("master_failed", {
@@ -1095,8 +1166,10 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     // Upstream 4xx (bad/unsupported upload) stays a 4xx; an engine crash
     // (Python 5xx) is reported as a server error, not "bad request".
     const upstream = Number(error?.status);
-    const status = upstream === 503 ? 503 : upstream >= 500 ? 502 : 400;
-    return res.status(status).json({ detail: error?.message || "Mastering failed" });
+    const status = [503, 504, 413, 409, 499].includes(upstream) ? upstream : upstream >= 500 ? 502 : 400;
+    // `code` is the stable machine-readable reason (X-Error-Code from the
+    // Python service) the frontend localizes; `detail` stays as a fallback.
+    return res.status(status).json({ code: error?.code || null, detail: error?.message || "Mastering failed" });
   }
 });
 

@@ -224,9 +224,22 @@ export async function postMultipartToPython(pathname, { fields = {}, files = {} 
     // validation error.
     throw Object.assign(new Error(payload?.detail ? JSON.stringify(payload.detail) : `Python service returned HTTP ${response.status}`), {
       status: response.status,
+      code: response.errorCode || undefined,
     });
   }
   return payload;
+}
+
+// Asks the Python service to stop a job (idempotent there). Best-effort:
+// used when this gateway gave up on a render (timeout) or a reconciler found
+// it abandoned. Returns the job's state as Python knows it, or null.
+export async function cancelPythonJob(jobId) {
+  try {
+    const response = await fetch(`${settings.pythonApiBaseUrl}/jobs/${encodeURIComponent(jobId)}/cancel`, { method: "POST", signal: AbortSignal.timeout(10_000) });
+    return response.ok ? await response.json() : null;
+  } catch {
+    return null;
+  }
 }
 
 // Deletes every file a job ever produced — the "Delete" button in My
@@ -381,7 +394,7 @@ async function processMasteringViaFfmpegFallback({ file, config }) {
   };
 }
 
-export async function processMastering({ file, referenceFile = null, fields, uid }) {
+export async function processMastering({ file, referenceFile = null, fields, uid, jobId = null, deadlineEpochMs = null }) {
   const config = await resolveConfig(fields, uid);
 
   if (settings.masteringEngine !== "adaptive_python") {
@@ -402,6 +415,10 @@ export async function processMastering({ file, referenceFile = null, fields, uid
     tier: config.tier,
     delivery: config.delivery,
   };
+  // Gateway-assigned id (so this gateway can cancel the job) and the time
+  // by which this gateway needs the answer (Python stops the render first).
+  if (jobId) pythonFields.job_id = jobId;
+  if (deadlineEpochMs) pythonFields.deadline_epoch_ms = String(deadlineEpochMs);
   // Category/flavour only apply to the adaptive engine — a full preset spec
   // is a literal instruction set, same reasoning as the reference-file guard
   // right below.
@@ -440,6 +457,7 @@ export async function processMastering({ file, referenceFile = null, fields, uid
     // message is wrapped; the status rides along.
     throw Object.assign(new Error(`Mastering failed: ${error.message}`), {
       status: error?.status,
+      code: error?.code,
     });
   }
 

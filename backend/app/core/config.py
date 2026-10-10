@@ -42,6 +42,34 @@ class Settings:
     # 19-minute deadline (backend-node pythonUpstream.js). Covers virtually
     # every song; DJ mixes and podcasts are out of scope. 0 disables.
     max_duration_minutes: float
+    # --- Resource-aware job execution (app/core/job_runner.py) -----------
+    # Memory budget for concurrently running mastering workers, MB. 0 =
+    # derive it (container memory limit x 0.75, else host RAM x 0.5; see
+    # resolve_memory_budget_mb). Set it explicitly in production to what
+    # the python-service may really use.
+    memory_budget_mb: float
+    # Demucs is the heaviest job by far (docs/audits/RESOURCE_BENCHMARKS.md),
+    # so stem jobs have their own cap on top of the memory budget.
+    max_concurrent_stem_jobs: int
+    # Bounded queue: at most this many jobs wait for capacity, each at most
+    # queue_wait_s, before getting an explicit "server busy" answer.
+    queue_max: int
+    queue_wait_s: float
+    # Hard limit for one render, enforced by killing the worker. Below the
+    # gateway's 19-minute HTTP deadline (backend-node pythonUpstream.js) so
+    # this service answers first, with a real reason.
+    job_timeout_s: float
+    # Peak-RSS cost model per worker (measured; see RESOURCE_BENCHMARKS.md).
+    cost_worker_base_mb: float
+    cost_per_audio_minute_mb: float
+    cost_stem_extra_mb: float
+    cost_reference_extra_mb: float
+    # Wall-clock seconds per second of audio (measured on 4 vCPU; see
+    # RESOURCE_BENCHMARKS.md). Used to refuse, up front, a stem job that
+    # cannot finish inside job_timeout_s instead of letting it run for the
+    # whole timeout and fail anyway.
+    stem_seconds_per_audio_second: float
+    master_seconds_per_audio_second: float
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -75,6 +103,17 @@ def load_settings() -> Settings:
         # than to let the box OOM and take mastering down for everyone.
         max_concurrent_masters=int(os.getenv("MASTERING_MAX_CONCURRENT_JOBS", "3")),
         max_duration_minutes=float(os.getenv("MASTERING_MAX_DURATION_MINUTES", "15")),
+        memory_budget_mb=float(os.getenv("MASTERING_MEMORY_BUDGET_MB", "0")),
+        max_concurrent_stem_jobs=int(os.getenv("MASTERING_MAX_CONCURRENT_STEM_JOBS", "1")),
+        queue_max=int(os.getenv("MASTERING_QUEUE_MAX", "6")),
+        queue_wait_s=float(os.getenv("MASTERING_QUEUE_WAIT_SECONDS", "120")),
+        job_timeout_s=float(os.getenv("MASTERING_JOB_TIMEOUT_SECONDS", "1080")),
+        cost_worker_base_mb=float(os.getenv("MASTERING_COST_BASE_MB", "450")),
+        cost_per_audio_minute_mb=float(os.getenv("MASTERING_COST_PER_MINUTE_MB", "310")),
+        cost_stem_extra_mb=float(os.getenv("MASTERING_COST_STEM_MB", "3700")),
+        cost_reference_extra_mb=float(os.getenv("MASTERING_COST_REFERENCE_MB", "150")),
+        stem_seconds_per_audio_second=float(os.getenv("MASTERING_STEM_SECONDS_PER_AUDIO_SECOND", "2.4")),
+        master_seconds_per_audio_second=float(os.getenv("MASTERING_MASTER_SECONDS_PER_AUDIO_SECOND", "0.6")),
     )
 
 

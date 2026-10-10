@@ -22,6 +22,7 @@ import { useMasteringProgress } from "@/lib/useMasteringProgress";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 import InlineAlert from "@/components/ui/InlineAlert";
+import { masteringErrorText, localizeSourceWarnings } from "@/lib/masteringErrors";
 
 // Codec names are format labels, not language-dependent text — same on
 // every locale, nothing to localize here.
@@ -76,6 +77,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
     isSubmitting,
     isImportingPreset,
     error,
+    errorCode,
     importError,
     status,
     result,
@@ -841,7 +843,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
           </p>
         ) : null}
         {status ? <p className="mt-3 text-sm text-accent">{status}</p> : null}
-        {error ? <InlineAlert size="sm" className="mt-3">{error}</InlineAlert> : null}
+        {error ? <InlineAlert size="sm" className="mt-3">{masteringErrorText(t, error, errorCode)}</InlineAlert> : null}
       </div>
 
       {/* sticky only from lg: up, where this sits beside the wizard in the
@@ -866,8 +868,8 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
 
         {!isSubmitting && result ? (
           <div className="mt-4 flex flex-col gap-3.5">
-            {(result.source_warnings || []).map((warning) => (
-              <div key={warning} className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-900">
+            {localizeSourceWarnings(t, result.source_warnings, result.processing_applied).map((warning, i) => (
+              <div key={`${i}-${warning}`} className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-900">
                 ⚠ {warning}
               </div>
             ))}

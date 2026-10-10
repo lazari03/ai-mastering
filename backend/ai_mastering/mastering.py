@@ -581,47 +581,80 @@ def master_track(
         "mastering_diagnostics": diagnostics,
     }
 
-    source_warnings = []
+    # Every warning carries a stable code + params next to its English text
+    # (processing_applied.source_warning_codes) so the UI can localize it;
+    # the text stays the source of truth for older clients and job records.
+    source_warnings: list[str] = []
+    warning_codes: list[dict] = []
+
+    def warn(code: str, text: str, first: bool = False, **params) -> None:
+        item = {"code": code, "params": params, "text": text}
+        if first:
+            source_warnings.insert(0, text)
+            warning_codes.insert(0, item)
+        else:
+            source_warnings.append(text)
+            warning_codes.append(item)
+
     if input_validation.get("silent_channel_restored"):
-        source_warnings.append(
-            f"The {input_validation['silent_channel_restored']} channel of this file was silent, so it was mastered as mono "
-            "(the other channel on both sides). If that isn't what you intended, check the export settings of your mix."
+        channel = input_validation["silent_channel_restored"]
+        warn(
+            "silent_channel_restored",
+            f"The {channel} channel of this file was silent, so it was mastered as mono "
+            "(the other channel on both sides). If that isn't what you intended, check the export settings of your mix.",
+            channel=channel,
         )
+    if input_validation.get("dc_offset_corrected"):
+        warn("dc_offset_corrected", "Your file had a DC offset (a constant shift away from zero); it was removed before mastering. Check your mix bus for a faulty plugin or converter.")
+    if float(input_validation.get("channel_imbalance_db") or 0.0) > CHANNEL_IMBALANCE_WARN_DB and not input_validation.get("silent_channel_restored"):
+        db = round(float(input_validation["channel_imbalance_db"]), 1)
+        warn("channel_imbalance", f"Left and right channels differ in level by {db:.1f} dB in your upload. Mastering keeps your balance as it is; check it was intentional.", db=db)
     if analysis_before.get("near_mono_source"):
-        source_warnings.append(
+        warn(
+            "near_mono_source",
             "Source file has little to no stereo content (left/right channels are nearly identical) — "
             "mastering can't create real stereo separation that was never in the recording. "
-            "The width/wider controls have nothing to widen here."
+            "The width/wider controls have nothing to widen here.",
         )
     for issue in public.get("mix_diagnosis", []):
         if issue["issue"] == "overly_narrow_stereo" and analysis_before.get("near_mono_source"):
             continue
-        source_warnings.append(f"Mix note ({issue['issue']}): {issue['detail']}")
+        warn(f"mix_note.{issue['issue']}", f"Mix note ({issue['issue']}): {issue['detail']}")
 
     vocal_status = _vocal_enhancement_status(stems_requested, stem_metadata)
     if vocal_status == "failed":
         # The user explicitly asked for vocal enhancement: a silent fallback
         # to the full-mix master would misrepresent what they got.
-        source_warnings.insert(
-            0,
+        warn(
+            "vocal_enhancement_failed",
             "Vocal enhancement was requested but could not run (vocal/instrument separation failed), "
             "so this master was made from the full mix without it.",
+            first=True,
         )
     elif vocal_status == "unchanged":
-        source_warnings.append("Vocal enhancement: the vocal was measured and already sits correctly in the mix, so it was left unchanged.")
+        warn("vocal_enhancement_unchanged", "Vocal enhancement: the vocal was measured and already sits correctly in the mix, so it was left unchanged.")
 
     if final.label == "transparent_fallback":
-        source_warnings.insert(
-            0,
+        kinds = ", ".join(sorted({f.kind for f in initial.verdict.failures}))
+        warn(
+            "transparent_fallback",
             "Minimal-processing master: every corrective version of the full master still failed verification "
-            f"({', '.join(sorted({f.kind for f in initial.verdict.failures}))}), so this file is gain and limiting only "
+            f"({kinds}), so this file is gain and limiting only "
             "(plus your own tweaks). It is safe, but it is not a full master of this mix.",
+            first=True,
+            kinds=kinds,
         )
     shortfall = float(final.verdict.loudness["shortfall_vs_requested_lu"])
     if shortfall > C.LOUDNESS_SHORTFALL_WARN_LU:
-        source_warnings.append(
-            f"Loudness held back: delivered {final.verdict.loudness['integrated_lufs']:.1f} LUFS, {shortfall:.1f} LU below the "
-            f"requested {final.verdict.loudness['requested_target_lufs']:.1f} LUFS, to stay inside this mix's dynamics budget."
+        delivered = round(float(final.verdict.loudness["integrated_lufs"]), 1)
+        requested = round(float(final.verdict.loudness["requested_target_lufs"]), 1)
+        warn(
+            "loudness_held_back",
+            f"Loudness held back: delivered {delivered:.1f} LUFS, {shortfall:.1f} LU below the "
+            f"requested {requested:.1f} LUFS, to stay inside this mix's dynamics budget.",
+            delivered=delivered,
+            shortfall=round(shortfall, 1),
+            requested=requested,
         )
 
     quieter_by = float(analysis_before["integrated_lufs"]) - float(analysis_after["integrated_lufs"])
@@ -630,19 +663,26 @@ def master_track(
         # the engine choosing peak safety over level, and it must say why
         # instead of leaving the user to assume the master is worse.
         reasons = []
+        reason_codes = []
         src_tp = float(analysis_before.get("true_peak_db", -99.0))
         ceiling = float(plan.limiter["ceiling_dbtp"])
         if src_tp > ceiling:
             reasons.append(f"your upload peaks at {src_tp:+.1f} dBTP and delivery needs {ceiling:.0f} dBTP or lower")
+            reason_codes.append({"code": "peaks", "params": {"peak": f"{src_tp:+.1f}", "ceiling": f"{ceiling:.0f}"}})
         if (profile.clipping or {}).get("detected"):
             reasons.append("it already contains clipped samples, so it was not limited harder (that would add distortion)")
+            reason_codes.append({"code": "clipped", "params": {}})
         if float(analysis_before["integrated_lufs"]) > float(plan.loudness["acceptable_max_lufs"]):
             reasons.append(f"it is louder than this genre/delivery range (up to {plan.loudness['acceptable_max_lufs']:.1f} LUFS)")
-        source_warnings.insert(
-            0,
+            reason_codes.append({"code": "too_loud", "params": {"max": f"{plan.loudness['acceptable_max_lufs']:.1f}"}})
+        warn(
+            "quieter_than_upload",
             f"This master is {quieter_by:.1f} dB quieter than your upload"
             + (": " + "; ".join(reasons) + "." if reasons else ", to stay inside safe peak and dynamics limits.")
             + " Use Match levels to compare tone fairly.",
+            first=True,
+            db=f"{quieter_by:.1f}",
+            reasons=reason_codes,
         )
 
     ab_analysis = build_ab_report(
@@ -654,7 +694,10 @@ def master_track(
         transient_qc=transient_qc,
     )
     if not ab_analysis["improved"]:
-        source_warnings = source_warnings + [f"Improvement check: {reason}" for reason in ab_analysis["verdict_reasons"]]
+        for reason in ab_analysis["verdict_reasons"]:
+            # The reason itself is measurement prose from ab_analysis.py and
+            # is shown as-is (English) under a localized prefix.
+            warn("improvement_check", f"Improvement check: {reason}", reason=reason)
 
     decision_report = build_decision_report(public, limiter_report, [], transient_qc, plan=plan.to_dict(), evaluation=ev, backoff=backoff_info)
 
@@ -675,7 +718,7 @@ def master_track(
         "analysis_before": analysis_before,
         "analysis_after": analysis_after,
         "level_diagnostics": level_diagnostics,
-        "processing_applied": processing_applied,
+        "processing_applied": {**processing_applied, "source_warning_codes": warning_codes},
         "mastering_diagnostics": diagnostics,
         "ab_gain_match": _ab_gain_match(analysis_before["integrated_lufs"], analysis_after["integrated_lufs"]),
         "ab_analysis": ab_analysis,

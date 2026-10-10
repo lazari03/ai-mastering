@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 
 import { useMasteringStore } from "@/store/masteringStore";
 import { useLanguage } from "@/lib/i18n";
+import { masteringErrorText } from "@/lib/masteringErrors";
 
 // Lives in the app shell (not inside MasteringConsole) so it survives
 // switching to Show Chords/etc while a render is in flight —
@@ -20,7 +21,7 @@ import { useLanguage } from "@/lib/i18n";
 // Web Push (service worker, VAPID keys) — a separate, bigger piece of work.
 export default function NotificationBanner({ activeTab, onView }) {
   const { t } = useLanguage();
-  const { isSubmitting, result, error } = useMasteringStore();
+  const { isSubmitting, result, error, errorCode } = useMasteringStore();
   const [dismissed, setDismissed] = useState(false);
   const wasSubmitting = useRef(false);
   const notifiedJobId = useRef(null);
@@ -73,7 +74,7 @@ export default function NotificationBanner({ activeTab, onView }) {
             <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />
             <div className="min-w-0 flex-1">
               <p className="m-0 text-sm font-semibold text-text-primary">{t("notif.failed")}</p>
-              <p className="mt-0.5 truncate text-xs text-text-secondary">{error}</p>
+              <p className="mt-0.5 truncate text-xs text-text-secondary">{masteringErrorText(t, error, errorCode)}</p>
             </div>
           </>
         ) : (

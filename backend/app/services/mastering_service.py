@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import subprocess
 import uuid
 from pathlib import Path
@@ -233,7 +234,7 @@ def _enforce_max_duration(input_path: Path, label: str) -> None:
         )
 
 
-def _decode_input_if_required(job_id: str, input_path: Path, input_ext: str, label: str = "input") -> Path:
+def _decode_input_if_required(job_id: str, input_path: Path, input_ext: str, label: str = "input", work_dir: Path | None = None) -> Path:
     # Before decoding: a 3-hour MP3 is gigabytes of float audio, and every
     # route that loads audio (master, its reference, analyze, chords) comes
     # through here.
@@ -244,7 +245,7 @@ def _decode_input_if_required(job_id: str, input_path: Path, input_ext: str, lab
         # label distinguishes the main input's decoded file from a
         # reference track's — both can need decoding in the same request,
         # and without this they'd collide on the same output filename.
-        decoded_wav_path = settings.upload_dir / f"{job_id}_{label}_internal.wav"
+        decoded_wav_path = (work_dir or settings.upload_dir) / f"{job_id}_{label}_internal.wav"
         # No "-ar": the source sample rate is preserved. Forcing 44100 here
         # resampled every 48 kHz upload (standard for anything cut to video,
         # and common in music sessions) before a single mastering decision
@@ -398,22 +399,86 @@ def make_browser_preview(wav_mastered_path: Path, preview_path: Path) -> None:
         logging.getLogger(__name__).warning("Browser-preview transcode raised for %s: %s", preview_path.name, exc)
 
 
-def process_mastering_request(file: UploadFile, config: dict, reference_file: UploadFile | None = None) -> dict:
+JOB_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,64}$")
+
+
+def stage_mastering_request(file: UploadFile, config: dict, reference_file: UploadFile | None = None, job_id: str | None = None) -> dict:
+    """The cheap, in-server half of a master: write the upload(s) to disk and
+    read their duration and sample rate from the headers, which is what
+    resource admission needs (app/core/job_runner.py). No decoding."""
     if file.size and file.size > settings.max_upload_size_mb * 1024 * 1024:
         raise HTTPException(413, f"Uploaded file exceeds {settings.max_upload_size_mb}MB limit")
-
-    job_id = str(uuid.uuid4())[:8]
+    if job_id is not None and not JOB_ID_RE.match(job_id):
+        raise HTTPException(400, "job_id must be 6-64 characters of letters, digits, '-' or '_'")
+    job_id = job_id or str(uuid.uuid4())[:8]
     input_ext = Path(file.filename or "").suffix or ".wav"
-    output_ext = config["output_format"]
-
     input_path = settings.upload_dir / f"{job_id}_input{input_ext}"
-    output_path = settings.output_dir / f"{job_id}_mastered.{output_ext}"
-    wav_mastered_path = settings.output_dir / f"{job_id}_mastered.wav"
-
     with input_path.open("wb") as handle:
         handle.write(file.file.read())
+    # The directories travel with the job: the worker process has its own
+    # settings object, and where a job's files live is the server's call.
+    staged = {
+        "job_id": job_id, "input_path": str(input_path), "input_ext": input_ext, "reference_path": None, "reference_ext": None,
+        "upload_dir": str(settings.upload_dir), "output_dir": str(settings.output_dir),
+    }
+    if reference_file is not None and config.get("full_preset") is None:
+        reference_ext = Path(reference_file.filename or "").suffix or ".wav"
+        reference_path = settings.upload_dir / f"{job_id}_reference{reference_ext}"
+        with reference_path.open("wb") as handle:
+            handle.write(reference_file.file.read())
+        staged["reference_path"], staged["reference_ext"] = str(reference_path), reference_ext
+    # Refuse an over-long input here, before it is ever queued for a worker.
+    _enforce_max_duration(input_path, "input")
+    if staged["reference_path"]:
+        _enforce_max_duration(Path(staged["reference_path"]), "reference")
+    staged["duration_s"] = _probe_duration_s(input_path)
+    staged["sample_rate"] = _probe_sample_rate(input_path)
+    return staged
 
-    processing_input_path = _decode_input_if_required(job_id, input_path, input_ext)
+
+def _probe_sample_rate(path: Path) -> int | None:
+    try:
+        return int(sf.info(str(path)).samplerate)
+    except Exception:
+        pass
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=sample_rate", "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+            capture_output=True, text=True, timeout=30,
+        )
+        return int(out.stdout.strip().splitlines()[0])
+    except Exception:
+        return None
+
+
+def remove_job_files(job_id: str) -> None:
+    """Every file a job may have produced. Used when a job is cancelled or
+    times out, so a late or partial result can never be downloaded."""
+    for directory in (settings.upload_dir, settings.output_dir):
+        for path in directory.glob(f"{job_id}_*"):
+            path.unlink(missing_ok=True)
+
+
+def process_mastering_request(file: UploadFile, config: dict, reference_file: UploadFile | None = None) -> dict:
+    """Stage + render in-process (direct callers and tests). The /master
+    route stages here and renders in a worker process instead."""
+    return render_staged_job(stage_mastering_request(file, config, reference_file), config)
+
+
+def render_staged_job(staged: dict, config: dict) -> dict:
+    """The expensive half: decode, render, deliver. Runs inside a worker
+    process (app/core/job_runner.py), so everything it needs is in `staged`
+    (paths only, no UploadFile)."""
+    job_id = staged["job_id"]
+    input_path = Path(staged["input_path"])
+    input_ext = staged["input_ext"]
+    output_ext = config["output_format"]
+    upload_dir = Path(staged.get("upload_dir") or settings.upload_dir)
+    output_dir = Path(staged.get("output_dir") or settings.output_dir)
+    output_path = output_dir / f"{job_id}_mastered.{output_ext}"
+    wav_mastered_path = output_dir / f"{job_id}_mastered.wav"
+
+    processing_input_path = _decode_input_if_required(job_id, input_path, input_ext, work_dir=upload_dir)
 
     full_preset = config.get("full_preset")
 
@@ -433,12 +498,8 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
         # preset spec is a literal instruction set with no "target spectral
         # balance" slot to override. Mirrors masteringService.js.
         reference_input_path = None
-        if reference_file is not None:
-            reference_ext = Path(reference_file.filename or "").suffix or ".wav"
-            reference_path = settings.upload_dir / f"{job_id}_reference{reference_ext}"
-            with reference_path.open("wb") as handle:
-                handle.write(reference_file.file.read())
-            reference_input_path = str(_decode_input_if_required(job_id, reference_path, reference_ext, label="reference"))
+        if staged.get("reference_path"):
+            reference_input_path = str(_decode_input_if_required(job_id, Path(staged["reference_path"]), staged["reference_ext"], label="reference", work_dir=upload_dir))
 
         try:
             mastering_result = run_adaptive_mastering(
@@ -468,15 +529,17 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
     delivery_check = deliver_and_verify(wav_mastered_path, output_path, output_ext, ceiling_db=ceiling)
     mastering_result.setdefault("processing_applied", {})["delivery_check"] = delivery_check
     if delivery_check["gain_trim_db"] > 0:
-        mastering_result.setdefault("source_warnings", []).append(
-            f"The MP3 encoder overshot the peak ceiling, so the MP3 was encoded {delivery_check['gain_trim_db']:.1f} dB quieter than the WAV master."
+        text = f"The MP3 encoder overshot the peak ceiling, so the MP3 was encoded {delivery_check['gain_trim_db']:.1f} dB quieter than the WAV master."
+        mastering_result.setdefault("source_warnings", []).append(text)
+        mastering_result["processing_applied"].setdefault("source_warning_codes", []).append(
+            {"code": "mp3_gain_trim", "params": {"db": f"{delivery_check['gain_trim_db']:.1f}"}, "text": text}
         )
     # wav_mastered_path still exists after deliver_and_verify either way —
     # untouched for an mp3 output_ext (ffmpeg reads it, writes a separate
     # output_path), and a same-path no-op rename for the wav case (the
     # common one: output_ext defaults to "wav", so wav_mastered_path and
     # output_path are literally the same filename).
-    make_browser_preview(wav_mastered_path, settings.output_dir / f"{job_id}_preview.wav")
+    make_browser_preview(wav_mastered_path, output_dir / f"{job_id}_preview.wav")
 
     before_lufs = mastering_result["analysis_before"]["integrated_lufs"]
     after_lufs = mastering_result["analysis_after"]["integrated_lufs"]

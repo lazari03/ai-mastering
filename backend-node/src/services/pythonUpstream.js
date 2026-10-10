@@ -59,7 +59,9 @@ export async function postFormData(url, form, { timeoutMs = UPSTREAM_TIMEOUT_MS 
               json = {};
             }
           }
-          resolve({ status: res.statusCode, ok: res.statusCode >= 200 && res.statusCode < 300, isJson, json });
+          // Stable machine code for the failure (Python's X-Error-Code), so
+          // the user-facing message can be localized from it.
+          resolve({ status: res.statusCode, ok: res.statusCode >= 200 && res.statusCode < 300, isJson, json, errorCode: res.headers["x-error-code"] || null });
         });
         res.on("error", (error) => {
           clearTimeout(timer);

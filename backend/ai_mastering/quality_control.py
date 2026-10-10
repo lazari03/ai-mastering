@@ -67,8 +67,16 @@ def validate_input_signal(audio: np.ndarray, sr: int) -> dict:
 
     peak = float(np.max(np.abs(audio)))
     overall_rms_db = _db(_rms(audio.reshape(-1)))
-    if peak < 1e-6 or overall_rms_db < SILENCE_RMS_DB:
+    if peak < 1e-6:
         raise InvalidAudioError("Audio is digital silence — there is no signal to master.")
+    if overall_rms_db < SILENCE_RMS_DB:
+        # Same stop condition as before; only the message changed. A file
+        # that has signal but sits below -70 dBFS RMS is not "silence" —
+        # telling its owner it was confused people with very quiet exports.
+        raise InvalidAudioError(
+            f"Audio is far too quiet to master (overall level {overall_rms_db:.0f} dBFS RMS, below {SILENCE_RMS_DB:.0f} dBFS). "
+            "Check the export level of your mix and upload it again."
+        )
 
     issues: list[str] = []
 

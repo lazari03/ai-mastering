@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-import threading
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -12,29 +12,65 @@ from ai_mastering.planning.preset_intent import is_intent_preset, resolve_genre,
 from app.core.config import settings
 from app.schemas.mastering import AnalyzeResponse, CodecPreviewResponse, MasterResponse, PresetSummary, PreviewParamsResponse
 from app.services.codec_preview_service import SUPPORTED_CODECS, simulate_codec
+from app.core.job_runner import (
+    CapacityError,
+    CostModel,
+    JobRegistry,
+    JobTerminated,
+    ResourceGovernor,
+    WorkerError,
+    resolve_memory_budget_mb,
+    run_in_worker,
+)
 from app.services.mastering_service import (
     analyze_uploaded_track,
     make_browser_preview,
     parse_json_array,
     parse_json_object,
-    process_mastering_request,
+    remove_job_files,
     resolve_mastering_config,
+    stage_mastering_request,
 )
 from app.services.presets_service import list_mixing_presets
 from params import DELIVERY_TARGETS, list_categories, list_flavours, list_genres, list_styles, list_tags
 
 router = APIRouter(tags=["mastering"])
 
-# Caps how many /master requests actually run their DSP at once — see
-# Settings.max_concurrent_masters's comment for why this exists. A plain
-# threading.Semaphore, not an asyncio one: this route is a sync `def`, so
-# it executes on one of Starlette's worker threads, not the event loop.
-# Non-blocking acquire (`blocking=False`) is deliberate — a caller that
-# can't get a slot fails fast with a 503 to retry, rather than parking its
-# worker thread in a wait that just eats into the same shared thread-pool
-# capacity every other endpoint (including cheap ones like /genres) also
-# depends on.
-_master_slots = threading.Semaphore(settings.max_concurrent_masters)
+# Resource-aware admission + killable worker processes: see
+# app/core/job_runner.py for why /master no longer renders on a server
+# thread behind a count-only semaphore.
+MEMORY_BUDGET_MB, MEMORY_BUDGET_SOURCE = resolve_memory_budget_mb(settings.memory_budget_mb)
+COST_MODEL = CostModel(
+    worker_base_mb=settings.cost_worker_base_mb,
+    per_audio_minute_mb=settings.cost_per_audio_minute_mb,
+    stem_extra_mb=settings.cost_stem_extra_mb,
+    reference_extra_mb=settings.cost_reference_extra_mb,
+)
+governor = ResourceGovernor(
+    MEMORY_BUDGET_MB, settings.max_concurrent_masters, settings.max_concurrent_stem_jobs, settings.queue_max, settings.queue_wait_s
+)
+registry = JobRegistry()
+WORKER_TARGET = ("app.services.mastering_service", "render_staged_job")
+WORKER_PRELOAD = ["app.services.mastering_service"]
+# Seconds kept back from the caller's deadline so this service's own,
+# specific answer (timeout, cancelled) arrives before the caller gives up.
+DEADLINE_MARGIN_S = 30.0
+
+
+def max_stem_duration_s(timeout_s: float) -> float:
+    """Longest track a stem job can finish inside timeout_s at the measured
+    separation + mastering speed (0 disables the check)."""
+    rate = settings.stem_seconds_per_audio_second + settings.master_seconds_per_audio_second
+    return timeout_s / rate if rate > 0 else float("inf")
+
+
+def _error(status: int, code: str, detail: str, retry_after_s: int | None = None) -> HTTPException:
+    # detail stays a plain string (what every caller already reads); the
+    # stable machine code travels in a header the gateway localizes from.
+    headers = {"X-Error-Code": code}
+    if retry_after_s:
+        headers["Retry-After"] = str(retry_after_s)
+    return HTTPException(status, detail, headers=headers)
 
 
 @router.get("/genres")
@@ -174,6 +210,10 @@ def master_track(
     # without duplicating preset-resolution logic on both sides.
     full_preset_json: str | None = Form(None),
     reference_file: UploadFile | None = File(None),
+    # Gateway-assigned id (so it can cancel this job) and its own deadline,
+    # epoch ms. Both optional for direct callers.
+    job_id: str | None = Form(None),
+    deadline_epoch_ms: int | None = Form(None),
 ) -> dict:
     tag_list = parse_json_array(tags, "tags")
     tweak_values = parse_json_object(tweaks, "tweaks")
@@ -199,12 +239,7 @@ def master_track(
         preset_spec=preset_spec,
     )
 
-    if not _master_slots.acquire(blocking=False):
-        raise HTTPException(503, "Server is at capacity right now — please try again in a minute.")
-    try:
-        result = process_mastering_request(file=file, config=resolved_config, reference_file=reference_file)
-    finally:
-        _master_slots.release()
+    result = _run_master_job(file, resolved_config, reference_file, job_id, deadline_epoch_ms)
     return {
         "job_id": result["job_id"],
         "download_url": result["download_url"],
@@ -219,6 +254,90 @@ def master_track(
         "processing_applied": result["processing_applied"],
         "target_profile_used": result["target_profile_used"],
     }
+
+
+def _run_master_job(file, resolved_config: dict, reference_file, job_id: str | None, deadline_epoch_ms: int | None) -> dict:
+    staged = stage_mastering_request(file=file, config=resolved_config, reference_file=reference_file, job_id=job_id)
+    job_id = staged["job_id"]
+    try:
+        rec = registry.create(job_id)
+    except CapacityError as exc:
+        raise _error(exc.status, exc.code, exc.detail) from exc
+
+    timeout_s = float(settings.job_timeout_s)
+    if deadline_epoch_ms:
+        timeout_s = min(timeout_s, deadline_epoch_ms / 1000.0 - time.time() - DEADLINE_MARGIN_S)
+    stems = bool(resolved_config.get("use_stem_separation"))
+    est_mb = COST_MODEL.estimate_mb(staged.get("duration_s"), stems=stems, reference=bool(staged.get("reference_path")), sample_rate=staged.get("sample_rate"))
+    started = time.monotonic()
+    try:
+        if timeout_s <= 0:
+            raise JobTerminated("timeout", "The request's deadline had already passed.")
+        stem_cap_s = max_stem_duration_s(float(settings.job_timeout_s))
+        if stems and staged.get("duration_s") and staged["duration_s"] > stem_cap_s:
+            raise CapacityError(
+                413,
+                "stems_too_long",
+                f"Stem separation is available for tracks up to {stem_cap_s / 60:.1f} minutes on this server. Turn off stem separation or upload a shorter track.",
+            )
+        with governor.admit(job_id, est_mb, stems, wait_s=min(settings.queue_wait_s, timeout_s)):
+            if rec.cancel_requested:
+                raise JobTerminated("cancelled", "Mastering was cancelled.")
+            remaining = timeout_s - (time.monotonic() - started)
+            result, stats = run_in_worker(rec, registry, WORKER_TARGET, (staged, resolved_config), timeout_s=remaining, preload=WORKER_PRELOAD)
+    except CapacityError as exc:
+        registry.transition(job_id, "cancelled" if exc.code == "cancelled" else "failed", detail=exc.code)
+        remove_job_files(job_id)
+        raise _error(exc.status, exc.code, exc.detail, exc.retry_after_s) from exc
+    except JobTerminated as exc:
+        state, status, code = {"timeout": ("timed_out", 504, "processing_timeout"), "cancelled": ("cancelled", 499, "cancelled"), "crashed": ("failed", 500, "worker_crashed")}[exc.reason]
+        registry.transition(job_id, state, detail=exc.detail)
+        remove_job_files(job_id)
+        raise _error(status, code, exc.detail) from exc
+    except WorkerError as exc:
+        registry.transition(job_id, "failed", detail=exc.detail)
+        remove_job_files(job_id)
+        raise _error(exc.status, "invalid_audio" if exc.status == 400 else ("too_long" if exc.status == 413 else "render_failed"), exc.detail) from exc
+
+    # A cancel that arrived while the result was on its way still wins: the
+    # caller has given up, so nothing may be delivered or kept.
+    if rec.cancel_requested:
+        registry.transition(job_id, "cancelled", detail="cancelled at completion")
+        remove_job_files(job_id)
+        raise _error(499, "cancelled", "Mastering was cancelled.")
+    registry.transition(job_id, "completed", peak_rss_mb=stats.get("peak_rss_mb"))
+    result.setdefault("processing_applied", {})["worker"] = {
+        **stats,
+        "estimated_mb": round(est_mb),
+        "duration_s": staged.get("duration_s"),
+        "wall_s": round(time.monotonic() - started, 1),
+    }
+    return result
+
+
+@router.post("/jobs/{job_id}/cancel")
+def cancel_job(job_id: str) -> dict:
+    """Idempotent. Queued: removed from the queue. Running: the worker's
+    process group is killed within ~0.25 s. Terminal: unchanged (a completed
+    job stays completed; the caller decides what to do with it)."""
+    rec = registry.request_cancel(job_id)
+    governor.cancel_queued(job_id)
+    if rec is None:
+        return {"job_id": job_id, "state": "unknown"}
+    return {"job_id": job_id, "state": rec.state, "cancel_requested": rec.cancel_requested}
+
+
+@router.get("/jobs/{job_id}")
+def job_state(job_id: str) -> dict:
+    rec = registry.get(job_id)
+    if rec is None:
+        raise HTTPException(404, "Unknown job")
+    return {"job_id": job_id, "state": rec.state, "detail": rec.detail, "peak_rss_mb": rec.peak_rss_mb}
+
+
+@router.get("/capacity")
+def capacity() -> dict:
+    return {**governor.snapshot(), "budget_source": MEMORY_BUDGET_SOURCE, "cost_model": COST_MODEL.__dict__, "job_timeout_s": settings.job_timeout_s, "max_stem_duration_s": round(max_stem_duration_s(float(settings.job_timeout_s)))}
 
 
 @router.get("/download/{job_id}.{ext}")

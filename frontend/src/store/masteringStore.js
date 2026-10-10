@@ -72,6 +72,7 @@ export const useMasteringStore = create((set, get) => ({
   uploadProgress: null,
   isImportingPreset: false,
   error: "",
+  errorCode: null,
   status: "",
   result: null,
   importError: "",
@@ -148,7 +149,7 @@ export const useMasteringStore = create((set, get) => ({
       if (get().isBootstrapping) set({ isBootstrapping: false });
       return;
     }
-    set({ isBootstrapping: true, error: "" });
+    set({ isBootstrapping: true, error: "", errorCode: null });
 
     try {
       const catalog = await fetchCatalog();
@@ -168,6 +169,7 @@ export const useMasteringStore = create((set, get) => ({
       set({
         isBootstrapping: false,
         error: err.message || "Failed to load mastering catalog",
+        errorCode: err.code || null,
       });
     }
   },
@@ -181,6 +183,7 @@ export const useMasteringStore = create((set, get) => ({
       file,
       result: null,
       error: "",
+      errorCode: null,
       analysis: null,
       livePreviewParams: null,
       analyzeError: "",
@@ -599,14 +602,14 @@ export const useMasteringStore = create((set, get) => ({
     const state = get();
 
     if (!state.file) {
-      set({ error: "Select an audio file before mastering." });
+      set({ error: "Select an audio file before mastering.", errorCode: "no_file" });
       return;
     }
 
     const referenceMode = Boolean(state.referenceFile);
 
     if (!referenceMode && !state.selectedGenre && !state.selectedPreset) {
-      set({ error: "Select a genre or mixing preset." });
+      set({ error: "Select a genre or mixing preset.", errorCode: "no_genre" });
       return;
     }
 
@@ -615,6 +618,7 @@ export const useMasteringStore = create((set, get) => ({
       uploadProgress: { loaded: 0, total: 0, done: false },
       status: preview ? "Rendering preview..." : "Analyzing and mastering...",
       error: "",
+      errorCode: null,
       result: null,
     });
 
@@ -690,6 +694,9 @@ export const useMasteringStore = create((set, get) => ({
         uploadProgress: null,
         status: "",
         error: err.message || "Mastering failed",
+        // Stable reason from the API (X-Error-Code / payload.code); the UI
+        // localizes it and falls back to `error` (see masteringErrors.js).
+        errorCode: err.code || null,
       });
       trackEvent("master_failed", {
         mastering_mode: masteringMode,
@@ -708,7 +715,7 @@ export const useMasteringStore = create((set, get) => ({
   // touch genre/style/category/tweaks — those stay as the user left them,
   // same convenience as re-mastering a similar track.
   clearResult() {
-    set({ result: null, file: null, referenceFile: null, status: "", error: "" });
+    set({ result: null, file: null, referenceFile: null, status: "", error: "", errorCode: null });
   },
 
   // Called by AppClient's auto-navigation effect the moment it has actually
