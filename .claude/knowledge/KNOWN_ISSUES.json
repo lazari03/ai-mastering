@@ -16,14 +16,14 @@
     "rule": "Before investigating a suspected defect run: python3 .claude/knowledge/kb.py issues --component <id> --grep <word>. Edit only the entry you own; append to history, never rewrite it."
   },
   "next_ids": {
-    "AUDIO": 5,
+    "AUDIO": 7,
     "BACKEND": 6,
     "BILLING": 1,
     "FRONTEND": 3,
     "SECURITY": 6,
     "DEVOPS": 8,
     "PRODUCT": 5,
-    "QA": 4,
+    "QA": 6,
     "DOCS": 1
   },
   "issues": [
@@ -45,12 +45,18 @@
         "regression.synthetic"
       ],
       "source": "docs/audits/AURALITH_AUDIT.md#A6, docs/audits/PROFESSIONAL_ROADMAP.md",
-      "validated_commit": "c88bc69",
+      "validated_commit": "677d56a",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Seeded from prior audit A6; product decision required."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "Full QA run: f01 (Professional) and c07 (Standard), same audio, identical in every measured digit."
         }
       ]
     },
@@ -256,7 +262,7 @@
         "regression.synthetic"
       ],
       "source": "docs/agent-reports/AUDIO_DSP_REPORT.md",
-      "validated_commit": "69e7a60",
+      "validated_commit": "677d56a",
       "history": [
         {
           "date": "2026-10-10",
@@ -268,6 +274,12 @@
           "agent": "technical-lead",
           "status": "OPEN",
           "note": "API-level evidence (full QA run, benchmark.metrics lost_drums at matched loudness): c03_thin_edm punch loss 0.206, c16_short_2s 0.126, f06_tags_warmer 0.124 vs documented 0.12 fraction — all delivered by the engine."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "mastering-engineer: 13 ordinary cases cluster at punch_loss 0.099-0.119, just under 0.12; c03 0.206 is worst. Engine delta vs benchmark fraction must be reconciled before deciding the fix (risk: a correct-units guardrail may reject many currently delivered masters)."
         }
       ]
     },
@@ -709,7 +721,7 @@
         "api_qa:c20a_garbage"
       ],
       "source": "test-results/auralith-qa.json (case c20a_garbage); docs/agent-reports/AUDIO_DSP_REPORT.md section 3",
-      "validated_commit": "69e7a60",
+      "validated_commit": "677d56a",
       "history": [
         {
           "date": "2026-10-10",
@@ -721,6 +733,107 @@
           "agent": "technical-lead",
           "status": "OPEN",
           "note": "Full QA run: c20c_empty (0-byte .wav) also returns 500 'EOFError' — same class; DSP owner notified to cover it."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "mastering-engineer independently flagged c20c_empty 500 (already appended)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-005",
+      "title": "Delivered true peak varies (-1.0 dBTP on c06/c08/c10, -3.55 on c12, -2.0 elsewhere) while the c11 warning says delivery needs <= -2 dBTP",
+      "component": "dsp.bus",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "docs/agent-reports/MASTERING_QUALITY_REPORT.md; test-results/auralith-qa.json",
+      "tests": [
+        "qa.api_lab c06",
+        "c08",
+        "c10",
+        "c11",
+        "c12"
+      ],
+      "source": "docs/agent-reports/MASTERING_QUALITY_REPORT.md; test-results/auralith-qa.json",
+      "validated_commit": "677d56a",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-006",
+      "title": "HYPOTHESIS: loudness target follows source crest rather than genre (rock c07 -17.3 LUFS vs rock f05 -14.9, pop ~-13)",
+      "component": "dsp.planning",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "MASTERING_QUALITY_REPORT.md; auralith-qa.json c07/f05",
+      "tests": [
+        "qa.api_lab c07_transient_rock",
+        "f05_reference_mastering"
+      ],
+      "source": "MASTERING_QUALITY_REPORT.md; auralith-qa.json c07/f05",
+      "validated_commit": "677d56a",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-QA-004",
+      "title": "api_qa: engine verdict/processing_applied not captured (reads wrong response keys) — guardrail/corrective-render decisions untraceable from QA JSON",
+      "component": "qa.api_lab",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "qa-automation-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "MASTERING_QUALITY_REPORT.md; auralith-qa.json engine_reported.verdict null on all cases",
+      "tests": [],
+      "source": "MASTERING_QUALITY_REPORT.md; auralith-qa.json engine_reported.verdict null on all cases",
+      "validated_commit": "677d56a",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-QA-005",
+      "title": "benchmark punch_loss implausible on DC-contaminated input (c14 = -0.355)",
+      "component": "regression.synthetic",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "qa-automation-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "auralith-qa.json c14_dc_offset",
+      "tests": [
+        "qa.api_lab c14_dc_offset"
+      ],
+      "source": "auralith-qa.json c14_dc_offset",
+      "validated_commit": "677d56a",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
         }
       ]
     }
