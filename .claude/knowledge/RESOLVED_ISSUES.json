@@ -199,6 +199,104 @@
       "qa_verdict": "N/A-reverification (backend-engineer evidence, BACKEND_REPORT.md)",
       "audit_verdict": "APPROVED H-0007 (INDEPENDENT_AUDIT.md s2)",
       "resolved_date": "2026-10-10"
+    },
+    {
+      "id": "AURALITH-QA-006",
+      "title": "QA lab correctness (auditor review): lenient checks pass on 200/any 4xx; partial runs drop known FAILs; stale endpoint results carried across code hashes; cache key misses harness/expect/reference audio; loudness check silently skipped; untested paths (ffmpeg, presets) not declared",
+      "component": "qa.api_lab",
+      "severity": "P2",
+      "status": "DONE",
+      "owner": "qa-automation-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md (QA lab review, findings 1-7)",
+      "tests": [
+        "qa.api_lab"
+      ],
+      "source": "docs/agent-reports/INDEPENDENT_AUDIT.md (QA lab review, findings 1-7)",
+      "validated_commit": "73a485e",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "qa-automation-engineer",
+          "status": "READY_FOR_AUDIT",
+          "note": "Fixed Q1-Q7 in api_qa.py/qa_corpus.py: genre/cancel strict; STALE carry-forward; refusal=400+X-Error-Code per-case refuse_codes; input_hash has expect+codes+reference audio; endpoints carried only on same code hash; missing loudness target fails for master; untested paths in report header. tests/test_api_qa_rules.py 8 pass. Full run: 28 PASS/4 PWA/1 FAIL (c09, unchanged), no status changes from stricter rules."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_AUDIT",
+          "note": "audit: APPROVED (Q1-Q7 verified; see INDEPENDENT_AUDIT.md section 5)"
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "DONE",
+          "note": "Resolved."
+        }
+      ],
+      "solution": "Strict refusal rules (400 + declared X-Error-Code), STALE carry-forward on partial runs, cache key covers harness/expect/codes/reference audio, endpoint results gated on code hash, missing loudness target fails, untested paths declared",
+      "fix_commit": "f1af9e1",
+      "regression_tests": [
+        "backend/tests/test_api_qa_rules.py (8)",
+        "qa.api_lab full run 33 cases"
+      ],
+      "qa_verdict": "N/A (QA-owned tooling; owner ran 8 rule tests + full lab)",
+      "audit_verdict": "APPROVED H-0010 (INDEPENDENT_AUDIT.md Re-review)",
+      "resolved_date": "2026-10-10"
+    },
+    {
+      "id": "AURALITH-QA-004",
+      "title": "api_qa: engine verdict/processing_applied not captured (reads wrong response keys) — guardrail/corrective-render decisions untraceable from QA JSON",
+      "component": "qa.api_lab",
+      "severity": "P3",
+      "status": "DONE",
+      "owner": "qa-automation-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "MASTERING_QUALITY_REPORT.md; auralith-qa.json engine_reported.verdict null on all cases",
+      "tests": [],
+      "source": "MASTERING_QUALITY_REPORT.md; auralith-qa.json engine_reported.verdict null on all cases",
+      "validated_commit": "73a485e",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "qa-automation-engineer",
+          "status": "READY_FOR_AUDIT",
+          "note": "engine_reported now read from processing_applied.mastering_diagnostics (verdict, initial_verdict, delivered_candidate, backoff, candidates) + delivery_check; no case needed corrective render in the full run."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_AUDIT",
+          "note": "audit: APPROVED"
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "DONE",
+          "note": "Resolved."
+        }
+      ],
+      "solution": "engine_reported read from processing_applied.mastering_diagnostics (verdict, delivered candidate, backoff, renders, delivery_check)",
+      "fix_commit": "f1af9e1",
+      "regression_tests": [
+        "test_api_qa_rules.py engine_summary keys",
+        "full run: verdict_passed non-null on 27/27"
+      ],
+      "qa_verdict": "N/A (QA-owned tooling)",
+      "audit_verdict": "APPROVED H-0011",
+      "resolved_date": "2026-10-10"
     }
   ]
 }

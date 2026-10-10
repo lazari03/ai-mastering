@@ -128,3 +128,63 @@ be fixed before the QA lab is used as a release gate.
 
 ## Files read / commands
 Listed in the auditor's final JSON report to technical-lead.
+
+---
+
+## 5. Re-review: fixes for the QA lab and kb.py findings (QA-006, QA-004, QA-007)
+
+Diffs reviewed: `git show f1af9e1` (api_qa.py, qa_corpus.py, tests/test_api_qa_rules.py) and `git show fae66fd` (kb.py).
+Auditor's own runs: `pytest -q tests/test_api_qa_rules.py` → **8 passed**. `kb.py codehash` → `ceb3292fd55b1bd1`, which matches
+the `code_hash` of `test-results/auralith-qa.json` and every case record (33/33). I exercised the kb.py guards on a scratch copy
+(`scratchpad/kbcopy`, a separate git repo, so the real knowledge base was not touched). I did **not** run a live api_qa: it rewrites
+QA_REPORT.md, auralith-qa.json and TEST_BASELINES.json, and I am read-only on those. The recorded results plus the rule tests were enough.
+
+### AURALITH-QA-006 (Q1-Q7) → **APPROVED**
+
+| # | Fixed? | Evidence |
+|---|---|---|
+| Q1 | Yes | `e_unknown_genre` now requires 4xx (no `or 200`). `e_cancel_finished_idempotent` requires 200 and `state == "completed"`. |
+| Q2 | Yes | `carry_forward()` keeps every recorded case that is still in the corpus. A case recorded under another code hash becomes `STALE` and keeps `status_before_stale`. STALE is counted in `status_counts` (report and baseline) and in the exit code (`NON_PASS_FOR_EXIT`). It is never reused as a cache hit (`reusable()`), and it stays STALE until it is actually re-run. Tested in `test_stale_cases_kept_and_counted_non_pass` and `test_stale_or_other_hash_never_reused_as_cache`. Endpoint checks now run only against cases mastered in *this* run. Otherwise they record `e_job_dependent: NOT_RUN`, which fails the exit code. |
+| Q3 | Yes (rule); the product gap is tracked | `judge_refusal()` requires HTTP 400, a detail, and an `X-Error-Code` in the case's `refuse_codes`. 409/413/499/503, a wrong code and a missing detail all FAIL (tested). `error_code` is recorded per case and printed in the report. The remaining limit is in the product, not the harness: guardrail refusals (c09/c13) send the same `invalid_audio` code as undecodable input. This is filed as **AURALITH-BACKEND-007**. |
+| Q4 | Yes | (a) `api_qa.py` and `qa_app.py` are in `DSP_HASH_GLOBS` (kb.py:46). (b, c) `input_hash` now covers `expect`, `refuse_codes` and the *rendered* reference audio digest (tested: f05 with c01 vs c02 as reference gives different hashes). |
+| Q5 | Yes | `--no-endpoints` carries endpoints forward only when `prev.code_hash == code_hash`. Otherwise it records `[]` and `endpoints_note: "not run"`, and the report and baseline say "not run". |
+| Q6 | Yes | `loudness_check()`: for `expect=master`, a missing target or measurement gives `False`, which is a hard FAIL (the `hard_fail` rule at api_qa.py:333). In the recorded run, 26 of 27 `master` cases have the check. The 27th is c09, which was refused. |
+| Q7 | Yes | The report header now states the untested paths: ffmpeg decode of .mp3/.m4a uploads, and the preset engine. |
+
+Regression tests: all 8 call functions that did not exist before f1af9e1, so they fail on the parent. Each one asserts the
+stricter behaviour, not merely that the function exists.
+
+Non-blocking notes:
+- f04 is accepted with `refuse_codes=("",)` because `stage_mastering_request` raises a bare `HTTPException(400)` with no `X-Error-Code`. This is declared explicitly and is not implied, but no issue tracks the missing contract code. The lead should file one.
+- `master_or_refuse` cases that master (c16) still skip the loudness check silently when the target is missing. This is outside what I asked for, and minor.
+- No live corrective render has happened, so the backoff capture is verified only by unit test and by checking the engine keys (see QA-004).
+
+### AURALITH-QA-004 → **APPROVED**
+`engine_summary()` reads `processing_applied.mastering_diagnostics`. I checked every key it reads against the producer:
+`verdict`, `initial_verdict`, `delivered_candidate`, `backoff_applied`, `backoff.actions`, `renders` and `candidates`
+(ai_mastering/mastering.py:474-512, `_candidate_summary` :274); `VerdictIssue.source/kind` (evaluation/verdict.py:74, via `asdict`);
+and `delivery_check` (app/services/mastering_service.py:530). The recorded results now show `verdict_passed` non-null for all
+27 mastered cases (it was null on every case before). Refused cases carry the verdict failures only in the 400 detail string,
+which is acceptable.
+
+### AURALITH-QA-007 (Q8) → **REJECTED**
+
+Verified fixed (scratch copy, auditor runs):
+- (a) `issue-resolve --audit REJECTED` → refused (rc=1). `--qa maybe` → refused (rc=1).
+- (d) `issue-update --set status=…`, `history=…` and `id=…` → each refused (rc=1).
+- (b) `handoff-add --files nope.py` → refused (rc=1). An existing path → accepted.
+- (c) Handoff ids are now `max+1`. The worktree collision is documented as a lead re-add procedure. No duplicate handoff or issue ids exist in the real KB.
+- (e) The docstring now states that `requirements.txt` is unpinned and not hashed.
+- `issue-add` derives the next id from the highest id in use across open and resolved issues.
+
+**Finding R1 (Medium, blocking) · kb.py `issue-update` / `issue-add` · the Definition-of-Done gate can still be bypassed.**
+- Evidence: kb.py:156-157 (`if a.status: it["status"] = a.status`, free text, no check).
+- Repro (scratch copy): `kb.py issue-update AURALITH-QA-007 --agent x --status DONE --note bypass` → `AURALITH-QA-007 -> DONE`, rc=0. `kb.py issues --status DONE` then lists it.
+- Expected: only `issue-resolve`, with an APPROVED audit, can produce DONE.
+- Actual: any agent can mark an issue DONE with no QA or audit verdict, so the fix to (a) can simply be routed around. `issue-add --status DONE` has the same gap.
+- Required fix: refuse `--status DONE` in `issue-update` and `issue-add`, and point to `issue-resolve`. Preferably also restrict `--status` to the known lifecycle values.
+
+Minor, non-blocking (fix with R1 if convenient):
+- `--set audit_verdict=APPROVED` / `qa_verdict=…` is accepted on an open issue (`issue-resolve` overwrites these fields, so the impact is low). Consider adding them to `PROTECTED_FIELDS`.
+- `--files /etc/passwd` passes validation because `ROOT / "/abs"` resolves to the absolute path. Require relative paths inside ROOT.
+- kb.py still has no automated tests. The handoff already lists this as a risk.
