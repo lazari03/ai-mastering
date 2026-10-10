@@ -11,7 +11,7 @@
 //   retention ............. backend/app/core/config.py MASTERING_FILE_RETENTION_HOURS
 //   upload size ........... backend-node settings.maxUploadMb (MAX_UPLOAD_MB)
 //   codecs ................ backend/app/services/codec_preview_service.py
-import { PLANS, PLAN_ORDER, SINGLE_MASTER, STEM_SEPARATION } from "./pricing";
+import { PLANS, PLAN_ORDER, SINGLE_MASTER, STEM_SEPARATION, localized } from "./pricing";
 
 export const PRODUCT = {
   name: "Auralith Forge",
@@ -51,18 +51,37 @@ export function paidEntryText() {
   return `${indie.label} at ${indie.price}${indie.period} for ${indie.masterLimit} masters a month, or ${SINGLE_MASTER.price} for a single master`;
 }
 
+const PAY_PER_USE = { en: "Pay per use", sq: "Pagesë për përdorim" };
+const FREE_UNLIMITED = { en: "Free, unlimited", sq: "Falas, pa limit" };
+
 // Feature-by-feature comparison, one row per axis, one value per plan in
 // PLAN_ORDER ("—"/false = not included). Shared by the in-app Plans panel
 // and the public /pricing page. Every row must match what the backend
 // enforces (see the sources list at the top of this file).
 export const PLAN_COMPARISON = [
-  { label: "Masters", values: [`${PLANS.free.masterLimit} total (one-time)`, `${PLANS.indie.masterLimit} / month`, `${PLANS.studio.masterLimit} / month`, `${PLANS.pro.masterLimit} / month`] },
-  { label: "Standard engine", values: [true, true, true, true] },
-  { label: "Professional engine", values: [false, false, true, true] },
-  { label: "Stem separation", values: ["Pay per use", "Pay per use", "Pay per use", `${PRODUCT.stems.includedPerMonth} / month included`] },
-  { label: "Chord, key & BPM detection", values: ["Free, unlimited", "Free, unlimited", "Free, unlimited", "Free, unlimited"] },
-  { label: "Codec preview & level-matched A/B", values: [true, true, true, true] },
-  { label: "Shareable download links", values: [false, false, false, true] },
+  {
+    label: { en: "Masters", sq: "Masterë" },
+    values: [
+      { en: `${PLANS.free.masterLimit} total (one-time)`, sq: `${PLANS.free.masterLimit} gjithsej (një-herë)` },
+      { en: `${PLANS.indie.masterLimit} / month`, sq: `${PLANS.indie.masterLimit} / muaj` },
+      { en: `${PLANS.studio.masterLimit} / month`, sq: `${PLANS.studio.masterLimit} / muaj` },
+      { en: `${PLANS.pro.masterLimit} / month`, sq: `${PLANS.pro.masterLimit} / muaj` },
+    ],
+  },
+  { label: { en: "Standard engine", sq: "Motori Standard" }, values: [true, true, true, true] },
+  { label: { en: "Professional engine", sq: "Motori Professional" }, values: [false, false, true, true] },
+  {
+    label: { en: "Stem separation", sq: "Ndarje stem-esh" },
+    values: [
+      PAY_PER_USE,
+      PAY_PER_USE,
+      PAY_PER_USE,
+      { en: `${PRODUCT.stems.includedPerMonth} / month included`, sq: `${PRODUCT.stems.includedPerMonth} / muaj të përfshira` },
+    ],
+  },
+  { label: { en: "Chord, key & BPM detection", sq: "Zbulim akordesh, tonaliteti dhe BPM" }, values: [FREE_UNLIMITED, FREE_UNLIMITED, FREE_UNLIMITED, FREE_UNLIMITED] },
+  { label: { en: "Codec preview & level-matched A/B", sq: "Parapamje kodekësh dhe A/B me nivel të barazuar" }, values: [true, true, true, true] },
+  { label: { en: "Shareable download links", sq: "Lidhje shkarkimi për t'u ndarë" }, values: [false, false, false, true] },
 ];
 
-export { PLANS, PLAN_ORDER, SINGLE_MASTER, STEM_SEPARATION };
+export { PLANS, PLAN_ORDER, SINGLE_MASTER, STEM_SEPARATION, localized };

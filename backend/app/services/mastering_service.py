@@ -198,7 +198,46 @@ def resolve_mastering_config(
     return resolved
 
 
+def _probe_duration_s(path: Path) -> float | None:
+    """Duration from the container header, without decoding the audio.
+    None when it can't be read: the decode step then reports the real
+    problem with the file."""
+    try:
+        info = sf.info(str(path))
+        if info.samplerate > 0 and info.frames > 0:
+            return info.frames / float(info.samplerate)
+    except Exception:
+        pass
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+            capture_output=True, text=True, timeout=30,
+        )
+        value = float(out.stdout.strip())
+        return value if value > 0 else None
+    except Exception:
+        return None
+
+
+def _enforce_max_duration(input_path: Path, label: str) -> None:
+    limit_min = float(settings.max_duration_minutes)
+    if limit_min <= 0:
+        return
+    duration = _probe_duration_s(input_path)
+    if duration is not None and duration > limit_min * 60.0:
+        input_path.unlink(missing_ok=True)
+        what = "reference track" if label == "reference" else "track"
+        raise HTTPException(
+            413,
+            f"This {what} is {duration / 60.0:.1f} minutes long; the limit is {limit_min:g} minutes. Trim it, or split a long mix into separate songs.",
+        )
+
+
 def _decode_input_if_required(job_id: str, input_path: Path, input_ext: str, label: str = "input") -> Path:
+    # Before decoding: a 3-hour MP3 is gigabytes of float audio, and every
+    # route that loads audio (master, its reference, analyze, chords) comes
+    # through here.
+    _enforce_max_duration(input_path, label)
     processing_input_path = input_path
 
     if input_ext.lower() in AUDIO_DECODE_EXTS:

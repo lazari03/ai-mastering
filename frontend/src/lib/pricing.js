@@ -17,6 +17,14 @@
 // the saving is real and reconciles against the invoice rather than being
 // a rounded marketing number.
 export const BILLING_PERIODS = ["monthly", "annual"];
+
+// Plan blurbs/features and comparison cells are {en, sq} so the pricing
+// grid and Plans panel speak the visitor's language (they rendered English
+// for everyone). Booleans/numbers/plain strings pass through untouched.
+export function localized(value, lang = "en") {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value[lang] ?? value.en;
+  return value;
+}
 export const ANNUAL_MONTHS_CHARGED = 10;
 
 export const PLANS = {
@@ -27,8 +35,11 @@ export const PLANS = {
     price: "€0",
     period: "",
     masterLimit: 3,
-    blurb: "Try 3 full masters, on the house — no card required.",
-    features: ["3 full-length masters, one-time trial", "Unlimited 30s mastering previews"],
+    blurb: { en: "Try 3 full masters, on the house — no card required.", sq: "Provo 3 masterë të plotë falas — pa kartë." },
+    features: [
+      { en: "3 full-length masters, one-time trial", sq: "3 masterë të plotë, provë një-herëshe" },
+      { en: "Unlimited 30s mastering previews", sq: "Parapamje masterizimi 30-sekondëshe pa limit" },
+    ],
     // No annual variant — there's nothing to bill yearly at €0, and a
     // "€0/yr" column next to real prices is just noise.
     annual: null,
@@ -46,8 +57,12 @@ export const PLANS = {
     price: "€4.99",
     period: "/mo",
     masterLimit: 15,
-    blurb: "For one release a month, not fifty.",
-    features: ["15 masters / month", "Standard engine", "Codec preview & instant A/B"],
+    blurb: { en: "For one release a month, not fifty.", sq: "Për një publikim në muaj, jo pesëdhjetë." },
+    features: [
+      { en: "15 masters / month", sq: "15 masterë / muaj" },
+      { en: "Standard engine", sq: "Motori Standard" },
+      { en: "Codec preview & instant A/B", sq: "Parapamje kodekësh dhe A/B i menjëhershëm" },
+    ],
     annual: { item: "plan_indie_annual", price: "€49.90", period: "/yr", perMonth: "€4.16" },
   },
   studio: {
@@ -57,8 +72,11 @@ export const PLANS = {
     price: "€9.99",
     period: "/mo",
     masterLimit: 50,
-    blurb: "For anyone mastering regularly.",
-    features: ["50 masters / month", "Standard & Professional engines"],
+    blurb: { en: "For anyone mastering regularly.", sq: "Për këdo që masterizon rregullisht." },
+    features: [
+      { en: "50 masters / month", sq: "50 masterë / muaj" },
+      { en: "Standard & Professional engines", sq: "Motorët Standard dhe Professional" },
+    ],
     annual: { item: "plan_studio_annual", price: "€99.90", period: "/yr", perMonth: "€8.33" },
   },
   pro: {
@@ -68,8 +86,13 @@ export const PLANS = {
     price: "€19.99",
     period: "/mo",
     masterLimit: 250,
-    blurb: "The full toolkit, 5x Studio's headroom.",
-    features: ["250 masters / month", "Everything in Studio", "Stem separation, 20/month included", "Shareable download links"],
+    blurb: { en: "The full toolkit, 5x Studio's headroom.", sq: "Të gjitha mjetet, 5 herë kapaciteti i Studio." },
+    features: [
+      { en: "250 masters / month", sq: "250 masterë / muaj" },
+      { en: "Everything in Studio", sq: "Gjithçka nga Studio" },
+      { en: "Stem separation, 20/month included", sq: "Ndarje stem-esh, 20/muaj të përfshira" },
+      { en: "Shareable download links", sq: "Lidhje shkarkimi për t'u ndarë" },
+    ],
     annual: { item: "plan_pro_annual", price: "€199.90", period: "/yr", perMonth: "€16.66" },
   },
 };
@@ -99,7 +122,10 @@ export const SINGLE_MASTER = {
   item: "single_master",
   label: "Single Master",
   price: "€2.99",
-  blurb: "One extra master, no subscription. Same Standard/Professional engine as your plan.",
+  blurb: {
+    en: "One extra master, no subscription. Same Standard/Professional engine as your plan.",
+    sq: "Një master shtesë, pa abonim. I njëjti motor Standard/Professional si plani yt.",
+  },
 };
 
 // Chord detection used to be sold here (a lifetime trial then pay-per-song
@@ -115,5 +141,8 @@ export const STEM_SEPARATION = {
   item: "stem_separation",
   label: "Stem Separation",
   price: "€4.99",
-  blurb: "One stem-separated master (vocals and accompaniment, rebalanced separately). Included on All-Access, 20/month.",
+  blurb: {
+    en: "One stem-separated master (vocals and accompaniment, rebalanced separately). Included on All-Access, 20/month.",
+    sq: "Një master me stem-e të ndara (vokali dhe shoqërimi, të ribalancuar veçmas). I përfshirë në All-Access, 20/muaj.",
+  },
 };

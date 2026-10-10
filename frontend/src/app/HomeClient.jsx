@@ -11,7 +11,7 @@ import Footer from "@/components/Footer";
 import { POSTS } from "@/content/posts";
 import { useLanguage } from "@/lib/i18n";
 import { useAuthStore } from "@/store/authStore";
-import { PLANS, PLAN_ORDER, BILLING_PERIODS, planPricing } from "@/lib/pricing";
+import { PLANS, PLAN_ORDER, BILLING_PERIODS, planPricing, localized } from "@/lib/pricing";
 import { IconCheck } from "@/components/app/icons";
 import { CTA, planSignupHref } from "@/lib/internalLinks";
 import { BEFORE_AFTER_DEMOS } from "@/lib/beforeAfterDemos";
@@ -411,15 +411,15 @@ export default function HomeClient() {
                     {pricingFor.perMonth ? t("pricing.perMonthEquivalent").replace("{price}", pricingFor.perMonth) : ""}
                   </p>
 
-                  <p className="mt-3 h-[44px] text-[14px] leading-[1.5] text-text-secondary">{plan.blurb}</p>
+                  <p className="mt-3 h-[44px] text-[14px] leading-[1.5] text-text-secondary">{localized(plan.blurb, lang)}</p>
 
                   <ul className="mt-6 flex flex-col gap-3">
                     {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-3 text-[14px] leading-[1.45] text-text-primary">
+                      <li key={feature.en} className="flex items-start gap-3 text-[14px] leading-[1.45] text-text-primary">
                         <span className="mt-[3px] flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
                           <IconCheck />
                         </span>
-                        {feature}
+                        {localized(feature, lang)}
                       </li>
                     ))}
                   </ul>

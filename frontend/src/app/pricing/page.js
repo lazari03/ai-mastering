@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import RelatedTools from "@/components/site/RelatedTools";
 import { Breadcrumbs, Checklist, CtaBand, PageHero, PageShell, Section } from "@/components/site/Page";
-import { PLANS, PLAN_ORDER, PLAN_COMPARISON, PRODUCT, SINGLE_MASTER, STEM_SEPARATION } from "@/lib/product";
+import { PLANS, PLAN_ORDER, PLAN_COMPARISON, PRODUCT, SINGLE_MASTER, STEM_SEPARATION, localized } from "@/lib/product";
 import { ANNUAL_MONTHS_CHARGED } from "@/lib/pricing";
 import { CTA, planSignupHref } from "@/lib/internalLinks";
 import { buildMetadata, JsonLd, organizationJsonLd, SITE_NAME } from "@/lib/seo";
@@ -71,12 +71,12 @@ export default function PricingPage() {
                 ) : (
                   <p className="m-0 mt-1 text-[12px] text-text-secondary">No card required</p>
                 )}
-                <p className="m-0 mt-4 text-[14px] leading-[1.55] text-text-secondary">{plan.blurb}</p>
+                <p className="m-0 mt-4 text-[14px] leading-[1.55] text-text-secondary">{localized(plan.blurb)}</p>
                 <ul className="m-0 mt-4 flex list-none flex-col gap-2 p-0 text-[14px] text-text-primary">
                   {plan.features.map((f) => (
-                    <li key={f} className="flex gap-2">
+                    <li key={f.en} className="flex gap-2">
                       <span aria-hidden="true" className="text-accent">✓</span>
-                      {f}
+                      {localized(f)}
                     </li>
                   ))}
                 </ul>
@@ -109,13 +109,13 @@ export default function PricingPage() {
             </thead>
             <tbody>
               {PLAN_COMPARISON.map((row) => (
-                <tr key={row.label} className="border-b border-border-subtle">
+                <tr key={row.label.en} className="border-b border-border-subtle">
                   <th scope="row" className="py-3 pr-4 text-left font-medium text-text-primary">
-                    {row.label}
+                    {localized(row.label)}
                   </th>
                   {row.values.map((v, i) => (
                     <td key={PLAN_ORDER[i]} className="py-3 pr-4 text-text-primary">
-                      <Cell value={v} />
+                      <Cell value={localized(v)} />
                     </td>
                   ))}
                 </tr>
@@ -133,7 +133,7 @@ export default function PricingPage() {
                 {item.label}
                 <span className="font-[var(--font-title)] text-[24px]">{item.price}</span>
               </h3>
-              <p className="m-0 mt-2 text-[14px] leading-[1.6] text-text-secondary">{item.blurb}</p>
+              <p className="m-0 mt-2 text-[14px] leading-[1.6] text-text-secondary">{localized(item.blurb)}</p>
             </li>
           ))}
         </ul>

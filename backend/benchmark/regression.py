@@ -21,6 +21,7 @@ contain numbers only and are meant to be committed
 Usage (from backend/):
   python -m benchmark.regression --corpus benchmark/corpus --write benchmark/baselines/main.json
   python -m benchmark.regression --corpus benchmark/corpus --baseline benchmark/baselines/main.json
+  python -m benchmark.regression --synthetic --baseline benchmark/baselines/synthetic.json   # CI gate
 """
 
 from __future__ import annotations
@@ -252,9 +253,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--write", help="write this run's snapshot here (e.g. benchmark/baselines/main.json)")
     parser.add_argument("--out", default=None, help="report dir (default benchmark/results/regression-<date>)")
     parser.add_argument("--tier", default=None, choices=["standard", "professional"], help="override every track's tier")
+    parser.add_argument("--synthetic", action="store_true", help="run the deterministic synthetic corpus (benchmark/synthetic_corpus.py) instead of --corpus")
     args = parser.parse_args(argv)
 
-    tracks = run_corpus(Path(args.corpus), args.tier)
+    if args.synthetic:
+        from benchmark.synthetic_corpus import build
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tracks = run_corpus(build(Path(tmp) / "synthetic"), args.tier)
+    else:
+        tracks = run_corpus(Path(args.corpus), args.tier)
     snapshot = {"date": date.today().isoformat(), "tolerances": TOLERANCES, "tracks": tracks, "calibration": calibration(tracks)}
     drift = None
     if args.baseline:

@@ -28,7 +28,7 @@ const COMPARISON_ROWS = PLAN_COMPARISON;
 const misalignedRow = COMPARISON_ROWS.find((row) => row.values.length !== PLAN_ORDER.length);
 if (misalignedRow) {
   throw new Error(
-    `COMPARISON_ROWS "${misalignedRow.label}" has ${misalignedRow.values.length} values but PLAN_ORDER has ` +
+    `COMPARISON_ROWS "${localized(misalignedRow.label)}" has ${misalignedRow.values.length} values but PLAN_ORDER has ` +
       `${PLAN_ORDER.length} plans — every row needs one value per plan or the table silently shows the wrong column.`,
   );
 }
@@ -44,7 +44,7 @@ if (misalignedRow) {
  * "Settings" tab.
  */
 export default function PlansPanel() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const {
     plan: currentPlan,
     subscription,
@@ -256,7 +256,7 @@ export default function PlansPanel() {
                   </p>
                   <ul className="m-0 mt-2 flex flex-col gap-1 pl-4 text-xs text-text-secondary">
                     {plan.features.map((f) => (
-                      <li key={f}>{f}</li>
+                      <li key={f.en}>{localized(f, lang)}</li>
                     ))}
                   </ul>
 
@@ -321,8 +321,8 @@ export default function PlansPanel() {
               </thead>
               <tbody>
                 {COMPARISON_ROWS.map((row) => (
-                  <tr key={row.label} className="border-b border-border-subtle last:border-0">
-                    <td className="p-3 text-text-secondary">{row.label}</td>
+                  <tr key={row.label.en} className="border-b border-border-subtle last:border-0">
+                    <td className="p-3 text-text-secondary">{localized(row.label, lang)}</td>
                     {row.values.map((value, i) => (
                       <td key={PLAN_ORDER[i]} className="p-3 text-text-secondary">
                         {value === true ? (
@@ -330,7 +330,7 @@ export default function PlansPanel() {
                         ) : value === false ? (
                           <span className="text-text-secondary">—</span>
                         ) : (
-                          value
+                          localized(value, lang)
                         )}
                       </td>
                     ))}
@@ -359,7 +359,7 @@ export default function PlansPanel() {
                   {SINGLE_MASTER.label} — {SINGLE_MASTER.price}
                 </p>
                 <p className="m-0 mt-0.5 text-xs text-text-secondary">
-                  {SINGLE_MASTER.blurb} {t("billing.noSubNote")}
+                  {localized(SINGLE_MASTER.blurb, lang)} {t("billing.noSubNote")}
                 </p>
               </div>
               <button
@@ -384,7 +384,7 @@ export default function PlansPanel() {
                   {STEM_SEPARATION.label} — {STEM_SEPARATION.price}
                 </p>
                 <p className="m-0 mt-0.5 text-xs text-text-secondary">
-                  {currentPlan === "pro" ? t("billing.stemNoteAllAccess") : `${STEM_SEPARATION.blurb} ${t("billing.stemNoteOther")}`}
+                  {currentPlan === "pro" ? t("billing.stemNoteAllAccess") : `${localized(STEM_SEPARATION.blurb, lang)} ${t("billing.stemNoteOther")}`}
                 </p>
               </div>
               <button

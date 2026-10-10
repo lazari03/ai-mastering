@@ -1,0 +1,30 @@
+# What the Python test suite and the synthetic regression gate actually
+# import, PINNED. CI installs this, not requirements.txt: the full set pulls
+# torch (via demucs), essentia and madmom, none of which any test imports,
+# and costs minutes per run.
+#
+# Pinned because benchmark/baselines/synthetic.json compares measured
+# numbers: an unpinned numpy/scipy/librosa/pedalboard upgrade could move
+# them and fail the gate for a reason that isn't an engine change. Upgrade
+# deliberately, then re-run
+#   python -m benchmark.regression --synthetic --baseline benchmark/baselines/synthetic.json
+# and, if the drift is understood, rewrite the baseline in the same commit.
+numpy==2.4.6
+scipy==1.17.1
+librosa==0.11.0
+numba==0.68.0
+llvmlite==0.50.0
+soxr==1.1.0
+audioread==3.1.0
+scikit-learn==1.9.1
+joblib==1.6.0
+pyloudnorm==0.2.0
+pedalboard==0.9.25
+soundfile==0.14.0
+fastapi==0.142.2
+starlette==1.7.0
+pydantic==2.13.5
+python-multipart==0.0.32
+httpx==0.28.1
+PyYAML==6.0.3
+pytest==9.1.1

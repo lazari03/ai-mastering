@@ -54,7 +54,7 @@ export const GENRE_PAGES = {
       "Three selectable rock styles (90s, 2000s, modern) — pick the era-appropriate loudness/dynamics target instead of one generic \"rock\" preset",
       "Midrange EQ targeting tuned for guitar presence without harshness building up under distortion",
       "Compression timing that preserves drum transients rather than flattening the kit",
-      "Professional mode gives full manual control over the bus compressor if you want to override the style default",
+      "Pro Master mode (manual controls, on every plan) gives full control over the bus compressor if you want to override the style default",
     ],
   },
   edm: {
@@ -84,7 +84,7 @@ export const GENRE_PAGES = {
       "Lighter compression ratios that preserve performance dynamics instead of flattening them",
       "Lower, more conservative loudness targeting appropriate for acoustic listening contexts",
       "Tonal EQ aimed at natural instrument timbre rather than aggressive brightness boosting",
-      "Professional mode available if a specific track still needs more control than the adaptive default",
+      "Pro Master mode (manual controls, on every plan) is there if a specific track still needs more control than the adaptive default",
     ],
   },
   lofi: {
@@ -98,7 +98,7 @@ export const GENRE_PAGES = {
     bullets: [
       "Warmer tonal EQ target instead of the bright, presence-forward curve used for pop/EDM",
       "Softer loudness target that respects lo-fi's relaxed dynamic character",
-      "Saturation available (Professional mode) to add harmonic warmth deliberately, not as an afterthought",
+      "Saturation available in Pro Master mode (manual controls) to add harmonic warmth deliberately, not as an afterthought",
       "Works well with Reference mode if you have a specific lo-fi track whose tone you're matching",
     ],
   },
@@ -129,7 +129,7 @@ export const GENRE_PAGES = {
       "Minimal, transparent bus compression that preserves recorded dynamic range instead of competing for loudness",
       "Conservative loudness targeting appropriate for classical listening contexts, not streaming loudness-war levels",
       "True-peak-safe limiting still applied as a safety ceiling, without shaping the sound",
-      "Professional mode available for engineers who want manual control over every stage regardless",
+      "Pro Master mode (manual controls, on every plan) for engineers who want control over every stage regardless",
     ],
   },
 };

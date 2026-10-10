@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import RelatedTools from "@/components/site/RelatedTools";
 import { Breadcrumbs, CtaBand, Faq, LinkList, PageHero, PageShell, Section, Steps } from "@/components/site/Page";
-import { PLANS, PLAN_ORDER } from "@/lib/pricing";
+import { PLANS, PLAN_ORDER, localized } from "@/lib/pricing";
 import { PRODUCT, SUPPORTED_FORMATS_TEXT, paidEntryText } from "@/lib/product";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { COMPARISON_PAGES, COMPARISON_KEYS } from "@/content/comparisonPages";
@@ -148,7 +148,7 @@ export default function AiMasteringOnlinePage() {
                   {plan.price}
                   {plan.period ? <span className="text-sm font-normal text-text-secondary">{plan.period}</span> : null}
                 </p>
-                <p className="mt-2 text-[14px] leading-[1.55] text-text-secondary">{plan.blurb}</p>
+                <p className="mt-2 text-[14px] leading-[1.55] text-text-secondary">{localized(plan.blurb)}</p>
               </li>
             );
           })}

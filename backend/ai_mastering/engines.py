@@ -49,7 +49,7 @@ STANDARD = EngineSpec(
     compression_crossovers_hz=(250.0, 2000.0, 6000.0),
     compression_bands=("low", "low_mid", "high_mid", "high"),
     bus=_bus_process,
-    limiter="true-peak lookahead limiter (3 ms)",
+    limiter="ramped-attack true-peak limiter (1 ms lookahead)",
     features=(
         "adaptive analysis, EQ correction and loudness targeting",
         "true-peak limiting to the delivery ceiling",

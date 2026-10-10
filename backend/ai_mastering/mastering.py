@@ -582,6 +582,11 @@ def master_track(
     }
 
     source_warnings = []
+    if input_validation.get("silent_channel_restored"):
+        source_warnings.append(
+            f"The {input_validation['silent_channel_restored']} channel of this file was silent, so it was mastered as mono "
+            "(the other channel on both sides). If that isn't what you intended, check the export settings of your mix."
+        )
     if analysis_before.get("near_mono_source"):
         source_warnings.append(
             "Source file has little to no stereo content (left/right channels are nearly identical) — "

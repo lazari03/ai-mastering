@@ -25,18 +25,8 @@ import {
   getPlan,
   changeSubscriptionPlan,
 } from "../services/polarService.js";
-import {
-  consumeMasterQuota,
-  refundMasterQuota,
-  refundExtraCredit,
-  PLAN_MASTER_LIMITS,
-  consumeExtraCredit,
-  consumeStemQuota,
-  consumeExtraStemCredit,
-  STEM_MONTHLY_LIMIT,
-  readUserData,
-  entitlementsFromUserData,
-} from "../services/entitlementsService.js";
+import { PLAN_MASTER_LIMITS, STEM_MONTHLY_LIMIT, readUserData, entitlementsFromUserData } from "../services/entitlementsService.js";
+import { reserveRenderSlots, releaseRenderSlots } from "../services/renderReservation.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { subscribeToNewsletter } from "../services/newsletterService.js";
 import { getAuth } from "../config/firebase.js";
@@ -784,6 +774,9 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
   let mustConsumeStemCredit = false;
   let quotaLimit = PLAN_MASTER_LIMITS.free;
   let plan = "free";
+  // What reserveRenderSlots actually took, so every exit path gives back
+  // exactly that and nothing else.
+  let reservedSlots = { master: null, stem: null };
 
   if (!preview) {
     // One snapshot for every pre-render check below. Fails CLOSED like
@@ -883,17 +876,27 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     //
     // The guarantee this replaces — "never bill for a render that failed"
     // — is preserved by refunding in the catch below.
-    const reserved = mustConsumeQuota
-      ? await consumeMasterQuota(req.user.uid, quotaLimit, plan).catch(() => false)
-      : mustConsumeCredit
-        ? await consumeExtraCredit(req.user.uid).catch(() => false)
-        : true;
+    // The stem slot is reserved here too, not consumed after the render
+    // (see renderReservation.js): the consume is the gate for both.
+    const reservation = await reserveRenderSlots({
+      uid: req.user.uid,
+      plan,
+      quotaLimit,
+      needs: {
+        master: mustConsumeQuota ? "quota" : mustConsumeCredit ? "credit" : null,
+        stem: mustConsumeStemQuota ? "quota" : mustConsumeStemCredit ? "credit" : null,
+      },
+    });
+    reservedSlots = reservation.reserved;
 
-    if (!reserved) {
+    if (!reservation.ok) {
       // Lost a race against the user's own concurrent request. Not an
       // error state — their allowance genuinely just ran out.
       return res.status(402).json({
-        detail: "That used your last available master — another render of yours claimed it first. Buy a single master or upgrade in Settings → Billing.",
+        detail:
+          reservation.failed === "stem"
+            ? "That used your last available stem separation — another render of yours claimed it first. Buy an extra one in Settings → Billing."
+            : "That used your last available master — another render of yours claimed it first. Buy a single master or upgrade in Settings → Billing.",
       });
     }
   }
@@ -986,22 +989,11 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     const stemStatus = result?.stem_separation?.status || null;
     const stemSeparationRan = stemStatus === STEM_APPLIED;
 
-    if (!stemSeparationRan && (mustConsumeStemQuota || mustConsumeStemCredit)) {
+    if (!stemSeparationRan && reservedSlots.stem) {
       console.warn(
-        `Stem separation did not run for job ${jobId} (status=${stemStatus ?? "missing"}) — not charging the stem quota/credit.`,
+        `Stem separation did not run for job ${result?.job_id} (status=${stemStatus ?? "missing"}) — refunding the reserved stem ${reservedSlots.stem}.`,
       );
-    } else if (mustConsumeStemQuota) {
-      try {
-        await consumeStemQuota(req.user.uid);
-      } catch (error) {
-        console.error("Failed to consume stem quota after successful render:", error.message);
-      }
-    } else if (mustConsumeStemCredit) {
-      try {
-        await consumeExtraStemCredit(req.user.uid);
-      } catch (error) {
-        console.error("Failed to consume extra stem credit after successful render:", error.message);
-      }
+      await releaseRenderSlots({ uid: req.user.uid, plan, reserved: reservedSlots, parts: ["stem"] });
     }
 
     // Recorded regardless of preview — ownsJob() needs this to exist for
@@ -1080,17 +1072,9 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     // refund itself throws, the user still gets the original error, and
     // the lost slot is logged for manual correction rather than
     // swallowing the reason their render failed.
-    if (mustConsumeQuota || mustConsumeCredit) {
-      try {
-        if (mustConsumeQuota) await refundMasterQuota(req.user.uid, plan);
-        else await refundExtraCredit(req.user.uid);
-      } catch (refundError) {
-        console.error(
-          `Failed to refund master slot for uid ${req.user.uid} after a failed render — slot lost, needs manual correction:`,
-          refundError.message,
-        );
-      }
-    }
+    // Best-effort and never allowed to mask the real failure (see
+    // releaseRenderSlots).
+    await releaseRenderSlots({ uid: req.user.uid, plan, reserved: reservedSlots });
 
     if (!preview) {
       recordServerEvent("master_failed", {

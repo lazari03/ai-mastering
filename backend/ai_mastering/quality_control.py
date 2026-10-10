@@ -86,6 +86,23 @@ def validate_input_signal(audio: np.ndarray, sr: int) -> dict:
         corrected = audio - np.mean(audio, axis=0, keepdims=True).astype(np.float32)
         issues.append(f"DC offset removed (measured per-channel offsets: {dc_offsets_db} dBFS).")
 
+    # A stereo file with one channel at digital silence (by the same
+    # SILENCE_RMS_DB definition as above) and signal on the other is a mono
+    # recording exported to one side, a common export mistake. Mastering it
+    # as stereo can only fail: every candidate trips the channel-balance,
+    # low-end and tilt checks and nothing is delivered (measured). Playing
+    # it the way any player would play a mono file, on both sides, is the
+    # recording the user meant to send.
+    silent_channel = None
+    if corrected.shape[1] == 2:
+        per_channel_db = [float(_db(_rms(corrected[:, ch]))) for ch in range(2)]
+        dead = [ch for ch in range(2) if per_channel_db[ch] < SILENCE_RMS_DB]
+        if len(dead) == 1:
+            silent_channel = "left" if dead[0] == 0 else "right"
+            live = 1 - dead[0]
+            corrected = np.repeat(corrected[:, live : live + 1], 2, axis=1).astype(np.float32)
+            issues.append(f"The {silent_channel} channel was silent; the {('right' if live else 'left')} channel was used for both sides (mastered as mono).")
+
     channel_rms_db = [round(float(_db(_rms(corrected[:, ch]))), 2) for ch in range(corrected.shape[1])]
     channel_imbalance_db = float(max(channel_rms_db) - min(channel_rms_db)) if len(channel_rms_db) > 1 else 0.0
     if channel_imbalance_db > CHANNEL_IMBALANCE_WARN_DB:
@@ -99,6 +116,7 @@ def validate_input_signal(audio: np.ndarray, sr: int) -> dict:
         "dc_offset_db_per_channel": dc_offsets_db,
         "dc_offset_corrected": needs_dc_correction,
         "channel_imbalance_db": round(channel_imbalance_db, 2),
+        "silent_channel_restored": silent_channel,
         "issues": issues,
         "_corrected_audio": corrected,
     }

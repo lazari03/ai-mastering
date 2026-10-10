@@ -33,6 +33,15 @@ class Settings:
     # mastering.py's master_track — this caps how many can actually run at
     # once; anything beyond it gets a 503 to retry, not queued silently.
     max_concurrent_masters: int
+    # Longest input accepted, in minutes. The upload-size cap alone doesn't
+    # bound work: 200 MB of MP3 is ~3 hours of audio, decoded in full and
+    # run through several full-length candidate renders. Measured on the
+    # dev container, an 8-minute track took 284 s and grew the process by
+    # 2.3 GB (~35 s and ~285 MB per minute of audio), so 15 minutes is
+    # ~9 minutes of render and ~4.5 GB per job, inside the gateway's
+    # 19-minute deadline (backend-node pythonUpstream.js). Covers virtually
+    # every song; DJ mixes and podcasts are out of scope. 0 disables.
+    max_duration_minutes: float
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -65,6 +74,7 @@ def load_settings() -> Settings:
         # Better to make a burst of customers wait a few seconds and retry
         # than to let the box OOM and take mastering down for everyone.
         max_concurrent_masters=int(os.getenv("MASTERING_MAX_CONCURRENT_JOBS", "3")),
+        max_duration_minutes=float(os.getenv("MASTERING_MAX_DURATION_MINUTES", "15")),
     )
 
 
