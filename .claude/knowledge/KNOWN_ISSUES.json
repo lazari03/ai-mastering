@@ -1,0 +1,127 @@
+{
+  "_schema": {
+    "id": "AURALITH-<DOMAIN>-<NNN>; DOMAIN in AUDIO|BACKEND|BILLING|FRONTEND|SECURITY|DEVOPS|PRODUCT|QA|DOCS",
+    "status": "NEEDS_REVERIFICATION | OPEN | IN_PROGRESS | READY_FOR_QA | READY_FOR_AUDIT | REJECTED | BLOCKED (-> move to RESOLVED_ISSUES.json when DONE)",
+    "severity": "P0 (release blocker) | P1 | P2 | P3",
+    "required": [
+      "id",
+      "title",
+      "component",
+      "severity",
+      "status",
+      "owner",
+      "source",
+      "validated_commit"
+    ],
+    "rule": "Before investigating a suspected defect run: python3 .claude/knowledge/kb.py issues --component <id> --grep <word>. Edit only the entry you own; append to history, never rewrite it."
+  },
+  "next_ids": {
+    "AUDIO": 1,
+    "BACKEND": 2,
+    "BILLING": 1,
+    "FRONTEND": 1,
+    "SECURITY": 1,
+    "DEVOPS": 1,
+    "PRODUCT": 2,
+    "QA": 2,
+    "DOCS": 1
+  },
+  "issues": [
+    {
+      "id": "AURALITH-PRODUCT-001",
+      "title": "Professional engine has no measured audible advantage over Standard",
+      "component": "dsp.mastering_engine",
+      "severity": "P1",
+      "status": "OPEN",
+      "owner": "product-specialist",
+      "reviewers": [
+        "audio-dsp-engineer",
+        "mastering-engineer"
+      ],
+      "root_cause": "Engines share every decision and the limiter; only the sub/punch compression split differs, used only when the plan compresses.",
+      "evidence": "Synthetic baseline pairs *_pro vs Standard: identical on 2/3, <=0.1 dB on the third.",
+      "repro": "cd backend && python -m benchmark.regression --synthetic --baseline benchmark/baselines/synthetic.json ; compare rock_transient vs rock_transient_pro rows.",
+      "tests": [
+        "regression.synthetic"
+      ],
+      "source": "docs/audits/AURALITH_AUDIT.md#A6, docs/audits/PROFESSIONAL_ROADMAP.md",
+      "validated_commit": "c88bc69",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Seeded from prior audit A6; product decision required."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-QA-001",
+      "title": "No real-music corpus and no listening evidence: audio quality unverified",
+      "component": "listening.blind_ab",
+      "severity": "P0",
+      "status": "BLOCKED",
+      "owner": "mastering-engineer",
+      "reviewers": [
+        "qa-automation-engineer",
+        "independent-auditor"
+      ],
+      "root_cause": "No licensed mixes in backend/benchmark/corpus/; no human listening sessions recorded.",
+      "blocked_on": "Product owner: supply licensed mixes (meta.json with license field) and run blind_ab sessions.",
+      "repro": "ls backend/benchmark/corpus/ (absent)",
+      "tests": [
+        "listening.blind_ab"
+      ],
+      "source": "docs/audits/AUDIO_VALIDATION.md",
+      "validated_commit": "c88bc69",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Seeded; confirmed corpus dir absent at c88bc69."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-BACKEND-001",
+      "title": "Concurrency cap counts jobs, not memory (A12)",
+      "component": "python.job_runner",
+      "severity": "P2",
+      "status": "NEEDS_REVERIFICATION",
+      "owner": "backend-engineer",
+      "reviewers": [
+        "devops-engineer"
+      ],
+      "evidence": "Prior audit A12. Commit c88bc69 'memory-aware admission' (governor.admit + COST_MODEL) likely resolves it — verify, then move to RESOLVED.",
+      "source": "docs/audits/AURALITH_AUDIT.md#A12, docs/audits/PRODUCTION_HARDENING.md",
+      "validated_commit": "3ba1f63",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Seeded as NEEDS_REVERIFICATION: summary predates c88bc69."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-PRODUCT-002",
+      "title": "Server-rendered pages and Node error messages are English-only (A13)",
+      "component": "frontend.i18n",
+      "severity": "P2",
+      "status": "NEEDS_REVERIFICATION",
+      "owner": "frontend-engineer",
+      "reviewers": [
+        "product-specialist"
+      ],
+      "evidence": "RELEASE_READINESS_V2 says errors/warnings were localized afterwards; 402 quota messages and improvement-check reasons remained.",
+      "source": "docs/audits/AURALITH_AUDIT.md#A13, docs/audits/RELEASE_READINESS_V2.md",
+      "validated_commit": "c88bc69",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Seeded; partially fixed per V2, remainder unverified."
+        }
+      ]
+    }
+  ]
+}

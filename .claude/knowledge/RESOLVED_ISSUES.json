@@ -1,0 +1,13 @@
+{
+  "_schema": "Same fields as KNOWN_ISSUES.json plus: solution, fix_commit, regression_tests, qa_verdict, audit_verdict, resolved_date. Entries are append-only. Prior-audit fixes are indexed by reference (details stay in docs/audits).",
+  "issues": [
+    {"id": "LEGACY-A1", "title": "CI ran no tests", "component": "devops.deploy", "fix_commit": "3ba1f63", "regression_tests": [".github/workflows/deploy.yml python-tests, synthetic-regression, node-check"], "source": "docs/audits/AURALITH_AUDIT.md#A1"},
+    {"id": "LEGACY-A2", "title": "Stem billing bypass", "component": "billing.ledger", "fix_commit": "3ba1f63", "regression_tests": ["backend-node/src/services/__tests__/reservationLedger.test.js"], "source": "docs/audits/AURALITH_AUDIT.md#A2"},
+    {"id": "LEGACY-A3", "title": "jobId ReferenceError in /master stem-failure branch", "component": "node.gateway", "fix_commit": "3ba1f63", "regression_tests": ["npm run lint (no-undef)"], "source": "docs/audits/AURALITH_AUDIT.md#A3"},
+    {"id": "LEGACY-A4", "title": "300 s upstream timeout killed long renders", "component": "node.gateway", "fix_commit": "3ba1f63", "regression_tests": ["backend-node/src/services/__tests__/pythonUpstream.test.js"], "source": "docs/audits/AURALITH_AUDIT.md#A4"},
+    {"id": "LEGACY-A5", "title": "No input duration cap", "component": "python.api", "fix_commit": "3ba1f63", "regression_tests": ["backend/tests/test_input_limits.py"], "source": "docs/audits/AURALITH_AUDIT.md#A5"},
+    {"id": "LEGACY-A9", "title": "One silent channel produced no master", "component": "dsp.qc", "fix_commit": "3ba1f63", "regression_tests": ["synthetic: one_dead_channel_rnb"], "source": "docs/audits/DSP_IMPROVEMENTS.md#1"},
+    {"id": "LEGACY-LEDGER", "title": "Credits could be consumed on failed/abandoned jobs (no durable ledger)", "component": "billing.ledger", "fix_commit": "c88bc69", "regression_tests": ["backend-node/src/services/__tests__/reservationLedger.test.js (18 race/outage tests)"], "source": "docs/audits/JOB_LIFECYCLE_AND_BILLING.md"},
+    {"id": "LEGACY-BASS-HF", "title": "Historical bass loss / HF boost on masters", "component": "dsp.eq", "fix_commit": "pre-3ba1f63", "regression_tests": ["synthetic: bass_heavy_hiphop, thin_edm, dark_rock, bright_harsh_pop, regression_mix_pop", "GuardrailConfig max_low_end_loss_db / max_high_boost_db / tilt"], "source": "backend/benchmark/metrics.py docstring, docs/audits/DSP_IMPROVEMENTS.md"}
+  ]
+}

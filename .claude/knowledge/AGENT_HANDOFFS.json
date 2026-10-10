@@ -1,0 +1,8 @@
+{
+  "_schema": {
+    "fields": ["handoff_id", "task_id", "agent", "status", "summary", "files_changed", "tests_executed", "results", "risks", "evidence", "next_agent", "commit", "date"],
+    "status": "READY_FOR_QA | READY_FOR_REVIEW | READY_FOR_AUDIT | APPROVED | REJECTED | BLOCKED | INFO",
+    "rules": "Append only (kb.py handoff add). summary <= 300 chars. Put detail in an evidence file and link it. Readers: kb.py handoffs --to <agent> | --task <id>."
+  },
+  "handoffs": []
+}

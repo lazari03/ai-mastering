@@ -2,7 +2,12 @@
 .DS_Store
 
 # --- Local Claude Code session/tooling state, not project source ---
-.claude/
+.claude/*
+# ...except the engineering-organization definitions, which ARE project
+# source: subagents, the shared knowledge base, and coordination workflows.
+!.claude/agents/
+!.claude/knowledge/
+!.claude/workflows/
 
 # --- Secrets / local env --- (.env.example files are templates, kept)
 .env
@@ -49,6 +54,14 @@ progress.md
 *.md
 # Audit reports are deliverables, not local notes.
 !docs/audits/*.md
+!docs/agent-reports/*.md
+!.claude/agents/*.md
+!.claude/knowledge/*.md
+!.claude/workflows/*.md
+
+# --- Agent QA runs: the JSON summary is committed, rendered audio is not ---
+test-results/audio/
+test-results/runs/
 firestore.rules
 
 # --- Marketing assets, not app source ---

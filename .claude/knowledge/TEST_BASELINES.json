@@ -1,0 +1,138 @@
+{
+  "_schema": "Latest verified test evidence. Reuse rule: a recorded result is valid only while code_hash == `kb.py codehash` AND input_hash matches. Otherwise re-run. Writers: qa-automation-engineer (api_qa is written by benchmark/api_qa.py), audio-dsp-engineer (synthetic_regression).",
+  "python_suite": {
+    "command": "cd backend && python -m pytest -q -p no:warnings",
+    "result": "229 passed",
+    "duration_s": 741,
+    "python": "3.12 (uv venv)",
+    "commit": "c88bc69",
+    "date": "2026-10-10",
+    "executed_by": "technical-lead"
+  },
+  "synthetic_regression": {
+    "command": "cd backend && python -m benchmark.regression --synthetic --baseline benchmark/baselines/synthetic.json",
+    "baseline_file": "backend/benchmark/baselines/synthetic.json",
+    "baseline_sha256_16": "52baad5f05fc5149",
+    "tracks": 21,
+    "drift": 0,
+    "delivered": {
+      "initial": 20,
+      "corrective_1": 1
+    },
+    "first_render_failures": [
+      "evaluation:band_collateral x1",
+      "evaluation:low_end_loss x1"
+    ],
+    "tightest_margins": {
+      "hf_collateral_db_min_headroom": 0.991,
+      "limiter_max_gr_headroom_db_min": 0.3,
+      "tilt_drift_headroom_min": 0.231
+    },
+    "commit": "c88bc69",
+    "date": "2026-10-10",
+    "executed_by": "technical-lead"
+  },
+  "node_suite": {
+    "command": "cd backend-node && npm ci && npm test",
+    "result": "NOT RUN in this session yet"
+  },
+  "frontend_build": {
+    "command": "cd frontend && npm ci && npm run build",
+    "result": "NOT RUN in this session yet"
+  },
+  "api_qa": {
+    "command": "cd backend && python -m benchmark.api_qa",
+    "results_file": "test-results/auralith-qa.json",
+    "report": "docs/agent-reports/QA_REPORT.md",
+    "commit": "c88bc69",
+    "code_hash": "e584db5a8f7cdd89",
+    "date": "2026-10-10T18:24:13",
+    "status_counts": {
+      "PASS": 4,
+      "PASS_WITH_ANOMALIES": 1,
+      "FAIL": 1
+    },
+    "endpoints_pass": "17/17",
+    "listening_status": "PENDING",
+    "cases": {
+      "c01_balanced_pop": {
+        "input_hash": "adaed27f7734139e",
+        "status": "PASS",
+        "out_lufs": -13.24,
+        "out_tp": -2.01,
+        "anomalies": [],
+        "dsp_components": [
+          "dsp.mastering_engine",
+          "dsp.eq",
+          "dsp.bus",
+          "dsp.evaluation"
+        ]
+      },
+      "c02_bass_heavy_hiphop": {
+        "input_hash": "db5bef5c78d5d414",
+        "status": "PASS_WITH_ANOMALIES",
+        "out_lufs": -13.11,
+        "out_tp": -2.0,
+        "anomalies": [
+          "harsh_highs"
+        ],
+        "dsp_components": [
+          "dsp.mastering_engine",
+          "dsp.eq",
+          "dsp.bus",
+          "dsp.evaluation"
+        ]
+      },
+      "c04_harsh_pop": {
+        "input_hash": "ce77099e29c04fcf",
+        "status": "PASS",
+        "out_lufs": -12.72,
+        "out_tp": -2.01,
+        "anomalies": [],
+        "dsp_components": [
+          "dsp.mastering_engine",
+          "dsp.eq",
+          "dsp.bus",
+          "dsp.evaluation"
+        ]
+      },
+      "c07_transient_rock": {
+        "input_hash": "d1605b61182bcc7d",
+        "status": "PASS",
+        "out_lufs": -17.29,
+        "out_tp": -2.01,
+        "anomalies": [],
+        "dsp_components": [
+          "dsp.mastering_engine",
+          "dsp.eq",
+          "dsp.bus",
+          "dsp.evaluation"
+        ]
+      },
+      "c19a_pcm16": {
+        "input_hash": "3a8c99e404f66dee",
+        "status": "PASS",
+        "out_lufs": -13.28,
+        "out_tp": -2.01,
+        "anomalies": [],
+        "dsp_components": [
+          "dsp.mastering_engine",
+          "dsp.eq",
+          "dsp.bus",
+          "dsp.evaluation"
+        ]
+      },
+      "c20a_garbage": {
+        "input_hash": "bc3425567288635c",
+        "status": "FAIL",
+        "out_lufs": null,
+        "out_tp": null,
+        "anomalies": [],
+        "dsp_components": [
+          "dsp.mastering_engine",
+          "dsp.qc"
+        ]
+      }
+    }
+  }
+}
