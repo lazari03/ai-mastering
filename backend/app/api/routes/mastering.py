@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import glob
 import json
 import time
 from pathlib import Path
@@ -10,6 +11,7 @@ from fastapi.responses import FileResponse
 from adaptive_mastering import preview_processing_params as compute_preview_params
 from ai_mastering.planning.preset_intent import is_intent_preset, resolve_genre, resolve_style
 from app.core.config import settings
+from app.core.ids import require_codec, require_job_id, require_output_ext
 from app.schemas.mastering import AnalyzeResponse, CodecPreviewResponse, MasterResponse, PresetSummary, PreviewParamsResponse
 from app.services.codec_preview_service import SUPPORTED_CODECS, simulate_codec
 from app.core.job_runner import (
@@ -317,6 +319,7 @@ def _run_master_job(file, resolved_config: dict, reference_file, job_id: str | N
 
 @router.post("/jobs/{job_id}/cancel")
 def cancel_job(job_id: str) -> dict:
+    require_job_id(job_id)
     """Idempotent. Queued: removed from the queue. Running: the worker's
     process group is killed within ~0.25 s. Terminal: unchanged (a completed
     job stays completed; the caller decides what to do with it)."""
@@ -329,6 +332,7 @@ def cancel_job(job_id: str) -> dict:
 
 @router.get("/jobs/{job_id}")
 def job_state(job_id: str) -> dict:
+    require_job_id(job_id)
     rec = registry.get(job_id)
     if rec is None:
         raise HTTPException(404, "Unknown job")
@@ -342,6 +346,8 @@ def capacity() -> dict:
 
 @router.get("/download/{job_id}.{ext}")
 def download(job_id: str, ext: str):
+    require_job_id(job_id)
+    require_output_ext(ext)
     path = settings.output_dir / f"{job_id}_mastered.{ext}"
     if not path.exists():
         raise HTTPException(404, "File not found")
@@ -359,7 +365,8 @@ def download(job_id: str, ext: str):
 
 @router.get("/original/{job_id}")
 def get_original(job_id: str):
-    matches = list(settings.upload_dir.glob(f"{job_id}_input.*"))
+    require_job_id(job_id)
+    matches = list(settings.upload_dir.glob(f"{glob.escape(job_id)}_input.*"))
     if not matches:
         raise HTTPException(404, "Original not found")
     return FileResponse(matches[0])
@@ -367,6 +374,7 @@ def get_original(job_id: str):
 
 @router.get("/preview/{job_id}")
 def get_preview(job_id: str):
+    require_job_id(job_id)
     # Always 16-bit PCM WAV (see mastering_service.py:make_browser_preview)
     # — the deliverable itself stays at its real bit depth, this exists
     # purely so an in-browser <audio> player never hits the 24-bit-WAV
@@ -394,7 +402,7 @@ def get_preview(job_id: str):
             # e.g. an mp3-only output — or ffmpeg itself failed). Fall
             # back to serving the actual mastered file so playback still
             # works rather than hard-failing the player outright.
-            matches = list(settings.output_dir.glob(f"{job_id}_mastered.*"))
+            matches = list(settings.output_dir.glob(f"{glob.escape(job_id)}_mastered.*"))
             if not matches:
                 raise HTTPException(404, "Preview not found")
             return FileResponse(matches[0])
@@ -403,6 +411,7 @@ def get_preview(job_id: str):
 
 @router.delete("/files/{job_id}")
 def delete_job_files(job_id: str) -> dict:
+    require_job_id(job_id)
     # Every file this job ever produced (input, decoded intermediates,
     # mastered output in every format, codec-preview renders) is named
     # "{job_id}_..." in either upload_dir or output_dir — same convention
@@ -412,7 +421,7 @@ def delete_job_files(job_id: str) -> dict:
     # requester owns this job_id before ever calling this.
     removed = 0
     for directory in (settings.upload_dir, settings.output_dir):
-        for path in directory.glob(f"{job_id}_*"):
+        for path in directory.glob(f"{glob.escape(job_id)}_*"):
             if path.is_file():
                 path.unlink(missing_ok=True)
                 removed += 1
@@ -421,6 +430,7 @@ def delete_job_files(job_id: str) -> dict:
 
 @router.post("/codec-preview", response_model=CodecPreviewResponse)
 def codec_preview(job_id: str = Form(...), codec: str = Form("mp3_128")) -> dict:
+    require_job_id(job_id)
     if codec not in SUPPORTED_CODECS:
         raise HTTPException(400, f"Unknown codec '{codec}'. Options: {sorted(SUPPORTED_CODECS)}")
 
@@ -439,6 +449,8 @@ def codec_preview(job_id: str = Form(...), codec: str = Form("mp3_128")) -> dict
 
 @router.get("/download-codec-preview/{job_id}/{codec}")
 def download_codec_preview(job_id: str, codec: str):
+    require_job_id(job_id)
+    require_codec(codec, SUPPORTED_CODECS)
     path = settings.output_dir / f"{job_id}_codec_{codec}.wav"
     if not path.exists():
         raise HTTPException(404, "Codec preview not found — run /codec-preview first")

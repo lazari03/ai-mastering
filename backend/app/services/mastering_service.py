@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import glob
 import json
 import logging
 import re
@@ -21,6 +22,7 @@ from ai_mastering.planning.preset_intent import is_intent_preset, resolve_genre,
 from params import list_categories, list_delivery_targets, list_flavours, list_genres, list_styles, list_tags
 
 from app.core.config import settings
+from app.core.ids import is_valid_job_id
 from app.services.preset_dsp_engine import render_preset_master
 from app.services.presets_service import get_mixing_preset
 
@@ -399,7 +401,7 @@ def make_browser_preview(wav_mastered_path: Path, preview_path: Path) -> None:
         logging.getLogger(__name__).warning("Browser-preview transcode raised for %s: %s", preview_path.name, exc)
 
 
-JOB_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,64}$")
+
 
 
 def stage_mastering_request(file: UploadFile, config: dict, reference_file: UploadFile | None = None, job_id: str | None = None) -> dict:
@@ -408,8 +410,8 @@ def stage_mastering_request(file: UploadFile, config: dict, reference_file: Uplo
     resource admission needs (app/core/job_runner.py). No decoding."""
     if file.size and file.size > settings.max_upload_size_mb * 1024 * 1024:
         raise HTTPException(413, f"Uploaded file exceeds {settings.max_upload_size_mb}MB limit")
-    if job_id is not None and not JOB_ID_RE.match(job_id):
-        raise HTTPException(400, "job_id must be 6-64 characters of letters, digits, '-' or '_'")
+    if job_id is not None and not is_valid_job_id(job_id):
+        raise HTTPException(400, "job_id must be 6-64 letters or digits")
     job_id = job_id or str(uuid.uuid4())[:8]
     input_ext = Path(file.filename or "").suffix or ".wav"
     input_path = settings.upload_dir / f"{job_id}_input{input_ext}"
@@ -455,7 +457,7 @@ def remove_job_files(job_id: str) -> None:
     """Every file a job may have produced. Used when a job is cancelled or
     times out, so a late or partial result can never be downloaded."""
     for directory in (settings.upload_dir, settings.output_dir):
-        for path in directory.glob(f"{job_id}_*"):
+        for path in directory.glob(f"{glob.escape(job_id)}_*"):
             path.unlink(missing_ok=True)
 
 

@@ -38,8 +38,13 @@ import { shareLinks, ShareLinkError } from "../services/shareLinkService.js";
 import { cleanupUploadsOnFinish } from "../middleware/cleanupUploads.js";
 import { masteringDspProps } from "../services/masteringTelemetry.js";
 import { cutPreviewExcerpt } from "../services/previewExcerpt.js";
+import { guardRouteParams, isValidJobId, isValidCodec, isValidExt, safeJoin, upstreamPath } from "../services/pathParams.js";
 
 const router = express.Router();
+
+// Every :jobId / :codec / :ext route parameter is validated once, here, before
+// any handler looks anything up or builds a path or upstream URL from it.
+guardRouteParams(router);
 
 const ledger = createLedger();
 
@@ -371,7 +376,7 @@ async function resolveShare(req, res) {
 }
 
 function sharedFilename(job, jobId) {
-  const ext = job.output_format || "wav";
+  const ext = isValidExt(job.output_format) ? job.output_format : "wav";
   const base = (job.original_filename || `master_${jobId}`).replace(/\.[^./\\]+$/, "").replace(/[^\w .-]+/g, "_").trim(); // literal space, not \s: U+3000 / newlines are invalid in a header
   return `${base || "master"}_mastered.${ext}`;
 }
@@ -400,15 +405,15 @@ router.get("/shared/link/download", shareAccessLimiter, async (req, res) => {
     return sendShareError(res, "exhausted");
   }
   const jobId = share.row.job_id;
-  const ext = share.job.output_format || "wav";
+  const ext = isValidExt(share.job.output_format) ? share.job.output_format : "wav";
   const filename = sharedFilename(share.job, jobId);
   recordServerEvent("share_downloaded", { uid: share.row.uid, props: {} });
-  const localPath = path.join(settings.outputDir, `${jobId}_mastered.${ext}`);
+  const localPath = safeJoin(settings.outputDir, `${jobId}_mastered.${ext}`);
   if (fs.existsSync(localPath)) {
     return res.download(localPath, filename);
   }
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-  return proxyFromPython(`/download/${jobId}.${ext}`, res, SHARE_UNAVAILABLE.master_gone[1]);
+  return proxyFromPython(`${upstreamPath("download", jobId)}.${ext}`, res, SHARE_UNAVAILABLE.master_gone[1]);
 });
 
 // Wipes everything this app stored in Firestore for the caller (profile,
@@ -1210,6 +1215,12 @@ router.post("/codec-preview", expensiveLimiter, async (req, res) => {
   if (!jobId) {
     return res.status(400).json({ detail: "job_id is required" });
   }
+  if (!isValidJobId(jobId)) {
+    return res.status(404).json({ detail: "Job not found" });
+  }
+  if (codec !== undefined && codec !== "" && !isValidCodec(codec)) {
+    return res.status(400).json({ detail: "Unknown codec" });
+  }
   if (!(await ownsJob(req.user.uid, jobId))) {
     return res.status(404).json({ detail: "Job not found" });
   }
@@ -1278,7 +1289,7 @@ router.get("/download-codec-preview/:jobId/:codec", async (req, res) => {
   if (!(await ownsJob(req.user.uid, jobId))) {
     return res.status(404).json({ detail: "Codec preview not found — run /codec-preview first" });
   }
-  return proxyFromPython(`/download-codec-preview/${jobId}/${codec}`, res, "Codec preview not found — run /codec-preview first", req);
+  return proxyFromPython(upstreamPath("download-codec-preview", jobId, codec), res, "Codec preview not found — run /codec-preview first", req);
 });
 
 router.get("/download/:jobId.:ext", async (req, res) => {
@@ -1291,11 +1302,11 @@ router.get("/download/:jobId.:ext", async (req, res) => {
   // masteringService.js:processMasteringViaFfmpegFallback). Everything
   // else (the default path) is mastered by the Python service and lives
   // in its storage instead.
-  const localPath = path.join(settings.outputDir, `${jobId}_mastered.${ext}`);
+  const localPath = safeJoin(settings.outputDir, `${jobId}_mastered.${ext}`);
   if (fs.existsSync(localPath)) {
     return res.download(localPath);
   }
-  return proxyFromPython(`/download/${jobId}.${ext}`, res, "File not found", req);
+  return proxyFromPython(`${upstreamPath("download", jobId)}.${ext}`, res, "File not found", req);
 });
 
 router.get("/original/:jobId", async (req, res) => {
@@ -1320,7 +1331,7 @@ router.get("/original/:jobId", async (req, res) => {
   if (chosen) {
     return res.sendFile(path.join(settings.uploadDir, chosen));
   }
-  return proxyFromPython(`/original/${req.params.jobId}`, res, "Original not found", req);
+  return proxyFromPython(upstreamPath("original", req.params.jobId), res, "Original not found", req);
 });
 
 // Always 16-bit PCM WAV (see mastering_service.py:_make_browser_preview) —
@@ -1334,7 +1345,7 @@ router.get("/preview/:jobId", async (req, res) => {
   if (!(await ownsJob(req.user.uid, req.params.jobId))) {
     return res.status(404).json({ detail: "Preview not found" });
   }
-  return proxyFromPython(`/preview/${req.params.jobId}`, res, "Preview not found", req);
+  return proxyFromPython(upstreamPath("preview", req.params.jobId), res, "Preview not found", req);
 });
 
 // LEGACY share links (HMAC-signed ?token=, minted before opaque share
@@ -1356,7 +1367,7 @@ router.get("/shared/:jobId/info", shareAccessLimiter, async (req, res) => {
   if (!job || isShareJobExpired(job)) {
     return res.status(404).json({ detail: "This link is invalid or has expired." });
   }
-  const ext = job.output_format || "wav";
+  const ext = isValidExt(job.output_format) ? job.output_format : "wav";
   return res.json({
     filename: job.original_filename || `mastered_${req.params.jobId}.${ext}`,
     genre: job.genre || null,
@@ -1384,12 +1395,12 @@ router.get("/shared/:jobId", shareAccessLimiter, async (req, res) => {
   if (!job || isShareJobExpired(job)) {
     return res.status(404).json({ detail: "This link is invalid or has expired." });
   }
-  const ext = job.output_format || "wav";
-  const localPath = path.join(settings.outputDir, `${req.params.jobId}_mastered.${ext}`);
+  const ext = isValidExt(job.output_format) ? job.output_format : "wav";
+  const localPath = safeJoin(settings.outputDir, `${req.params.jobId}_mastered.${ext}`);
   if (fs.existsSync(localPath)) {
     return res.download(localPath, `mastered_${req.params.jobId}.${ext}`);
   }
-  return proxyFromPython(`/download/${req.params.jobId}.${ext}`, res, "This link is invalid or has expired.");
+  return proxyFromPython(`${upstreamPath("download", req.params.jobId)}.${ext}`, res, "This link is invalid or has expired.");
 });
 
 export default router;

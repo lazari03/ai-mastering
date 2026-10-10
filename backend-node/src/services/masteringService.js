@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { AUDIO_DECODE_EXTS, CATEGORIES, DELIVERY_KEYS, FLAVOURS_BY_CATEGORY, GENRES, STYLES, TAGS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
 import { postFormData, UpstreamTimeoutError } from "./pythonUpstream.js";
+import { isValidJobId, upstreamPath } from "./pathParams.js";
 import { getMixPresetByName, isIntentPreset } from "./presetsService.js";
 
 export const execFileAsync = promisify(execFile);
@@ -251,8 +252,9 @@ export async function cancelPythonJob(jobId) {
 // — a network hiccup there shouldn't block the Firestore record from being
 // removed too; the 48h sweep is the backstop either way.
 export async function deleteJobFiles(jobId) {
+  if (!isValidJobId(jobId)) return;
   try {
-    await fetch(`${settings.pythonApiBaseUrl}/files/${jobId}`, { method: "DELETE" });
+    await fetch(`${settings.pythonApiBaseUrl}${upstreamPath("files", jobId)}`, { method: "DELETE" });
   } catch (error) {
     console.error(`Failed to delete Python-side files for job ${jobId}:`, error.message);
   }
