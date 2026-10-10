@@ -136,7 +136,15 @@ def render(case: Case) -> bytes:
 
 
 def input_hash(case: Case, data: bytes) -> str:
-    h = hashlib.sha256(data)
+    """Hash of what the engine receives: decoded samples + rate + subtype for
+    audio (libsndfile stamps float WAVs with a timestamped PEAK chunk, so raw
+    bytes differ run to run for identical audio), raw bytes for invalid inputs."""
+    if case.raw_bytes is not None:
+        h = hashlib.sha256(data)
+    else:
+        x, sr = sf.read(io.BytesIO(data), dtype="float64", always_2d=True)
+        h = hashlib.sha256(np.ascontiguousarray(x).tobytes())
+        h.update(f"{sr}:{case.subtype}".encode())
     h.update(json.dumps(case.form, sort_keys=True).encode())
     h.update(case.genre.encode())
     return h.hexdigest()[:16]

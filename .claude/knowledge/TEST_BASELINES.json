@@ -44,110 +44,15 @@
     "command": "cd backend && python -m benchmark.api_qa",
     "results_file": "test-results/auralith-qa.json",
     "report": "docs/agent-reports/QA_REPORT.md",
-    "commit": "2b8a039",
-    "code_hash": "e584db5a8f7cdd89",
-    "date": "2026-10-10T18:28:05",
+    "commit": "49d7907",
+    "code_hash": "0ba713d3237f1451",
+    "date": "2026-10-10T18:34:06",
     "status_counts": {
-      "PASS": 5,
-      "PASS_WITH_ANOMALIES": 1,
-      "FAIL": 2
+      "FAIL": 1
     },
     "endpoints_pass": "17/17",
     "listening_status": "PENDING",
     "cases": {
-      "c01_balanced_pop": {
-        "input_hash": "adaed27f7734139e",
-        "status": "PASS",
-        "out_lufs": -13.24,
-        "out_tp": -2.01,
-        "anomalies": [],
-        "dsp_components": [
-          "dsp.mastering_engine",
-          "dsp.eq",
-          "dsp.bus",
-          "dsp.evaluation"
-        ]
-      },
-      "c02_bass_heavy_hiphop": {
-        "input_hash": "db5bef5c78d5d414",
-        "status": "PASS_WITH_ANOMALIES",
-        "out_lufs": -13.11,
-        "out_tp": -2.0,
-        "anomalies": [
-          "harsh_highs"
-        ],
-        "dsp_components": [
-          "dsp.mastering_engine",
-          "dsp.eq",
-          "dsp.bus",
-          "dsp.evaluation"
-        ]
-      },
-      "c04_harsh_pop": {
-        "input_hash": "ce77099e29c04fcf",
-        "status": "PASS",
-        "out_lufs": -12.72,
-        "out_tp": -2.01,
-        "anomalies": [],
-        "dsp_components": [
-          "dsp.mastering_engine",
-          "dsp.eq",
-          "dsp.bus",
-          "dsp.evaluation"
-        ]
-      },
-      "c07_transient_rock": {
-        "input_hash": "d1605b61182bcc7d",
-        "status": "PASS",
-        "out_lufs": -17.29,
-        "out_tp": -2.01,
-        "anomalies": [],
-        "dsp_components": [
-          "dsp.mastering_engine",
-          "dsp.eq",
-          "dsp.bus",
-          "dsp.evaluation"
-        ]
-      },
-      "c09_phase_inverted": {
-        "input_hash": "f1a591d4df05b6f5",
-        "status": "FAIL",
-        "out_lufs": null,
-        "out_tp": null,
-        "anomalies": [],
-        "dsp_components": [
-          "dsp.mastering_engine",
-          "dsp.eq",
-          "dsp.bus",
-          "dsp.evaluation"
-        ]
-      },
-      "c10_mono_acoustic": {
-        "input_hash": "fb4aec7d06948dc6",
-        "status": "PASS",
-        "out_lufs": -15.04,
-        "out_tp": -1.0,
-        "anomalies": [],
-        "dsp_components": [
-          "dsp.mastering_engine",
-          "dsp.eq",
-          "dsp.bus",
-          "dsp.evaluation"
-        ]
-      },
-      "c19a_pcm16": {
-        "input_hash": "3a8c99e404f66dee",
-        "status": "PASS",
-        "out_lufs": -13.28,
-        "out_tp": -2.01,
-        "anomalies": [],
-        "dsp_components": [
-          "dsp.mastering_engine",
-          "dsp.eq",
-          "dsp.bus",
-          "dsp.evaluation"
-        ]
-      },
       "c20a_garbage": {
         "input_hash": "bc3425567288635c",
         "status": "FAIL",

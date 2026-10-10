@@ -41,8 +41,11 @@ LOG = ROOT / "test-results" / "runs" / "kb_access.log"
 DSP_HASH_GLOBS = [
     "backend/ai_mastering/**/*.py", "backend/params.py", "backend/adaptive_mastering.py",
     "backend/mixing_presets.json", "backend/app/**/*.py", "backend/benchmark/metrics.py",
-    "backend/benchmark/qa_corpus.py", "backend/tests/synthetic.py", "backend/requirements-test.txt",
+    "backend/requirements-test.txt",
 ]
+# Corpus generators are deliberately absent: each case's input is hashed by
+# content (benchmark/qa_corpus.input_hash), so a changed fixture invalidates
+# exactly the cases whose audio changed.
 
 
 def _load(name: str) -> dict:

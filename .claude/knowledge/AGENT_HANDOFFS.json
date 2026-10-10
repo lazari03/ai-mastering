@@ -1,8 +1,42 @@
 {
   "_schema": {
-    "fields": ["handoff_id", "task_id", "agent", "status", "summary", "files_changed", "tests_executed", "results", "risks", "evidence", "next_agent", "commit", "date"],
+    "fields": [
+      "handoff_id",
+      "task_id",
+      "agent",
+      "status",
+      "summary",
+      "files_changed",
+      "tests_executed",
+      "results",
+      "risks",
+      "evidence",
+      "next_agent",
+      "commit",
+      "date"
+    ],
     "status": "READY_FOR_QA | READY_FOR_REVIEW | READY_FOR_AUDIT | APPROVED | REJECTED | BLOCKED | INFO",
     "rules": "Append only (kb.py handoff add). summary <= 300 chars. Put detail in an evidence file and link it. Readers: kb.py handoffs --to <agent> | --task <id>."
   },
-  "handoffs": []
+  "handoffs": [
+    {
+      "handoff_id": "H-0001",
+      "task_id": "AURALITH-AUDIO-004",
+      "agent": "qa-automation-engineer",
+      "status": "INFO",
+      "summary": "Reproduced c20a_garbage: random bytes as .wav gives HTTP 500 render_failed (NoBackendError) instead of 400 invalid_audio. Loader audio_utils.py:107 should raise InvalidAudioError. Fix outline: AUDIO_DSP_REPORT.md s3.",
+      "files_changed": [
+        "backend/ai_mastering/audio_utils.py"
+      ],
+      "tests_executed": [
+        "api_qa:c20a_garbage"
+      ],
+      "results": [],
+      "risks": [],
+      "evidence": "test-results/auralith-qa.json",
+      "next_agent": "audio-dsp-engineer",
+      "commit": "49d7907",
+      "date": "2026-10-10T18:34:20"
+    }
+  ]
 }

@@ -16,14 +16,14 @@
     "rule": "Before investigating a suspected defect run: python3 .claude/knowledge/kb.py issues --component <id> --grep <word>. Edit only the entry you own; append to history, never rewrite it."
   },
   "next_ids": {
-    "AUDIO": 1,
-    "BACKEND": 2,
+    "AUDIO": 5,
+    "BACKEND": 6,
     "BILLING": 1,
-    "FRONTEND": 1,
-    "SECURITY": 1,
-    "DEVOPS": 1,
-    "PRODUCT": 2,
-    "QA": 2,
+    "FRONTEND": 3,
+    "SECURITY": 6,
+    "DEVOPS": 8,
+    "PRODUCT": 5,
+    "QA": 4,
     "DOCS": 1
   },
   "issues": [
@@ -86,19 +86,25 @@
       "title": "Concurrency cap counts jobs, not memory (A12)",
       "component": "python.job_runner",
       "severity": "P2",
-      "status": "NEEDS_REVERIFICATION",
+      "status": "READY_FOR_AUDIT",
       "owner": "backend-engineer",
       "reviewers": [
         "devops-engineer"
       ],
       "evidence": "Prior audit A12. Commit c88bc69 'memory-aware admission' (governor.admit + COST_MODEL) likely resolves it — verify, then move to RESOLVED.",
       "source": "docs/audits/AURALITH_AUDIT.md#A12, docs/audits/PRODUCTION_HARDENING.md",
-      "validated_commit": "3ba1f63",
+      "validated_commit": "49d7907",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Seeded as NEEDS_REVERIFICATION: summary predates c88bc69."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "READY_FOR_AUDIT",
+          "note": "backend-engineer re-verified RESOLVED at c88bc69: ResourceGovernor._fits budget check (job_runner.py:165-215), wired at routes/mastering.py:43-51,271,283. Needs auditor confirmation before close."
         }
       ]
     },
@@ -107,19 +113,602 @@
       "title": "Server-rendered pages and Node error messages are English-only (A13)",
       "component": "frontend.i18n",
       "severity": "P2",
-      "status": "NEEDS_REVERIFICATION",
+      "status": "OPEN",
       "owner": "frontend-engineer",
       "reviewers": [
         "product-specialist"
       ],
       "evidence": "RELEASE_READINESS_V2 says errors/warnings were localized afterwards; 402 quota messages and improvement-check reasons remained.",
       "source": "docs/audits/AURALITH_AUDIT.md#A13, docs/audits/RELEASE_READINESS_V2.md",
-      "validated_commit": "c88bc69",
+      "validated_commit": "49d7907",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Seeded; partially fixed per V2, remainder unverified."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "frontend-engineer re-verified OPEN: ProParamsPanel ~31 literals, ProcessingSummary ~20, store fallbacks English; Node 402/403/400 messages have no codes (masteringRoutes.js 729-893). Fix spans backend codes + frontend i18n."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-SECURITY-001",
+      "title": "EMBARGOED: input validation on file-serving routes (Critical, remote-auth). Details local-only until fix is deployed.",
+      "component": "python.api",
+      "severity": "P0",
+      "status": "OPEN",
+      "owner": "backend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "local docs/agent-reports/SECURITY_REPORT.md #1; independently reproduced by technical-lead 2026-10-10 (local PoC only)",
+      "tests": [
+        "to add: Node + Python route validation regression tests"
+      ],
+      "source": "local docs/agent-reports/SECURITY_REPORT.md #1; independently reproduced by technical-lead 2026-10-10 (local PoC only)",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-SECURITY-002",
+      "title": "EMBARGOED: internal Python service trusts unvalidated job ids and has no service-to-service auth (High, internal).",
+      "component": "python.api",
+      "severity": "P1",
+      "status": "OPEN",
+      "owner": "backend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "local SECURITY_REPORT.md #2",
+      "tests": [],
+      "source": "local SECURITY_REPORT.md #2",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-SECURITY-003",
+      "title": "Expensive-route rate limit keyed only by uid; anonymous sessions can multiply preview compute",
+      "component": "node.auth",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "security-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "SECURITY_REPORT.md #3; backend-node/src/middleware/rateLimit.js",
+      "tests": [],
+      "source": "SECURITY_REPORT.md #3; backend-node/src/middleware/rateLimit.js",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-SECURITY-004",
+      "title": "Dependency hygiene: multer 1.4.5-lts.1 (unmaintained), npm audit fixes pending (proxy-addr, ip-address, @fastify/busboy); trust proxy=true",
+      "component": "node.gateway",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "backend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "SECURITY_REPORT.md #4,#6; backend-node/package.json",
+      "tests": [],
+      "source": "SECURITY_REPORT.md #4,#6; backend-node/package.json",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-SECURITY-005",
+      "title": "Token hygiene: shared HMAC key without domain tag, tokens in query strings, raw verifyIdToken error echoed, CF-Connecting-IP trust",
+      "component": "node.auth",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "security-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "SECURITY_REPORT.md #7,#8",
+      "tests": [],
+      "source": "SECURITY_REPORT.md #7,#8",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-001",
+      "title": "Transient-loss guardrail applies 0.12 'fraction' to absolute punch-score delta (~2x looser than documented)",
+      "component": "dsp.evaluation",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": "output_validation.py:281 / mastering.py:236 compare absolute delta to a fractional limit",
+      "repro": "synthetic short_3s_pop: punch 0.4996->0.4219 (15.6%) passes engine; benchmark.metrics flags lost_drums",
+      "evidence": "docs/agent-reports/AUDIO_DSP_REPORT.md",
+      "tests": [
+        "regression.synthetic"
+      ],
+      "source": "docs/agent-reports/AUDIO_DSP_REPORT.md",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-002",
+      "title": "Polarity-inverted stereo input is refused after a full render ('no candidate passed verification') instead of an early, specific message or a correction",
+      "component": "dsp.evaluation",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": null,
+      "repro": "cd backend && python -m benchmark.api_qa --cases c09_phase_inverted --force",
+      "evidence": "test-results/auralith-qa.json c09_phase_inverted",
+      "tests": [
+        "qa.api_lab c09_phase_inverted"
+      ],
+      "source": "test-results/auralith-qa.json c09_phase_inverted",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-003",
+      "title": "QC limiter_gain_reduction warning (>3 dB) fires on 17/21 synthetic tracks incl. healthy_pop — low information",
+      "component": "dsp.qc",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "AUDIO_DSP_REPORT.md; synthetic baseline final_warnings",
+      "tests": [],
+      "source": "AUDIO_DSP_REPORT.md; synthetic baseline final_warnings",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-QA-002",
+      "title": "benchmark.metrics.compare harsh_highs/weaker_bass ignore the loudness-matching midrange shift (false positives on bass-heavy material)",
+      "component": "regression.synthetic",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "qa-automation-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "AUDIO_DSP_REPORT.md c02 analysis: 2.63 vs +0.13 rel-mid; output_validation uses MID_REFERENCE_BAND (d9c591a)",
+      "tests": [
+        "qa.api_lab c02_bass_heavy_hiphop"
+      ],
+      "source": "AUDIO_DSP_REPORT.md c02 analysis: 2.63 vs +0.13 rel-mid; output_validation uses MID_REFERENCE_BAND (d9c591a)",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-BACKEND-002",
+      "title": "Gateway forwards raw Python/internal error text to browsers; Python unreachable returns 400 with internal URL",
+      "component": "node.gateway",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "backend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "BACKEND_REPORT.md; masteringService.js:211-225, masteringRoutes.js:1141-1171",
+      "tests": [],
+      "source": "BACKEND_REPORT.md; masteringService.js:211-225, masteringRoutes.js:1141-1171",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-BACKEND-003",
+      "title": "Unsupported upload type rejected as 500 generic error instead of 4xx unsupported_format",
+      "component": "node.gateway",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "backend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "masteringRoutes.js:80-85, server.js:176-179",
+      "tests": [],
+      "source": "masteringRoutes.js:80-85, server.js:176-179",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-BACKEND-004",
+      "title": "Whole upload read into memory per /master; no Node-side in-flight cap",
+      "component": "node.gateway",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "backend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "masteringService.js:200-201",
+      "tests": [],
+      "source": "masteringService.js:200-201",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-QA-003",
+      "title": "No route-level /master tests (Python 5xx/503/504 mapping, ECONNREFUSED, bad type, oversize, refunds asserted)",
+      "component": "node.gateway",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "qa-automation-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "BACKEND_REPORT.md test-gap table",
+      "tests": [],
+      "source": "BACKEND_REPORT.md test-gap table",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-BACKEND-005",
+      "title": "Hardening bundle: no client idempotency key; Retry-After dropped; preview temp file leaked on failure; tags/tweaks parsed after reservation; analytics ignores error.code",
+      "component": "node.gateway",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "backend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "BACKEND_REPORT.md findings 5-9",
+      "tests": [],
+      "source": "BACKEND_REPORT.md findings 5-9",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-FRONTEND-001",
+      "title": "Pro-mode manual knobs have no effect on free 30s preview (silently)",
+      "component": "frontend.app",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "frontend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "masteringStore.js:640; masteringRoutes.js:760",
+      "tests": [],
+      "source": "masteringStore.js:640; masteringRoutes.js:760",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-FRONTEND-002",
+      "title": "A11y: selection chips lack aria-pressed, wizard steps aria-current, waveform canvas text alternative",
+      "component": "frontend.app",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "frontend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "MasteringConsole.jsx:308-556; ABMasterPlayer",
+      "tests": [],
+      "source": "MasteringConsole.jsx:308-556; ABMasterPlayer",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-PRODUCT-002",
+      "title": "No album mastering — main missing premium feature for the €19.99 tier",
+      "component": "dsp.mastering_engine",
+      "severity": "P1",
+      "status": "OPEN",
+      "owner": "product-specialist",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "PRODUCT_REPORT.md; PROFESSIONAL_ROADMAP.md #1",
+      "tests": [],
+      "source": "PRODUCT_REPORT.md; PROFESSIONAL_ROADMAP.md #1",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-PRODUCT-003",
+      "title": "All-Access has no non-volume differentiator (batch, persistent library, branded links); nothing accumulates month to month",
+      "component": "frontend.pricing",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "product-specialist",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "PRODUCT_REPORT.md",
+      "tests": [],
+      "source": "PRODUCT_REPORT.md",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-PRODUCT-004",
+      "title": "Pricing page: no plan guide, quantity-only All-Access blurb, Pro-mode vs Professional-engine naming ambiguity",
+      "component": "frontend.pricing",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "product-specialist",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "PRODUCT_REPORT.md; FRONTEND_REPORT.md finding 7",
+      "tests": [],
+      "source": "PRODUCT_REPORT.md; FRONTEND_REPORT.md finding 7",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-DEVOPS-001",
+      "title": "No memory limit on python-service (admission falls back to host fraction); no limits on any service",
+      "component": "devops.deploy",
+      "severity": "P1",
+      "status": "OPEN",
+      "owner": "devops-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "DEVOPS_REPORT.md; docker-compose.yml:3-30; job_runner.py:77-87",
+      "tests": [],
+      "source": "DEVOPS_REPORT.md; docker-compose.yml:3-30; job_runner.py:77-87",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-DEVOPS-002",
+      "title": "No rollback path or post-deploy health verification; deploy pulls branch HEAD, not the CI-tested SHA",
+      "component": "devops.deploy",
+      "severity": "P1",
+      "status": "OPEN",
+      "owner": "devops-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "Makefile:59-82; deploy.yml:198-222",
+      "tests": [],
+      "source": "Makefile:59-82; deploy.yml:198-222",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-DEVOPS-003",
+      "title": "CORS defaults to wildcard and required secrets have no fail-fast in compose",
+      "component": "devops.deploy",
+      "severity": "P1",
+      "status": "OPEN",
+      "owner": "devops-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "docker-compose.yml node-api env; backend-node/src/config/settings.js:28",
+      "tests": [],
+      "source": "docker-compose.yml node-api env; backend-node/src/config/settings.js:28",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-DEVOPS-004",
+      "title": "Containers run as root (no USER in any Dockerfile)",
+      "component": "devops.deploy",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "devops-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "backend/Dockerfile:47, backend-node/Dockerfile:31, frontend/Dockerfile:48",
+      "tests": [],
+      "source": "backend/Dockerfile:47, backend-node/Dockerfile:31, frontend/Dockerfile:48",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-DEVOPS-005",
+      "title": "Production Python deps and base images unpinned; frontend image Node 20 vs CI Node 22",
+      "component": "devops.deploy",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "devops-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "backend/requirements.txt; Dockerfiles",
+      "tests": [],
+      "source": "backend/requirements.txt; Dockerfiles",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-DEVOPS-006",
+      "title": "No log rotation, uptime monitoring/alerting, or volume backups",
+      "component": "devops.deploy",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "devops-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "DEVOPS_REPORT.md",
+      "tests": [],
+      "source": "DEVOPS_REPORT.md",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-DEVOPS-007",
+      "title": "Ops hygiene bundle: missing healthchecks/startup gating, unbounded cache/analytics storage, dozzle :latest with docker.sock, no CSP, actions pinned by tag",
+      "component": "devops.deploy",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "devops-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "DEVOPS_REPORT.md findings 7-10",
+      "tests": [],
+      "source": "DEVOPS_REPORT.md findings 7-10",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-004",
+      "title": "Undecodable input (random bytes named .wav) returns HTTP 500 render_failed instead of 400 invalid_audio",
+      "component": "dsp.bus",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": "ai_mastering/audio_utils.py:101-107 sf.read fails, librosa fallback raises audioread NoBackendError, not mapped to InvalidAudioError (quality_control.py:39); service L525 maps to HTTP 500. Fix detail: AUDIO_DSP_REPORT.md section 3",
+      "repro": "cd backend && /home/user/venv-auralith/bin/python -m benchmark.api_qa --cases c20a_garbage --force --no-endpoints",
+      "evidence": "test-results/auralith-qa.json (case c20a_garbage); docs/agent-reports/AUDIO_DSP_REPORT.md section 3",
+      "tests": [
+        "api_qa:c20a_garbage"
+      ],
+      "source": "test-results/auralith-qa.json (case c20a_garbage); docs/agent-reports/AUDIO_DSP_REPORT.md section 3",
+      "validated_commit": "49d7907",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "qa-automation-engineer",
+          "note": "Created (OPEN)."
         }
       ]
     }
