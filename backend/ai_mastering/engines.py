@@ -1,26 +1,9 @@
-"""The mastering engines (tiers): what each one actually does differently.
+"""Engine capabilities: shared diagnosis and safety, distinct workflows.
 
-Both engines share everything that decides WHAT to change: analysis,
-problem detection, confidence gates, budgets, the plan, EQ, de-essing,
-saturation, stereo, evaluation/backoff and final QC. A Standard master is
-never a deliberately degraded one. The engines differ only in how one
-stage is rendered:
-
-* **Multiband compression split.** When the plan enables compression,
-  Professional splits the low end into sub (<90 Hz) and punch (90-250 Hz),
-  so kick/bass fundamentals get their own attack instead of sharing one
-  20-250 Hz band with the sub.
-
-Both engines use the same ramped-attack true-peak limiter
-(bus_processing._true_peak_limiter). A Professional-only limiter was
-tried and dropped: once the shared limiter gained its own ramped attack,
-the difference measured within noise on real tracks.
-
-Because compression only runs when the plan finds a need, most masters
-render identically on both engines. Anything that should make them differ
-belongs in an EngineSpec here, not in a `tier == "professional"` check.
+Professional adds separate sub/punch compression and one measured
+refinement trial when peak processing is active and render budget remains.
+Healthy sources may still match: processing requires a measured benefit.
 """
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -38,9 +21,10 @@ class EngineSpec:
     bus: Callable
     limiter: str
     features: tuple[str, ...]
+    refinement_trials: int = 0
 
     def describe(self) -> dict:
-        return {"engine": self.name, "label": self.label, "limiter": self.limiter, "compression_bands": list(self.compression_bands), "features": list(self.features)}
+        return {"engine": self.name, "label": self.label, "limiter": self.limiter, "compression_bands": list(self.compression_bands), "refinement_trials": self.refinement_trials, "features": list(self.features)}
 
 
 STANDARD = EngineSpec(
@@ -63,10 +47,12 @@ PROFESSIONAL = EngineSpec(
     compression_crossovers_hz=(90.0, 250.0, 2000.0, 6000.0),
     compression_bands=("sub", "punch", "low_mid", "high_mid", "high"),
     bus=_bus_process_pro,
+    refinement_trials=1,
     limiter="ramped-attack true-peak limiter (shared with Standard)",
     features=(
         "everything in Standard",
         "5-band compression with separate sub and punch bands",
+        "measured comparison with a gentler render inside the shared safety budget",
     ),
 )
 

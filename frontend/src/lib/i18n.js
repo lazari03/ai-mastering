@@ -198,7 +198,7 @@ const DICT = {
   "faq.q2": { en: HOME_FAQ[1].q, sq: "Cili është ndryshimi midis Standard dhe Professional?" },
   "faq.a2": {
     en: HOME_FAQ[1].a,
-    sq: "Të dy përdorin të njëjtën analizë, të njëjtat vendime korrigjimi dhe të njëjtat kontrolle dorëzimi, ndaj një master Standard nuk është kurrë version i cunguar. Professional shton kontroll më të imët të basit: kur nevojitet kompresim, sub-i dhe kick/basi marrin breza të veçantë. Standard përdoret nga masterat falas dhe plani Indie; Professional vjen me Studio dhe All-Access.",
+    sq: "Të dy përdorin të njëjtën analizë, të njëjtat vendime korrigjimi dhe të njëjtat kontrolle dorëzimi, ndaj një master Standard nuk është kurrë version i cunguar. Professional shton breza të veçantë kompresimi për sub-in dhe kick/basin, si dhe një kalim rafinimi të matur. Kur përpunimi i kulmeve është aktiv, krahason një version më të butë dhe e mban vetëm nëse cilësia përmirësohet brenda të njëjtave kontrolle dorëzimi dhe tolerancave të ngushta të volumit dhe tonalitetit. Këngët tashmë të balancuara mund të japin të njëjtin rezultat. Standard përdoret nga masterat falas dhe plani Indie; Professional vjen me Studio dhe All-Access.",
   },
   "faq.q3": { en: HOME_FAQ[2].q, sq: "Mund ta mbaj tingullin e një artisti të qëndrueshëm ndër botime?" },
   "faq.a3": {
@@ -588,7 +588,7 @@ const DICT = {
   "console.custom": { en: "Custom", sq: "I Personalizuar" },
   "console.engine": { en: "Engine", sq: "Motori" },
   "console.standard": { en: "Standard", sq: "Standard" },
-  "console.professionalOption": { en: "Professional (sub/punch band split)", sq: "Professional (breza të veçantë sub/punch)" },
+  "console.professionalOption": { en: "Professional (measured refinement)", sq: "Professional (rafinim i matur)" },
   "console.studioPlanSuffix": { en: " — Studio plan", sq: " — plani Studio" },
   "console.needsStudio": { en: "Needs the Studio plan or higher.", sq: "Kërkon planin Studio ose më lart." },
   "console.genre": { en: "Genre", sq: "Zhanri" },
@@ -973,7 +973,7 @@ const DICT = {
   },
   "help.topic3.q": { en: "What's the difference between Standard and Professional?", sq: "Cili është ndryshimi midis Standard dhe Professional?" },
   "help.topic3.a": {
-    en: "Both engines run the same analysis, correction decisions and delivery checks. Professional adds finer low-end control: when compression is needed, the sub and kick/bass get their own bands. Standard is used by free masters and Indie; Professional comes with Studio and All-Access — pick it from the Engine dropdown when mastering.",
+    en: "Both engines run the same analysis, correction decisions and delivery checks. Professional adds separate sub/kick compression bands and a measured refinement pass. It compares a gentler render when peak processing is active, keeping it only when quality improves within the same delivery checks and tight loudness and tonal tolerances. Already-balanced tracks may still match. Standard is used by free masters and Indie; Professional comes with Studio and All-Access — pick it from the Engine dropdown when mastering.",
     sq: "Të dy motorët përdorin të njëjtën analizë, vendime korrigjimi dhe kontrolle dorëzimi. Professional shton kontroll më të imët të basit: kur nevojitet kompresim, sub-i dhe kick/basi marrin breza të veçantë. Standard përdoret nga masterat falas dhe Indie; Professional vjen me Studio dhe All-Access — zgjidhe nga menuja Engine gjatë masterizimit.",
   },
   "help.topic4.q": { en: "How do I keep an artist's sound consistent across releases?", sq: "Si ta mbaj tingullin e një artisti të qëndrueshëm ndër botime?" },
