@@ -47,6 +47,7 @@ measurements, lifecycle/billing design), `docs/agent-reports/*.md` (current agen
 6. No price changes, pushes, deploys, or real payments without explicit product-owner approval.
 7. No copyrighted audio in git. Real-music corpus lives in git-ignored `backend/benchmark/corpus/`.
 8. Python service on port 8001, Node on 8000 — never swap (see Makefile `dev-*`).
+9. **Public repository — embargo rule.** For any issue titled `EMBARGOED`, committed knowledge (issues, handoffs, reports, commit messages, test names) says only `(embargoed)`; detail lives in the git-ignored `docs/agent-reports/SECURITY_REPORT.md`. Embargoed fixes stay on local branches until the product owner approves push + deploy together.
 
 ## Local environment notes (cloud session)
 - Python test deps — **must be Python 3.12** (matches CI/Docker; pedalboard 0.9.25 SIGILLs on import under 3.13 here, see DECISIONS D-006):

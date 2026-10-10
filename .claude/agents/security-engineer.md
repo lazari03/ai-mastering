@@ -23,6 +23,9 @@ job ids/ext), input validation (JSON form fields, presets import), rate limiting
 logs, reports), dependencies (`npm audit --omit=dev`, `pip-audit` if available — record if unavailable), temp storage + retention, user-data isolation,
 billing abuse (replay, race, refund farming, webhook signature), resource exhaustion (long/huge files, stems, concurrency, Python port exposure).
 
+## Embargo (public repo)
+Unfixed High/Critical findings: write detail only to the git-ignored `docs/agent-reports/SECURITY_REPORT.md`. In `kb.py` entries, handoffs, commit messages and test names write `(embargoed)` / neutral wording only. Lift the embargo (full write-up) only after the fix is deployed.
+
 ## Finding format
 ID · severity (Critical/High/Medium/Low) · exploitability (remote-unauth / remote-auth / internal / theoretical) · component · evidence (file:line) ·
 reproduction (safe, local) · impact · required fix. Never include secret values; redact.
