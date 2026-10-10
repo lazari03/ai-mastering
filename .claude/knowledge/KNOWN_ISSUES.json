@@ -146,7 +146,7 @@
       "title": "EMBARGOED: input validation on file-serving routes (Critical, remote-auth). Details local-only until fix is deployed.",
       "component": "python.api",
       "severity": "P0",
-      "status": "OPEN",
+      "status": "READY_FOR_REVIEW",
       "owner": "backend-engineer",
       "root_cause": null,
       "repro": null,
@@ -155,12 +155,18 @@
         "to add: Node + Python route validation regression tests"
       ],
       "source": "local docs/agent-reports/SECURITY_REPORT.md #1; independently reproduced by technical-lead 2026-10-10 (local PoC only)",
-      "validated_commit": "49d7907",
+      "validated_commit": "298c856",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "backend-engineer",
+          "status": "READY_FOR_REVIEW",
+          "note": "Fix on LOCAL branch worktree-agent-a98143420e4bae0c3 (c53034a, embargoed, not pushed). Py 243 passed, Node 68/68. Merged into KB by lead from worktree."
         }
       ]
     },
@@ -169,19 +175,25 @@
       "title": "EMBARGOED: internal Python service trusts unvalidated job ids and has no service-to-service auth (High, internal).",
       "component": "python.api",
       "severity": "P1",
-      "status": "OPEN",
+      "status": "IN_PROGRESS",
       "owner": "backend-engineer",
       "root_cause": null,
       "repro": null,
       "evidence": "local SECURITY_REPORT.md #2",
       "tests": [],
       "source": "local SECURITY_REPORT.md #2",
-      "validated_commit": "49d7907",
+      "validated_commit": "298c856",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "backend-engineer",
+          "status": "IN_PROGRESS",
+          "note": "Validation part done in c53034a; remaining: service-to-service auth, network isolation, non-root container."
         }
       ]
     },
