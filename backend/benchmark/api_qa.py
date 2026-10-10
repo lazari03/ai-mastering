@@ -233,7 +233,9 @@ def run_case(client: httpx.Client, case: Case, data: bytes, ref_bytes: bytes | N
     if tgt is not None and m_out["integrated_lufs"] is not None:
         checks["loudness_within_tolerance_of_requested_target"] = abs(m_out["integrated_lufs"] - tgt) <= LIMITS.loudness_tolerance_lu
     # Loudness-matched comparison at the master's rate (existing failure kinds and limits).
-    cmp = metrics.compare(_to_sr(src, src_sr, out_sr), out, out_sr)
+    # metrics._stereo only expands 1-D input; a mono file decodes as (n, 1).
+    flat = lambda x: x[:, 0] if x.ndim == 2 and x.shape[1] == 1 else x  # noqa: E731
+    cmp = metrics.compare(flat(_to_sr(src, src_sr, out_sr)), flat(out), out_sr)
     for f in cmp["failures"]:
         anomalies.append({"kind": f["kind"], "measured": f["measured"], "limit": f["limit"], "source": "benchmark.metrics"})
     if m_src["dc_offset_dbfs"] and max(v or -200 for v in m_src["dc_offset_dbfs"]) > -50 and not body.get("source_warnings"):
@@ -416,7 +418,10 @@ def main(argv=None) -> int:
                     continue
                 ref_id = case.form.get("_reference")
                 ref = render(by_id[ref_id]) if ref_id else None
-                rec = run_case(client, case, data, ref, run_dir)
+                try:
+                    rec = run_case(client, case, data, ref, run_dir)
+                except Exception as exc:  # noqa: BLE001 — a harness fault is recorded, never silently skipped
+                    rec = {"status": "ERROR", "actual": f"harness error: {type(exc).__name__}: {exc}"}
                 rec.update(input={"id": case.id, **describe(case)}, input_hash=h)
                 cases_out[case.id] = rec
                 print(f"{case.id}: {rec['status']} (HTTP {rec.get('http_status')}, {rec.get('processing_time_s')} s) {rec.get('actual', '')}", flush=True)
@@ -436,7 +441,7 @@ def main(argv=None) -> int:
     }
     write_reports(result)
     update_baselines(result)
-    fails = [cid for cid, c in result["cases"].items() if c["status"] == "FAIL"]
+    fails = [cid for cid, c in result["cases"].items() if c["status"] in ("FAIL", "ERROR")]
     print(f"\n{len(result['cases'])} cases; FAIL: {fails or 'none'}; reused {reused}; report {REPORT_MD.relative_to(ROOT)}")
     return 1 if fails or any(e["status"] == "FAIL" for e in result["endpoints"]) else 0
 
