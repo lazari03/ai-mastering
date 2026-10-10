@@ -38,7 +38,7 @@ Chain: H-0001 (QA, INFO) → H-0003 (DSP, READY_FOR_QA, fix `c4d9727`) → H-000
 | API-level, parent | `audit-parent`: `python -m benchmark.api_qa --cases c20a_garbage,c20c_empty --force --no-endpoints` | both **FAIL, HTTP 500** |
 | API-level, HEAD | `audit-head`: `python -m benchmark.api_qa --cases c20a_garbage,c20b_truncated,c20c_empty --force --no-endpoints` | all **PASS, HTTP 400**; input hashes identical to the recorded ones (`c20a` `bc3425567288635c`); code hash `8b99ad632fedec92` reproduces the recorded one |
 | Error code + no leftover files | uvicorn `benchmark.qa_app` on HEAD, `curl -F file=@random64k.wav` and `@empty.wav` to `/api/master` | `400`, `x-error-code: invalid_audio`, detail "could not be decoded as audio"; upload/output dirs empty afterwards |
-| Full suite at HEAD | `audit-head/backend`: `pytest -q -x tests` | see §4 |
+| Full suite at HEAD | `audit-head/backend`: `pytest -q -x tests` | **232 passed** (§4) |
 
 The QA claims in QA_REPORT.md "Verification" match my re-runs.
 
@@ -122,7 +122,7 @@ be fixed before the QA lab is used as a release gate.
 ---
 
 ## 4. Full suite (auditor re-run)
-`cd scratchpad/audit-head/backend && pytest -q -p no:cacheprovider -x tests` → PENDING_RESULT
+`cd scratchpad/audit-head/backend && pytest -q -p no:cacheprovider -x tests` → **232 passed** (693 s). This matches QA's recorded 232.
 
 ---
 
