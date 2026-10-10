@@ -1,11 +1,11 @@
 {
  "tool": "backend/benchmark/api_qa.py",
- "commit": "1616df0",
+ "commit": "f1af9e1",
  "code_hash": "ceb3292fd55b1bd1",
- "date": "2026-10-10T19:46:06",
+ "date": "2026-10-10T19:47:47",
  "python": "3.12.3",
  "path_under_test": "uvicorn benchmark.qa_app \u2192 /api/master \u2192 run_in_worker \u2192 ai_mastering.master_track",
- "reused_cached_cases": 0,
+ "reused_cached_cases": 33,
  "cases": {
   "c01_balanced_pop": {
    "http_status": 200,
@@ -4859,7 +4859,7 @@
    "time_s": 0.01
   }
  ],
- "endpoints_note": null,
+ "endpoints_note": "carried forward (same code hash)",
  "blocked": [
   {
    "id": "b_stems",
