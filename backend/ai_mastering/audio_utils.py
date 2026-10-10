@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 from pathlib import Path
 
+import audioread.exceptions
 import librosa
 import numpy as np
 import soundfile as sf
@@ -104,7 +105,16 @@ def _load_audio(path: str | Path, sr: int = MASTER_SR) -> tuple[np.ndarray, int]
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
             warnings.simplefilter("ignore", FutureWarning)
-            y, loaded_sr = librosa.load(path, sr=None, mono=False)
+            try:
+                y, loaded_sr = librosa.load(path, sr=None, mono=False)
+            except (audioread.exceptions.DecodeError, EOFError) as exc:
+                # Not audio (or a format no backend reads): a client error, not a
+                # render failure. Lazy import: quality_control imports this module.
+                from .quality_control import InvalidAudioError
+
+                raise InvalidAudioError(
+                    "The uploaded file could not be decoded as audio (unsupported or corrupt format)."
+                ) from exc
             if y.ndim == 1:
                 y = np.stack([y, y], axis=0)
 

@@ -134,3 +134,37 @@ def test_very_quiet_audio_is_not_called_digital_silence():
         raise AssertionError("expected InvalidAudioError")
     except InvalidAudioError as exc:
         assert "digital silence" in str(exc)
+
+
+# --- undecodable input (AURALITH-AUDIO-004) ------------------------------
+
+
+def _garbage_wav(path):
+    path.write_bytes(np.random.default_rng(20).integers(0, 256, 64 * 1024, dtype=np.uint8).tobytes())
+    return path
+
+
+def test_undecodable_bytes_raise_invalid_audio_from_the_loader(tmp_path):
+    """Random bytes named .wav used to escape as audioread NoBackendError,
+    which the service turned into HTTP 500 render_failed."""
+    from ai_mastering.audio_utils import _load_audio
+
+    with pytest.raises(InvalidAudioError, match="could not be decoded"):
+        _load_audio(_garbage_wav(tmp_path / "x.wav"))
+
+
+def test_zero_byte_wav_raises_invalid_audio_from_the_loader(tmp_path):
+    """QA case c20c_empty: an empty .wav escaped as EOFError -> HTTP 500."""
+    from ai_mastering.audio_utils import _load_audio
+
+    empty = tmp_path / "empty.wav"
+    empty.write_bytes(b"")
+    with pytest.raises(InvalidAudioError, match="could not be decoded"):
+        _load_audio(empty)
+
+
+def test_master_track_refuses_undecodable_input_and_writes_nothing(tmp_path):
+    out = tmp_path / "out.wav"
+    with pytest.raises(InvalidAudioError):
+        master_track(str(_garbage_wav(tmp_path / "x.wav")), str(out), "pop", [])
+    assert not out.exists()
