@@ -13,7 +13,8 @@ no agent has to load whole knowledge files or rewrite them.
   kb.py handoff-add --task T --agent A --status S --summary X --next N [--files a,b] [--tests a,b] [--results a,b] [--risks a,b] [--evidence path]
   kb.py handoffs [--to A] [--task T] [--last N]
   kb.py stale                               components/knowledge whose sources changed since validated_commit
-  kb.py codehash                            hash of the effective DSP code + pinned deps (QA cache key)
+  kb.py codehash                            hash of DSP/app code, QA harness, metrics and requirements-test.txt (QA cache key;
+                                            the production requirements.txt is unpinned and not hashed)
   kb.py baseline [--case ID]                latest QA baseline records
   kb.py access-log [--clear]                retrieval log (what each agent queried)
 
@@ -36,11 +37,13 @@ from pathlib import Path
 KB = Path(__file__).resolve().parent
 ROOT = KB.parents[1]
 LOG = ROOT / "test-results" / "runs" / "kb_access.log"
+PROTECTED_FIELDS = {"id", "status", "history"}
 
 # What "effective processing code" means for cache invalidation of audio results.
 DSP_HASH_GLOBS = [
     "backend/ai_mastering/**/*.py", "backend/params.py", "backend/adaptive_mastering.py",
     "backend/mixing_presets.json", "backend/app/**/*.py", "backend/benchmark/metrics.py",
+    "backend/benchmark/api_qa.py", "backend/benchmark/qa_app.py",  # pass/fail rules decide cached verdicts
     "backend/requirements-test.txt",
 ]
 # Corpus generators are deliberately absent: each case's input is hashed by
@@ -127,7 +130,11 @@ def cmd_issue(a) -> None:
 def cmd_issue_add(a) -> None:
     data = _load("KNOWN_ISSUES.json")
     dom = a.domain.upper()
-    n = data["next_ids"].get(dom, 1)
+    # Derived from the highest id in use (open + resolved), never trusted from a counter alone.
+    prefix = f"AURALITH-{dom}-"
+    used = [int(i["id"][len(prefix):]) for f in ("KNOWN_ISSUES.json", "RESOLVED_ISSUES.json")
+            for i in (data if f == "KNOWN_ISSUES.json" else _load(f))["issues"] if i["id"].startswith(prefix) and i["id"][len(prefix):].isdigit()]
+    n = max(data["next_ids"].get(dom, 1), max(used, default=0) + 1)
     issue_id = f"AURALITH-{dom}-{n:03d}"
     data["next_ids"][dom] = n + 1
     data["issues"].append({
@@ -150,6 +157,8 @@ def cmd_issue_update(a) -> None:
         it["status"] = a.status
     for kv in a.set or []:
         k, _, v = kv.partition("=")
+        if k in PROTECTED_FIELDS:
+            sys.exit(f"--set may not change {k!r}; use --status / issue-resolve (history is append-only)")
         it[k] = v
     it["validated_commit"] = _head()
     it["history"].append({"date": _today(), "agent": a.agent, "status": it["status"], "note": a.note or ""})
@@ -164,6 +173,10 @@ def cmd_issue_resolve(a) -> None:
         sys.exit(f"{a.id} is not open")
     if not (a.qa and a.audit):
         sys.exit("Definition of Done: --qa and --audit verdicts are both required to resolve")
+    if not a.audit.upper().startswith("APPROVED"):
+        sys.exit("Definition of Done: --audit must start with APPROVED (the independent auditor's verdict)")
+    if not a.qa.upper().startswith(("APPROVED", "N/A")):
+        sys.exit("Definition of Done: --qa must start with APPROVED, or N/A with a reason for verification-only items")
     known["issues"].remove(it)
     it.update({"status": "DONE", "solution": a.solution, "fix_commit": a.commit, "regression_tests": _csv(a.tests),
                "qa_verdict": a.qa, "audit_verdict": a.audit, "resolved_date": _today()})
@@ -180,8 +193,14 @@ def cmd_issue_resolve(a) -> None:
 def cmd_handoff_add(a) -> None:
     if len(a.summary) > 300:
         sys.exit("summary must be <= 300 chars; put detail in an --evidence file")
+    missing = [f for f in _csv(a.files) if f != "(embargoed)" and not f.startswith("deleted:") and not (ROOT / f).exists()]
+    if missing:
+        sys.exit(f"--files lists paths you changed; these do not exist: {missing} (prefix deleted: for removals)")
     data = _load("AGENT_HANDOFFS.json")
-    hid = f"H-{len(data['handoffs']) + 1:04d}"
+    # max+1, not len+1. Parallel worktrees can still allocate the same id: the
+    # lead merges worktree knowledge by re-adding entries here, never by JSON merge.
+    nums = [int(h["handoff_id"].split("-")[1]) for h in data["handoffs"] if h.get("handoff_id", "").startswith("H-")]
+    hid = f"H-{max(nums, default=0) + 1:04d}"
     data["handoffs"].append({
         "handoff_id": hid, "task_id": a.task, "agent": a.agent, "status": a.status, "summary": a.summary,
         "files_changed": _csv(a.files), "tests_executed": _csv(a.tests), "results": _csv(a.results),

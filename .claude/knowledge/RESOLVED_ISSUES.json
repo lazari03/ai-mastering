@@ -1,13 +1,204 @@
 {
   "_schema": "Same fields as KNOWN_ISSUES.json plus: solution, fix_commit, regression_tests, qa_verdict, audit_verdict, resolved_date. Entries are append-only. Prior-audit fixes are indexed by reference (details stay in docs/audits).",
   "issues": [
-    {"id": "LEGACY-A1", "title": "CI ran no tests", "component": "devops.deploy", "fix_commit": "3ba1f63", "regression_tests": [".github/workflows/deploy.yml python-tests, synthetic-regression, node-check"], "source": "docs/audits/AURALITH_AUDIT.md#A1"},
-    {"id": "LEGACY-A2", "title": "Stem billing bypass", "component": "billing.ledger", "fix_commit": "3ba1f63", "regression_tests": ["backend-node/src/services/__tests__/reservationLedger.test.js"], "source": "docs/audits/AURALITH_AUDIT.md#A2"},
-    {"id": "LEGACY-A3", "title": "jobId ReferenceError in /master stem-failure branch", "component": "node.gateway", "fix_commit": "3ba1f63", "regression_tests": ["npm run lint (no-undef)"], "source": "docs/audits/AURALITH_AUDIT.md#A3"},
-    {"id": "LEGACY-A4", "title": "300 s upstream timeout killed long renders", "component": "node.gateway", "fix_commit": "3ba1f63", "regression_tests": ["backend-node/src/services/__tests__/pythonUpstream.test.js"], "source": "docs/audits/AURALITH_AUDIT.md#A4"},
-    {"id": "LEGACY-A5", "title": "No input duration cap", "component": "python.api", "fix_commit": "3ba1f63", "regression_tests": ["backend/tests/test_input_limits.py"], "source": "docs/audits/AURALITH_AUDIT.md#A5"},
-    {"id": "LEGACY-A9", "title": "One silent channel produced no master", "component": "dsp.qc", "fix_commit": "3ba1f63", "regression_tests": ["synthetic: one_dead_channel_rnb"], "source": "docs/audits/DSP_IMPROVEMENTS.md#1"},
-    {"id": "LEGACY-LEDGER", "title": "Credits could be consumed on failed/abandoned jobs (no durable ledger)", "component": "billing.ledger", "fix_commit": "c88bc69", "regression_tests": ["backend-node/src/services/__tests__/reservationLedger.test.js (18 race/outage tests)"], "source": "docs/audits/JOB_LIFECYCLE_AND_BILLING.md"},
-    {"id": "LEGACY-BASS-HF", "title": "Historical bass loss / HF boost on masters", "component": "dsp.eq", "fix_commit": "pre-3ba1f63", "regression_tests": ["synthetic: bass_heavy_hiphop, thin_edm, dark_rock, bright_harsh_pop, regression_mix_pop", "GuardrailConfig max_low_end_loss_db / max_high_boost_db / tilt"], "source": "backend/benchmark/metrics.py docstring, docs/audits/DSP_IMPROVEMENTS.md"}
+    {
+      "id": "LEGACY-A1",
+      "title": "CI ran no tests",
+      "component": "devops.deploy",
+      "fix_commit": "3ba1f63",
+      "regression_tests": [
+        ".github/workflows/deploy.yml python-tests, synthetic-regression, node-check"
+      ],
+      "source": "docs/audits/AURALITH_AUDIT.md#A1"
+    },
+    {
+      "id": "LEGACY-A2",
+      "title": "Stem billing bypass",
+      "component": "billing.ledger",
+      "fix_commit": "3ba1f63",
+      "regression_tests": [
+        "backend-node/src/services/__tests__/reservationLedger.test.js"
+      ],
+      "source": "docs/audits/AURALITH_AUDIT.md#A2"
+    },
+    {
+      "id": "LEGACY-A3",
+      "title": "jobId ReferenceError in /master stem-failure branch",
+      "component": "node.gateway",
+      "fix_commit": "3ba1f63",
+      "regression_tests": [
+        "npm run lint (no-undef)"
+      ],
+      "source": "docs/audits/AURALITH_AUDIT.md#A3"
+    },
+    {
+      "id": "LEGACY-A4",
+      "title": "300 s upstream timeout killed long renders",
+      "component": "node.gateway",
+      "fix_commit": "3ba1f63",
+      "regression_tests": [
+        "backend-node/src/services/__tests__/pythonUpstream.test.js"
+      ],
+      "source": "docs/audits/AURALITH_AUDIT.md#A4"
+    },
+    {
+      "id": "LEGACY-A5",
+      "title": "No input duration cap",
+      "component": "python.api",
+      "fix_commit": "3ba1f63",
+      "regression_tests": [
+        "backend/tests/test_input_limits.py"
+      ],
+      "source": "docs/audits/AURALITH_AUDIT.md#A5"
+    },
+    {
+      "id": "LEGACY-A9",
+      "title": "One silent channel produced no master",
+      "component": "dsp.qc",
+      "fix_commit": "3ba1f63",
+      "regression_tests": [
+        "synthetic: one_dead_channel_rnb"
+      ],
+      "source": "docs/audits/DSP_IMPROVEMENTS.md#1"
+    },
+    {
+      "id": "LEGACY-LEDGER",
+      "title": "Credits could be consumed on failed/abandoned jobs (no durable ledger)",
+      "component": "billing.ledger",
+      "fix_commit": "c88bc69",
+      "regression_tests": [
+        "backend-node/src/services/__tests__/reservationLedger.test.js (18 race/outage tests)"
+      ],
+      "source": "docs/audits/JOB_LIFECYCLE_AND_BILLING.md"
+    },
+    {
+      "id": "LEGACY-BASS-HF",
+      "title": "Historical bass loss / HF boost on masters",
+      "component": "dsp.eq",
+      "fix_commit": "pre-3ba1f63",
+      "regression_tests": [
+        "synthetic: bass_heavy_hiphop, thin_edm, dark_rock, bright_harsh_pop, regression_mix_pop",
+        "GuardrailConfig max_low_end_loss_db / max_high_boost_db / tilt"
+      ],
+      "source": "backend/benchmark/metrics.py docstring, docs/audits/DSP_IMPROVEMENTS.md"
+    },
+    {
+      "id": "AURALITH-AUDIO-004",
+      "title": "Undecodable input (random bytes named .wav) returns HTTP 500 render_failed instead of 400 invalid_audio",
+      "component": "dsp.bus",
+      "severity": "P2",
+      "status": "DONE",
+      "owner": "audio-dsp-engineer",
+      "root_cause": "ai_mastering/audio_utils.py:101-107 sf.read fails, librosa fallback raises audioread NoBackendError, not mapped to InvalidAudioError (quality_control.py:39); service L525 maps to HTTP 500. Fix detail: AUDIO_DSP_REPORT.md section 3",
+      "repro": "cd backend && /home/user/venv-auralith/bin/python -m benchmark.api_qa --cases c20a_garbage --force --no-endpoints",
+      "evidence": "test-results/auralith-qa.json (case c20a_garbage); docs/agent-reports/AUDIO_DSP_REPORT.md section 3",
+      "tests": [
+        "api_qa:c20a_garbage"
+      ],
+      "source": "test-results/auralith-qa.json (case c20a_garbage); docs/agent-reports/AUDIO_DSP_REPORT.md section 3",
+      "validated_commit": "c4333e0",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "qa-automation-engineer",
+          "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "Full QA run: c20c_empty (0-byte .wav) also returns 500 'EOFError' — same class; DSP owner notified to cover it."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "mastering-engineer independently flagged c20c_empty 500 (already appended)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "audio-dsp-engineer",
+          "status": "READY_FOR_QA",
+          "note": "Fix 257eb67 (cherry-picked as c4d9727 by lead). Undecodable input -> InvalidAudioError -> 400 invalid_audio. 3 regression tests fail-before/pass-after; pytest 231 passed; synthetic drift 0. [merged from worktree by technical-lead]"
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "qa-automation-engineer",
+          "status": "READY_FOR_AUDIT",
+          "note": "Parent 50956be: c20a/c20c HTTP 500, 3 new tests fail. HEAD: both 400 invalid_audio, test_input_limits 12 pass, full api_qa 33 cases (c09 known AUDIO-002 only FAIL), pytest 232 pass. ffmpeg path = BACKEND-006 open. Gateway credit checks BLOCKED. Detail: QA_REPORT.md Verification."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_AUDIT",
+          "note": "audit: APPROVED (INDEPENDENT_AUDIT.md s1; residual R1=BACKEND-006, R2/R3 low)"
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "DONE",
+          "note": "Resolved."
+        }
+      ],
+      "solution": "Loader maps undecodable-input decoder errors (audioread DecodeError, EOFError) to InvalidAudioError -> HTTP 400 invalid_audio",
+      "fix_commit": "c4d9727",
+      "regression_tests": [
+        "backend/tests/test_input_limits.py::test_undecodable_bytes_raise_invalid_audio_from_the_loader",
+        "::test_zero_byte_wav_raises_invalid_audio_from_the_loader",
+        "::test_master_track_refuses_undecodable_input_and_writes_nothing",
+        "qa.api_lab c20a_garbage",
+        "c20c_empty"
+      ],
+      "qa_verdict": "APPROVED H-0005 (parent repro 500, HEAD 400, pytest 232, api_qa 33 cases)",
+      "audit_verdict": "APPROVED H-0006 (INDEPENDENT_AUDIT.md s1)",
+      "resolved_date": "2026-10-10"
+    },
+    {
+      "id": "AURALITH-BACKEND-001",
+      "title": "Concurrency cap counts jobs, not memory (A12)",
+      "component": "python.job_runner",
+      "severity": "P2",
+      "status": "DONE",
+      "owner": "backend-engineer",
+      "reviewers": [
+        "devops-engineer"
+      ],
+      "evidence": "Prior audit A12. Commit c88bc69 'memory-aware admission' (governor.admit + COST_MODEL) likely resolves it — verify, then move to RESOLVED.",
+      "source": "docs/audits/AURALITH_AUDIT.md#A12, docs/audits/PRODUCTION_HARDENING.md",
+      "validated_commit": "c4333e0",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Seeded as NEEDS_REVERIFICATION: summary predates c88bc69."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "READY_FOR_AUDIT",
+          "note": "backend-engineer re-verified RESOLVED at c88bc69: ResourceGovernor._fits budget check (job_runner.py:165-215), wired at routes/mastering.py:43-51,271,283. Needs auditor confirmation before close."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_AUDIT",
+          "note": "audit: APPROVED (INDEPENDENT_AUDIT.md s2)"
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "DONE",
+          "note": "Resolved."
+        }
+      ],
+      "solution": "Already resolved before this session by memory-aware ResourceGovernor admission (c88bc69); re-verified by backend-engineer, confirmed by auditor",
+      "fix_commit": "c88bc69",
+      "regression_tests": [
+        "backend/tests/test_job_runner.py budget tests"
+      ],
+      "qa_verdict": "N/A-reverification (backend-engineer evidence, BACKEND_REPORT.md)",
+      "audit_verdict": "APPROVED H-0007 (INDEPENDENT_AUDIT.md s2)",
+      "resolved_date": "2026-10-10"
+    }
   ]
 }

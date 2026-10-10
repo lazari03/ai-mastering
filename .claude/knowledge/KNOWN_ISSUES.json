@@ -23,7 +23,7 @@
     "SECURITY": 6,
     "DEVOPS": 8,
     "PRODUCT": 5,
-    "QA": 6,
+    "QA": 8,
     "DOCS": 1
   },
   "issues": [
@@ -84,33 +84,6 @@
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Seeded; confirmed corpus dir absent at c88bc69."
-        }
-      ]
-    },
-    {
-      "id": "AURALITH-BACKEND-001",
-      "title": "Concurrency cap counts jobs, not memory (A12)",
-      "component": "python.job_runner",
-      "severity": "P2",
-      "status": "READY_FOR_AUDIT",
-      "owner": "backend-engineer",
-      "reviewers": [
-        "devops-engineer"
-      ],
-      "evidence": "Prior audit A12. Commit c88bc69 'memory-aware admission' (governor.admit + COST_MODEL) likely resolves it — verify, then move to RESOLVED.",
-      "source": "docs/audits/AURALITH_AUDIT.md#A12, docs/audits/PRODUCTION_HARDENING.md",
-      "validated_commit": "49d7907",
-      "history": [
-        {
-          "date": "2026-10-10",
-          "agent": "technical-lead",
-          "note": "Seeded as NEEDS_REVERIFICATION: summary predates c88bc69."
-        },
-        {
-          "date": "2026-10-10",
-          "agent": "technical-lead",
-          "status": "READY_FOR_AUDIT",
-          "note": "backend-engineer re-verified RESOLVED at c88bc69: ResourceGovernor._fits budget check (job_runner.py:165-215), wired at routes/mastering.py:43-51,271,283. Needs auditor confirmation before close."
         }
       ]
     },
@@ -516,7 +489,7 @@
       ]
     },
     {
-      "id": "AURALITH-PRODUCT-002",
+      "id": "AURALITH-PRODUCT-005",
       "title": "No album mastering — main missing premium feature for the €19.99 tier",
       "component": "dsp.mastering_engine",
       "severity": "P1",
@@ -533,6 +506,11 @@
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Renumbered from duplicate AURALITH-PRODUCT-002 (seed counter bug; kb.py now allocates max+1)."
         }
       ]
     },
@@ -726,53 +704,6 @@
       ]
     },
     {
-      "id": "AURALITH-AUDIO-004",
-      "title": "Undecodable input (random bytes named .wav) returns HTTP 500 render_failed instead of 400 invalid_audio",
-      "component": "dsp.bus",
-      "severity": "P2",
-      "status": "READY_FOR_AUDIT",
-      "owner": "audio-dsp-engineer",
-      "root_cause": "ai_mastering/audio_utils.py:101-107 sf.read fails, librosa fallback raises audioread NoBackendError, not mapped to InvalidAudioError (quality_control.py:39); service L525 maps to HTTP 500. Fix detail: AUDIO_DSP_REPORT.md section 3",
-      "repro": "cd backend && /home/user/venv-auralith/bin/python -m benchmark.api_qa --cases c20a_garbage --force --no-endpoints",
-      "evidence": "test-results/auralith-qa.json (case c20a_garbage); docs/agent-reports/AUDIO_DSP_REPORT.md section 3",
-      "tests": [
-        "api_qa:c20a_garbage"
-      ],
-      "source": "test-results/auralith-qa.json (case c20a_garbage); docs/agent-reports/AUDIO_DSP_REPORT.md section 3",
-      "validated_commit": "d7346c8",
-      "history": [
-        {
-          "date": "2026-10-10",
-          "agent": "qa-automation-engineer",
-          "note": "Created (OPEN)."
-        },
-        {
-          "date": "2026-10-10",
-          "agent": "technical-lead",
-          "status": "OPEN",
-          "note": "Full QA run: c20c_empty (0-byte .wav) also returns 500 'EOFError' — same class; DSP owner notified to cover it."
-        },
-        {
-          "date": "2026-10-10",
-          "agent": "technical-lead",
-          "status": "OPEN",
-          "note": "mastering-engineer independently flagged c20c_empty 500 (already appended)."
-        },
-        {
-          "date": "2026-10-10",
-          "agent": "audio-dsp-engineer",
-          "status": "READY_FOR_QA",
-          "note": "Fix 257eb67 (cherry-picked as c4d9727 by lead). Undecodable input -> InvalidAudioError -> 400 invalid_audio. 3 regression tests fail-before/pass-after; pytest 231 passed; synthetic drift 0. [merged from worktree by technical-lead]"
-        },
-        {
-          "date": "2026-10-10",
-          "agent": "qa-automation-engineer",
-          "status": "READY_FOR_AUDIT",
-          "note": "Parent 50956be: c20a/c20c HTTP 500, 3 new tests fail. HEAD: both 400 invalid_audio, test_input_limits 12 pass, full api_qa 33 cases (c09 known AUDIO-002 only FAIL), pytest 232 pass. ffmpeg path = BACKEND-006 open. Gateway credit checks BLOCKED. Detail: QA_REPORT.md Verification."
-        }
-      ]
-    },
-    {
       "id": "AURALITH-AUDIO-005",
       "title": "Delivered true peak varies (-1.0 dBTP on c06/c08/c10, -3.55 on c12, -2.0 elsewhere) while the c11 warning says delivery needs <= -2 dBTP",
       "component": "dsp.bus",
@@ -885,6 +816,62 @@
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-QA-006",
+      "title": "QA lab correctness (auditor review): lenient checks pass on 200/any 4xx; partial runs drop known FAILs; stale endpoint results carried across code hashes; cache key misses harness/expect/reference audio; loudness check silently skipped; untested paths (ffmpeg, presets) not declared",
+      "component": "qa.api_lab",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "qa-automation-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md (QA lab review, findings 1-7)",
+      "tests": [
+        "qa.api_lab"
+      ],
+      "source": "docs/agent-reports/INDEPENDENT_AUDIT.md (QA lab review, findings 1-7)",
+      "validated_commit": "c4333e0",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-QA-007",
+      "title": "kb.py integrity (auditor review): issue-resolve accepts any --audit text; --set can overwrite id/status/history; --files unvalidated; handoff ids len+1 collide across worktrees; docstring overstates hashed deps",
+      "component": "qa.api_lab",
+      "severity": "P3",
+      "status": "READY_FOR_AUDIT",
+      "owner": "technical-lead",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md (QA lab review, finding 8)",
+      "tests": [],
+      "source": "docs/agent-reports/INDEPENDENT_AUDIT.md (QA lab review, finding 8)",
+      "validated_commit": "c4333e0",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "READY_FOR_AUDIT",
+          "note": "kb.py: --audit must start APPROVED, --qa APPROVED|N/A; --set refuses id/status/history; --files must exist; handoff ids max+1 (worktree collisions documented: lead re-adds); harness files in code hash; docstring corrected. Guards exercised manually (3 rejections observed)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "READY_FOR_AUDIT",
+          "note": "Also: issue-add now derives ids from max existing (duplicate AURALITH-PRODUCT-002 found and renumbered to -005)."
         }
       ]
     }
