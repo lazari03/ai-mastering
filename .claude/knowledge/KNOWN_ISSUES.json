@@ -143,7 +143,7 @@
     },
     {
       "id": "AURALITH-SECURITY-001",
-      "title": "EMBARGOED: input validation on file-serving routes (Critical, remote-auth). Details local-only until fix is deployed.",
+      "title": "EMBARGOED security finding (Critical). Details local-only until the fix is deployed.",
       "component": "python.api",
       "severity": "P0",
       "status": "READY_FOR_REVIEW",
@@ -166,13 +166,13 @@
           "date": "2026-10-10",
           "agent": "backend-engineer",
           "status": "READY_FOR_REVIEW",
-          "note": "Fix on LOCAL branch worktree-agent-a98143420e4bae0c3 (c53034a, embargoed, not pushed). Py 243 passed, Node 68/68. Merged into KB by lead from worktree."
+          "note": "(embargoed)"
         }
       ]
     },
     {
       "id": "AURALITH-SECURITY-002",
-      "title": "EMBARGOED: internal Python service trusts unvalidated job ids and has no service-to-service auth (High, internal).",
+      "title": "EMBARGOED security finding (High). Details local-only until the fix is deployed.",
       "component": "python.api",
       "severity": "P1",
       "status": "IN_PROGRESS",
