@@ -256,12 +256,18 @@
         "regression.synthetic"
       ],
       "source": "docs/agent-reports/AUDIO_DSP_REPORT.md",
-      "validated_commit": "49d7907",
+      "validated_commit": "69e7a60",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "API-level evidence (full QA run, benchmark.metrics lost_drums at matched loudness): c03_thin_edm punch loss 0.206, c16_short_2s 0.126, f06_tags_warmer 0.124 vs documented 0.12 fraction — all delivered by the engine."
         }
       ]
     },
@@ -703,12 +709,18 @@
         "api_qa:c20a_garbage"
       ],
       "source": "test-results/auralith-qa.json (case c20a_garbage); docs/agent-reports/AUDIO_DSP_REPORT.md section 3",
-      "validated_commit": "49d7907",
+      "validated_commit": "69e7a60",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "qa-automation-engineer",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "Full QA run: c20c_empty (0-byte .wav) also returns 500 'EOFError' — same class; DSP owner notified to cover it."
         }
       ]
     }

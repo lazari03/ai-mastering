@@ -113,7 +113,9 @@ FEATURE_CASES: list[Case] = [
     Case("f01_professional_tier", "feature: Professional engine", "rock", dict(drum_level=2.0), seed=7, form={"tier": "professional"}),
     Case("f02_category_club", "feature: mastering category (Club/DJ)", "edm", dict(healthy_variation_db=1.0), seed=30, form={"category": "club"}),
     Case("f03_output_mp3", "feature: MP3 output", "pop", dict(healthy_variation_db=1.0), seed=31, form={"output_format": "mp3"}),
-    Case("f04_output_flac", "feature: FLAC output", "pop", dict(healthy_variation_db=1.0), seed=32, form={"output_format": "flac"}),
+    # FLAC export is not a product feature (export is WAV or MP3, i18n.js / product.js): an
+    # unsupported output format must be refused cleanly before any processing.
+    Case("f04_output_flac_refused", "feature: unsupported output format (FLAC) refused cleanly", "pop", dict(healthy_variation_db=1.0), seed=32, form={"output_format": "flac"}, expect="refuse"),
     Case("f05_reference_mastering", "feature: reference mastering (dark mix vs balanced reference)", "rock", dict(offsets_db=[(3000, 20000, -7.5)]), seed=33, form={"_reference": "c01_balanced_pop"}),
     Case("f06_tags_warmer", "feature: tags (warmer)", "pop", dict(healthy_variation_db=1.0), seed=34, form={"tags": json.dumps(["warmer"])}),
     Case("f07_tweaks_brightness", "feature: manual tweak (brightness +)", "pop", dict(healthy_variation_db=1.0), seed=35, form={"tweaks": json.dumps({"brightness": 0.5})}),

@@ -1,15 +1,2815 @@
 {
  "tool": "backend/benchmark/api_qa.py",
- "commit": "49d7907",
- "code_hash": "0ba713d3237f1451",
- "date": "2026-10-10T18:34:06",
+ "commit": "69e7a60",
+ "code_hash": "e584db5a8f7cdd89",
+ "date": "2026-10-10T18:37:42",
  "python": "3.12.3",
  "path_under_test": "uvicorn benchmark.qa_app \u2192 /api/master \u2192 run_in_worker \u2192 ai_mastering.master_track",
- "reused_cached_cases": 0,
+ "reused_cached_cases": 2,
  "cases": {
+  "c01_balanced_pop": {
+   "http_status": 200,
+   "processing_time_s": 13.0,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "812b01edcd0e1ef4739edb0c6559b36c",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -12.96,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -16.97,
+    "momentary_max_lufs": -16.06,
+    "loudness_range_lu": 2.57,
+    "true_peak_dbtp": -1.96,
+    "sample_peak_dbfs": -1.96,
+    "crest_factor_db": 17.33,
+    "energy_share_pct": {
+     "low_20_250": 78.2,
+     "mid_250_4k": 20.7,
+     "high_4k_20k": 1.1
+    },
+    "stereo_correlation": 0.892,
+    "stereo_width_side_mid_db": -12.44,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -222.35,
+     -217.21
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -13.24,
+    "short_term_max_lufs": -12.26,
+    "momentary_max_lufs": -11.41,
+    "loudness_range_lu": 2.56,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 12.54,
+    "energy_share_pct": {
+     "low_20_250": 77.0,
+     "mid_250_4k": 21.8,
+     "high_4k_20k": 1.1
+    },
+    "stereo_correlation": 0.886,
+    "stereo_width_side_mid_db": -12.17,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -64.01,
+     -64.38
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.76,
+    "low_end_change_db": -0.26,
+    "high_change_db": 0.23,
+    "punch_loss": 0.107,
+    "pumping_db": -0.07,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.075,
+     "sub_bass_35_60hz": 0.197,
+     "kick_bass_60_120hz": -0.26,
+     "upper_bass_120_250hz": -0.182,
+     "low_mid_250_500hz": 0.171,
+     "mid_500_2000hz": 0.214,
+     "high_mid_2000_4000hz": 0.228,
+     "presence_4000_6000hz": 0.226,
+     "high_6000_20000hz": 0.225
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.2,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 326.9,
+     "peak_child_rss_mb": 326.9,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 13.0
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c01_balanced_pop/source.wav",
+    "master": "test-results/audio/c01_balanced_pop/master.wav"
+   },
+   "input": {
+    "id": "c01_balanced_pop",
+    "category": "balanced stereo mix",
+    "genre": "pop",
+    "seed": 1,
+    "make_mix": {
+     "seconds": 10.0,
+     "healthy_variation_db": 1.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "9ef17be5046e8a4a"
+  },
+  "c02_bass_heavy_hiphop": {
+   "http_status": 200,
+   "processing_time_s": 11.3,
+   "status": "PASS_WITH_ANOMALIES",
+   "actual": "mastered",
+   "job_id": "ab6377ff7565afd88a8cc5cde274a7a9",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [
+    {
+     "kind": "harsh_highs",
+     "measured": 2.63,
+     "limit": 2.5,
+     "source": "benchmark.metrics"
+    }
+   ],
+   "requested_target_lufs": -13.07,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.4,
+    "momentary_max_lufs": -16.25,
+    "loudness_range_lu": 1.61,
+    "true_peak_dbtp": -1.62,
+    "sample_peak_dbfs": -1.63,
+    "crest_factor_db": 17.11,
+    "energy_share_pct": {
+     "low_20_250": 96.0,
+     "mid_250_4k": 3.8,
+     "high_4k_20k": 0.2
+    },
+    "stereo_correlation": 0.926,
+    "stereo_width_side_mid_db": -14.17,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -226.91,
+     -228.3
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -13.11,
+    "short_term_max_lufs": -12.43,
+    "momentary_max_lufs": -11.58,
+    "loudness_range_lu": 1.74,
+    "true_peak_dbtp": -2.0,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 11.84,
+    "energy_share_pct": {
+     "low_20_250": 93.1,
+     "mid_250_4k": 6.5,
+     "high_4k_20k": 0.4
+    },
+    "stereo_correlation": 0.912,
+    "stereo_width_side_mid_db": -13.35,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -60.21,
+     -59.99
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.89,
+    "low_end_change_db": -0.72,
+    "high_change_db": 2.63,
+    "punch_loss": 0.087,
+    "pumping_db": -0.71,
+    "band_deltas_db": {
+     "subsonic_20_35hz": 1.288,
+     "sub_bass_35_60hz": 0.794,
+     "kick_bass_60_120hz": -0.719,
+     "upper_bass_120_250hz": -0.429,
+     "low_mid_250_500hz": 1.981,
+     "mid_500_2000hz": 2.501,
+     "high_mid_2000_4000hz": 2.63,
+     "presence_4000_6000hz": 2.622,
+     "high_6000_20000hz": 2.629
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.1,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 340.6,
+     "peak_child_rss_mb": 340.6,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 11.3
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c02_bass_heavy_hiphop/source.wav",
+    "master": "test-results/audio/c02_bass_heavy_hiphop/master.wav"
+   },
+   "input": {
+    "id": "c02_bass_heavy_hiphop",
+    "category": "excessively bass-heavy",
+    "genre": "hiphop",
+    "seed": 2,
+    "make_mix": {
+     "seconds": 10.0,
+     "offsets_db": [
+      [
+       40,
+       250,
+       8.0
+      ]
+     ]
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "68c1befc16f96adf"
+  },
+  "c03_thin_edm": {
+   "http_status": 200,
+   "processing_time_s": 12.2,
+   "status": "PASS_WITH_ANOMALIES",
+   "actual": "mastered",
+   "job_id": "55e2c3bc20193c52c8ef2e23cdcbc9fc",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [
+    {
+     "kind": "lost_drums",
+     "measured": 0.206,
+     "limit": 0.12,
+     "source": "benchmark.metrics"
+    }
+   ],
+   "requested_target_lufs": -10.78,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -16.78,
+    "momentary_max_lufs": -16.05,
+    "loudness_range_lu": 3.35,
+    "true_peak_dbtp": -3.39,
+    "sample_peak_dbfs": -3.39,
+    "crest_factor_db": 16.01,
+    "energy_share_pct": {
+     "low_20_250": 62.6,
+     "mid_250_4k": 35.0,
+     "high_4k_20k": 2.4
+    },
+    "stereo_correlation": 0.885,
+    "stereo_width_side_mid_db": -12.16,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -225.64,
+     -231.49
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -10.99,
+    "short_term_max_lufs": -9.88,
+    "momentary_max_lufs": -9.26,
+    "loudness_range_lu": 3.04,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.02,
+    "crest_factor_db": 10.33,
+    "energy_share_pct": {
+     "low_20_250": 65.3,
+     "mid_250_4k": 32.6,
+     "high_4k_20k": 2.1
+    },
+    "stereo_correlation": 0.876,
+    "stereo_width_side_mid_db": -11.79,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -66.56,
+     -65.96
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 7.01,
+    "low_end_change_db": 0.46,
+    "high_change_db": -0.49,
+    "punch_loss": 0.206,
+    "pumping_db": -0.63,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.45,
+     "sub_bass_35_60hz": 0.655,
+     "kick_bass_60_120hz": 0.458,
+     "upper_bass_120_250hz": 0.966,
+     "low_mid_250_500hz": 0.064,
+     "mid_500_2000hz": -0.39,
+     "high_mid_2000_4000hz": -0.474,
+     "presence_4000_6000hz": -0.49,
+     "high_6000_20000hz": -0.493
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -11.0,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 365.7,
+     "peak_child_rss_mb": 365.7,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 12.1
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c03_thin_edm/source.wav",
+    "master": "test-results/audio/c03_thin_edm/master.wav"
+   },
+   "input": {
+    "id": "c03_thin_edm",
+    "category": "thin, insufficient bass",
+    "genre": "edm",
+    "seed": 3,
+    "make_mix": {
+     "seconds": 10.0,
+     "offsets_db": [
+      [
+       40,
+       300,
+       -7.0
+      ]
+     ]
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "4c2a2b1e1bfc5366"
+  },
+  "c04_harsh_pop": {
+   "http_status": 200,
+   "processing_time_s": 10.4,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "53c6ddef08a504f5842c0bf5522edbba",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -12.21,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -16.91,
+    "momentary_max_lufs": -16.02,
+    "loudness_range_lu": 2.84,
+    "true_peak_dbtp": -2.55,
+    "sample_peak_dbfs": -2.65,
+    "crest_factor_db": 17.03,
+    "energy_share_pct": {
+     "low_20_250": 78.3,
+     "mid_250_4k": 18.1,
+     "high_4k_20k": 3.6
+    },
+    "stereo_correlation": 0.895,
+    "stereo_width_side_mid_db": -12.55,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -235.92,
+     -219.7
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -12.72,
+    "short_term_max_lufs": -11.71,
+    "momentary_max_lufs": -11.07,
+    "loudness_range_lu": 2.68,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 12.17,
+    "energy_share_pct": {
+     "low_20_250": 78.9,
+     "mid_250_4k": 18.5,
+     "high_4k_20k": 2.5
+    },
+    "stereo_correlation": 0.891,
+    "stereo_width_side_mid_db": -12.4,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -64.26,
+     -65.11
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 5.28,
+    "low_end_change_db": 0.03,
+    "high_change_db": -0.8,
+    "punch_loss": 0.108,
+    "pumping_db": -0.1,
+    "band_deltas_db": {
+     "subsonic_20_35hz": 0.295,
+     "sub_bass_35_60hz": 0.634,
+     "kick_bass_60_120hz": 0.027,
+     "upper_bass_120_250hz": 0.22,
+     "low_mid_250_500hz": 0.644,
+     "mid_500_2000hz": 0.511,
+     "high_mid_2000_4000hz": -0.661,
+     "presence_4000_6000hz": -1.626,
+     "high_6000_20000hz": -0.804
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -12.7,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 331.2,
+     "peak_child_rss_mb": 331.2,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 10.4
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c04_harsh_pop/source.wav",
+    "master": "test-results/audio/c04_harsh_pop/master.wav"
+   },
+   "input": {
+    "id": "c04_harsh_pop",
+    "category": "harsh high frequencies",
+    "genre": "pop",
+    "seed": 4,
+    "make_mix": {
+     "seconds": 10.0,
+     "offsets_db": [
+      [
+       2500,
+       9000,
+       6.5
+      ]
+     ]
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "40a7c39cf6bfab80"
+  },
+  "c05_overcompressed_edm": {
+   "http_status": 200,
+   "processing_time_s": 9.7,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "5e6746b4f2fa2bf5f925889ca858e2d5",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -8.0,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -8.0,
+    "short_term_max_lufs": -7.19,
+    "momentary_max_lufs": -6.75,
+    "loudness_range_lu": 2.2,
+    "true_peak_dbtp": -4.1,
+    "sample_peak_dbfs": -4.1,
+    "crest_factor_db": 5.14,
+    "energy_share_pct": {
+     "low_20_250": 75.3,
+     "mid_250_4k": 23.3,
+     "high_4k_20k": 1.4
+    },
+    "stereo_correlation": 0.87,
+    "stereo_width_side_mid_db": -11.57,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -56.57,
+     -52.87
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -8.0,
+    "short_term_max_lufs": -7.2,
+    "momentary_max_lufs": -6.76,
+    "loudness_range_lu": 2.15,
+    "true_peak_dbtp": -3.25,
+    "sample_peak_dbfs": -3.26,
+    "crest_factor_db": 5.96,
+    "energy_share_pct": {
+     "low_20_250": 76.2,
+     "mid_250_4k": 22.4,
+     "high_4k_20k": 1.3
+    },
+    "stereo_correlation": 0.872,
+    "stereo_width_side_mid_db": -11.65,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -56.72,
+     -53.02
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": -0.0,
+    "low_end_change_db": -0.03,
+    "high_change_db": -0.14,
+    "punch_loss": -0.008,
+    "pumping_db": 0.0,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.11,
+     "sub_bass_35_60hz": -0.026,
+     "kick_bass_60_120hz": 0.397,
+     "upper_bass_120_250hz": 0.004,
+     "low_mid_250_500hz": -0.12,
+     "mid_500_2000hz": -0.137,
+     "high_mid_2000_4000hz": -0.14,
+     "presence_4000_6000hz": -0.14,
+     "high_6000_20000hz": -0.14
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -8.0,
+    "after_lufs": -8.0,
+    "source_warnings": [
+     "Mix note (over_compression): Source is already heavily limited/compressed (low PLR and short-term crest). Mastering cannot restore dynamics; loudness was not pushed further."
+    ],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 321.0,
+     "peak_child_rss_mb": 321.0,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 9.6
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c05_overcompressed_edm/source.wav",
+    "master": "test-results/audio/c05_overcompressed_edm/master.wav"
+   },
+   "input": {
+    "id": "c05_overcompressed_edm",
+    "category": "excessively compressed (pre-limited -8 LUFS)",
+    "genre": "edm",
+    "seed": 5,
+    "make_mix": {
+     "seconds": 10.0,
+     "lufs": -8.0,
+     "limit_db": -8.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "683dcffd85578d00"
+  },
+  "c06_dynamic_jazz": {
+   "http_status": 200,
+   "processing_time_s": 10.3,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "543bb094ff07e2f102c8b957da903680",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -16.0,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -24.0,
+    "short_term_max_lufs": -22.27,
+    "momentary_max_lufs": -20.79,
+    "loudness_range_lu": 4.67,
+    "true_peak_dbtp": -7.68,
+    "sample_peak_dbfs": -7.72,
+    "crest_factor_db": 17.35,
+    "energy_share_pct": {
+     "low_20_250": 86.8,
+     "mid_250_4k": 12.5,
+     "high_4k_20k": 0.7
+    },
+    "stereo_correlation": 0.905,
+    "stereo_width_side_mid_db": -13.01,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -240.0,
+     -220.58
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -16.02,
+    "short_term_max_lufs": -14.3,
+    "momentary_max_lufs": -12.8,
+    "loudness_range_lu": 4.64,
+    "true_peak_dbtp": -1.0,
+    "sample_peak_dbfs": -1.01,
+    "crest_factor_db": 16.08,
+    "energy_share_pct": {
+     "low_20_250": 86.7,
+     "mid_250_4k": 12.6,
+     "high_4k_20k": 0.7
+    },
+    "stereo_correlation": 0.905,
+    "stereo_width_side_mid_db": -13.0,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -87.16,
+     -87.43
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 7.98,
+    "low_end_change_db": -0.02,
+    "high_change_db": 0.01,
+    "punch_loss": 0.006,
+    "pumping_db": -0.0,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.007,
+     "sub_bass_35_60hz": 0.01,
+     "kick_bass_60_120hz": -0.005,
+     "upper_bass_120_250hz": -0.016,
+     "low_mid_250_500hz": 0.012,
+     "mid_500_2000hz": 0.012,
+     "high_mid_2000_4000hz": 0.013,
+     "presence_4000_6000hz": 0.013,
+     "high_6000_20000hz": 0.013
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -24.0,
+    "after_lufs": -16.0,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 327.0,
+     "peak_child_rss_mb": 327.0,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 10.2
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c06_dynamic_jazz/source.wav",
+    "master": "test-results/audio/c06_dynamic_jazz/master.wav"
+   },
+   "input": {
+    "id": "c06_dynamic_jazz",
+    "category": "highly dynamic",
+    "genre": "jazz",
+    "seed": 6,
+    "make_mix": {
+     "seconds": 10.0,
+     "lufs": -24.0,
+     "section_depth_db": 8.0,
+     "drum_level": 1.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "1500d1c6924d88b2"
+  },
+  "c07_transient_rock": {
+   "http_status": 200,
+   "processing_time_s": 9.7,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "1fc5e99f995a4fe9214f5de3105790a6",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -17.07,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -19.69,
+    "short_term_max_lufs": -18.92,
+    "momentary_max_lufs": -17.87,
+    "loudness_range_lu": 1.8,
+    "true_peak_dbtp": -0.26,
+    "sample_peak_dbfs": -0.26,
+    "crest_factor_db": 20.54,
+    "energy_share_pct": {
+     "low_20_250": 81.8,
+     "mid_250_4k": 17.2,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.902,
+    "stereo_width_side_mid_db": -12.9,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -218.49,
+     -235.23
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -17.29,
+    "short_term_max_lufs": -16.52,
+    "momentary_max_lufs": -15.44,
+    "loudness_range_lu": 1.81,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.02,
+    "crest_factor_db": 16.4,
+    "energy_share_pct": {
+     "low_20_250": 81.1,
+     "mid_250_4k": 17.9,
+     "high_4k_20k": 1.1
+    },
+    "stereo_correlation": 0.898,
+    "stereo_width_side_mid_db": -12.68,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -67.38,
+     -67.41
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 2.41,
+    "low_end_change_db": -0.29,
+    "high_change_db": 0.17,
+    "punch_loss": 0.029,
+    "pumping_db": -0.02,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.15,
+     "sub_bass_35_60hz": 0.154,
+     "kick_bass_60_120hz": -0.041,
+     "upper_bass_120_250hz": -0.294,
+     "low_mid_250_500hz": 0.18,
+     "mid_500_2000hz": 0.153,
+     "high_mid_2000_4000hz": 0.162,
+     "presence_4000_6000hz": 0.165,
+     "high_6000_20000hz": 0.159
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -19.7,
+    "after_lufs": -17.3,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 327.8,
+     "peak_child_rss_mb": 327.8,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 9.6
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c07_transient_rock/source.wav",
+    "master": "test-results/audio/c07_transient_rock/master.wav"
+   },
+   "input": {
+    "id": "c07_transient_rock",
+    "category": "transient-heavy drums",
+    "genre": "rock",
+    "seed": 7,
+    "make_mix": {
+     "seconds": 10.0,
+     "drum_level": 2.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "5ed0d6336dfc4b86"
+  },
+  "c08_presence_vocal_proxy": {
+   "http_status": 200,
+   "processing_time_s": 10.4,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "252b145b453186943a91d6ad4af7d65f",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -15.5,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -16.76,
+    "momentary_max_lufs": -15.84,
+    "loudness_range_lu": 3.31,
+    "true_peak_dbtp": -3.62,
+    "sample_peak_dbfs": -3.63,
+    "crest_factor_db": 16.33,
+    "energy_share_pct": {
+     "low_20_250": 57.1,
+     "mid_250_4k": 42.2,
+     "high_4k_20k": 0.7
+    },
+    "stereo_correlation": 0.861,
+    "stereo_width_side_mid_db": -11.28,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -227.62,
+     -231.22
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -15.5,
+    "short_term_max_lufs": -14.29,
+    "momentary_max_lufs": -13.37,
+    "loudness_range_lu": 3.18,
+    "true_peak_dbtp": -1.0,
+    "sample_peak_dbfs": -1.01,
+    "crest_factor_db": 16.3,
+    "energy_share_pct": {
+     "low_20_250": 61.7,
+     "mid_250_4k": 37.6,
+     "high_4k_20k": 0.7
+    },
+    "stereo_correlation": 0.869,
+    "stereo_width_side_mid_db": -11.56,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -121.05,
+     -119.46
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 2.5,
+    "low_end_change_db": 0.45,
+    "high_change_db": 0.51,
+    "punch_loss": -0.028,
+    "pumping_db": -0.01,
+    "band_deltas_db": {
+     "subsonic_20_35hz": 0.599,
+     "sub_bass_35_60hz": 0.591,
+     "kick_bass_60_120hz": 0.564,
+     "upper_bass_120_250hz": 0.445,
+     "low_mid_250_500hz": -0.11,
+     "mid_500_2000hz": -0.415,
+     "high_mid_2000_4000hz": -0.314,
+     "presence_4000_6000hz": 0.277,
+     "high_6000_20000hz": 0.514
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -15.5,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 337.1,
+     "peak_child_rss_mb": 337.1,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 10.3
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c08_presence_vocal_proxy/source.wav",
+    "master": "test-results/audio/c08_presence_vocal_proxy/master.wav"
+   },
+   "input": {
+    "id": "c08_presence_vocal_proxy",
+    "category": "vocal-dominant (presence-band proxy; no real voice)",
+    "genre": "singer_songwriter",
+    "seed": 8,
+    "make_mix": {
+     "seconds": 10.0,
+     "offsets_db": [
+      [
+       300,
+       3500,
+       6.0
+      ]
+     ]
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "4fbe27276ad518fe"
+  },
+  "c09_phase_inverted": {
+   "http_status": 400,
+   "processing_time_s": 10.4,
+   "error": "No mastering candidate passed final verification (guardrail:excessive_band_change, guardrail:high_frequency_boost, guardrail:tilt_drift, quality_control:dynamics_preservation, quality_control:phase_correlation); no master was delivered.",
+   "status": "FAIL",
+   "actual": "HTTP 400",
+   "input": {
+    "id": "c09_phase_inverted",
+    "category": "stereo phase problem (right channel polarity-inverted)",
+    "genre": "pop",
+    "seed": 9,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": "R *= -1",
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "7a83d1d0c61963fd"
+  },
+  "c10_mono_acoustic": {
+   "http_status": 200,
+   "processing_time_s": 9.2,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "52b4ff740dfe0211c904a207441c87ff",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -15.0,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 1,
+    "integrated_lufs": -21.32,
+    "short_term_max_lufs": -20.31,
+    "momentary_max_lufs": -19.47,
+    "loudness_range_lu": 2.44,
+    "true_peak_dbtp": -2.28,
+    "sample_peak_dbfs": -2.31,
+    "crest_factor_db": 17.02,
+    "energy_share_pct": {
+     "low_20_250": 82.3,
+     "mid_250_4k": 16.7,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 1.0,
+    "stereo_width_side_mid_db": -220.67,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -221.57
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -15.04,
+    "short_term_max_lufs": -14.06,
+    "momentary_max_lufs": -13.18,
+    "loudness_range_lu": 2.4,
+    "true_peak_dbtp": -1.0,
+    "sample_peak_dbfs": -1.01,
+    "crest_factor_db": 15.05,
+    "energy_share_pct": {
+     "low_20_250": 82.2,
+     "mid_250_4k": 16.8,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 1.0,
+    "stereo_width_side_mid_db": -223.94,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -80.63,
+     -80.63
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 3.27,
+    "low_end_change_db": -0.03,
+    "high_change_db": 0.03,
+    "punch_loss": 0.01,
+    "pumping_db": -0.0,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.006,
+     "sub_bass_35_60hz": 0.027,
+     "kick_bass_60_120hz": -0.016,
+     "upper_bass_120_250hz": -0.034,
+     "low_mid_250_500hz": 0.027,
+     "mid_500_2000hz": 0.032,
+     "high_mid_2000_4000hz": 0.032,
+     "presence_4000_6000hz": 0.032,
+     "high_6000_20000hz": 0.033
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.3,
+    "after_lufs": -15.0,
+    "source_warnings": [
+     "Source file has little to no stereo content (left/right channels are nearly identical) \u2014 mastering can't create real stereo separation that was never in the recording. The width/wider controls have nothing to widen here."
+    ],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 327.8,
+     "peak_child_rss_mb": 327.8,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 9.2
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c10_mono_acoustic/source.wav",
+    "master": "test-results/audio/c10_mono_acoustic/master.wav"
+   },
+   "input": {
+    "id": "c10_mono_acoustic",
+    "category": "mono material (1-channel file)",
+    "genre": "acoustic",
+    "seed": 10,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": "downmix to 1 channel",
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "64290ec3b2625559"
+  },
+  "c11_clipped_metal": {
+   "http_status": 200,
+   "processing_time_s": 9.5,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "a7503f4e4cbf8b82c89e1ff81ae2f924",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -7.2,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -5.2,
+    "short_term_max_lufs": -4.24,
+    "momentary_max_lufs": -3.54,
+    "loudness_range_lu": 2.58,
+    "true_peak_dbtp": 0.37,
+    "sample_peak_dbfs": 0.0,
+    "crest_factor_db": 6.38,
+    "energy_share_pct": {
+     "low_20_250": 77.0,
+     "mid_250_4k": 21.7,
+     "high_4k_20k": 1.3
+    },
+    "stereo_correlation": 0.883,
+    "stereo_width_side_mid_db": -12.06,
+    "clipping": {
+     "clipped_sample_fraction": 0.0678,
+     "longest_clipped_run": 221,
+     "clipped_runs": 3526,
+     "detected": true
+    },
+    "dc_offset_dbfs": [
+     -53.64,
+     -51.28
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -7.28,
+    "short_term_max_lufs": -6.34,
+    "momentary_max_lufs": -5.65,
+    "loudness_range_lu": 2.55,
+    "true_peak_dbtp": -2.02,
+    "sample_peak_dbfs": -2.02,
+    "crest_factor_db": 6.44,
+    "energy_share_pct": {
+     "low_20_250": 77.0,
+     "mid_250_4k": 21.7,
+     "high_4k_20k": 1.3
+    },
+    "stereo_correlation": 0.882,
+    "stereo_width_side_mid_db": -12.05,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -55.7,
+     -53.38
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": -2.08,
+    "low_end_change_db": -0.01,
+    "high_change_db": 0.01,
+    "punch_loss": -0.002,
+    "pumping_db": -0.04,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.002,
+     "sub_bass_35_60hz": -0.005,
+     "kick_bass_60_120hz": -0.011,
+     "upper_bass_120_250hz": -0.007,
+     "low_mid_250_500hz": -0.007,
+     "mid_500_2000hz": 0.007,
+     "high_mid_2000_4000hz": 0.015,
+     "presence_4000_6000hz": 0.015,
+     "high_6000_20000hz": 0.015
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -5.2,
+    "after_lufs": -7.3,
+    "source_warnings": [
+     "This master is 2.1 dB quieter than your upload: your upload peaks at +0.4 dBTP and delivery needs -2 dBTP or lower; it already contains clipped samples, so it was not limited harder (that would add distortion); it is louder than this genre/delivery range (up to -9.0 LUFS). Use Match levels to compare tone fairly.",
+     "Mix note (clipping): Source contains clipped (flat-topped) samples. This damage cannot be undone in mastering; gain decisions were made conservatively.",
+     "Mix note (over_compression): Source is already heavily limited/compressed (low PLR and short-term crest). Mastering cannot restore dynamics; loudness was not pushed further."
+    ],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 327.8,
+     "peak_child_rss_mb": 327.8,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 9.5
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c11_clipped_metal/source.wav",
+    "master": "test-results/audio/c11_clipped_metal/master.wav"
+   },
+   "input": {
+    "id": "c11_clipped_metal",
+    "category": "clipped audio (+14 dB into hard clip)",
+    "genre": "metal",
+    "seed": 11,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": "x*5.01 clipped to \u00b11",
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "45fed933189dfe56"
+  },
+  "c12_quiet_classical": {
+   "http_status": 200,
+   "processing_time_s": 9.7,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "2fae853e8862b6231710e7948557236f",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -19.0,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -32.0,
+    "short_term_max_lufs": -31.0,
+    "momentary_max_lufs": -30.1,
+    "loudness_range_lu": 2.67,
+    "true_peak_dbtp": -16.55,
+    "sample_peak_dbfs": -16.57,
+    "crest_factor_db": 16.56,
+    "energy_share_pct": {
+     "low_20_250": 81.8,
+     "mid_250_4k": 17.2,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.906,
+    "stereo_width_side_mid_db": -13.06,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -233.96,
+     -229.32
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -19.0,
+    "short_term_max_lufs": -18.0,
+    "momentary_max_lufs": -17.1,
+    "loudness_range_lu": 2.67,
+    "true_peak_dbtp": -3.55,
+    "sample_peak_dbfs": -3.57,
+    "crest_factor_db": 16.56,
+    "energy_share_pct": {
+     "low_20_250": 81.8,
+     "mid_250_4k": 17.2,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.906,
+    "stereo_width_side_mid_db": -13.06,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -144.96,
+     -144.96
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 13.0,
+    "low_end_change_db": 0.0,
+    "high_change_db": 0.0,
+    "punch_loss": 0.0,
+    "pumping_db": 0.0,
+    "band_deltas_db": {
+     "subsonic_20_35hz": 0.0,
+     "sub_bass_35_60hz": 0.0,
+     "kick_bass_60_120hz": 0.0,
+     "upper_bass_120_250hz": 0.0,
+     "low_mid_250_500hz": 0.0,
+     "mid_500_2000hz": 0.0,
+     "high_mid_2000_4000hz": 0.0,
+     "presence_4000_6000hz": 0.0,
+     "high_6000_20000hz": 0.0
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -32.0,
+    "after_lufs": -19.0,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 320.8,
+     "peak_child_rss_mb": 320.8,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 9.6
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c12_quiet_classical/source.wav",
+    "master": "test-results/audio/c12_quiet_classical/master.wav"
+   },
+   "input": {
+    "id": "c12_quiet_classical",
+    "category": "quiet audio (-32 LUFS)",
+    "genre": "classical",
+    "seed": 12,
+    "make_mix": {
+     "seconds": 10.0,
+     "lufs": -32.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "6fd171732bee04c9"
+  },
+  "c13_near_silent": {
+   "http_status": 400,
+   "processing_time_s": 24.9,
+   "error": "No mastering candidate passed final verification (guardrail:excessive_band_change, guardrail:high_frequency_boost); no master was delivered.",
+   "status": "PASS",
+   "actual": "refused cleanly (400)",
+   "input": {
+    "id": "c13_near_silent",
+    "category": "near-silent audio (-18 LUFS mix attenuated 48 dB)",
+    "genre": "pop",
+    "seed": 13,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": "-48 dB",
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master_or_refuse",
+    "form": {}
+   },
+   "input_hash": "083ec0619e0b8c63"
+  },
+  "c14_dc_offset": {
+   "http_status": 200,
+   "processing_time_s": 9.7,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "bc1b1a930c5d08bb9214f182fb1b0add",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -13.52,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.13,
+    "momentary_max_lufs": -16.23,
+    "loudness_range_lu": 2.32,
+    "true_peak_dbtp": -1.22,
+    "sample_peak_dbfs": -1.22,
+    "crest_factor_db": 17.06,
+    "energy_share_pct": {
+     "low_20_250": 82.5,
+     "mid_250_4k": 16.5,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.917,
+    "stereo_width_side_mid_db": -13.64,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -26.02,
+     -26.02
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -13.77,
+    "short_term_max_lufs": -12.91,
+    "momentary_max_lufs": -12.12,
+    "loudness_range_lu": 2.35,
+    "true_peak_dbtp": -2.0,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 12.88,
+    "energy_share_pct": {
+     "low_20_250": 81.5,
+     "mid_250_4k": 17.4,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.894,
+    "stereo_width_side_mid_db": -12.54,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -63.73,
+     -63.93
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.23,
+    "low_end_change_db": -0.22,
+    "high_change_db": 0.21,
+    "punch_loss": -0.355,
+    "pumping_db": -0.05,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.193,
+     "sub_bass_35_60hz": 0.153,
+     "kick_bass_60_120hz": -0.217,
+     "upper_bass_120_250hz": -0.137,
+     "low_mid_250_500hz": 0.178,
+     "mid_500_2000hz": 0.204,
+     "high_mid_2000_4000hz": 0.205,
+     "presence_4000_6000hz": 0.207,
+     "high_6000_20000hz": 0.207
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.8,
+    "source_warnings": [
+     "Your file had a DC offset (a constant shift away from zero); it was removed before mastering. Check your mix bus for a faulty plugin or converter."
+    ],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 327.8,
+     "peak_child_rss_mb": 327.8,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 9.7
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c14_dc_offset/source.wav",
+    "master": "test-results/audio/c14_dc_offset/master.wav"
+   },
+   "input": {
+    "id": "c14_dc_offset",
+    "category": "DC-offset contamination (+0.05)",
+    "genre": "rock",
+    "seed": 14,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": "+0.05 DC both channels",
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "3ec77c915110a997"
+  },
+  "c15_lr_imbalance": {
+   "http_status": 200,
+   "processing_time_s": 10.1,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "02157738c23d0bac96f7444a6438d4ab",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -15.04,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -20.37,
+    "short_term_max_lufs": -19.46,
+    "momentary_max_lufs": -18.57,
+    "loudness_range_lu": 2.44,
+    "true_peak_dbtp": -1.49,
+    "sample_peak_dbfs": -1.53,
+    "crest_factor_db": 19.94,
+    "energy_share_pct": {
+     "low_20_250": 82.0,
+     "mid_250_4k": 17.0,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.909,
+    "stereo_width_side_mid_db": -6.37,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -217.41,
+     -234.75
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -15.47,
+    "short_term_max_lufs": -14.53,
+    "momentary_max_lufs": -13.76,
+    "loudness_range_lu": 2.48,
+    "true_peak_dbtp": -2.0,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 14.57,
+    "energy_share_pct": {
+     "low_20_250": 80.8,
+     "mid_250_4k": 18.2,
+     "high_4k_20k": 1.1
+    },
+    "stereo_correlation": 0.904,
+    "stereo_width_side_mid_db": -6.32,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -59.89,
+     -67.84
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.91,
+    "low_end_change_db": -0.22,
+    "high_change_db": 0.24,
+    "punch_loss": 0.105,
+    "pumping_db": -0.03,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.147,
+     "sub_bass_35_60hz": 0.194,
+     "kick_bass_60_120hz": -0.218,
+     "upper_bass_120_250hz": -0.197,
+     "low_mid_250_500hz": 0.26,
+     "mid_500_2000hz": 0.235,
+     "high_mid_2000_4000hz": 0.237,
+     "presence_4000_6000hz": 0.239,
+     "high_6000_20000hz": 0.239
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -20.4,
+    "after_lufs": -15.5,
+    "source_warnings": [
+     "Left and right channels differ in level by 8.0 dB in your upload. Mastering keeps your balance as it is; check it was intentional."
+    ],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 327.8,
+     "peak_child_rss_mb": 327.8,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 10.1
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c15_lr_imbalance/source.wav",
+    "master": "test-results/audio/c15_lr_imbalance/master.wav"
+   },
+   "input": {
+    "id": "c15_lr_imbalance",
+    "category": "left/right imbalance (R -8 dB)",
+    "genre": "pop",
+    "seed": 15,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": "R -8 dB",
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "4cdef91c64f5cba1"
+  },
+  "c16_short_2s": {
+   "http_status": 200,
+   "processing_time_s": 5.3,
+   "status": "PASS_WITH_ANOMALIES",
+   "actual": "mastered",
+   "job_id": "ec5d1994cfc2dba80fe90f270f7f78f9",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [
+    {
+     "kind": "lost_drums",
+     "measured": 0.126,
+     "limit": 0.12,
+     "source": "benchmark.metrics"
+    }
+   ],
+   "requested_target_lufs": -13.16,
+   "measured_input": {
+    "duration_s": 2.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": null,
+    "momentary_max_lufs": -16.91,
+    "loudness_range_lu": 1.01,
+    "true_peak_dbtp": -2.23,
+    "sample_peak_dbfs": -2.27,
+    "crest_factor_db": 16.73,
+    "energy_share_pct": {
+     "low_20_250": 79.0,
+     "mid_250_4k": 19.8,
+     "high_4k_20k": 1.2
+    },
+    "stereo_correlation": 0.893,
+    "stereo_width_side_mid_db": -12.47,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -215.01,
+     -228.58
+    ]
+   },
+   "measured_output": {
+    "duration_s": 2.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -13.49,
+    "short_term_max_lufs": null,
+    "momentary_max_lufs": -12.49,
+    "loudness_range_lu": 1.01,
+    "true_peak_dbtp": -2.0,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 12.49,
+    "energy_share_pct": {
+     "low_20_250": 77.5,
+     "mid_250_4k": 21.2,
+     "high_4k_20k": 1.3
+    },
+    "stereo_correlation": 0.885,
+    "stereo_width_side_mid_db": -12.15,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -62.13,
+     -62.2
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.51,
+    "low_end_change_db": -0.27,
+    "high_change_db": 0.29,
+    "punch_loss": 0.126,
+    "pumping_db": -0.05,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.128,
+     "sub_bass_35_60hz": 0.222,
+     "kick_bass_60_120hz": -0.265,
+     "upper_bass_120_250hz": -0.107,
+     "low_mid_250_500hz": 0.239,
+     "mid_500_2000hz": 0.274,
+     "high_mid_2000_4000hz": 0.282,
+     "presence_4000_6000hz": 0.288,
+     "high_6000_20000hz": 0.285
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.5,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 260.9,
+     "peak_child_rss_mb": 260.9,
+     "estimated_mb": 460,
+     "duration_s": 2.0,
+     "wall_s": 5.3
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c16_short_2s/source.wav",
+    "master": "test-results/audio/c16_short_2s/master.wav"
+   },
+   "input": {
+    "id": "c16_short_2s",
+    "category": "short duration (2 s)",
+    "genre": "pop",
+    "seed": 16,
+    "make_mix": {
+     "seconds": 2.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master_or_refuse",
+    "form": {}
+   },
+   "input_hash": "3a4b76559f0ee5e6"
+  },
+  "c17_long_180s": {
+   "http_status": 200,
+   "processing_time_s": 147.8,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "146c0e4971e55bee67c46bc50a51b5c5",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -12.46,
+   "measured_input": {
+    "duration_s": 180.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -16.74,
+    "momentary_max_lufs": -15.76,
+    "loudness_range_lu": 2.5,
+    "true_peak_dbtp": -0.66,
+    "sample_peak_dbfs": -0.71,
+    "crest_factor_db": 18.41,
+    "energy_share_pct": {
+     "low_20_250": 78.5,
+     "mid_250_4k": 20.3,
+     "high_4k_20k": 1.2
+    },
+    "stereo_correlation": 0.905,
+    "stereo_width_side_mid_db": -13.0,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -235.87,
+     -231.9
+    ]
+   },
+   "measured_output": {
+    "duration_s": 180.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -12.63,
+    "short_term_max_lufs": -11.36,
+    "momentary_max_lufs": -10.48,
+    "loudness_range_lu": 2.54,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.02,
+    "crest_factor_db": 11.77,
+    "energy_share_pct": {
+     "low_20_250": 76.7,
+     "mid_250_4k": 22.0,
+     "high_4k_20k": 1.3
+    },
+    "stereo_correlation": 0.892,
+    "stereo_width_side_mid_db": -12.44,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -62.4,
+     -62.46
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 5.37,
+    "low_end_change_db": -0.43,
+    "high_change_db": 0.29,
+    "punch_loss": 0.119,
+    "pumping_db": -0.56,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.115,
+     "sub_bass_35_60hz": 0.3,
+     "kick_bass_60_120hz": -0.43,
+     "upper_bass_120_250hz": -0.188,
+     "low_mid_250_500hz": 0.317,
+     "mid_500_2000hz": 0.288,
+     "high_mid_2000_4000hz": 0.296,
+     "presence_4000_6000hz": 0.286,
+     "high_6000_20000hz": 0.287
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -12.6,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 1136.8,
+     "peak_child_rss_mb": 1136.8,
+     "estimated_mb": 1380,
+     "duration_s": 180.0,
+     "wall_s": 147.3
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c17_long_180s/source.wav",
+    "master": "test-results/audio/c17_long_180s/master.wav"
+   },
+   "input": {
+    "id": "c17_long_180s",
+    "category": "long duration (180 s)",
+    "genre": "house",
+    "seed": 17,
+    "make_mix": {
+     "seconds": 180.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "85afffde655ef1bf"
+  },
+  "c18a_sr_48k": {
+   "http_status": 200,
+   "processing_time_s": 10.2,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "79bed3cae101e348521cb635669e3b26",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -12.98,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 48000,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.06,
+    "momentary_max_lufs": -16.1,
+    "loudness_range_lu": 2.55,
+    "true_peak_dbtp": -2.11,
+    "sample_peak_dbfs": -2.12,
+    "crest_factor_db": 16.99,
+    "energy_share_pct": {
+     "low_20_250": 82.4,
+     "mid_250_4k": 16.6,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.902,
+    "stereo_width_side_mid_db": -12.87,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -151.44,
+     -148.58
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 48000,
+    "channels": 2,
+    "integrated_lufs": -13.3,
+    "short_term_max_lufs": -12.36,
+    "momentary_max_lufs": -11.6,
+    "loudness_range_lu": 2.52,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 12.41,
+    "energy_share_pct": {
+     "low_20_250": 81.2,
+     "mid_250_4k": 17.7,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.895,
+    "stereo_width_side_mid_db": -12.56,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -61.95,
+     -62.17
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.71,
+    "low_end_change_db": -0.35,
+    "high_change_db": 0.26,
+    "punch_loss": 0.113,
+    "pumping_db": -0.07,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.119,
+     "sub_bass_35_60hz": 0.198,
+     "kick_bass_60_120hz": -0.348,
+     "upper_bass_120_250hz": -0.206,
+     "low_mid_250_500hz": 0.24,
+     "mid_500_2000hz": 0.258,
+     "high_mid_2000_4000hz": 0.264,
+     "presence_4000_6000hz": 0.261,
+     "high_6000_20000hz": 0.261
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.3,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 336.4,
+     "peak_child_rss_mb": 336.4,
+     "estimated_mb": 506,
+     "duration_s": 10.000020833333334,
+     "wall_s": 10.1
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c18a_sr_48k/source.wav",
+    "master": "test-results/audio/c18a_sr_48k/master.wav"
+   },
+   "input": {
+    "id": "c18a_sr_48k",
+    "category": "sample rate 48 kHz",
+    "genre": "pop",
+    "seed": 18,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": null,
+    "sample_rate": 48000,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "58f575c746177cdb"
+  },
+  "c18b_sr_96k": {
+   "http_status": 200,
+   "processing_time_s": 18.1,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "3bd1a00c336bbf0094dcbd1d8982ac8b",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -12.99,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 96000,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.02,
+    "momentary_max_lufs": -16.17,
+    "loudness_range_lu": 2.5,
+    "true_peak_dbtp": -1.78,
+    "sample_peak_dbfs": -1.78,
+    "crest_factor_db": 17.3,
+    "energy_share_pct": {
+     "low_20_250": 81.9,
+     "mid_250_4k": 17.1,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.902,
+    "stereo_width_side_mid_db": -12.87,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -167.59,
+     -153.58
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 96000,
+    "channels": 2,
+    "integrated_lufs": -13.27,
+    "short_term_max_lufs": -12.33,
+    "momentary_max_lufs": -11.45,
+    "loudness_range_lu": 2.52,
+    "true_peak_dbtp": -2.0,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 12.37,
+    "energy_share_pct": {
+     "low_20_250": 80.7,
+     "mid_250_4k": 18.2,
+     "high_4k_20k": 1.1
+    },
+    "stereo_correlation": 0.896,
+    "stereo_width_side_mid_db": -12.59,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -62.71,
+     -62.95
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.73,
+    "low_end_change_db": -0.25,
+    "high_change_db": 0.23,
+    "punch_loss": 0.099,
+    "pumping_db": -0.03,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.057,
+     "sub_bass_35_60hz": 0.163,
+     "kick_bass_60_120hz": -0.253,
+     "upper_bass_120_250hz": -0.157,
+     "low_mid_250_500hz": 0.225,
+     "mid_500_2000hz": 0.229,
+     "high_mid_2000_4000hz": 0.234,
+     "presence_4000_6000hz": 0.234,
+     "high_6000_20000hz": 0.234
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.3,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 396.4,
+     "peak_child_rss_mb": 396.4,
+     "estimated_mb": 562,
+     "duration_s": 10.000010416666667,
+     "wall_s": 18.1
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c18b_sr_96k/source.wav",
+    "master": "test-results/audio/c18b_sr_96k/master.wav"
+   },
+   "input": {
+    "id": "c18b_sr_96k",
+    "category": "sample rate 96 kHz",
+    "genre": "pop",
+    "seed": 19,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": null,
+    "sample_rate": 96000,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "a5c8b8bb6e60ac4a"
+  },
+  "c18c_sr_22k": {
+   "http_status": 200,
+   "processing_time_s": 10.5,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "cc6d5801645caf8889b53defd6fdb879",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -13.0,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 22050,
+    "channels": 2,
+    "integrated_lufs": -18.02,
+    "short_term_max_lufs": -17.08,
+    "momentary_max_lufs": -16.26,
+    "loudness_range_lu": 2.42,
+    "true_peak_dbtp": -2.37,
+    "sample_peak_dbfs": -2.44,
+    "crest_factor_db": 16.7,
+    "energy_share_pct": {
+     "low_20_250": 82.5,
+     "mid_250_4k": 16.7,
+     "high_4k_20k": 0.9
+    },
+    "stereo_correlation": 0.906,
+    "stereo_width_side_mid_db": -13.05,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -136.72,
+     -136.6
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -13.1,
+    "short_term_max_lufs": -12.16,
+    "momentary_max_lufs": -11.32,
+    "loudness_range_lu": 2.44,
+    "true_peak_dbtp": -2.0,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 12.24,
+    "energy_share_pct": {
+     "low_20_250": 81.2,
+     "mid_250_4k": 17.9,
+     "high_4k_20k": 0.9
+    },
+    "stereo_correlation": 0.895,
+    "stereo_width_side_mid_db": -12.55,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -65.1,
+     -65.14
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.92,
+    "low_end_change_db": -0.37,
+    "high_change_db": 0.24,
+    "punch_loss": 0.111,
+    "pumping_db": -0.57,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.084,
+     "sub_bass_35_60hz": 0.255,
+     "kick_bass_60_120hz": -0.373,
+     "upper_bass_120_250hz": -0.123,
+     "low_mid_250_500hz": 0.27,
+     "mid_500_2000hz": 0.236,
+     "high_mid_2000_4000hz": 0.248,
+     "presence_4000_6000hz": 0.226,
+     "high_6000_20000hz": 0.243
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.1,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 334.2,
+     "peak_child_rss_mb": 334.2,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 10.4
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c18c_sr_22k/source.wav",
+    "master": "test-results/audio/c18c_sr_22k/master.wav"
+   },
+   "input": {
+    "id": "c18c_sr_22k",
+    "category": "sample rate 22.05 kHz",
+    "genre": "lofi",
+    "seed": 20,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": null,
+    "sample_rate": 22050,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "d4ba374beba52af2"
+  },
+  "c19a_pcm16": {
+   "http_status": 200,
+   "processing_time_s": 9.8,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "030e094bab50817036582c12e99be4b7",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -12.98,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.04,
+    "momentary_max_lufs": -16.3,
+    "loudness_range_lu": 2.46,
+    "true_peak_dbtp": -2.32,
+    "sample_peak_dbfs": -2.32,
+    "crest_factor_db": 16.79,
+    "energy_share_pct": {
+     "low_20_250": 82.6,
+     "mid_250_4k": 16.5,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.906,
+    "stereo_width_side_mid_db": -13.06,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -96.33,
+     -96.32
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -13.28,
+    "short_term_max_lufs": -12.3,
+    "momentary_max_lufs": -11.57,
+    "loudness_range_lu": 2.54,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 12.41,
+    "energy_share_pct": {
+     "low_20_250": 81.2,
+     "mid_250_4k": 17.8,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.9,
+    "stereo_width_side_mid_db": -12.77,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -60.93,
+     -61.1
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.72,
+    "low_end_change_db": -0.27,
+    "high_change_db": 0.25,
+    "punch_loss": 0.099,
+    "pumping_db": -0.07,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.117,
+     "sub_bass_35_60hz": 0.203,
+     "kick_bass_60_120hz": -0.269,
+     "upper_bass_120_250hz": -0.165,
+     "low_mid_250_500hz": 0.291,
+     "mid_500_2000hz": 0.242,
+     "high_mid_2000_4000hz": 0.247,
+     "presence_4000_6000hz": 0.247,
+     "high_6000_20000hz": 0.249
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.3,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 326.7,
+     "peak_child_rss_mb": 326.7,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 9.8
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c19a_pcm16/source.wav",
+    "master": "test-results/audio/c19a_pcm16/master.wav"
+   },
+   "input": {
+    "id": "c19a_pcm16",
+    "category": "bit depth 16-bit PCM",
+    "genre": "pop",
+    "seed": 21,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "PCM_16",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "3a8c99e404f66dee"
+  },
+  "c19b_pcm24": {
+   "http_status": 200,
+   "processing_time_s": 10.1,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "4b54e5344fd942b3cdb50e7599ed0da3",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -12.9,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.05,
+    "momentary_max_lufs": -16.15,
+    "loudness_range_lu": 2.4,
+    "true_peak_dbtp": -2.31,
+    "sample_peak_dbfs": -2.32,
+    "crest_factor_db": 16.8,
+    "energy_share_pct": {
+     "low_20_250": 82.3,
+     "mid_250_4k": 16.8,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.904,
+    "stereo_width_side_mid_db": -12.99,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -145.02,
+     -145.0
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -13.24,
+    "short_term_max_lufs": -12.28,
+    "momentary_max_lufs": -11.27,
+    "loudness_range_lu": 2.42,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 12.38,
+    "energy_share_pct": {
+     "low_20_250": 80.8,
+     "mid_250_4k": 18.2,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.897,
+    "stereo_width_side_mid_db": -12.65,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -63.11,
+     -62.82
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.76,
+    "low_end_change_db": -0.32,
+    "high_change_db": 0.28,
+    "punch_loss": 0.107,
+    "pumping_db": -0.08,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.237,
+     "sub_bass_35_60hz": 0.214,
+     "kick_bass_60_120hz": -0.323,
+     "upper_bass_120_250hz": -0.162,
+     "low_mid_250_500hz": 0.283,
+     "mid_500_2000hz": 0.274,
+     "high_mid_2000_4000hz": 0.274,
+     "presence_4000_6000hz": 0.275,
+     "high_6000_20000hz": 0.276
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.2,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 326.8,
+     "peak_child_rss_mb": 326.8,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 10.1
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c19b_pcm24/source.wav",
+    "master": "test-results/audio/c19b_pcm24/master.wav"
+   },
+   "input": {
+    "id": "c19b_pcm24",
+    "category": "bit depth 24-bit PCM",
+    "genre": "pop",
+    "seed": 22,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "PCM_24",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "45709f4ee8141d1c"
+  },
+  "c19c_pcm32": {
+   "http_status": 200,
+   "processing_time_s": 10.0,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "1622e9e276cb44a1e760fb6a32eb6deb",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -12.89,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.04,
+    "momentary_max_lufs": -16.24,
+    "loudness_range_lu": 2.49,
+    "true_peak_dbtp": -2.02,
+    "sample_peak_dbfs": -2.03,
+    "crest_factor_db": 17.05,
+    "energy_share_pct": {
+     "low_20_250": 82.5,
+     "mid_250_4k": 16.5,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.904,
+    "stereo_width_side_mid_db": -12.95,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -220.33,
+     -218.38
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -13.22,
+    "short_term_max_lufs": -12.27,
+    "momentary_max_lufs": -11.41,
+    "loudness_range_lu": 2.5,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 12.33,
+    "energy_share_pct": {
+     "low_20_250": 81.2,
+     "mid_250_4k": 17.7,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.896,
+    "stereo_width_side_mid_db": -12.62,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -59.71,
+     -59.73
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.78,
+    "low_end_change_db": -0.28,
+    "high_change_db": 0.27,
+    "punch_loss": 0.113,
+    "pumping_db": -0.08,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.263,
+     "sub_bass_35_60hz": 0.211,
+     "kick_bass_60_120hz": -0.277,
+     "upper_bass_120_250hz": -0.194,
+     "low_mid_250_500hz": 0.264,
+     "mid_500_2000hz": 0.268,
+     "high_mid_2000_4000hz": 0.271,
+     "presence_4000_6000hz": 0.272,
+     "high_6000_20000hz": 0.268
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.2,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 326.6,
+     "peak_child_rss_mb": 326.6,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 9.9
+    }
+   },
+   "files": {
+    "source": "test-results/audio/c19c_pcm32/source.wav",
+    "master": "test-results/audio/c19c_pcm32/master.wav"
+   },
+   "input": {
+    "id": "c19c_pcm32",
+    "category": "bit depth 32-bit PCM",
+    "genre": "pop",
+    "seed": 23,
+    "make_mix": {
+     "seconds": 10.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "PCM_32",
+    "expect": "master",
+    "form": {}
+   },
+   "input_hash": "c893c81b768d4bab"
+  },
   "c20a_garbage": {
    "http_status": 500,
-   "processing_time_s": 3.2,
+   "processing_time_s": 1.5,
    "error": "Adaptive mastering failed: NoBackendError: ",
    "status": "FAIL",
    "actual": "HTTP 500",
@@ -26,6 +2826,870 @@
     "form": {}
    },
    "input_hash": "bc3425567288635c"
+  },
+  "c20b_truncated": {
+   "http_status": 400,
+   "processing_time_s": 0.0,
+   "error": "Audio is too short to master (64 samples at 44100Hz).",
+   "status": "PASS",
+   "actual": "refused cleanly (400)",
+   "input": {
+    "id": "c20b_truncated",
+    "category": "invalid: truncated WAV",
+    "genre": "pop",
+    "seed": 0,
+    "make_mix": null,
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": null,
+    "expect": "refuse",
+    "form": {}
+   },
+   "input_hash": "f85e30ded3ebdeb4"
+  },
+  "c20c_empty": {
+   "http_status": 500,
+   "processing_time_s": 1.0,
+   "error": "Adaptive mastering failed: EOFError: ",
+   "status": "FAIL",
+   "actual": "HTTP 500",
+   "input": {
+    "id": "c20c_empty",
+    "category": "invalid: empty file",
+    "genre": "pop",
+    "seed": 0,
+    "make_mix": null,
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": null,
+    "expect": "refuse",
+    "form": {}
+   },
+   "input_hash": "b616f18f71511c3e"
+  },
+  "f01_professional_tier": {
+   "http_status": 200,
+   "processing_time_s": 10.0,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "17d073814dd86316b0c76b6996c8d4a6",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -17.07,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -19.69,
+    "short_term_max_lufs": -18.92,
+    "momentary_max_lufs": -17.87,
+    "loudness_range_lu": 1.8,
+    "true_peak_dbtp": -0.26,
+    "sample_peak_dbfs": -0.26,
+    "crest_factor_db": 20.54,
+    "energy_share_pct": {
+     "low_20_250": 81.8,
+     "mid_250_4k": 17.2,
+     "high_4k_20k": 1.0
+    },
+    "stereo_correlation": 0.902,
+    "stereo_width_side_mid_db": -12.9,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -218.49,
+     -235.23
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -17.29,
+    "short_term_max_lufs": -16.52,
+    "momentary_max_lufs": -15.44,
+    "loudness_range_lu": 1.81,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.02,
+    "crest_factor_db": 16.4,
+    "energy_share_pct": {
+     "low_20_250": 81.1,
+     "mid_250_4k": 17.9,
+     "high_4k_20k": 1.1
+    },
+    "stereo_correlation": 0.898,
+    "stereo_width_side_mid_db": -12.68,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -67.38,
+     -67.41
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 2.41,
+    "low_end_change_db": -0.29,
+    "high_change_db": 0.17,
+    "punch_loss": 0.029,
+    "pumping_db": -0.02,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.15,
+     "sub_bass_35_60hz": 0.154,
+     "kick_bass_60_120hz": -0.041,
+     "upper_bass_120_250hz": -0.294,
+     "low_mid_250_500hz": 0.18,
+     "mid_500_2000hz": 0.153,
+     "high_mid_2000_4000hz": 0.162,
+     "presence_4000_6000hz": 0.165,
+     "high_6000_20000hz": 0.159
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -19.7,
+    "after_lufs": -17.3,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 326.9,
+     "peak_child_rss_mb": 326.9,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 9.9
+    }
+   },
+   "files": {
+    "source": "test-results/audio/f01_professional_tier/source.wav",
+    "master": "test-results/audio/f01_professional_tier/master.wav"
+   },
+   "input": {
+    "id": "f01_professional_tier",
+    "category": "feature: Professional engine",
+    "genre": "rock",
+    "seed": 7,
+    "make_mix": {
+     "seconds": 10.0,
+     "drum_level": 2.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {
+     "tier": "professional"
+    }
+   },
+   "input_hash": "4416bf831a11429a"
+  },
+  "f02_category_club": {
+   "http_status": 200,
+   "processing_time_s": 10.9,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "9360a1ba1ba4a03f9871408fe8e2a26c",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -12.46,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.05,
+    "momentary_max_lufs": -16.2,
+    "loudness_range_lu": 2.47,
+    "true_peak_dbtp": -1.61,
+    "sample_peak_dbfs": -1.62,
+    "crest_factor_db": 17.55,
+    "energy_share_pct": {
+     "low_20_250": 82.8,
+     "mid_250_4k": 16.1,
+     "high_4k_20k": 1.1
+    },
+    "stereo_correlation": 0.903,
+    "stereo_width_side_mid_db": -12.91,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -224.53,
+     -229.81
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -12.61,
+    "short_term_max_lufs": -11.65,
+    "momentary_max_lufs": -10.93,
+    "loudness_range_lu": 2.55,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 11.81,
+    "energy_share_pct": {
+     "low_20_250": 81.0,
+     "mid_250_4k": 17.8,
+     "high_4k_20k": 1.2
+    },
+    "stereo_correlation": 0.889,
+    "stereo_width_side_mid_db": -12.32,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -62.62,
+     -62.41
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 5.39,
+    "low_end_change_db": -0.44,
+    "high_change_db": 0.29,
+    "punch_loss": 0.103,
+    "pumping_db": -0.57,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.109,
+     "sub_bass_35_60hz": 0.289,
+     "kick_bass_60_120hz": -0.441,
+     "upper_bass_120_250hz": -0.132,
+     "low_mid_250_500hz": 0.334,
+     "mid_500_2000hz": 0.3,
+     "high_mid_2000_4000hz": 0.293,
+     "presence_4000_6000hz": 0.292,
+     "high_6000_20000hz": 0.286
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -12.6,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 333.8,
+     "peak_child_rss_mb": 333.8,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 10.9
+    }
+   },
+   "files": {
+    "source": "test-results/audio/f02_category_club/source.wav",
+    "master": "test-results/audio/f02_category_club/master.wav"
+   },
+   "input": {
+    "id": "f02_category_club",
+    "category": "feature: mastering category (Club/DJ)",
+    "genre": "edm",
+    "seed": 30,
+    "make_mix": {
+     "seconds": 10.0,
+     "healthy_variation_db": 1.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {
+     "category": "club"
+    }
+   },
+   "input_hash": "5659c362a1600751"
+  },
+  "f03_output_mp3": {
+   "http_status": 200,
+   "processing_time_s": 11.6,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "30f44136c9a097aacc7b45bc0eade329",
+   "output_format": "mp3",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -12.51,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.05,
+    "momentary_max_lufs": -16.06,
+    "loudness_range_lu": 2.55,
+    "true_peak_dbtp": -1.57,
+    "sample_peak_dbfs": -1.59,
+    "crest_factor_db": 17.56,
+    "energy_share_pct": {
+     "low_20_250": 80.5,
+     "mid_250_4k": 18.4,
+     "high_4k_20k": 1.1
+    },
+    "stereo_correlation": 0.903,
+    "stereo_width_side_mid_db": -12.95,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -219.39,
+     -224.68
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -13.04,
+    "short_term_max_lufs": -12.05,
+    "momentary_max_lufs": -11.22,
+    "loudness_range_lu": 2.6,
+    "true_peak_dbtp": -1.86,
+    "sample_peak_dbfs": -1.87,
+    "crest_factor_db": 12.34,
+    "energy_share_pct": {
+     "low_20_250": 79.1,
+     "mid_250_4k": 19.6,
+     "high_4k_20k": 1.2
+    },
+    "stereo_correlation": 0.897,
+    "stereo_width_side_mid_db": -12.65,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -61.01,
+     -61.02
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.96,
+    "low_end_change_db": -0.3,
+    "high_change_db": 0.25,
+    "punch_loss": 0.114,
+    "pumping_db": -0.07,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.125,
+     "sub_bass_35_60hz": 0.203,
+     "kick_bass_60_120hz": -0.296,
+     "upper_bass_120_250hz": -0.215,
+     "low_mid_250_500hz": 0.243,
+     "mid_500_2000hz": 0.235,
+     "high_mid_2000_4000hz": 0.247,
+     "presence_4000_6000hz": 0.253,
+     "high_6000_20000hz": 0.252
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.0,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 327.7,
+     "peak_child_rss_mb": 327.7,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 11.5
+    }
+   },
+   "files": {
+    "source": "test-results/audio/f03_output_mp3/source.wav",
+    "master": "test-results/audio/f03_output_mp3/master.mp3"
+   },
+   "input": {
+    "id": "f03_output_mp3",
+    "category": "feature: MP3 output",
+    "genre": "pop",
+    "seed": 31,
+    "make_mix": {
+     "seconds": 10.0,
+     "healthy_variation_db": 1.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {
+     "output_format": "mp3"
+    }
+   },
+   "input_hash": "de9c020dcdc4204f"
+  },
+  "f04_output_flac": {
+   "http_status": 400,
+   "processing_time_s": 0.0,
+   "error": "output_format must be one of ['mp3', 'wav']",
+   "status": "FAIL",
+   "actual": "HTTP 400",
+   "input": {
+    "id": "f04_output_flac",
+    "category": "feature: FLAC output",
+    "genre": "pop",
+    "seed": 32,
+    "make_mix": {
+     "seconds": 10.0,
+     "healthy_variation_db": 1.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {
+     "output_format": "flac"
+    }
+   },
+   "input_hash": "a2afa9fbe047ebaf"
+  },
+  "f05_reference_mastering": {
+   "http_status": 200,
+   "processing_time_s": 12.8,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "23866d732ad9b43f8bd283bc1380e155",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -14.75,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.04,
+    "momentary_max_lufs": -15.91,
+    "loudness_range_lu": 2.49,
+    "true_peak_dbtp": -0.8,
+    "sample_peak_dbfs": -0.81,
+    "crest_factor_db": 18.17,
+    "energy_share_pct": {
+     "low_20_250": 83.1,
+     "mid_250_4k": 16.8,
+     "high_4k_20k": 0.2
+    },
+    "stereo_correlation": 0.906,
+    "stereo_width_side_mid_db": -13.06,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -216.41,
+     -240.0
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -14.86,
+    "short_term_max_lufs": -13.92,
+    "momentary_max_lufs": -12.98,
+    "loudness_range_lu": 2.47,
+    "true_peak_dbtp": -2.0,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 13.92,
+    "energy_share_pct": {
+     "low_20_250": 81.8,
+     "mid_250_4k": 17.9,
+     "high_4k_20k": 0.3
+    },
+    "stereo_correlation": 0.9,
+    "stereo_width_side_mid_db": -12.8,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -70.85,
+     -70.85
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 3.14,
+    "low_end_change_db": -0.47,
+    "high_change_db": 1.99,
+    "punch_loss": 0.034,
+    "pumping_db": -0.03,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.166,
+     "sub_bass_35_60hz": -0.473,
+     "kick_bass_60_120hz": -0.125,
+     "upper_bass_120_250hz": -0.052,
+     "low_mid_250_500hz": 0.11,
+     "mid_500_2000hz": 0.157,
+     "high_mid_2000_4000hz": 0.601,
+     "presence_4000_6000hz": 1.725,
+     "high_6000_20000hz": 1.992
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -14.9,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 334.6,
+     "peak_child_rss_mb": 334.6,
+     "estimated_mb": 652,
+     "duration_s": 10.0,
+     "wall_s": 12.7
+    }
+   },
+   "files": {
+    "source": "test-results/audio/f05_reference_mastering/source.wav",
+    "master": "test-results/audio/f05_reference_mastering/master.wav"
+   },
+   "input": {
+    "id": "f05_reference_mastering",
+    "category": "feature: reference mastering (dark mix vs balanced reference)",
+    "genre": "rock",
+    "seed": 33,
+    "make_mix": {
+     "seconds": 10.0,
+     "offsets_db": [
+      [
+       3000,
+       20000,
+       -7.5
+      ]
+     ]
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {
+     "_reference": "c01_balanced_pop"
+    }
+   },
+   "input_hash": "eaa6c2ae86768900"
+  },
+  "f06_tags_warmer": {
+   "http_status": 200,
+   "processing_time_s": 15.6,
+   "status": "PASS_WITH_ANOMALIES",
+   "actual": "mastered",
+   "job_id": "83610aeffcce2d67e0174d4cd1349037",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [
+    {
+     "kind": "lost_drums",
+     "measured": 0.124,
+     "limit": 0.12,
+     "source": "benchmark.metrics"
+    }
+   ],
+   "requested_target_lufs": -12.75,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.11,
+    "momentary_max_lufs": -15.8,
+    "loudness_range_lu": 2.35,
+    "true_peak_dbtp": -2.11,
+    "sample_peak_dbfs": -2.11,
+    "crest_factor_db": 17.03,
+    "energy_share_pct": {
+     "low_20_250": 83.2,
+     "mid_250_4k": 15.7,
+     "high_4k_20k": 1.1
+    },
+    "stereo_correlation": 0.906,
+    "stereo_width_side_mid_db": -13.06,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -226.87,
+     -227.32
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -12.88,
+    "short_term_max_lufs": -11.99,
+    "momentary_max_lufs": -10.79,
+    "loudness_range_lu": 2.42,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.01,
+    "crest_factor_db": 12.04,
+    "energy_share_pct": {
+     "low_20_250": 81.4,
+     "mid_250_4k": 17.5,
+     "high_4k_20k": 1.1
+    },
+    "stereo_correlation": 0.893,
+    "stereo_width_side_mid_db": -12.48,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -64.14,
+     -64.33
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 5.12,
+    "low_end_change_db": -0.42,
+    "high_change_db": 0.2,
+    "punch_loss": 0.124,
+    "pumping_db": -0.57,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.061,
+     "sub_bass_35_60hz": 0.238,
+     "kick_bass_60_120hz": -0.423,
+     "upper_bass_120_250hz": -0.126,
+     "low_mid_250_500hz": 0.449,
+     "mid_500_2000hz": 0.282,
+     "high_mid_2000_4000hz": 0.225,
+     "presence_4000_6000hz": 0.196,
+     "high_6000_20000hz": 0.078
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -12.9,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 333.8,
+     "peak_child_rss_mb": 333.8,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 15.6
+    }
+   },
+   "files": {
+    "source": "test-results/audio/f06_tags_warmer/source.wav",
+    "master": "test-results/audio/f06_tags_warmer/master.wav"
+   },
+   "input": {
+    "id": "f06_tags_warmer",
+    "category": "feature: tags (warmer)",
+    "genre": "pop",
+    "seed": 34,
+    "make_mix": {
+     "seconds": 10.0,
+     "healthy_variation_db": 1.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {
+     "tags": "[\"warmer\"]"
+    }
+   },
+   "input_hash": "7803b52076032778"
+  },
+  "f07_tweaks_brightness": {
+   "http_status": 200,
+   "processing_time_s": 10.8,
+   "status": "PASS",
+   "actual": "mastered",
+   "job_id": "83d253755fb4d8d3a93df271c278dfd2",
+   "output_format": "wav",
+   "checks": {
+    "download_ok": true,
+    "decodes": true,
+    "finite": true,
+    "duration_matches": true,
+    "true_peak_within_guardrail": true,
+    "no_output_clipping": true,
+    "loudness_within_tolerance_of_requested_target": true
+   },
+   "anomalies": [],
+   "requested_target_lufs": -12.77,
+   "measured_input": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -18.0,
+    "short_term_max_lufs": -17.05,
+    "momentary_max_lufs": -16.11,
+    "loudness_range_lu": 2.37,
+    "true_peak_dbtp": -1.44,
+    "sample_peak_dbfs": -1.45,
+    "crest_factor_db": 17.7,
+    "energy_share_pct": {
+     "low_20_250": 83.0,
+     "mid_250_4k": 15.9,
+     "high_4k_20k": 1.1
+    },
+    "stereo_correlation": 0.903,
+    "stereo_width_side_mid_db": -12.92,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -228.02,
+     -219.52
+    ]
+   },
+   "measured_output": {
+    "duration_s": 10.0,
+    "sample_rate": 44100,
+    "channels": 2,
+    "integrated_lufs": -13.22,
+    "short_term_max_lufs": -12.3,
+    "momentary_max_lufs": -11.47,
+    "loudness_range_lu": 2.33,
+    "true_peak_dbtp": -2.01,
+    "sample_peak_dbfs": -2.02,
+    "crest_factor_db": 12.38,
+    "energy_share_pct": {
+     "low_20_250": 81.7,
+     "mid_250_4k": 17.1,
+     "high_4k_20k": 1.2
+    },
+    "stereo_correlation": 0.895,
+    "stereo_width_side_mid_db": -12.57,
+    "clipping": {
+     "clipped_sample_fraction": 0.0,
+     "longest_clipped_run": 0,
+     "clipped_runs": 0,
+     "detected": false
+    },
+    "dc_offset_dbfs": [
+     -64.78,
+     -64.63
+    ]
+   },
+   "comparison_loudness_matched": {
+    "loudness_change_lu": 4.78,
+    "low_end_change_db": -0.32,
+    "high_change_db": 0.52,
+    "punch_loss": 0.11,
+    "pumping_db": -0.08,
+    "band_deltas_db": {
+     "subsonic_20_35hz": -0.148,
+     "sub_bass_35_60hz": 0.244,
+     "kick_bass_60_120hz": -0.318,
+     "upper_bass_120_250hz": -0.183,
+     "low_mid_250_500hz": 0.279,
+     "mid_500_2000hz": 0.282,
+     "high_mid_2000_4000hz": 0.294,
+     "presence_4000_6000hz": 0.329,
+     "high_6000_20000hz": 0.517
+    }
+   },
+   "engine_reported": {
+    "before_lufs": -18.0,
+    "after_lufs": -13.2,
+    "source_warnings": [],
+    "qc_passed": true,
+    "verdict": null,
+    "worker": {
+     "peak_rss_mb": 336.8,
+     "peak_child_rss_mb": 336.8,
+     "estimated_mb": 502,
+     "duration_s": 10.0,
+     "wall_s": 10.8
+    }
+   },
+   "files": {
+    "source": "test-results/audio/f07_tweaks_brightness/source.wav",
+    "master": "test-results/audio/f07_tweaks_brightness/master.wav"
+   },
+   "input": {
+    "id": "f07_tweaks_brightness",
+    "category": "feature: manual tweak (brightness +)",
+    "genre": "pop",
+    "seed": 35,
+    "make_mix": {
+     "seconds": 10.0,
+     "healthy_variation_db": 1.0
+    },
+    "transform": null,
+    "sample_rate": 44100,
+    "subtype": "FLOAT",
+    "expect": "master",
+    "form": {
+     "tweaks": "{\"brightness\": 0.5}"
+    }
+   },
+   "input_hash": "d6c6fe12982e82b8"
   }
  },
  "endpoints": [
@@ -83,7 +3747,7 @@
    "feature": "POST /analyze (track analysis)",
    "status": "PASS",
    "actual": "HTTP 200",
-   "time_s": 4.92
+   "time_s": 4.68
   },
   {
    "id": "e_preview_params",
@@ -96,7 +3760,7 @@
    "id": "e_job_state",
    "feature": "GET /jobs/{id}",
    "status": "PASS",
-   "actual": "{\"job_id\":\"b9bffed50cb39552838cbcd9b96d3ec2\",\"state\":\"completed\",\"detail\":null,\"peak_rss_mb\":325.8}",
+   "actual": "{\"job_id\":\"812b01edcd0e1ef4739edb0c6559b36c\",\"state\":\"completed\",\"detail\":null,\"peak_rss_mb\":326.9}",
    "time_s": 0.01
   },
   {
@@ -118,21 +3782,21 @@
    "feature": "POST /codec-preview mp3_128",
    "status": "PASS",
    "actual": "HTTP 200 {\"codec\":\"mp3_128\",\"format\":\"mp3\",\"bitrate\":\"128k\",\"analysis_original\":{\"integrated_lufs\":-13.235,\"s",
-   "time_s": 1.78
+   "time_s": 2.57
   },
   {
    "id": "e_cancel_finished_idempotent",
    "feature": "POST /jobs/{id}/cancel on finished job",
    "status": "PASS",
-   "actual": "HTTP 200 {\"job_id\":\"b9bffed50cb39552838cbcd9b96d3ec2\",\"state\":\"completed\",\"cancel_requested\":false}",
-   "time_s": 0.0
+   "actual": "HTTP 200 {\"job_id\":\"812b01edcd0e1ef4739edb0c6559b36c\",\"state\":\"completed\",\"cancel_requested\":false}",
+   "time_s": 0.01
   },
   {
    "id": "e_delete_files",
    "feature": "DELETE /files/{id}",
    "status": "PASS",
    "actual": "{\"removed\":5}",
-   "time_s": 0.01
+   "time_s": 0.03
   },
   {
    "id": "e_download_after_delete",
@@ -146,7 +3810,7 @@
    "feature": "POST /master with unknown genre is refused cleanly",
    "status": "PASS",
    "actual": "HTTP 400 {\"detail\":\"Unknown genre 'not-a-genre'. Options: ['pop', 'hiphop', 'rock', 'edm', 'acoustic', 'lofi', 'podcast', 'classi",
-   "time_s": 0.02
+   "time_s": 0.01
   }
  ],
  "blocked": [

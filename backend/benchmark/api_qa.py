@@ -403,7 +403,8 @@ def main(argv=None) -> int:
     run_dir = RUNS_DIR / dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
     proc, base = start_server(run_dir)
-    cases_out = {cid: c for cid, c in prev_cases.items()}  # keep valid cached cases not re-run this time
+    known = {c.id for c in CASES + FEATURE_CASES}
+    cases_out = {cid: c for cid, c in prev_cases.items() if cid in known}  # valid cached cases not re-run this time
     reused = 0
     try:
         with httpx.Client(base_url=base) as client:
