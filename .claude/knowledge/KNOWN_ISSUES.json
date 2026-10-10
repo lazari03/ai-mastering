@@ -17,7 +17,7 @@
   },
   "next_ids": {
     "AUDIO": 7,
-    "BACKEND": 6,
+    "BACKEND": 7,
     "BILLING": 1,
     "FRONTEND": 3,
     "SECURITY": 6,
@@ -724,7 +724,7 @@
       "title": "Undecodable input (random bytes named .wav) returns HTTP 500 render_failed instead of 400 invalid_audio",
       "component": "dsp.bus",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "audio-dsp-engineer",
       "root_cause": "ai_mastering/audio_utils.py:101-107 sf.read fails, librosa fallback raises audioread NoBackendError, not mapped to InvalidAudioError (quality_control.py:39); service L525 maps to HTTP 500. Fix detail: AUDIO_DSP_REPORT.md section 3",
       "repro": "cd backend && /home/user/venv-auralith/bin/python -m benchmark.api_qa --cases c20a_garbage --force --no-endpoints",
@@ -733,7 +733,7 @@
         "api_qa:c20a_garbage"
       ],
       "source": "test-results/auralith-qa.json (case c20a_garbage); docs/agent-reports/AUDIO_DSP_REPORT.md section 3",
-      "validated_commit": "677d56a",
+      "validated_commit": "c4d9727",
       "history": [
         {
           "date": "2026-10-10",
@@ -751,6 +751,12 @@
           "agent": "technical-lead",
           "status": "OPEN",
           "note": "mastering-engineer independently flagged c20c_empty 500 (already appended)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "audio-dsp-engineer",
+          "status": "READY_FOR_QA",
+          "note": "Fix 257eb67 (cherry-picked as c4d9727 by lead). Undecodable input -> InvalidAudioError -> 400 invalid_audio. 3 regression tests fail-before/pass-after; pytest 231 passed; synthetic drift 0. [merged from worktree by technical-lead]"
         }
       ]
     },
@@ -841,6 +847,27 @@
       ],
       "source": "auralith-qa.json c14_dc_offset",
       "validated_commit": "677d56a",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-BACKEND-006",
+      "title": "Corrupt/empty compressed upload (.mp3/.m4a) returns 500 'Input decode failed' from the ffmpeg path instead of 400 invalid_audio",
+      "component": "python.api",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "backend-engineer",
+      "root_cause": null,
+      "repro": "POST /master with a corrupt .mp3",
+      "evidence": "handoff for AURALITH-AUDIO-004 (risk 1); backend/app/services/mastering_service.py:271",
+      "tests": [],
+      "source": "handoff for AURALITH-AUDIO-004 (risk 1); backend/app/services/mastering_service.py:271",
+      "validated_commit": "c4d9727",
       "history": [
         {
           "date": "2026-10-10",

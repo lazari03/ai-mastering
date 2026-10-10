@@ -62,6 +62,38 @@
       "next_agent": "security-engineer",
       "commit": "298c856",
       "date": "2026-10-10T18:52:02"
+    },
+    {
+      "handoff_id": "H-0003",
+      "task_id": "AURALITH-AUDIO-004",
+      "agent": "audio-dsp-engineer",
+      "status": "READY_FOR_QA",
+      "summary": "Undecodable input (random bytes or zero-byte .wav) now raises InvalidAudioError from _load_audio; service maps it to 400 invalid_audio. Commit c4d9727. Re-run api_qa c20a_garbage and c20c_empty (expect PASS).",
+      "files_changed": [
+        "backend/ai_mastering/audio_utils.py",
+        "backend/tests/test_input_limits.py"
+      ],
+      "tests_executed": [
+        "test_input_limits.py::test_undecodable_bytes_raise_invalid_audio_from_the_loader",
+        "::test_zero_byte_wav_raises_invalid_audio_from_the_loader",
+        "::test_master_track_refuses_undecodable_input_and_writes_nothing",
+        "pytest full",
+        "regression.synthetic"
+      ],
+      "results": [
+        "3 regression tests fail before / pass after",
+        "pytest 231 passed (pre empty-file test)",
+        "synthetic drift 0"
+      ],
+      "risks": [
+        "ffmpeg path mastering_service.py:271 still 500 for corrupt compressed uploads (backend-owned)",
+        "api_qa not re-run by owner",
+        "mid-read libsndfile failures not covered"
+      ],
+      "evidence": "docs/agent-reports/AUDIO_DSP_REPORT.md",
+      "next_agent": "qa-automation-engineer",
+      "commit": "c4d9727",
+      "date": "2026-10-10T18:53:20"
     }
   ]
 }
