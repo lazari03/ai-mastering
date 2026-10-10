@@ -297,6 +297,83 @@
       "qa_verdict": "N/A (QA-owned tooling)",
       "audit_verdict": "APPROVED H-0011",
       "resolved_date": "2026-10-10"
+    },
+    {
+      "id": "AURALITH-QA-007",
+      "title": "kb.py integrity (auditor review): issue-resolve accepts any --audit text; --set can overwrite id/status/history; --files unvalidated; handoff ids len+1 collide across worktrees; docstring overstates hashed deps",
+      "component": "qa.api_lab",
+      "severity": "P3",
+      "status": "DONE",
+      "owner": "technical-lead",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md (QA lab review, finding 8)",
+      "tests": [],
+      "source": "docs/agent-reports/INDEPENDENT_AUDIT.md (QA lab review, finding 8)",
+      "validated_commit": "1d33454",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "READY_FOR_AUDIT",
+          "note": "kb.py: --audit must start APPROVED, --qa APPROVED|N/A; --set refuses id/status/history; --files must exist; handoff ids max+1 (worktree collisions documented: lead re-adds); harness files in code hash; docstring corrected. Guards exercised manually (3 rejections observed)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "READY_FOR_AUDIT",
+          "note": "Also: issue-add now derives ids from max existing (duplicate AURALITH-PRODUCT-002 found and renumbered to -005)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_AUDIT",
+          "note": "audit: REJECTED - R1 issue-update/issue-add --status DONE bypasses DoD gate"
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "READY_FOR_AUDIT",
+          "note": "Rework after REJECTED H-0012: terminal statuses only via issue-resolve (issue-update/issue-add refuse DONE); verdict/solution fields protected from --set; --files must be repo-relative. All 4 bypasses refused on scratch copy; legit update OK."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_AUDIT",
+          "note": "audit: REJECTED (re-review 2: status allowlist needed; deleted:../ traversal)"
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "READY_FOR_AUDIT",
+          "note": "Rework 2 after REJECTED H-0014: status allowlist (OPEN_STATES) replaces denylist; --set keys stripped, case-normalized, shadow keys refused; deleted: stripped before path checks; new automated tests .claude/knowledge/test_kb.py (5 groups incl. every listed bypass) pass."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_AUDIT",
+          "note": "audit: APPROVED (Re-review 3, INDEPENDENT_AUDIT.md section 7)"
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "status": "DONE",
+          "note": "Resolved."
+        }
+      ],
+      "solution": "kb.py: status allowlist (DONE only via issue-resolve), DoD verdict checks, protected+normalized --set keys, repo-relative --files, max+1 ids; automated guard tests test_kb.py",
+      "fix_commit": "1d33454",
+      "regression_tests": [
+        ".claude/knowledge/test_kb.py (5 groups)"
+      ],
+      "qa_verdict": "N/A (lead-owned tooling; automated guard tests)",
+      "audit_verdict": "APPROVED H-0016 (INDEPENDENT_AUDIT.md Re-review 3; rejected twice before: H-0012, H-0014)",
+      "resolved_date": "2026-10-10"
     }
   ]
 }

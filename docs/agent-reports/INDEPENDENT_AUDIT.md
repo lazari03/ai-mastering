@@ -204,3 +204,28 @@ I read the diff with `git show HEAD -- .claude/knowledge/kb.py` and tested the g
 - **R3b. Low. kb.py:201.** The `..` check runs on the raw string, and `Path("deleted:../x").parts == ('deleted:..', 'x')`, so `--files deleted:../x` is accepted (it produced H-0014 in the scratch copy). Required fix: apply `removeprefix("deleted:")` before both checks.
 
 **Minor (non-blocking):** `--set` compares keys exactly, so `Status=DONE`, `STATUS=DONE`, `" status=DONE"` and `"status =DONE"` are stored as separate fields next to the real `status`. This creates confusing duplicate fields but does not change the real status. Strip and casefold keys before checking them against `PROTECTED_FIELDS`, or reject keys that differ only by case or whitespace. kb.py still has no automated tests for these guards.
+
+## 7. Re-review 3: AURALITH-QA-007 second rework (kb.py + test_kb.py at 1d33454) → **APPROVED**
+
+I read the diff with `git show HEAD -- .claude/knowledge/kb.py .claude/knowledge/test_kb.py`, ran the new suite, ran the same suite against the previous kb.py, and probed a scratch copy of the knowledge base (`$SCRATCH/kbaudit2`, its own `git init`). The real knowledge base was not changed by the probes.
+
+**Blocking findings from Re-review 2, now verified fixed:**
+- **R1b (status denylist).** Fixed. `OPEN_STATES` is now an allowlist with an exact, case-sensitive match (kb.py:43, 134, 162). `" DONE"`, `"DONE "`, `"DONE."`, `"Resolved."`, `ＤＯＮＥ`, `FIXED`, `COMPLETE`, `WONTFIX`, `VERIFIED` and `CLOSED` are all refused by both `issue-update` and `issue-add`. I also checked `"OPEN "` and `ＯＰＥＮ`, which are refused too. `DONE` can only be set by `issue-resolve`.
+- **R3b (`deleted:../x`).** Fixed. `removeprefix("deleted:")` is now applied before both the absolute-path check and the `..` check (kb.py:207-208). `deleted:../x` and `deleted:/etc/passwd` are refused.
+- **Shadow `--set` keys.** Fixed. Keys are stripped, must satisfy `isidentifier()`, and are lower-cased before the `PROTECTED_FIELDS` check. A key that differs only in case from an existing field is refused. `Status=DONE`, `" status=DONE"`, `STATUS =DONE` and `status​=DONE` are refused.
+- **No automated tests.** Fixed. `.claude/knowledge/test_kb.py` adds 5 tests, and each test runs against a temporary copy of the knowledge base. `python3 .claude/knowledge/test_kb.py` gives `Ran 5 tests ... OK`.
+
+**Do the tests catch the old bugs?** Yes. I ran the suite against `git show HEAD~1:.claude/knowledge/kb.py` (d2a7664) in a scratch copy and got `FAILED (failures=3)`:
+- `test_terminal_status_only_through_resolve` fails on `" DONE"`.
+- `test_set_cannot_touch_protected_or_shadow_fields` fails on `Status=DONE`.
+- `test_handoff_files_must_be_real_repo_relative_paths` fails on `deleted:../x`.
+
+The other two tests (resolve gate and id collisions) pass on the old code as well, as they should, because they guard behaviour that already worked.
+
+**Other paths to a terminal status or a history rewrite:** none found. The only places that write `status` are kb.py:164 (allowlisted) and `issue-resolve`, which requires QA plus an `APPROVED` audit verdict. `history` is only ever appended to (kb.py:175, 194). `--set` cannot name `history`. Resolved issues cannot be updated. A rejected `--set` exits before `_save`, so nothing is partly written. The `baseline`, `handoffs` and `issue(s)` commands only read.
+
+**Minor (non-blocking):**
+- (a) A fullwidth key (`--set ｓｔａｔｕｓ=DONE`) is still accepted and stored as a separate field. The real `status` stays `OPEN` and `issues --status DONE` returns `[]`, so the effect is cosmetic only. Suggested fix: NFKC-normalise keys, or allow ASCII keys only.
+- (b) kb.py:172 is a duplicated, unreachable `sys.exit` line (dead code).
+- (c) `--set validated_commit=...` is accepted but overwritten straight away, so it has no effect.
+- (d) `access-log --clear` deletes the access log. This is not issue history, but it should be noted.

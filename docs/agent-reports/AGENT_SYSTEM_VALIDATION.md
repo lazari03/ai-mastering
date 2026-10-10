@@ -25,7 +25,7 @@ evidence, and the prior root-cause analysis through four `kb.py` queries.
 ## 3. Independent challenge actually happened
 - The mastering engineer challenged the DSP report with numbers (transient loss is common, not an edge case; Professional ≡ Standard on same audio).
 - The auditor reviewed the **lead's own** QA lab and `kb.py`: 8 findings; QA fixed theirs (APPROVED); the lead's `kb.py` rework was **REJECTED**
-  once (a Definition-of-Done bypass via `issue-update --status DONE`), fixed, and re-submitted.
+  twice (a Definition-of-Done bypass via `issue-update --status DONE`, then denylist bypasses such as `' DONE'`/`WONTFIX`), then APPROVED once it was rebuilt as an allowlist with automated tests.
 - The technical lead independently reproduced the security engineer's Critical finding before ranking it P0.
 
 ## 4. Reuse and staleness (measured)
@@ -53,8 +53,10 @@ evidence, and the prior root-cause analysis through four `kb.py` queries.
 | independent-auditor | scenario 7 + QA-lab review | opus | 160,070 | 52 | 999 |
 | qa-automation-engineer | QA-006/004 fixes + full run | sonnet | 108,158 | 24 | 677 |
 | independent-auditor | re-review QA-006/004/007 | opus | 100,077 | 18 | 145 |
-| **Total (15 invocations)** | | | **1,562,109** | | |
-Not included: the lead's own context, the docs-lookup agent at setup, and the final QA-007 re-review (see §7).
+| independent-auditor | re-review 2 QA-007 (REJECTED) | opus | 66,475 | 6 | 55 |
+| independent-auditor | re-review 3 QA-007 (APPROVED) | opus | 69,890 | 7 | 55 |
+| **Total (17 invocations)** | | | **1,698,474** | | |
+Not included: the lead's own context, and the docs-lookup agent used at setup.
 
 Parallelism: the six discovery audits ran concurrently (background agents launched together). The security fix and the DSP fix ran
 concurrently in separate git worktrees. Everything else ran sequentially because each step depended on the previous one.
@@ -70,5 +72,5 @@ measured: the scenario's implementer worked from a 4-query retrieval path with t
   contain a vulnerability-class hint in issue wording; reported to the product owner.
 - QA protocol slip (H-0001 listed a file as changed that was not) → `--files` now validated.
 
-## 7. Open at time of writing
-AURALITH-QA-007 (kb.py rework) awaiting the auditor's second re-review. See MASTER_STATUS.md for the final state.
+## 7. Final state
+AURALITH-QA-007 (kb.py) APPROVED on the third audit round. The auditor confirmed the new guard tests (`.claude/knowledge/test_kb.py`) fail against the previous kb.py. Five issues closed through the Definition-of-Done gate this session.

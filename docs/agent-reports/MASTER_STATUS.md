@@ -7,7 +7,7 @@ Live issue state: `python3 .claude/knowledge/kb.py issues` (this file is a snaps
 The 10-agent organization, shared knowledge base, and API-level audio QA lab are operational and have executed real work:
 six parallel domain audits, a mastering evaluation from recorded results, one defect closed end to end through
 QA → fix → QA → audit (AURALITH-AUDIO-004), one P0 security fix implemented and security-approved (not yet QA'd/audited/deployed),
-and two rounds of auditor review of the lead's own tooling (one rejection, reworked).
+and three rounds of auditor review of the lead's own tooling (rejected twice, approved on round three).
 
 **Release blocker:** AURALITH-SECURITY-001 (Critical, embargoed) is live in production until its fix is deployed. The fix exists on a
 local, unpushed branch (`worktree-agent-a98143420e4bae0c3`, commit `c53034a`), approved by the security engineer.
@@ -27,8 +27,8 @@ Shipping it needs product-owner approval for push + deploy, then QA + audit.
 
 ## Issues
 - Discovered this session: **36** (P0 1 · P1 5 · P2 16 · P3 14), plus 4 seeded from prior audits.
-- Resolved this session (DoD: QA + auditor): **4** — AUDIO-004, QA-006, QA-004 (fixes) · BACKEND-001 (re-verified already fixed).
-- Open: **36** (P0 2 · P1 6 · P2 15 · P3 13). In flight: SECURITY-001 READY_FOR_QA, SECURITY-002 IN_PROGRESS, QA-007 READY_FOR_AUDIT.
+- Resolved this session (DoD: QA + auditor): **5** — AUDIO-004, QA-006, QA-004, QA-007 (fixes) · BACKEND-001 (re-verified already fixed).
+- Open: **35** (P0 2 · P1 6 · P2 15 · P3 12). In flight: SECURITY-001 READY_FOR_QA (fixed, embargoed, unpushed), SECURITY-002 IN_PROGRESS.
 
 ### Open P0 / P1
 | ID | Severity | Owner | Status | Title |
