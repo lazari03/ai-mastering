@@ -3,34 +3,22 @@
 Both engines share everything that decides WHAT to change: analysis,
 problem detection, confidence gates, budgets, the plan, EQ, de-essing,
 saturation, stereo, evaluation/backoff and final QC. A Standard master is
-never a deliberately degraded one. The engines differ only in HOW two
-stages are rendered, and each difference was kept only after it measured
-better (see benchmark/engine_compare.py):
+never a deliberately degraded one. The engines differ only in how one
+stage is rendered:
 
-* **Limiter.** Standard anticipates a peak with a gain STEP 3 ms ahead of
-  it. Professional approaches every step with a 2 ms linear ramp and is
-  identical from the step on (bus_processing._true_peak_limiter_ramped),
-  with the same ceiling guarantee. Limiter alone, drum-heavy synthetic mix
-  pushed 9 dB into the ceiling: drum punch lost 0.286 vs 0.394 (27% less)
-  at the same loudness and -1.0 dBTP, slightly less splatter on a
-  bass-hit probe (-25.2 vs -24.6 dB), at the cost of marginally deeper
-  HF ducking under hits (5th percentile -1.76 vs -1.62 dB). A symmetric
-  (box) smoothing was tried first and rejected: cleaner on paper, but it
-  extended reduction past each peak and LOST punch (0.653).
-
-  In the FULL bus (loudness recovery included; benchmark/engine_compare.py)
-  most of that gap closes: punch loss 0.390 vs 0.526 on the drum mix at
-  -10 LUFS, but on real tracks the engines are within noise (pop demo
-  -10 LUFS: 0.095 vs 0.070 in Standard's favour; post-rock: 0.206 vs
-  0.212). The difference is real but marginal: do not market it as more
-  than "a smoother limiter".
 * **Multiband compression split.** When the plan enables compression,
   Professional splits the low end into sub (<90 Hz) and punch (90-250 Hz),
   so kick/bass fundamentals get their own attack instead of sharing one
   20-250 Hz band with the sub.
 
-Anything tier-dependent belongs in an EngineSpec here, not in a
-`tier == "professional"` check elsewhere.
+Both engines use the same ramped-attack true-peak limiter
+(bus_processing._true_peak_limiter). A Professional-only limiter was
+tried and dropped: once the shared limiter gained its own ramped attack,
+the difference measured within noise on real tracks.
+
+Because compression only runs when the plan finds a need, most masters
+render identically on both engines. Anything that should make them differ
+belongs in an EngineSpec here, not in a `tier == "professional"` check.
 """
 
 from __future__ import annotations
@@ -75,10 +63,9 @@ PROFESSIONAL = EngineSpec(
     compression_crossovers_hz=(90.0, 250.0, 2000.0, 6000.0),
     compression_bands=("sub", "punch", "low_mid", "high_mid", "high"),
     bus=_bus_process_pro,
-    limiter="ramped-attack true-peak limiter (2 ms ramp into each gain step)",
+    limiter="ramped-attack true-peak limiter (shared with Standard)",
     features=(
         "everything in Standard",
-        "ramped-attack limiter: eases into each peak instead of stepping",
         "5-band compression with separate sub and punch bands",
     ),
 )

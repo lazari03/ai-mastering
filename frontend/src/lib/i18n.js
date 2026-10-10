@@ -34,8 +34,8 @@ const DICT = {
   "hero.title1": { en: "Master your music.", sq: "Masterizo muzikën tënde." },
   "hero.title2": { en: "Keep what makes it yours.", sq: "Ruaj atë që e bën tëndën." },
   "hero.body": {
-    en: "Professional automated mastering built on adaptive DSP. Auralith analyzes your mix before deciding what to change — and what to leave alone.",
-    sq: "Masterizim profesional i automatizuar, i ndërtuar mbi DSP adaptiv. Auralith analizon miksin tënd para se të vendosë çfarë të ndryshojë — dhe çfarë të lërë ashtu siç është.",
+    en: "Automated audio mastering built on adaptive DSP. Auralith analyzes your mix before deciding what to change — and what to leave alone.",
+    sq: "Masterizim i automatizuar i audios, i ndërtuar mbi DSP adaptiv. Auralith analizon miksin tënd para se të vendosë çfarë të ndryshojë — dhe çfarë të lërë ashtu siç është.",
   },
   "hero.ctaPrimary": { en: "Master a Track Free", sq: "Masterizo Falas" },
   "heroTry.title": { en: "Try it on your track", sq: "Provoje me këngën tënde" },
@@ -44,8 +44,8 @@ const DICT = {
   "heroTry.hint": { en: "Loudness, true peak & range in seconds", sq: "Zëri, kulmi i vërtetë dhe diapazoni në sekonda" },
   "heroTry.sampleFailed": { en: "Couldn't load the sample track", sq: "Shembulli nuk u ngarkua" },
   "heroTry.sampleAfter": {
-    en: "That's the raw mix. Auralith mastered this same track from {before} to {after} LUFS.",
-    sq: "Ky është miksi i papërpunuar. Auralith e masterizoi këtë këngë nga {before} në {after} LUFS.",
+    en: "That's the original audio. Auralith mastered this same track from {before} to {after} LUFS.",
+    sq: "Ky është audioja origjinale. Auralith e masterizoi këtë këngë nga {before} në {after} LUFS.",
   },
   "heroTry.sampleListen": { en: "Hear the before / after", sq: "Dëgjo para / pas" },
   "heroTry.sampleNext": {
@@ -57,7 +57,7 @@ const DICT = {
   "hero.pillar.analyze": { en: "Analyze", sq: "Analizo" },
   "hero.pillar.analyze.body": { en: "Measures loudness, tone, dynamics and stereo first.", sq: "Mat së pari zërin, tonin, dinamikën dhe stereon." },
   "hero.pillar.correct": { en: "Correct", sq: "Korrigjo" },
-  "hero.pillar.correct.body": { en: "Fixes only what the measurements justify.", sq: "Rregullon vetëm atë që justifikojnë matjet." },
+  "hero.pillar.correct.body": { en: "Applies targeted adjustments guided by the track's analysis.", sq: "Zbaton përshtatje të synuara, të udhëhequra nga analiza e këngës." },
   "hero.pillar.preserve": { en: "Preserve", sq: "Ruaj" },
   "hero.pillar.preserve.body": { en: "Leaves what already works alone.", sq: "E lë të paprekur atë që funksionon." },
   "hero.pillar.verify": { en: "Verify", sq: "Verifiko" },
@@ -82,7 +82,7 @@ const DICT = {
   "listens.analyze.title": { en: "Analyze", sq: "Analizo" },
   "listens.analyze.body": { en: "Loudness, tonal balance, dynamics, transients and stereo are measured before a single sample changes.", sq: "Zëri, balanca tonale, dinamika, transientet dhe stereo maten para se të ndryshojë ndonjë mostër." },
   "listens.master.title": { en: "Master", sq: "Masterizo" },
-  "listens.master.body": { en: "Only confident problems get a correction, sized to what your mix needs. Genre and style set the destination, not a fixed chain.", sq: "Vetëm problemet e sigurta korrigjohen, sa i nevojitet miksit. Zhanri dhe stili caktojnë destinacionin, jo një zinxhir fiks." },
+  "listens.master.body": { en: "Measured characteristics guide adjustments, with safeguards against excessive processing. Genre and style set the destination, not a fixed chain.", sq: "Karakteristikat e matura udhëheqin përshtatjet, me masa mbrojtëse kundër përpunimit të tepruar. Zhanri dhe stili caktojnë destinacionin, jo një zinxhir fiks." },
   "listens.verify.title": { en: "Verify", sq: "Verifiko" },
   "listens.verify.body": { en: "The result is re-measured. If a move overshot, a gentler version is rendered instead.", sq: "Rezultati rimatet. Nëse një lëvizje e tejkaloi, krijohet një version më i butë." },
   "listens.note": { en: "Numbers are from the full-resolution master of the demo track.", sq: "Numrat janë nga masteri me rezolucion të plotë i këngës demo." },
@@ -146,8 +146,8 @@ const DICT = {
   "features.f5.eyebrow": { en: "Delivery", sq: "Dërgesa" },
   "features.f5.title": { en: "Codec Preview", sq: "Parapamje Kodeku" },
   "features.f5.body": {
-    en: "Hear what actually reaches a listener after MP3, AAC, or Opus compression — a real encode/decode round-trip, not an estimate.",
-    sq: "Dëgjo çfarë arrin realisht te dëgjuesi pas kompresimit MP3, AAC, ose Opus — një cikël real kodimi/dekodimi, jo një vlerësim.",
+    en: "Preview how MP3, AAC, and Opus encoding may affect your master using an encode/decode round-trip.",
+    sq: "Dëgjo si mund të ndikojë kodimi MP3, AAC dhe Opus te masteri yt, përmes një cikli kodimi dhe dekodimi.",
   },
   "features.f6.eyebrow": { en: "Separation", sq: "Ndarje" },
   "features.f6.title": { en: "Stem-Aware Mastering", sq: "Masterizim me Ndarje Instrumentesh" },
@@ -198,7 +198,7 @@ const DICT = {
   "faq.q2": { en: HOME_FAQ[1].q, sq: "Cili është ndryshimi midis Standard dhe Professional?" },
   "faq.a2": {
     en: HOME_FAQ[1].a,
-    sq: "Të dy përdorin të njëjtën analizë, të njëjtat vendime korrigjimi dhe të njëjtat kontrolle dorëzimi, ndaj një master Standard nuk është kurrë version i cunguar. Professional ndryshon mënyrën si trajtohen momentet më të forta: limituesi i tij hyn gradualisht në çdo kulm në vend që ta shtrëngojë menjëherë, dhe kur nevojitet kompresim, sub-i dhe kick/basi marrin breza të veçantë. Standard përdoret nga masterat falas dhe plani Indie; Professional vjen me Studio dhe All-Access.",
+    sq: "Të dy përdorin të njëjtën analizë, të njëjtat vendime korrigjimi dhe të njëjtat kontrolle dorëzimi, ndaj një master Standard nuk është kurrë version i cunguar. Professional shton kontroll më të imët të basit: kur nevojitet kompresim, sub-i dhe kick/basi marrin breza të veçantë. Standard përdoret nga masterat falas dhe plani Indie; Professional vjen me Studio dhe All-Access.",
   },
   "faq.q3": { en: HOME_FAQ[2].q, sq: "Mund ta mbaj tingullin e një artisti të qëndrueshëm ndër botime?" },
   "faq.a3": {
@@ -317,7 +317,7 @@ const DICT = {
   "gallery.img3.caption": { en: "Built for people who mix for a living", sq: "Ndërtuar për njerëz që miksojnë për jetesë" },
 
   "pricing.eyebrow": { en: "Pricing", sq: "Çmimet" },
-  "pricing.title": { en: "Four plans. No confusing add-ons.", sq: "Katër plane. Pa shtesa konfuze." },
+  "pricing.title": { en: "Four plans, with optional pay-per-use services.", sq: "Katër plane, me shërbime opsionale me pagesë sipas përdorimit." },
   "pricing.subtitle": {
     en: "Start free with 3 full masters, no card required — a one-time trial, not a monthly allowance. Upgrade only when you actually need more.",
     sq: "Fillo falas me 3 masterë të plotë, pa kartë — një provë një-herëshe, jo një kuotë mujore. Përmirëso vetëm kur të nevojitet më shumë.",
@@ -588,7 +588,7 @@ const DICT = {
   "console.custom": { en: "Custom", sq: "I Personalizuar" },
   "console.engine": { en: "Engine", sq: "Motori" },
   "console.standard": { en: "Standard", sq: "Standard" },
-  "console.professionalOption": { en: "Professional (ramped-attack limiter)", sq: "Professional (limitues me sulm gradual)" },
+  "console.professionalOption": { en: "Professional (sub/punch band split)", sq: "Professional (breza të veçantë sub/punch)" },
   "console.studioPlanSuffix": { en: " — Studio plan", sq: " — plani Studio" },
   "console.needsStudio": { en: "Needs the Studio plan or higher.", sq: "Kërkon planin Studio ose më lart." },
   "console.genre": { en: "Genre", sq: "Zhanri" },
@@ -907,6 +907,10 @@ const DICT = {
   "manual.safety.none": { en: "Every setting was within the delivery safety limits", sq: "Çdo cilësim ishte brenda kufijve të sigurisë" },
   "manual.safety.adjusted": { en: "{n} settings were pulled back to stay within the delivery safety limits:", sq: "{n} cilësime u ulën për të qëndruar brenda kufijve të sigurisë:" },
   "decisions.verify.improved": { en: "{i} of {n} detected problems measurably improved", sq: "{i} nga {n} problemet u përmirësuan në mënyrë të matshme" },
+  "decisions.verify.fallback": {
+    en: "Every full version of this master failed a quality check, so you got a minimal-processing master (gain and limiting only, plus your own tweaks). It is safe, but it is not a full master of this mix.",
+    sq: "Çdo version i plotë i këtij masteri dështoi në një kontroll cilësie, ndaj more një master me përpunim minimal (vetëm fitim dhe kufizim, plus rregullimet e tua). Është i sigurt, por nuk është master i plotë i kësaj miksimi.",
+  },
   "decisions.verify.backoff": { en: "The first pass changed more than planned, so a gentler version was rendered", sq: "Kalimi i parë ndryshoi më shumë se sa ishte planifikuar, ndaj u krijua një version më i butë" },
   "decisions.details.show": { en: "View detailed analysis", sq: "Shiko analizën e detajuar" },
   "decisions.details.hide": { en: "Hide detailed analysis", sq: "Fshih analizën e detajuar" },
@@ -969,8 +973,8 @@ const DICT = {
   },
   "help.topic3.q": { en: "What's the difference between Standard and Professional?", sq: "Cili është ndryshimi midis Standard dhe Professional?" },
   "help.topic3.a": {
-    en: "Both engines run the same analysis, correction decisions and delivery checks. Professional's limiter eases into each peak instead of clamping it, and when compression is needed the sub and kick/bass get their own bands. Standard is used by free masters and Indie; Professional comes with Studio and All-Access — pick it from the Engine dropdown when mastering.",
-    sq: "Të dy motorët përdorin të njëjtën analizë, vendime korrigjimi dhe kontrolle dorëzimi. Limituesi i Professional hyn gradualisht në çdo kulm në vend që ta shtrëngojë menjëherë, dhe kur nevojitet kompresim, sub-i dhe kick/basi marrin breza të veçantë. Standard përdoret nga masterat falas dhe Indie; Professional vjen me Studio dhe All-Access — zgjidhe nga menuja Engine gjatë masterizimit.",
+    en: "Both engines run the same analysis, correction decisions and delivery checks. Professional adds finer low-end control: when compression is needed, the sub and kick/bass get their own bands. Standard is used by free masters and Indie; Professional comes with Studio and All-Access — pick it from the Engine dropdown when mastering.",
+    sq: "Të dy motorët përdorin të njëjtën analizë, vendime korrigjimi dhe kontrolle dorëzimi. Professional shton kontroll më të imët të basit: kur nevojitet kompresim, sub-i dhe kick/basi marrin breza të veçantë. Standard përdoret nga masterat falas dhe Indie; Professional vjen me Studio dhe All-Access — zgjidhe nga menuja Engine gjatë masterizimit.",
   },
   "help.topic4.q": { en: "How do I keep an artist's sound consistent across releases?", sq: "Si ta mbaj tingullin e një artisti të qëndrueshëm ndër botime?" },
   "help.topic4.a": {
@@ -1194,6 +1198,22 @@ const DICT = {
   "result.levelMatched": {
     en: "Levels matched — both sides play at the same loudness, so you're comparing tone and dynamics rather than volume. The master is {db} dB louder in the downloaded file.",
     sq: "Nivelet të barazuara — të dyja anët luajnë me të njëjtin volum, kështu që krahason tonin dhe dinamikën, jo volumin. Masteri është {db} dB më i lartë në skedarin e shkarkuar.",
+  },
+  "result.levelMatchedQuieter": {
+    en: "Levels matched — both sides play at the same loudness, so you're comparing tone and dynamics rather than volume. The master is {db} dB quieter in the downloaded file.",
+    sq: "Nivelet të barazuara — të dyja anët luajnë me të njëjtin volum, kështu që krahason tonin dhe dinamikën, jo volumin. Masteri është {db} dB më i qetë në skedarin e shkarkuar.",
+  },
+  "result.realLevels": {
+    en: "Playing at real levels — the master is {db} dB louder, exactly as you'll download it. Match levels to judge tone without volume influencing you.",
+    sq: "Po luhet në nivelet reale — masteri është {db} dB më i lartë, saktësisht si do ta shkarkosh. Barazo nivelet për ta gjykuar tonin pa ndikimin e volumit.",
+  },
+  "result.realLevelsQuieter": {
+    en: "Playing at real levels — the master is {db} dB quieter, exactly as you'll download it. Match levels to judge tone without volume influencing you.",
+    sq: "Po luhet në nivelet reale — masteri është {db} dB më i qetë, saktësisht si do ta shkarkosh. Barazo nivelet për ta gjykuar tonin pa ndikimin e volumit.",
+  },
+  "result.fileGone": {
+    en: "This master's audio is no longer on the server. Master the track again to listen or download.",
+    sq: "Audioja e këtij masteri nuk ndodhet më në server. Masterizoje këngën përsëri për ta dëgjuar ose shkarkuar.",
   },
   "thankYou.backToApp": { en: "Back to the app", sq: "Kthehu te aplikacioni" },
 
@@ -1427,7 +1447,7 @@ export function LanguageProvider({ children }) {
   // replace rather than a real ICU/format library.
   const t = useCallback(
     (key, params) => {
-      const raw = DICT[key]?.[lang] || DICT[key]?.en || key;
+      const raw = DICT[key]?.[lang] ?? DICT[key]?.en ?? key; // ?? not ||: an intentionally empty translation stays empty instead of falling back to English
       if (!params) return raw;
       return Object.entries(params).reduce((acc, [name, value]) => acc.replaceAll(`{${name}}`, value), raw);
     },

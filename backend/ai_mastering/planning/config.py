@@ -136,6 +136,19 @@ REFERENCE_EQ_MAX_CUT_DB = 4.0
 # (the target itself sits REFERENCE_CURVE_WEIGHT of the way to the
 # reference, so the master lands ~half-way to the reference's balance).
 REFERENCE_EQ_FRACTION = 0.8
+# Reference DYNAMICS are context, never a copy (target_model.py): each
+# moves the genre/style value this fraction of the way toward the
+# reference, bounded. The source's own limiter damage budget (its
+# transients) still decides what loudness is actually reached.
+REFERENCE_LOUDNESS_WEIGHT = 0.5      # preferred LUFS, kept inside the genre's acceptable window
+REFERENCE_CREST_WEIGHT = 0.5         # master crest target
+REFERENCE_CREST_MAX_SHIFT_DB = 2.0
+REFERENCE_WIDTH_WEIGHT = 0.5         # stereo width ceiling...
+REFERENCE_WIDTH_MAX_RAISE = 0.15     # ...may rise this much (permits widening toward the reference)
+REFERENCE_WIDTH_MAX_LOWER = 0.10     # ...or fall this much (a narrower reference rarely means "narrow this mix")
+# Bass distribution: a reference may move the 20-120 Hz tonal target at
+# most this much, so "sound like this" never becomes a large low-end move.
+REFERENCE_LOW_END_MAX_SHIFT_DB = 2.0
 # dB of target shift per unit of category tweak_bias (tweak_bias is -1..1).
 INTENT_TWEAK_TO_TARGET_DB = 2.0
 
@@ -232,6 +245,12 @@ LIMITER_BUDGET_MAX_DB = 6.0
 LIMITER_BUDGET_MIN_DB = 0.5
 LIMITER_TRANSIENT_PENALTY_DB = 3.5
 LIMITER_CEILING_DBTP = -1.0
+# Deepest single-peak limiter gain reduction final QC accepts (above it:
+# fail — audible pumping/distortion risk). The renderer caps its gain push
+# so the loudest true peak stays inside it (with a small margin), instead
+# of rendering a master QC is bound to reject.
+QC_LIMITER_MAX_GR_DB = 6.0
+LIMITER_MAX_GR_MARGIN_DB = 0.3
 # Clipper absorbs at most this much in front of the limiter.
 CLIPPER_MAX_SHARE_DB = 1.0
 
@@ -269,7 +288,34 @@ ANY_BAND_COLLATERAL_TOLERANCE_DB = 2.0
 LIMITER_BUDGET_OVERSHOOT_TOLERANCE_DB = 1.0
 LRA_COLLAPSE_FRACTION = 0.5
 BACKOFF_MIN_SEVERITY = 0.3
-MAX_BACKOFF_RENDERS = 1
+
+# ---------------------------------------------------------------------------
+# Candidate rendering / recovery (mastering.py, evaluation/verdict.py)
+# ---------------------------------------------------------------------------
+# GLOBAL render budget for one job, every candidate counted: the initial
+# render, up to MAX_CORRECTIVE_RENDERS verdict-driven corrections, and one
+# transparent (limiter/output-only) fallback. Nothing renders outside it.
+MAX_CORRECTIVE_RENDERS = 2
+MAX_CANDIDATE_RENDERS = 1 + MAX_CORRECTIVE_RENDERS + 1
+# Dynamics relief (dB of peak reduction) asked for by a failure whose
+# checker gives no dB overshoot (transient score, LRA), and the margin
+# added on top of a measured overshoot so the re-render clears the limit
+# rather than landing on it.
+RECOVERY_NOMINAL_RELIEF_DB = 1.5
+RECOVERY_RELIEF_MARGIN_DB = 0.25
+# Landing this far below the REQUESTED loudness is reported as a verdict
+# warning (never a failure: it is the engine protecting the source).
+LOUDNESS_SHORTFALL_WARN_LU = 1.0
+# Added nonlinear distortion (evaluation/distortion.py), residual-to-master
+# dB in the worse of 500 Hz-4 kHz and 4-16 kHz. PROVISIONAL, from synthetic
+# material: typical plans read -22..-26 dB, heavy limiting / 2x the
+# planner's max saturation drive -16..-19 dB. Calibrate on real tracks
+# (benchmark/regression.py reports headroom to it).
+MAX_ADDED_DISTORTION_DB = -18.0
+ADDED_DISTORTION_WARN_MARGIN_DB = 2.0
+# Matches the true-peak tolerance QC and the evaluator already use.
+TRUE_PEAK_TOLERANCE_DB = 0.15
+
 
 
 # ---------------------------------------------------------------------------

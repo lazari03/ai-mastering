@@ -6,6 +6,11 @@ services:
       MASTERING_ENV: production
       MASTERING_CORS_ORIGINS: http://node-api:8000
       MASTERING_FILE_RETENTION_HOURS: ${MASTERING_FILE_RETENTION_HOURS:-48}
+      # Must match the volume mounts below (also set in backend/Dockerfile).
+      # Unset, the service wrote to /uploads and /outputs — outside the
+      # volumes — and every deploy wiped every user's files.
+      MASTERING_UPLOAD_DIR: /app/uploads
+      MASTERING_OUTPUT_DIR: /app/outputs
       # How readily the engine corrects measured tonal problems:
       # conservative | balanced | assertive (see backend/ai_mastering/planning/config.py).
       MASTERING_CALIBRATION: ${MASTERING_CALIBRATION:-balanced}

@@ -34,13 +34,16 @@ const ACTIVE_STATUSES = new Set(["active", "trialing"]);
 // charge fails). Once currentPeriodEnd actually passes with nothing
 // having renewed it, access lapses on its own — no separate expiry timer
 // or cron job needed for that half of it.
-function subscriptionPeriodEndDate(sub) {
-  const raw = sub?.currentPeriodEnd;
+// Firestore returns Timestamp objects (have .toDate()); a freshly-built
+// record in this same process is a plain JS Date. Handle both.
+function toDate(raw) {
   if (!raw) return null;
-  // Firestore returns Timestamp objects (have .toDate()); a freshly-built
-  // record in this same process is a plain JS Date. Handle both.
   const date = typeof raw.toDate === "function" ? raw.toDate() : new Date(raw);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function subscriptionPeriodEndDate(sub) {
+  return toDate(sub?.currentPeriodEnd);
 }
 
 // Exported so adminUsersService.js can derive a plan for a whole page of
@@ -51,9 +54,19 @@ function subscriptionPeriodEndDate(sub) {
 export function isEntitled(sub) {
   if (!sub) return false;
   if (ACTIVE_STATUSES.has(sub.status)) return true;
+  // An ended subscription (revoke, refund, failed dunning) or an unpaid one
+  // is not entitled, even with a period end still in the future — that used
+  // to keep a revoked annual plan active for up to a year. A cancellation
+  // scheduled for the period end (no endedAt yet) and past_due (Polar still
+  // retrying payment) keep access until the period end, as before.
+  if (ENDED_STATUSES.has(sub.status)) return false;
+  const endedAt = toDate(sub.endedAt);
+  if (endedAt && endedAt.getTime() <= Date.now()) return false;
   const periodEnd = subscriptionPeriodEndDate(sub);
   return Boolean(periodEnd && periodEnd.getTime() > Date.now());
 }
+
+const ENDED_STATUSES = new Set(["unpaid", "incomplete_expired"]);
 
 let _client = null;
 function client() {
@@ -309,6 +322,24 @@ export async function changeSubscriptionPlan(uid, productKey) {
 // subscription without us building that UI ourselves. Session tokens are
 // short-lived by design (Polar's own guidance): generate one fresh each
 // time the user clicks "Manage billing", never cache the URL.
+// Account deletion: stop future billing for every live subscription the
+// user holds (main plan and the legacy chord subscription). Cancel at
+// period end rather than revoke — no further charges, and no forfeiting
+// time already paid for. Deleting the account used to leave Polar
+// charging a user who no longer exists. Throws if Polar refuses, so the
+// deletion stops instead of silently leaving a paying subscription.
+export async function cancelSubscriptionsForDeletedAccount(uid) {
+  const data = (await userDoc(uid).get()).data() || {};
+  for (const field of ["subscription", "chordSubscription"]) {
+    const sub = data[field];
+    if (!sub?.polarSubscriptionId || !isEntitled(sub) || sub.endedAt) continue;
+    await client().subscriptions.update({
+      id: sub.polarSubscriptionId,
+      subscriptionUpdate: { cancelAtPeriodEnd: true },
+    });
+  }
+}
+
 export async function createPortalUrl(uid) {
   const session = await client().customerSessions.create({ externalCustomerId: uid });
   return session.customerPortalUrl;
@@ -422,7 +453,30 @@ export async function applyWebhookEvent(event) {
     if (uid) {
       recordServerEvent("refund_created", { uid, props: { amountCents: order.refundedAmount || order.totalAmount, currency: order.currency } });
     }
+    return applyOrderRefundedEvent(event);
   }
+}
+
+// A fully refunded one-time purchase takes its credit back (it used to stay
+// in the account). Same idempotency record as order.paid: the credit is
+// removed at most once per order, and only for an order whose credit was
+// actually granted. Clamped at zero — a credit already spent stays spent.
+async function applyOrderRefundedEvent(event) {
+  const order = event.data;
+  const creditField = creditFieldForProduct(order.productId);
+  const fullyRefunded = order.status === "refunded" || Number(order.refundedAmount || 0) >= Number(order.totalAmount || 0);
+  if (!creditField || !fullyRefunded) return;
+  const db = getFirestore();
+  const orderRef = db.collection("processedPolarOrders").doc(order.id);
+  await db.runTransaction(async (tx) => {
+    const processed = await tx.get(orderRef);
+    if (!processed.exists || processed.data()?.refundedAt) return;
+    const userRef = userDoc(processed.data().uid);
+    const userSnap = await tx.get(userRef);
+    const credits = Number(userSnap.data()?.[creditField] || 0);
+    tx.set(orderRef, { refundedAt: new Date() }, { merge: true });
+    tx.set(userRef, { [creditField]: Math.max(0, credits - 1) }, { merge: true });
+  });
 }
 
 // Shared by the webhook handler and reconciliation below — one place that
@@ -433,6 +487,13 @@ function subscriptionRecord(sub) {
     status: sub.status,
     productId: sub.productId,
     currentPeriodEnd: sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : null,
+    // Set by Polar when the subscription has actually ENDED (revoked,
+    // refunded, dunning gave up) — as opposed to a cancellation scheduled
+    // for the period end, which leaves it unset until then.
+    endedAt: sub.endedAt ? new Date(sub.endedAt) : null,
+    // Polar's own last-modified time — orders webhook deliveries (see
+    // applySubscriptionEvent) so a late retry can't overwrite newer state.
+    modifiedAt: sub.modifiedAt ? new Date(sub.modifiedAt) : null,
     polarCustomerId: sub.customerId,
     polarSubscriptionId: sub.id,
     // A "next_period" change (see changeSubscriptionPlan's downgrade path)
@@ -485,7 +546,23 @@ async function applySubscriptionEvent(event) {
     console.warn(`Polar ${event.type}: unrecognized product ${sub.productId}, skipping`);
     return;
   }
-  await userDoc(uid).set({ [field]: subscriptionRecord(sub) }, { merge: true });
+  // Polar retries failed deliveries, so events can arrive out of order: a
+  // retried subscription.updated(active) landing after subscription.revoked
+  // used to restore the revoked plan. An event older than the stored
+  // record (by Polar's modifiedAt) is skipped.
+  const db = getFirestore();
+  const ref = userDoc(uid);
+  const incoming = subscriptionRecord(sub);
+  const applied = await db.runTransaction(async (tx) => {
+    const stored = toDate((await tx.get(ref)).data()?.[field]?.modifiedAt);
+    if (stored && incoming.modifiedAt && incoming.modifiedAt.getTime() < stored.getTime()) return false;
+    tx.set(ref, { [field]: incoming }, { merge: true });
+    return true;
+  });
+  if (!applied) {
+    console.warn(`Polar ${event.type}: older than the stored subscription state for ${uid}, skipped`);
+    return;
+  }
 
   // subscription.* also fires for renewals, cancellations, and plan
   // changes — "created" is the one event that actually means "someone

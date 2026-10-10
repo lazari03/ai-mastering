@@ -7,6 +7,9 @@
 # --- Secrets / local env --- (.env.example files are templates, kept)
 .env
 .env.local
+# Timestamped backups taken before editing .env — same secrets, same rules.
+.env.bak*
+*.env.bak*
 .env.*.local
 
 # --- Python ---
@@ -16,6 +19,9 @@ backend/venv312/
 backend/venv/
 
 # --- Node ---
+# Local npm download cache (never commit generated package cache)
+.npm-cache/
+
 node_modules/
 frontend/.next/
 

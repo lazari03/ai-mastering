@@ -122,6 +122,14 @@ function engineMetrics(eventRows) {
     return [...m.entries()].map(([k, n]) => ({ key: k, count: n, share: rate(n, done.length) })).sort((a, b) => b.count - a.count);
   };
   const durations = done.map((p) => Number(p.processing_duration_ms)).filter(Number.isFinite);
+  // Verdict telemetry: which candidate won, and which checks failed the
+  // first render (comma-joined "source:kind" list per master).
+  const withCandidate = withDiag.filter((p) => p.delivered_candidate);
+  const candidateRate = (pred) => rate(withCandidate.filter((p) => pred(String(p.delivered_candidate))).length, withCandidate.length);
+  const failureKinds = new Map();
+  for (const p of withDiag) {
+    for (const kind of String(p.initial_failures || "").split(",").filter(Boolean)) failureKinds.set(kind, (failureKinds.get(kind) || 0) + 1);
+  }
   return {
     masters: done.length,
     started,
@@ -137,6 +145,12 @@ function engineMetrics(eventRows) {
     loudnessHeldBackRate: share("loudness_held_back"),
     compressionRate: share("compression"),
     evalPassRate: share("eval_passed"),
+    withCandidateTelemetry: withCandidate.length,
+    initialCandidateRate: candidateRate((c) => c === "initial"),
+    correctiveCandidateRate: candidateRate((c) => c.startsWith("corrective")),
+    fallbackRate: candidateRate((c) => c === "transparent_fallback"),
+    avgRenders: avg(withCandidate, "renders"),
+    initialFailureKinds: [...failureKinds.entries()].map(([kind, count]) => ({ key: kind, count, share: rate(count, withDiag.length) })).sort((a, b) => b.count - a.count).slice(0, 10),
     avgEqCorrections: avg(withDiag, "eq_corrections"),
     avgLimiterGrDb: avg(withDiag, "limiter_max_gr_db"),
     avgLoudnessChangeLu: avg(withDiag, "lufs_change"),

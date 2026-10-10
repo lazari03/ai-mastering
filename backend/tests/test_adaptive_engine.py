@@ -397,7 +397,8 @@ def test_output_safety(tmp_path_factory, name):
     assert result["analysis_after"]["true_peak_db"] <= C.LIMITER_CEILING_DBTP + 0.15
     assert result["analysis_after"]["stereo_correlation"] > C.SAFE_MIN_CORRELATION
     diag = result["mastering_diagnostics"]
-    assert diag["renders"] <= 1 + C.MAX_BACKOFF_RENDERS
+    assert diag["renders"] <= C.MAX_CANDIDATE_RENDERS
+    assert diag["verdict"]["passed"]
     json.dumps({k: v for k, v in result.items() if k != "_out"})  # whole result stays serialisable
 
 

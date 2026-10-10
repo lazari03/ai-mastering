@@ -46,6 +46,7 @@ import { mintDownloadToken, verifyShareToken, isShareJobExpired } from "../servi
 import { shareLinks, ShareLinkError } from "../services/shareLinkService.js";
 import { cleanupUploadsOnFinish } from "../middleware/cleanupUploads.js";
 import { masteringDspProps } from "../services/masteringTelemetry.js";
+import { cutPreviewExcerpt } from "../services/previewExcerpt.js";
 
 const router = express.Router();
 
@@ -351,7 +352,7 @@ async function resolveShare(req, res) {
 
 function sharedFilename(job, jobId) {
   const ext = job.output_format || "wav";
-  const base = (job.original_filename || `master_${jobId}`).replace(/\.[^./\\]+$/, "").replace(/[^\w\s.-]+/g, "_").trim();
+  const base = (job.original_filename || `master_${jobId}`).replace(/\.[^./\\]+$/, "").replace(/[^\w .-]+/g, "_").trim(); // literal space, not \s: U+3000 / newlines are invalid in a header
   return `${base || "master"}_mastered.${ext}`;
 }
 
@@ -527,6 +528,11 @@ router.post("/billing/change-plan", async (req, res) => {
   if (!productKey) {
     return res.status(400).json({ detail: `Unknown item "${req.body?.item}"` });
   }
+  // Only subscription plans can be switched to; one-time items (single
+  // master, stem separation) are bought through /billing/checkout.
+  if (!productKey.startsWith("plan")) {
+    return res.status(400).json({ detail: `"${req.body?.item}" is a one-time purchase, not a plan — buy it from Billing instead.` });
+  }
   try {
     const result = await changeSubscriptionPlan(req.user.uid, productKey);
     return res.json({ ok: true, ...result });
@@ -694,20 +700,8 @@ const masterUpload = upload.fields([
 // usable file — Standard engine only, never Professional, never stems (the
 // input truncation happens before the file ever reaches the DSP pipeline,
 // so a preview also costs a fraction of the compute a full render would).
-const PREVIEW_SECONDS = 30;
-
-async function truncateToPreview(inputPath, workDir) {
-  const outputPath = path.join(workDir, `${path.basename(inputPath)}_preview.wav`);
-  try {
-    await execFileAsync("ffmpeg", ["-y", "-i", inputPath, "-t", String(PREVIEW_SECONDS), outputPath]);
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      throw new Error("ffmpeg is not installed or not on PATH for this server process — install it and restart.");
-    }
-    throw error;
-  }
-  return outputPath;
-}
+// Free preview excerpt: the loudest 30 s, as float WAV — see
+// services/previewExcerpt.js for why it is not the first 30 s any more.
 
 router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, async (req, res) => {
   const file = req.files?.file?.[0];
@@ -727,6 +721,36 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
       detail: "Please verify your email address before mastering a track — check your inbox for the verification link, or resend it from Settings.",
       code: "EMAIL_NOT_VERIFIED",
     });
+  }
+  // Anonymous sessions exist for the public try-before-signup tools. A
+  // final master spends the 3-master Free trial, and anonymous uids are
+  // free to mint by script — every one would get a fresh trial.
+  if (!preview && req.user?.isAnonymous) {
+    return res.status(403).json({
+      detail: "Create a free account to master a full track — previews stay free without one.",
+      code: "ACCOUNT_REQUIRED",
+    });
+  }
+
+  // Request validation happens BEFORE any quota/credit is reserved: a
+  // request rejected here must never cost the user a master. (It used to
+  // run inside the render's try block, after the reservation, and its
+  // early return skipped the refund in the catch.)
+  let processing = null;
+  if (!preview && req.body.processing) {
+    try {
+      processing = JSON.parse(req.body.processing);
+    } catch {
+      return res.status(400).json({ detail: "processing must be valid JSON" });
+    }
+    const MAX_BANDS = 24;
+    const tooMany =
+      (processing?.eq?.length || 0) > MAX_BANDS ||
+      (processing?.dynamic_eq?.length || 0) > MAX_BANDS ||
+      (processing?.stereo?.bands?.length || 0) > MAX_BANDS;
+    if (tooMany) {
+      return res.status(400).json({ detail: `Too many bands in one processing spec — ${MAX_BANDS} max per list.` });
+    }
   }
 
   // Backend-authoritative mastering outcome (spec section 1/9) — the
@@ -878,29 +902,20 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     const tags = JSON.parse(req.body.tags || "[]");
     const tweaks = JSON.parse(req.body.tweaks || "{}");
     // Pro Mastering's manual parameter panel — never on preview, which is
-    // always the cheap Standard/adaptive path (see PREVIEW_SECONDS above).
+    // always the cheap Standard/adaptive path (see services/previewExcerpt.js).
     // Band-array lengths are capped here: the UI never generates more than
     // a handful, but nothing stops a direct API call from sending
     // thousands — each one is a real filter construction in
     // preset_dsp_engine.py, so an uncapped array is a cheap way to make
     // one request tie up a lot of DSP compute regardless of the rate limit
     // on request *count*.
-    const processing = !preview && req.body.processing ? JSON.parse(req.body.processing) : null;
-    if (processing) {
-      const MAX_BANDS = 24;
-      const tooMany =
-        (processing.eq?.length || 0) > MAX_BANDS ||
-        (processing.dynamic_eq?.length || 0) > MAX_BANDS ||
-        (processing.stereo?.bands?.length || 0) > MAX_BANDS;
-      if (tooMany) {
-        return res.status(400).json({ detail: `Too many bands in one processing spec — ${MAX_BANDS} max per list.` });
-      }
-    }
 
     let masterFile = file;
+    let previewStartSeconds = null;
     if (preview) {
-      const previewPath = await truncateToPreview(file.path, settings.uploadDir);
-      masterFile = { ...file, path: previewPath };
+      const excerpt = await cutPreviewExcerpt(file.path, settings.uploadDir);
+      masterFile = { ...file, path: excerpt.path };
+      previewStartSeconds = excerpt.startSeconds;
     }
 
     const result = await processMastering({
@@ -1054,7 +1069,7 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
         },
       });
     }
-    return res.json({ ...result, preview });
+    return res.json({ ...result, preview, ...(preview ? { preview_excerpt_start_s: previewStartSeconds } : {}) });
   } catch (error) {
     // Give the reserved slot back. The slot is now taken BEFORE the
     // render (that is what makes concurrency safe), so a render that
@@ -1093,7 +1108,11 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     // postMultipartToPython) rather than always flattening to 400,
     // otherwise "server's busy, try again" reads to the frontend as the
     // same permanent-looking failure as a bad upload.
-    return res.status(error?.status === 503 ? 503 : 400).json({ detail: error?.message || "Mastering failed" });
+    // Upstream 4xx (bad/unsupported upload) stays a 4xx; an engine crash
+    // (Python 5xx) is reported as a server error, not "bad request".
+    const upstream = Number(error?.status);
+    const status = upstream === 503 ? 503 : upstream >= 500 ? 502 : 400;
+    return res.status(status).json({ detail: error?.message || "Mastering failed" });
   }
 });
 

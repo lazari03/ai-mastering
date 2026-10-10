@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from .audio_utils import EPS, _db, _ensure_stereo, _rms, _true_peak_db
+from .planning import config as C
 
 # Real automated quality control (spec section 18) — every check here reads
 # the actual rendered waveform / actual measured analysis numbers, never a
@@ -19,6 +20,20 @@ DC_OFFSET_THRESHOLD_DB = -50.0  # per-channel |mean| vs full scale; below this i
 SILENCE_RMS_DB = -70.0
 MIN_SAMPLES_FOR_MASTERING = 4410  # 0.1s at 44.1kHz — below this there's nothing to analyze or master
 CHANNEL_IMBALANCE_WARN_DB = 6.0
+# A master's L/R balance may differ from the SOURCE's by at most this much
+# before it counts as something processing did. A deliberately lopsided
+# mix (hard-panned instrument, old stereo recording) is the artist's
+# balance, not a defect — it used to fail QC / get "corrected" to 0 dB.
+CHANNEL_IMBALANCE_ADDED_TOLERANCE_DB = 1.0
+
+
+def lr_balance_db(audio: np.ndarray) -> float:
+    """Signed L - R RMS level difference in dB (positive = left louder)."""
+    audio = _ensure_stereo(audio)
+    left, right = _rms(audio[:, 0]), _rms(audio[:, 1])
+    if left <= EPS or right <= EPS:
+        return 0.0
+    return float(_db(left) - _db(right))
 
 
 class InvalidAudioError(ValueError):
@@ -101,6 +116,7 @@ def run_quality_control(
     processing_params: dict,
     limiter_report: dict | None,
     true_peak_ceiling_db: float = -1.0,
+    source_lr_balance_db: float | None = None,
 ) -> dict:
     """QC pass on the finished master. Answers "is this output technically
     sound" — clipping, true peak, over-processing, phase/mono safety,
@@ -143,7 +159,7 @@ def run_quality_control(
         )
 
     limiter_gr_db = float((limiter_report or {}).get("limiter_gain_reduction_db", 0.0))
-    if limiter_gr_db > 6.0:
+    if limiter_gr_db > C.QC_LIMITER_MAX_GR_DB:
         _add(
             checks,
             "limiter_gain_reduction",
@@ -239,10 +255,13 @@ def run_quality_control(
     else:
         _add(checks, "output_silence", "pass", "Rendered master has audible signal.", after_rms_db)
 
-    channel_rms_db = [_db(_rms(mastered_audio[:, ch])) for ch in range(mastered_audio.shape[1])]
-    channel_imbalance_db = float(max(channel_rms_db) - min(channel_rms_db)) if len(channel_rms_db) > 1 else 0.0
-    if channel_imbalance_db > CHANNEL_IMBALANCE_WARN_DB:
-        _add(checks, "channel_balance", "fail", f"L/R channel imbalance of {channel_imbalance_db:.1f}dB in the final master.", channel_imbalance_db)
+    balance_db = lr_balance_db(mastered_audio)
+    channel_imbalance_db = abs(balance_db)
+    added_db = abs(balance_db - source_lr_balance_db) if source_lr_balance_db is not None else channel_imbalance_db
+    if channel_imbalance_db > CHANNEL_IMBALANCE_WARN_DB and added_db > CHANNEL_IMBALANCE_ADDED_TOLERANCE_DB:
+        _add(checks, "channel_balance", "fail", f"L/R channel imbalance of {channel_imbalance_db:.1f}dB in the final master ({added_db:.1f} dB away from the source's own balance).", channel_imbalance_db)
+    elif channel_imbalance_db > CHANNEL_IMBALANCE_WARN_DB:
+        _add(checks, "channel_balance", "warn", f"L/R imbalance of {channel_imbalance_db:.1f}dB — the source's own balance, kept as mixed.", channel_imbalance_db)
     else:
         _add(checks, "channel_balance", "pass", f"L/R channels balanced within {channel_imbalance_db:.1f}dB.", channel_imbalance_db)
 
@@ -281,20 +300,20 @@ def run_quality_control(
     }
 
 
-def rebalance_channels(audio: np.ndarray) -> np.ndarray:
-    """Corrective action for a QC-flagged channel imbalance: trims the
-    louder channel down to the quieter channel's RMS rather than boosting
-    (never risk introducing a new clipping problem while fixing a balance
-    one). Used sparingly — only when run_quality_control's channel_balance
-    check actually fails on the final render."""
+def rebalance_channels(audio: np.ndarray, target_balance_db: float = 0.0) -> np.ndarray:
+    """Corrective action for a QC-flagged channel imbalance: brings the L/R
+    difference back to `target_balance_db` (the SOURCE's own balance when
+    known — restoring it, not flattening a deliberate mix to 0 dB) by
+    trimming the louder side rather than boosting (never risk introducing a
+    new clipping problem while fixing a balance one)."""
     audio = _ensure_stereo(audio).astype(np.float32)
-    left_rms = _rms(audio[:, 0])
-    right_rms = _rms(audio[:, 1])
-    if left_rms <= EPS or right_rms <= EPS:
+    current = lr_balance_db(audio)
+    excess = current - float(target_balance_db)
+    if abs(excess) < 1e-6:
         return audio
     corrected = audio.copy()
-    if left_rms > right_rms:
-        corrected[:, 0] *= float(right_rms / left_rms)
+    if excess > 0:  # left too loud relative to target
+        corrected[:, 0] *= float(10.0 ** (-excess / 20.0))
     else:
-        corrected[:, 1] *= float(left_rms / right_rms)
+        corrected[:, 1] *= float(10.0 ** (excess / 20.0))
     return corrected

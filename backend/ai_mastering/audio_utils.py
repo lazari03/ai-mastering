@@ -65,6 +65,33 @@ def _ensure_stereo(audio: np.ndarray) -> np.ndarray:
     raise ValueError(f"Unsupported audio shape: {audio.shape}")
 
 
+# ITU-R BS.775 fold-down, by channel count, in the default WAVE/ffmpeg
+# channel order. Rows: L, R output; columns: input channels. LFE is
+# dropped (standard for a stereo downmix). Previously anything above two
+# channels kept only the first two, so a 5.1 WAV lost its centre channel
+# (usually the vocal) and both surrounds.
+_C = 0.7071
+_DOWNMIX = {
+    3: [[1, 0, _C], [0, 1, _C]],                                   # L R C
+    4: [[1, 0, _C, 0], [0, 1, 0, _C]],                             # L R Ls Rs (quad)
+    5: [[1, 0, _C, _C, 0], [0, 1, _C, 0, _C]],                     # L R C Ls Rs
+    6: [[1, 0, _C, 0, _C, 0], [0, 1, _C, 0, 0, _C]],               # L R C LFE Ls Rs (5.1)
+    8: [[1, 0, _C, 0, _C, 0, _C, 0], [0, 1, _C, 0, 0, _C, 0, _C]],  # 7.1: + Lb Rb
+}
+
+
+def _downmix_to_stereo(y: np.ndarray) -> np.ndarray:
+    """(channels, n) -> (2, n). Known layouts use the BS.775 matrix; any
+    other count folds even channels left, odd right, equal-weighted."""
+    ch = y.shape[0]
+    m = np.asarray(_DOWNMIX[ch], dtype=np.float32) if ch in _DOWNMIX else None
+    if m is None:
+        m = np.zeros((2, ch), dtype=np.float32)
+        m[0, 0::2] = 1.0 / max(1, len(range(0, ch, 2)))
+        m[1, 1::2] = 1.0 / max(1, len(range(1, ch, 2)))
+    return (m @ y.astype(np.float32)).astype(np.float32)
+
+
 def _load_audio(path: str | Path, sr: int = MASTER_SR) -> tuple[np.ndarray, int]:
     path = str(path)
     loaded_sr = sr
@@ -82,7 +109,7 @@ def _load_audio(path: str | Path, sr: int = MASTER_SR) -> tuple[np.ndarray, int]
                 y = np.stack([y, y], axis=0)
 
     if y.shape[0] > 2:
-        y = y[:2, :]
+        y = _downmix_to_stereo(y)
     if y.shape[0] == 1:
         y = np.repeat(y, 2, axis=0)
 
@@ -215,14 +242,44 @@ def _oversample4(audio: np.ndarray, factor: int = _TP_OVERSAMPLE) -> np.ndarray:
     return resample_poly(x, int(factor), 1, axis=0).astype(np.float32)
 
 
+# Oversampling a whole song at once held a full copy at the oversampled
+# rate: a 16x true-peak check on a 4-minute 48 kHz track took +2.5 GB of
+# RAM (+7.6 GB for 6 minutes at 96 kHz), several times per render. A peak
+# is local and resample_poly's filter only reaches ~10 input samples per
+# side (half-length 10 x factor at the oversampled rate), so the signal is
+# processed in chunks with _TP_CHUNK_PAD samples of real context on each
+# side: identical results, memory bounded by the chunk.
+_TP_CHUNK = 1 << 18
+_TP_CHUNK_PAD = 512
+
+
+def _oversampled_peak_per_sample(audio: np.ndarray, factor: int = _TP_OVERSAMPLE) -> np.ndarray:
+    """Per input sample, the largest |value| over its `factor` oversampled
+    sub-samples and all channels — what a true-peak meter or detector needs,
+    without materialising the whole oversampled signal."""
+    x = np.asarray(audio, dtype=np.float32)
+    if x.ndim == 1:
+        x = x[:, np.newaxis]
+    n = x.shape[0]
+    out = np.empty(n, dtype=np.float32)
+    for start in range(0, n, _TP_CHUNK):
+        stop = min(n, start + _TP_CHUNK)
+        lo, hi = max(0, start - _TP_CHUNK_PAD), min(n, stop + _TP_CHUNK_PAD)
+        up = resample_poly(x[lo:hi], int(factor), 1, axis=0)
+        a = (start - lo) * factor
+        seg = np.abs(up[a : a + (stop - start) * factor]).max(axis=1)
+        out[start:stop] = seg.reshape(stop - start, factor).max(axis=1)
+    return out
+
+
 def _true_peak_db(audio_stereo: np.ndarray, oversample_factor: int = _TP_OVERSAMPLE) -> float:
     """True peak in dBTP. Accurate to ~0.07 dB of a 32x reference across
     the whole band, including above 15 kHz where the previous
-    implementation lost up to 3.8 dB."""
+    implementation lost up to 3.8 dB. Chunked (see _TP_CHUNK)."""
     x = np.asarray(audio_stereo, dtype=np.float32)
     if x.size == 0:
         return _db(0.0)
-    return _db(float(np.max(np.abs(_oversample4(x, oversample_factor)))))
+    return _db(float(np.max(_oversampled_peak_per_sample(x, oversample_factor))))
 
 
 def _short_term_lufs_series(audio_stereo: np.ndarray, sr: int) -> list[float]:
@@ -483,10 +540,22 @@ def _analysis_from_audio(audio_stereo: np.ndarray, sr: int) -> dict:
 
 def reference_spectrum_only(audio_stereo: np.ndarray, sr: int) -> dict:
     """Hi-res relative spectrum of a reference track (plus the legacy
-    7-band shares) from one STFT pass — the reference's loudness/dynamics
-    are deliberately not measured, they must not leak into the render."""
+    7-band shares) from one STFT pass. Its loudness/dynamics are measured
+    separately (reference_dynamics) and only ever inform the target
+    context — they never set a render value directly."""
     spectral = analyze_spectrum(_ensure_stereo(audio_stereo).astype(np.float32), sr)
     return {"relative_db": spectral["relative_db"], "legacy_shares": spectral["legacy_shares"]}
+
+
+def reference_dynamics(audio_stereo: np.ndarray, sr: int) -> dict:
+    """The reference's loudness, peak-to-loudness, crest, LRA and stereo
+    image, measured with the same analysis the source gets. Used only as
+    bounded CONTEXT for target selection (planning/target_model.py): it
+    never sets a processing value directly, and the reference's transient
+    character is deliberately not used."""
+    p = _analysis_from_audio(_ensure_stereo(audio_stereo).astype(np.float32), sr)["source_profile"]
+    keys = ("integrated_lufs", "true_peak_db", "plr_db", "crest_db", "short_term_crest_db", "lra_lu", "stereo_width", "stereo_correlation")
+    return {k: (round(float(p[k]), 3) if p.get(k) is not None else None) for k in keys}
 
 
 def analyze_track(path: str | Path, sr: int = MASTER_SR) -> dict:

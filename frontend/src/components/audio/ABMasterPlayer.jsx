@@ -116,6 +116,10 @@ export default function ABMasterPlayer({
   beforeLabel = "Before",
   afterLabel = "After",
   preparingLabel = "preparing instant A/B…",
+  levelMatchNoteQuieter,
+  realLevelsNote,
+  realLevelsNoteQuieter,
+  unavailableLabel = "This audio is no longer available on the server — master the track again to listen.",
   // Optional translated copy for the level-match note; "{db}" is
   // substituted with the measured difference. Falls back to English.
   levelMatchNote = null,
@@ -128,10 +132,14 @@ export default function ABMasterPlayer({
   onModeChange,
   className = "",
 }) {
-  // How much louder the mastered file actually is, before matching. The
-  // A/B always attenuates the louder side down (see _ab_gain_match on the
-  // backend), so the gap between the two gains IS that difference.
-  const matchedDifferenceDb = Math.abs(Number(beforeGainDb) - Number(afterGainDb));
+  // How much louder (positive) or QUIETER (negative) the mastered file is
+  // than the original, before matching. The A/B attenuates the louder side
+  // down (see _ab_gain_match on the backend), so after - before loudness =
+  // beforeGain - afterGain. It used to be Math.abs()'d and always worded
+  // "louder" — a master turned down to fix overs was described as louder.
+  const signedDifferenceDb = Number(beforeGainDb) - Number(afterGainDb);
+  const matchedDifferenceDb = Math.abs(signedDifferenceDb);
+  const masterIsQuieter = signedDifferenceDb < 0;
   const [levelMatched, setLevelMatched] = useState(defaultLevelMatch);
   const audioRef = useRef(null);
   const canvasRef = useRef(null);
@@ -141,6 +149,9 @@ export default function ABMasterPlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [ready, setReady] = useState(false);
+  // A source that 404s (expired or missing on the server) used to leave
+  // the player on "preparing instant A/B…" forever with a dead play button.
+  const [unavailable, setUnavailable] = useState(false);
 
   // Everything the audio engine and the draw loop read lives in one ref, so
   // neither has to re-subscribe on React state changes.
@@ -486,8 +497,10 @@ export default function ABMasterPlayer({
           setIsPlaying(true);
         }
       })
-      .catch(() => {
-        // Keep the streaming element path.
+      .catch((err) => {
+        // Keep the streaming element path — unless the file is simply not
+        // there, in which case streaming can't work either: say so.
+        if (!cancelled && /HTTP (404|410)/.test(String(err?.message || ""))) setUnavailable(true);
       });
     return () => {
       cancelled = true;
@@ -517,7 +530,11 @@ export default function ABMasterPlayer({
 
   const handleError = () => {
     const e = eng.current;
-    if (e.mode !== "after" || e.usedFallback || !afterFallbackSrc || afterFallbackSrc === activeAfterSrc) return;
+    if (e.mode !== "after" || e.usedFallback || !afterFallbackSrc || afterFallbackSrc === activeAfterSrc) {
+      // No fallback left: the element can't play this source at all.
+      if (!e.usingBuffers) setUnavailable(true);
+      return;
+    }
     e.usedFallback = true;
     setActiveAfterSrc(afterFallbackSrc);
   };
@@ -569,7 +586,7 @@ export default function ABMasterPlayer({
       <div className="flex items-center justify-between px-4 pt-4 sm:px-5">
         <p className="m-0 text-[11px] uppercase tracking-[0.14em] text-text-secondary">
           {mode === "after" ? afterLabel : beforeLabel}
-          {!ready ? <span className="normal-case tracking-normal"> · {preparingLabel}</span> : null}
+          {!ready && !unavailable ? <span className="normal-case tracking-normal"> · {preparingLabel}</span> : null}
         </p>
         <div role="radiogroup" aria-label="Compare" className="inline-flex rounded-full bg-black/[0.05] p-0.5">
           {segment("before", beforeLabel)}
@@ -577,14 +594,30 @@ export default function ABMasterPlayer({
         </div>
       </div>
 
+      {unavailable ? (
+        <p role="alert" className="m-0 px-4 pt-2 text-[12px] text-text-secondary sm:px-5">
+          <span aria-hidden="true">! </span>
+          {unavailableLabel}
+        </p>
+      ) : null}
+
       {matchedDifferenceDb >= 0.1 ? (
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-2 sm:px-5">
           <p className="m-0 max-w-[46ch] text-[11px] leading-snug text-text-secondary">
-            {levelMatched
-              ? (levelMatchNote
-                  ? levelMatchNote.replace("{db}", matchedDifferenceDb.toFixed(1))
-                  : `Levels matched — both sides play at the same loudness, so you're comparing tone and dynamics rather than volume. The master is ${matchedDifferenceDb.toFixed(1)} dB louder in the file you download.`)
-              : `Playing at real levels — the master is ${matchedDifferenceDb.toFixed(1)} dB louder, exactly as you'll download it. Match levels to judge tone without volume influencing you.`}
+            {(() => {
+              const db = matchedDifferenceDb.toFixed(1);
+              const word = masterIsQuieter ? "quieter" : "louder";
+              if (levelMatched) {
+                const note = masterIsQuieter ? levelMatchNoteQuieter : levelMatchNote;
+                return note
+                  ? note.replace("{db}", db)
+                  : `Levels matched — both sides play at the same loudness, so you're comparing tone and dynamics rather than volume. The master is ${db} dB ${word} in the file you download.`;
+              }
+              const note = masterIsQuieter ? realLevelsNoteQuieter : realLevelsNote;
+              return note
+                ? note.replace("{db}", db)
+                : `Playing at real levels — the master is ${db} dB ${word}, exactly as you'll download it. Match levels to judge tone without volume influencing you.`;
+            })()}
           </p>
           <button
             type="button"

@@ -95,7 +95,10 @@ async function resolveConfig(input, uid) {
       resolved.category = preset.category;
       resolved.flavour = preset.flavour || null;
     }
-    resolved.use_stem_separation = Boolean(preset.use_stem_separation);
+    // Stem separation is NOT taken from the preset: it is a metered, paid
+    // feature, gated and billed in /master from the request's own flag. A
+    // preset (imported JSON included) setting it here turned stems on after
+    // that gate — free stems on any plan, previews included.
     resolved.output_format = preset.output_format === "mp3" ? "mp3" : "wav";
     if (preset.processing) {
       resolved.fullPreset = {
@@ -457,5 +460,11 @@ export async function processMastering({ file, referenceFile = null, fields, uid
       engine: result.processing_applied?.engine || "adaptive_python_dsp",
     },
     target_profile_used: result.target_profile_used,
+    // Surfaced at the top level for the /master route's billing decision
+    // ("only charge for stems if separation actually ran"). It lives in
+    // processing_applied on the Python side; the route read a top-level
+    // field that was never set, so stems were never billed and every stem
+    // job was told "you have not been charged".
+    stem_separation: result.processing_applied?.stem_separation ?? null,
   };
 }

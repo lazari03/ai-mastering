@@ -223,7 +223,17 @@ def build_ab_report(
         improved = False
         reasons.append(f"True peak after mastering ({true_peak_after:.2f}dBTP) is uncomfortably close to 0dBTP.")
 
-    if gain_change_db is not None and gain_change_db > 0.3 and (dr_change_db is not None and dr_change_db < -6.0):
+    plr_after = analysis_after.get("plr_db")
+    # dynamic_range_db is whole-file crest (peak - RMS): limiting peaks is
+    # what mastering does, so an unmastered mix peaking at -6 dBFS loses
+    # 6-9 dB of it on EVERY normal master — this warned on all of them.
+    # Only a master that is actually squashed (PLR under QC's own 6 dB
+    # "low" line) earns "louder, not better".
+    if (
+        gain_change_db is not None and gain_change_db > 0.3
+        and dr_change_db is not None and dr_change_db < -6.0
+        and plr_after is not None and plr_after < 6.0
+    ):
         # Specifically the "measures louder but sounds worse" failure mode
         # the spec calls out — flagged even if the checks above didn't
         # already trip, since a +LUFS/-dynamics combination is the direct

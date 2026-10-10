@@ -12,11 +12,23 @@ tolerance, not against a fixed number baked into the engine.
 
 A failure names the processing stage most likely responsible, so the
 caller can reduce that stage and re-render rather than guessing.
+
+Plan awareness
+--------------
+A deliberate, measured correction (e.g. a 2.5 dB cut of a boomy 80 Hz)
+is not damage. When the caller passes `planned_deltas_db` — the same
+measurement taken on the source with ONLY the planned static EQ applied —
+the per-band limits apply to the UNPLANNED movement (measured - planned).
+Independently of the plan, `absolute_*` caps bound the total movement in
+the two directions this engine has historically got wrong (bass down,
+highs up), so a planner bug cannot excuse itself by planning the damage.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
+
+import numpy as np
 
 from .band_levels import BAND_EDGES_HZ
 
@@ -25,6 +37,8 @@ from .band_levels import BAND_EDGES_HZ
 # subsonic rumble is legitimate and shouldn't be flagged as damage.
 LOW_END_MUSICAL_BANDS = ("sub_bass_35_60hz", "kick_bass_60_120hz", "upper_bass_120_250hz")
 HIGH_BANDS = ("presence_4000_6000hz", "high_6000_20000hz")
+# Bands the tilt fit runs over (subsonic excluded for the same reason).
+TILT_BANDS = tuple(b for b in BAND_EDGES_HZ if b != "subsonic_20_35hz")
 
 
 @dataclass
@@ -47,6 +61,18 @@ class GuardrailConfig:
     loudness_tolerance_lu: float = 1.5
     # Max fraction of transient punch that may be lost, loudness-matched.
     max_transient_loss: float = 0.12
+    # Max UNPLANNED spectral tilt change, dB/octave (least-squares slope of
+    # the unplanned band deltas over log2 frequency, 35 Hz - 20 kHz).
+    # Positive = brighter. "Highs up AND bass down" by small amounts each
+    # can stay under every per-band limit and still be clearly audible as a
+    # tilt; this catches the combination.
+    max_tilt_drift_db_per_oct: float = 0.3
+    # Plan-independent caps on TOTAL movement (planned + unplanned) in the
+    # historically-wrong directions. Above the planner's own maxima
+    # (EQ_MAX_CUT_DB 3 dB blind, 4 dB reference-driven; 1 dB HF budget),
+    # so only a runaway plan or stage reaches them.
+    absolute_max_low_end_loss_db: float = 4.5
+    absolute_max_high_boost_db: float = 3.5
 
 
 @dataclass
@@ -58,6 +84,8 @@ class GuardrailFailure:
     # The pipeline stage to reduce on the next attempt.
     blame_stage: str
     detail: str
+    # "unplanned" (measured - planned) or "total" (absolute cap, plan or not).
+    basis: str = "unplanned"
 
 
 @dataclass
@@ -86,6 +114,8 @@ def validate_render(
     target_lufs: float,
     transient_delta: float,
     config: GuardrailConfig | None = None,
+    planned_deltas_db: dict[str, float] | None = None,
+    user_deltas_db: dict[str, float] | None = None,
 ) -> ValidationResult:
     """Check a rendered master against the guardrails.
 
@@ -93,13 +123,26 @@ def validate_render(
     band_levels.loudness_matched_band_deltas) — raw deltas would fail
     everything on any master that is louder than its source, which is
     every master.
+
+    planned_deltas_db: the planned static EQ's effect on the same
+    measurement (see module docstring). user_deltas_db: the part of it the
+    USER asked for (tweaks) — exempt from the absolute caps, because an
+    explicit "more bass / less bass" request is not a planner error.
     """
     cfg = config or GuardrailConfig()
     failures: list[GuardrailFailure] = []
+    planned = planned_deltas_db or {}
+    user = user_deltas_db or {}
+
+    def unplanned(band: str) -> float:
+        return float(band_deltas_db.get(band, 0.0)) - float(planned.get(band, 0.0))
+
+    def automatic(band: str) -> float:
+        return float(band_deltas_db.get(band, 0.0)) - float(user.get(band, 0.0))
 
     # --- low end gutted -------------------------------------------------
     for band in LOW_END_MUSICAL_BANDS:
-        delta = float(band_deltas_db.get(band, 0.0))
+        delta = unplanned(band)
         if delta < -cfg.max_low_end_loss_db:
             failures.append(
                 GuardrailFailure(
@@ -112,13 +155,26 @@ def validate_render(
                     # cut. The EQ stage is the one to reduce first because
                     # it is the only one that cuts a band deliberately.
                     blame_stage="eq_low_shelf_and_highpass",
-                    detail=f"{band} fell {abs(delta):.2f} dB at matched loudness (limit {cfg.max_low_end_loss_db} dB)",
+                    detail=f"{band} fell {abs(delta):.2f} dB more than planned at matched loudness (limit {cfg.max_low_end_loss_db} dB)",
+                )
+            )
+        total = automatic(band)
+        if total < -cfg.absolute_max_low_end_loss_db:
+            failures.append(
+                GuardrailFailure(
+                    name="low_end_loss",
+                    measured=round(total, 2),
+                    limit=-cfg.absolute_max_low_end_loss_db,
+                    band=band,
+                    blame_stage="eq_low_shelf_and_highpass",
+                    detail=f"{band} fell {abs(total):.2f} dB in total at matched loudness (absolute cap {cfg.absolute_max_low_end_loss_db} dB, plan or not)",
+                    basis="total",
                 )
             )
 
     # --- tilted bright --------------------------------------------------
     for band in HIGH_BANDS:
-        delta = float(band_deltas_db.get(band, 0.0))
+        delta = unplanned(band)
         if delta > cfg.max_high_boost_db:
             failures.append(
                 GuardrailFailure(
@@ -127,9 +183,36 @@ def validate_render(
                     limit=cfg.max_high_boost_db,
                     band=band,
                     blame_stage="eq_high_shelf_and_saturation",
-                    detail=f"{band} rose {delta:.2f} dB at matched loudness (limit {cfg.max_high_boost_db} dB)",
+                    detail=f"{band} rose {delta:.2f} dB more than planned at matched loudness (limit {cfg.max_high_boost_db} dB)",
                 )
             )
+        total = automatic(band)
+        if total > cfg.absolute_max_high_boost_db:
+            failures.append(
+                GuardrailFailure(
+                    name="high_frequency_boost",
+                    measured=round(total, 2),
+                    limit=cfg.absolute_max_high_boost_db,
+                    band=band,
+                    blame_stage="eq_high_shelf_and_saturation",
+                    detail=f"{band} rose {total:.2f} dB in total at matched loudness (absolute cap {cfg.absolute_max_high_boost_db} dB, plan or not)",
+                    basis="total",
+                )
+            )
+
+    # --- tilt drift (small highs-up + small bass-down adds up) ----------
+    tilt = unplanned_tilt_db_per_oct(band_deltas_db, planned)
+    if abs(tilt) > cfg.max_tilt_drift_db_per_oct:
+        failures.append(
+            GuardrailFailure(
+                name="tilt_drift",
+                measured=round(tilt, 3),
+                limit=cfg.max_tilt_drift_db_per_oct if tilt > 0 else -cfg.max_tilt_drift_db_per_oct,
+                band=None,
+                blame_stage="eq_high_shelf_and_saturation" if tilt > 0 else "eq_low_shelf_and_highpass",
+                detail=f"unplanned spectral tilt {tilt:+.2f} dB/oct ({'brighter' if tilt > 0 else 'darker'}; limit ±{cfg.max_tilt_drift_db_per_oct})",
+            )
+        )
 
     # --- broad backstop -------------------------------------------------
     # subsonic_20_35hz is exempt for the same reason it's absent from
@@ -140,7 +223,7 @@ def validate_render(
     for band in BAND_EDGES_HZ:
         if band == "subsonic_20_35hz":
             continue
-        delta = float(band_deltas_db.get(band, 0.0))
+        delta = unplanned(band)
         if abs(delta) > cfg.max_any_band_change_db:
             failures.append(
                 GuardrailFailure(
@@ -149,7 +232,7 @@ def validate_render(
                     limit=cfg.max_any_band_change_db,
                     band=band,
                     blame_stage="multiband_compression",
-                    detail=f"{band} moved {delta:+.2f} dB at matched loudness (limit ±{cfg.max_any_band_change_db} dB)",
+                    detail=f"{band} moved {delta:+.2f} dB beyond plan at matched loudness (limit ±{cfg.max_any_band_change_db} dB)",
                 )
             )
 
@@ -194,3 +277,17 @@ def validate_render(
         )
 
     return ValidationResult(passed=not failures, failures=failures)
+
+
+def unplanned_tilt_db_per_oct(band_deltas_db: dict[str, float], planned_deltas_db: dict[str, float] | None = None) -> float:
+    """Least-squares slope (dB per octave) of the unplanned band deltas
+    against log2 of each band's geometric centre. Positive = brighter."""
+    planned = planned_deltas_db or {}
+    xs, ys = [], []
+    for band in TILT_BANDS:
+        lo, hi = BAND_EDGES_HZ[band]
+        xs.append(np.log2(np.sqrt(lo * hi)))
+        ys.append(float(band_deltas_db.get(band, 0.0)) - float(planned.get(band, 0.0)))
+    x = np.asarray(xs) - np.mean(xs)
+    y = np.asarray(ys) - np.mean(ys)
+    return float(np.sum(x * y) / max(float(np.sum(x * x)), 1e-9))

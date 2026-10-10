@@ -33,7 +33,7 @@ const VISITOR_LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
 const SESSION_LAST_SEEN_THROTTLE_MS = 2 * 60 * 1000;
 
 const MAX_EVENTS_PER_REQUEST = 25;
-const MAX_PROP_KEYS = 30; // server master_completed carries ~22 flat DSP metrics (masteringTelemetry.js)
+const MAX_PROP_KEYS = 30; // server master_completed carries ~27 flat props (3 route + masteringTelemetry.js)
 const MAX_STRING_LEN = 300;
 const MAX_PATH_LEN = 300;
 
@@ -251,6 +251,7 @@ export function newId() {
 // minutes of staleness costs nothing and saves a Firestore read per event.
 const ADMIN_UID_CACHE_TTL_MS = 30 * 60 * 1000; // roles change ~never; each miss is a billed Firestore read
 const adminUidCache = new Map(); // uid -> { isAdmin, expiresAt }
+const ADMIN_UID_CACHE_MAX = 5000;
 
 async function isAdminUid(uid) {
   if (!uid) return false;
@@ -263,6 +264,11 @@ async function isAdminUid(uid) {
   } catch (error) {
     console.error("isAdminUid check failed (treating as non-admin):", error.message);
   }
+  // Bounded: /analytics/collect is unauthenticated and the uid comes from
+  // the client (sendBeacon can't carry a token), so random uids would
+  // otherwise grow this map without limit. Map keeps insertion order —
+  // evict the oldest entry.
+  if (adminUidCache.size >= ADMIN_UID_CACHE_MAX) adminUidCache.delete(adminUidCache.keys().next().value);
   adminUidCache.set(uid, { isAdmin, expiresAt: Date.now() + ADMIN_UID_CACHE_TTL_MS });
   return isAdmin;
 }

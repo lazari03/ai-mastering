@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 
 import numpy as np
+import pyloudnorm as pyln
 import soundfile as sf
 from fastapi import HTTPException, UploadFile
 
@@ -247,27 +248,37 @@ DELIVERY_MP3_MAX_ENCODES = 4
 CLIP_THRESHOLD = 0.9999
 
 
-def _read_delivered_audio(path: Path, ext: str) -> np.ndarray:
+def _read_delivered_audio(path: Path, ext: str) -> tuple[np.ndarray, int]:
     if ext != "mp3":
-        audio, _ = sf.read(str(path), dtype="float32", always_2d=True)
-        return audio
+        audio, sr = sf.read(str(path), dtype="float32", always_2d=True)
+        return audio, int(sr)
     decoded = path.with_name(f"{path.stem}_delivery_check.wav")
     cmd = ["ffmpeg", "-y", "-i", str(path), "-c:a", "pcm_f32le", str(decoded)]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
         if result.returncode != 0:
             raise HTTPException(500, f"Couldn't decode the delivered MP3 to verify it: {result.stderr[-400:]}")
-        audio, _ = sf.read(str(decoded), dtype="float32", always_2d=True)
-        return audio
+        audio, sr = sf.read(str(decoded), dtype="float32", always_2d=True)
+        return audio, int(sr)
     finally:
         decoded.unlink(missing_ok=True)
 
 
-def _measure_delivered(audio: np.ndarray) -> dict:
+def _measure_delivered(audio: np.ndarray, sr: int | None = None) -> dict:
     finite = bool(np.all(np.isfinite(audio)))
     safe = np.nan_to_num(audio)
     peak = float(np.max(np.abs(safe))) if safe.size else 0.0
+    lufs = None
+    if sr and safe.shape[0] >= int(0.4 * sr):
+        # Loudness of the file that actually ships (an MP3 trimmed for its
+        # encoder overshoot is quieter than the WAV the engine measured).
+        try:
+            v = float(pyln.Meter(sr).integrated_loudness(safe))
+            lufs = round(v, 2) if np.isfinite(v) else None
+        except Exception:
+            lufs = None
     return {
+        "integrated_lufs": lufs,
         "finite": finite,
         "clipped_samples": int(np.count_nonzero(np.abs(safe) >= CLIP_THRESHOLD)),
         "sample_peak_dbfs": round(float(20.0 * np.log10(max(peak, 1e-12))), 2),
@@ -291,7 +302,7 @@ def deliver_and_verify(wav_mastered_path: Path, output_path: Path, output_ext: s
     if output_ext != "mp3":
         if wav_mastered_path != output_path:
             wav_mastered_path.replace(output_path)
-        measured = _measure_delivered(_read_delivered_audio(output_path, "wav"))
+        measured = _measure_delivered(*_read_delivered_audio(output_path, "wav"))
         passed = measured["finite"] and measured["clipped_samples"] == 0 and measured["true_peak_dbtp"] <= ceiling_db + DELIVERY_WAV_TOLERANCE_DB
         report = {"format": "wav", "checked": "written file", "ceiling_dbtp": ceiling_db, "gain_trim_db": 0.0, "encodes": 0, "passed": passed, **measured}
         if not passed:
@@ -304,7 +315,7 @@ def deliver_and_verify(wav_mastered_path: Path, output_path: Path, output_ext: s
     measured: dict = {}
     for encode in range(1, DELIVERY_MP3_MAX_ENCODES + 1):
         _encode_mp3(wav_mastered_path, output_path, trim_db)
-        measured = _measure_delivered(_read_delivered_audio(output_path, "mp3"))
+        measured = _measure_delivered(*_read_delivered_audio(output_path, "mp3"))
         if measured["finite"] and measured["clipped_samples"] == 0 and measured["true_peak_dbtp"] <= limit:
             return {"format": "mp3", "checked": "decoded MP3", "ceiling_dbtp": round(limit, 2), "gain_trim_db": round(trim_db, 2), "encodes": encode, "passed": True, **measured}
         overshoot = max(measured["true_peak_dbtp"] - limit, 0.0)
@@ -430,6 +441,9 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
 
     before_lufs = mastering_result["analysis_before"]["integrated_lufs"]
     after_lufs = mastering_result["analysis_after"]["integrated_lufs"]
+    if delivery_check.get("integrated_lufs") is not None:
+        # Report the loudness of the file the user downloads.
+        after_lufs = delivery_check["integrated_lufs"]
 
     return {
         "job_id": job_id,

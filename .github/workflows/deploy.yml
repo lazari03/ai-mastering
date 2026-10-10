@@ -145,4 +145,11 @@ jobs:
             docker image prune -f || true
             docker builder prune -f --keep-storage 5GB || true
             echo "--- disk after cleanup ---" && df -h / || true
+            # Salvage before the Python container is recreated: until the
+            # storage-path fix, it wrote uploads/masters to /uploads and
+            # /outputs INSIDE the container (not the mounted volumes), so a
+            # recreate destroyed them. Copy anything there into the volumes
+            # first. -n never overwrites; once every container runs the fix
+            # those directories don't exist and this is a no-op.
+            docker compose exec -T python-service sh -c 'for d in uploads outputs; do if [ -d /$d ] && [ "$(ls -A /$d 2>/dev/null)" ]; then cp -an /$d/. /app/$d/ && echo "salvaged /$d -> /app/$d"; fi; done' || true
             make deploy

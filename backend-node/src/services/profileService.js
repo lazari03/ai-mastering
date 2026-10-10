@@ -4,6 +4,8 @@ import { sendWelcomeEmail } from "./brevoService.js";
 import { recordServerEvent, unlinkUserAnalytics } from "./analyticsService.js";
 import { writeNotification } from "./adminNotificationService.js";
 import { deleteAllJobsForUser } from "./jobsService.js";
+import { deleteJobFiles } from "./masteringService.js";
+import { cancelSubscriptionsForDeletedAccount } from "./polarService.js";
 import { shareLinks } from "./shareLinkService.js";
 
 // User profile lives in Firestore at users/{uid} — the same document whose
@@ -55,7 +57,10 @@ export async function saveProfile(uid, profile, email, signInProvider = null) {
   // stamp createdAt (read by the Telegram bot's /stats signup count, see
   // telegramService.js) and fire the admin notification, both exactly once
   // per account.
-  const isNewSignup = profile.termsAcceptedAt !== undefined;
+  // ...and only if the account has no createdAt yet: anyone could repeat the
+  // call with termsAcceptedAt and re-fire the alerts, the welcome email and
+  // the sign_up event (and reset createdAt) as often as they liked.
+  const isNewSignup = profile.termsAcceptedAt !== undefined && !(await userDoc(uid).get()).data()?.createdAt;
   if (isNewSignup) {
     record.createdAt = new Date();
   }
@@ -128,9 +133,30 @@ export async function deleteAllUserData(uid) {
     throw new Error("Account deletion requires a signed-in user");
   }
   const doc = userDoc(uid);
+  // Stop billing first: if Polar refuses, nothing has been deleted yet and
+  // the user can retry, instead of an orphaned subscription that keeps
+  // charging a deleted account.
+  await cancelSubscriptionsForDeletedAccount(uid);
   await deleteSubcollection(doc, "artists");
-  await deleteAllJobsForUser(uid);
+  // Their audio too, not only the history rows — it used to stay on disk
+  // until the 48 h sweep after they asked for erasure.
+  const jobIds = await deleteAllJobsForUser(uid);
+  await Promise.all(jobIds.map((jobId) => deleteJobFiles(jobId)));
   shareLinks.deleteAllForUser(uid);
   unlinkUserAnalytics(uid);
-  await doc.delete();
+  // Usage counters and purchases are NOT personal data and must survive:
+  // deleting them reset the Free trial (the same ID token keeps working
+  // until the client deletes the Auth account, so DELETE /account could be
+  // called repeatedly for unlimited free masters) and wiped paid credits.
+  // Everything else on the doc (profile, email, settings) is removed.
+  const snap = await doc.get();
+  const data = snap.data() || {};
+  const retained = Object.fromEntries(RETAINED_BILLING_FIELDS.filter((key) => data[key] !== undefined).map((key) => [key, data[key]]));
+  if (Object.keys(retained).length) {
+    await doc.set({ ...retained, accountDeletedAt: new Date() });
+  } else {
+    await doc.delete();
+  }
 }
+
+const RETAINED_BILLING_FIELDS = ["freeMasterUsage", "masterQuota", "stemQuota", "extraMasterCredits", "extraStemCredits", "subscription"];

@@ -141,6 +141,9 @@ class TargetContext:
     # dB the reference moved each band's target (0 when no reference) —
     # lets problem detection tell reference-driven differences apart.
     reference_shift_db: dict[str, float] = field(default_factory=dict)
+    # What the reference's loudness / crest / width changed, and its
+    # measured values (None when no reference dynamics were supplied).
+    reference_dynamics: dict | None = None
     intent_notes: list[str] = field(default_factory=list)
     style_profile: dict = field(default_factory=dict)
     # Delivery: where the master is going, and the true-peak ceiling that
@@ -198,6 +201,7 @@ def build_target_context(
     reference_relative_db: dict[str, float] | None = None,
     preset_intent: dict | None = None,
     delivery: str | None = None,
+    reference_dynamics: dict | None = None,
 ) -> TargetContext:
     delivery = delivery or "auto"
     if delivery not in DELIVERY_TARGETS:
@@ -229,6 +233,8 @@ def build_target_context(
             ref_smooth = _smooth_octave(common, reference_relative_db)
             for b in common:
                 shift = C.REFERENCE_CURVE_WEIGHT * (ref_smooth[b["name"]] - target[b["name"]])
+                if b["center_hz"] <= C.LOW_END_PROTECT_RANGE_HZ[1]:
+                    shift = float(np.clip(shift, -C.REFERENCE_LOW_END_MAX_SHIFT_DB, C.REFERENCE_LOW_END_MAX_SHIFT_DB))
                 target[b["name"]] += shift
                 reference_shift[b["name"]] = shift
             reference_used = True
@@ -323,6 +329,41 @@ def build_target_context(
     min_lufs = min(min_lufs, preferred - 0.5)
     max_lufs = max(max_lufs, preferred)
 
+    target_crest = float(np.clip(target_crest, 5.0, 14.5))
+    width = float(np.clip(width, 0.0, 1.4))
+    reference_dyn_report = None
+    if reference_dynamics:
+        # Compare, don't copy: each reference value pulls the genre/style
+        # value part of the way, inside bounds. Transient character is not
+        # taken from the reference at all — the limiter budget stays a
+        # function of THIS source's transients (planning/budgets.py).
+        ref_lufs = reference_dynamics.get("integrated_lufs")
+        ref_crest = reference_dynamics.get("crest_db")
+        ref_width = reference_dynamics.get("stereo_width")
+        reference_dyn_report = {"reference": {k: reference_dynamics.get(k) for k in ("integrated_lufs", "true_peak_db", "plr_db", "crest_db", "short_term_crest_db", "lra_lu", "stereo_width", "stereo_correlation")}, "changes": {}}
+        if ref_lufs is not None and np.isfinite(ref_lufs):
+            new = float(np.clip(preferred + C.REFERENCE_LOUDNESS_WEIGHT * (float(ref_lufs) - preferred), min_lufs, max_lufs))
+            if abs(new - preferred) >= 0.05:
+                reference_dyn_report["changes"]["preferred_lufs"] = {"from": round(preferred, 2), "to": round(new, 2)}
+                notes.append(f"reference loudness {ref_lufs:.1f} LUFS: preferred {preferred:.1f} -> {new:.1f} LUFS (kept inside the genre range {min_lufs:.1f}..{max_lufs:.1f})")
+                preferred = new
+        if ref_crest is not None and np.isfinite(ref_crest):
+            shift = float(np.clip(C.REFERENCE_CREST_WEIGHT * (float(ref_crest) - target_crest), -C.REFERENCE_CREST_MAX_SHIFT_DB, C.REFERENCE_CREST_MAX_SHIFT_DB))
+            if abs(shift) >= 0.05:
+                new = float(np.clip(target_crest + shift, 5.0, 14.5))
+                reference_dyn_report["changes"]["target_crest_db"] = {"from": round(target_crest, 2), "to": round(new, 2)}
+                notes.append(f"reference crest {ref_crest:.1f} dB: master crest target {target_crest:.1f} -> {new:.1f} dB")
+                target_crest = new
+        if ref_width is not None and np.isfinite(ref_width):
+            new = float(np.clip(width + C.REFERENCE_WIDTH_WEIGHT * (float(ref_width) - width), width - C.REFERENCE_WIDTH_MAX_LOWER, width + C.REFERENCE_WIDTH_MAX_RAISE))
+            new = float(np.clip(new, 0.0, 1.4))
+            if abs(new - width) >= 0.005:
+                reference_dyn_report["changes"]["max_stereo_width"] = {"from": round(width, 3), "to": round(new, 3)}
+                notes.append(f"reference width {ref_width:.2f}: stereo width ceiling {width:.2f} -> {new:.2f}")
+                width = new
+        reference_used = True
+        min_lufs = min(min_lufs, preferred - 0.5)
+
     # Spotify: <= -1 dBTP, and -2 dBTP once a master is louder than
     # -14 LUFS (dense masters overshoot more in lossy transcoding).
     ceiling = LOUD_MASTER_TRUE_PEAK_CEILING_DBTP if max_lufs > STREAMING_REFERENCE_LUFS else TRUE_PEAK_CEILING_DBTP
@@ -355,8 +396,8 @@ def build_target_context(
         acceptable_min_lufs=round(min_lufs, 2),
         acceptable_max_lufs=round(max_lufs, 2),
         max_lufs_reduce_db=float(style_profile.get("max_lufs_reduce_db", -2.0)),
-        target_crest_db=float(np.clip(target_crest, 5.0, 14.5)),
-        max_stereo_width=float(np.clip(width, 0.0, 1.4)),
+        target_crest_db=float(target_crest),
+        max_stereo_width=float(width),
         saturation_allowance=float(np.clip(saturation, 0.0, C.SATURATION_MAX_AMOUNT)),
         compression_aggression=float(compression_aggression),
         hf_boost_multiplier=hf_mult,
@@ -365,6 +406,7 @@ def build_target_context(
         transient_safety=dict(profile.get("transient_safety", {})),
         reference_used=reference_used,
         reference_shift_db={k: round(v, 3) for k, v in reference_shift.items()},
+        reference_dynamics=reference_dyn_report,
         intent_notes=notes,
         style_profile=dict(style_profile),
     )

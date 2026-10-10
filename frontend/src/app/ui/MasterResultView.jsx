@@ -142,7 +142,7 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
       await downloadFileSafely(urls.masteredUrl, `mastered_${job.job_id}.${job.output_format || "wav"}`);
       trackEvent("download_completed", { source: "result_view" });
     } catch (err) {
-      setDownloadError(err?.message || t("console.downloadFailed"));
+      setDownloadError(err?.status === 404 || err?.status === 410 ? t("result.fileGone") : err?.message || t("console.downloadFailed"));
     } finally {
       setDownloading(false);
     }
@@ -225,6 +225,10 @@ export default function MasterResultView({ jobId, onMasterAnother, onViewAllMast
             afterLabel={t("result.after")}
             preparingLabel={t("result.preparingAb")}
             levelMatchNote={t("result.levelMatched")}
+            levelMatchNoteQuieter={t("result.levelMatchedQuieter")}
+            realLevelsNote={t("result.realLevels")}
+            realLevelsNoteQuieter={t("result.realLevelsQuieter")}
+            unavailableLabel={t("result.fileGone")}
             onModeChange={(m) => trackEvent(m === "before" ? "original_played" : "mastered_played", { source: "result_view" })}
           />
         ) : null}

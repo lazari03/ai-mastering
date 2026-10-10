@@ -15,6 +15,7 @@ export function masteringDspProps(result) {
   const plan = diag.mastering_plan;
   const ev = diag.evaluation || {};
   const eq = plan.eq_decisions || [];
+  const delivery = applied.delivery || {};
   const before = Number(result.before_lufs);
   const after = Number(result.after_lufs);
   return {
@@ -34,5 +35,11 @@ export function masteringDspProps(result) {
     lufs_change: Number.isFinite(before) && Number.isFinite(after) ? num(after - before) : null,
     limiter_max_gr_db: num(ev.limiter?.max_gr_db),
     crest_change_db: num(ev.dynamics?.crest_change_db),
+    // Which candidate won and why the first one didn't (initial / corrective_N /
+    // transparent_fallback) — the production signal for tuning the verdict.
+    delivered_candidate: delivery.candidate || diag.delivered_candidate || null,
+    renders: Number.isFinite(Number(delivery.renders ?? diag.renders)) ? Number(delivery.renders ?? diag.renders) : null,
+    transparent_fallback: Boolean(delivery.transparent_fallback),
+    initial_failures: Array.isArray(delivery.initial_failures) && delivery.initial_failures.length ? delivery.initial_failures.join(",") : null,
   };
 }

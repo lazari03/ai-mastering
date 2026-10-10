@@ -6,7 +6,7 @@ from scipy.ndimage import minimum_filter1d
 from scipy.signal import lfilter, resample_poly
 
 from .analysis.loudness import FastMeter
-from .audio_utils import EPS, _db, _oversample4, _true_peak_db
+from .audio_utils import EPS, _db, _oversampled_peak_per_sample, _true_peak_db
 
 
 def _soft_clip(stereo: np.ndarray, ceiling_db: float = -0.3, oversample: int = 4, drive_db: float = 0.0, max_reduction_db: float | None = None) -> np.ndarray:
@@ -90,7 +90,8 @@ def _recover_undershot_loudness(
     step_db: float = 1.5,
     min_gain_per_iteration_lufs: float = 0.05,
     tolerance_lufs: float = 0.2,
-) -> tuple[np.ndarray, float, float, int]:
+    max_recovery_gain_db: float = float("inf"),
+) -> tuple[np.ndarray, float, float, int, str]:
     """The gain-only-down true-peak limiter (and, on the standard tier,
     pedalboard.Limiter) only ever correct for OVERSHOOT past the target —
     nothing upstream compensates for loudness the limiter itself throws
@@ -114,16 +115,32 @@ def _recover_undershot_loudness(
     """
     recovery_gain_db = 0.0
     iterations = 0
-    while measured_lufs < (target_lufs - tolerance_lufs) and iterations < max_iterations:
+    stop_reason = "target_reached"
+    while measured_lufs < (target_lufs - tolerance_lufs):
+        if iterations >= max_iterations:
+            stop_reason = "max_iterations"
+            break
         deficit_db = target_lufs - measured_lufs
-        trial_gain_db = recovery_gain_db + min(deficit_db, step_db)
+        # Never push past the gain the caller's limiter caps allow (limiter
+        # damage budget on the loud hits, deepest-peak QC limit): recovery
+        # used to drive straight through them to reach the target LUFS.
+        trial_gain_db = min(recovery_gain_db + min(deficit_db, step_db), max_recovery_gain_db)
+        if trial_gain_db <= recovery_gain_db + 0.01:
+            stop_reason = "limiter_cap"
+            break
         trial_limited = render_candidate(trial_gain_db)
         trial_lufs = measure_lufs(trial_limited)
         trial_crest = _crest_factor_db(trial_limited)
 
+        # Whole-file crest after limiting is (ceiling - RMS level), so this
+        # floor is effectively a LOUDNESS cap for this genre/source: it is
+        # reported as such (stop_reason) instead of looking like a target
+        # that was simply missed.
         if trial_crest < crest_floor_db:
+            stop_reason = "crest_floor"
             break
         if (trial_lufs - measured_lufs) < min_gain_per_iteration_lufs:
+            stop_reason = "diminishing_returns"
             break
 
         recovery_gain_db = trial_gain_db
@@ -131,11 +148,11 @@ def _recover_undershot_loudness(
         measured_lufs = trial_lufs
         iterations += 1
 
-    return limited, measured_lufs, recovery_gain_db, iterations
+    return limited, measured_lufs, recovery_gain_db, iterations, stop_reason
 
 
 def _true_peak_limiter(
-    stereo: np.ndarray, sr: int, ceiling_db: float = -1.0, lookahead_ms: float = 3.0, release_ms: float = 60.0, oversample: int = 4
+    stereo: np.ndarray, sr: int, ceiling_db: float = -1.0, lookahead_ms: float = 1.0, release_ms: float = 60.0, oversample: int = 4
 ) -> np.ndarray:
     """Gain-only lookahead true-peak limiter. Unlike pedalboard.Limiter,
     this can only ever turn gain down. Peaks are DETECTED on a 4x
@@ -148,20 +165,36 @@ def _true_peak_limiter(
     `oversample` is kept for signature compatibility (fixed at 4)."""
     ceiling = float(10.0 ** (ceiling_db / 20.0))
     stereo = np.asarray(stereo, dtype=np.float32)
-    up = _oversample4(stereo)
-    abs_up = np.max(np.abs(up), axis=1)
-    if float(abs_up.max()) <= ceiling:
+    # Per base-rate sample, the largest oversampled |value| over its 4
+    # sub-samples (both channels): min over sub-samples of ceiling/|x| is
+    # ceiling/max|x|. Chunked, so no full 4x copy of the song is held.
+    peak = _oversampled_peak_per_sample(stereo, 4)
+    if float(peak.max()) <= ceiling:
         # Nothing to limit: return the input untouched.
         return stereo
-    required_up = np.minimum(1.0, ceiling / (abs_up + EPS))
-    n = stereo.shape[0]
-    required = required_up[: n * 4].reshape(n, 4).min(axis=1)
+    required = np.minimum(1.0, ceiling / (peak + EPS))
 
     # Linked stereo: one gain curve for both channels. Anticipate the peak:
     # gain at sample i is the minimum required over the NEXT lookahead
     # window, so reduction starts before the peak arrives.
     lookahead = max(1, int(sr * lookahead_ms / 1000.0))
-    gain_lookahead = minimum_filter1d(required, size=lookahead, origin=-(lookahead // 2))
+    gain_min = minimum_filter1d(required, size=lookahead, origin=-(lookahead // 2))
+    # Smooth ATTACK: average gain_min over the past `lookahead` samples, so
+    # the gain ramps into each peak across the lookahead instead of
+    # stepping. The step measured +11-13 dB added distortion and +32-38 dB
+    # >8 kHz splatter (a click on every limited transient). The ramp is
+    # kept SHORT (1 ms default lookahead): a longer ramp/hold removes more
+    # average level, loudness recovery then pushes harder, and measured
+    # drum punch fell (3 ms: -2..3 points); at 1 ms punch stays within ~1
+    # point of the step while distortion stays 2-4.5 dB lower end to end.
+    # Never exceeds what's required: every gain_min[k] averaged for sample
+    # j has a window [k, k+L-1] containing j, so each is <= required[j];
+    # the final minimum only guards float rounding.
+    n = required.shape[0]
+    csum = np.concatenate([[0.0], np.cumsum(gain_min, dtype=np.float64)])
+    idx = np.arange(n)
+    lo = np.maximum(0, idx - lookahead + 1)
+    gain_lookahead = np.minimum((csum[idx + 1] - csum[lo]) / (idx + 1 - lo), required)
     # Smooth the recovery (release) side only; the elementwise minimum can
     # only be more conservative, never violate the ceiling.
     release_alpha = float(np.exp(-1.0 / (sr * release_ms / 1000.0)))
@@ -181,67 +214,9 @@ def _true_peak_limiter(
     return limited.astype(np.float32)
 
 
-def _release_curve(gain: np.ndarray, sr: int, release_ms: float) -> np.ndarray:
-    """One-pole release applied to a gain curve, starting from its first
-    value (see _true_peak_limiter for why the initial state matters)."""
-    alpha = float(np.exp(-1.0 / (sr * max(release_ms, 1.0) / 1000.0)))
-    out, _ = lfilter([1 - alpha], [1, -alpha], gain, zi=[alpha * float(gain[0])])
-    return np.asarray(out)
-
-
-def _true_peak_limiter_ramped(
-    stereo: np.ndarray, sr: int, ceiling_db: float = -1.0, lookahead_ms: float = 3.0, ramp_ms: float = 2.0, release_ms: float = 60.0
-) -> np.ndarray:
-    """Professional engine limiter: gain-only true-peak limiting with a
-    RAMPED attack.
-
-    _true_peak_limiter anticipates a peak with a forward minimum (hold), so
-    its gain drops as a step `lookahead_ms` before the peak. A step in gain
-    is a click: it multiplies the music by a discontinuity and spreads
-    distortion across the spectrum, most audibly on sustained bass and
-    vocals under a hit. Here every downward step is instead approached by
-    a straight ramp over the `ramp_ms` before it. Everything from the step
-    on (hold through the peak, release after it) is identical to the
-    standard limiter. A symmetric smoothing of the gain was tried first and
-    rejected: it also extended the reduction past each peak, into the
-    drum's own attack, and cost measurable punch.
-
-    The ramp is the lower envelope of lines rising from each held gain:
-        g[n] = min over k in [0, R) of  h[n+k] + (1 - h[n+k]) * k / R
-    The k = 0 term is h[n] itself, so g <= h <= the requirement
-    everywhere. The ceiling guarantee is the standard limiter's, and the
-    final 4x trim stays as the backstop.
-
-    Detection is the same 4x-oversampled true-peak requirement. The extra
-    cost is one pass per ramp sample per render, which is why this is a
-    tier feature."""
-    ceiling = float(10.0 ** (ceiling_db / 20.0))
-    stereo = np.asarray(stereo, dtype=np.float32)
-    up = _oversample4(stereo)
-    abs_up = np.max(np.abs(up), axis=1)
-    if float(abs_up.max()) <= ceiling:
-        return stereo
-    n = stereo.shape[0]
-    required = np.minimum(1.0, ceiling / (abs_up + EPS))[: n * 4].reshape(n, 4).min(axis=1).astype(np.float32)
-    lookahead = max(1, int(sr * lookahead_ms / 1000.0))
-    held = minimum_filter1d(required, size=lookahead, origin=-(lookahead // 2))
-    R = max(1, int(sr * ramp_ms / 1000.0))
-    padded = np.concatenate([held, np.ones(R, dtype=held.dtype)])
-    ramped = held.copy()
-    for k in range(1, R):
-        future = padded[k : k + n]
-        np.minimum(ramped, future + (1.0 - future) * (k / R), out=ramped)
-    final_gain = np.minimum(ramped, _release_curve(ramped, sr, release_ms)).astype(np.float32)
-    limited = stereo * final_gain[:, np.newaxis]
-    true_peak_db = _true_peak_db(limited)
-    if true_peak_db > ceiling_db:
-        limited = limited * (10.0 ** ((ceiling_db - true_peak_db) / 20.0))
-    return limited.astype(np.float32)
-
-
 def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compression: bool = True) -> tuple[np.ndarray, float, dict, dict]:
-    """Professional-engine bus stage: gain staging, clipper, ramped-attack
-    true-peak limiting (_true_peak_limiter_ramped) and loudness recovery.
+    """Professional-engine bus stage: gain staging, clipper, true-peak
+    limiting and loudness recovery.
     Same structure, guards and reporting as the standard _bus_process; the
     limiting chain is the difference."""
     stereo_pb = np.ascontiguousarray(stereo.T, dtype=np.float32)
@@ -283,15 +258,15 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
     clipper_gain_reduction_db = float(max(0.0, pre_clip_peak_db - _true_peak_db(clipped))) if clipper_enabled else 0.0
 
     limiter_release_ms = float(params.get("limiter_release_ms", 60.0))
-    limited = _true_peak_limiter_ramped(clipped, sr, ceiling_db=ceiling_db, release_ms=limiter_release_ms)
+    limited = _true_peak_limiter(clipped, sr, ceiling_db=ceiling_db, release_ms=limiter_release_ms)
 
     pre_peak_db = pre_clip_peak_db
     post_peak_db = _true_peak_db(limited)
     limiter_gain_reduction_db = _limiter_reduction_db(clipped, limited)
 
     measured_lufs = float(meter.integrated_loudness(limited))
-    limited, measured_lufs, recovery_gain_db, recovery_iterations = _recover_undershot_loudness(
-        render_candidate=lambda gain_db: _true_peak_limiter_ramped(
+    limited, measured_lufs, recovery_gain_db, recovery_iterations, recovery_stop_reason = _recover_undershot_loudness(
+        render_candidate=lambda gain_db: _true_peak_limiter(
             _soft_clip(pre_limiter * (10.0 ** (gain_db / 20.0)), ceiling_db=clip_ceiling_db, max_reduction_db=clip_share) if clipper_enabled else pre_limiter * (10.0 ** (gain_db / 20.0)),
             sr,
             ceiling_db=ceiling_db,
@@ -308,6 +283,7 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
         # recovery stops sooner and leaves more headroom intact on exactly
         # the material that has the most punch to lose.
         crest_floor_db=float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))),
+        max_recovery_gain_db=float(params.get("max_recovery_gain_db", float("inf"))),
     )
     if recovery_iterations:
         final_input = pre_limiter * (10.0 ** (recovery_gain_db / 20.0))
@@ -360,7 +336,9 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
         measured_lufs = float(meter.integrated_loudness(limited))
 
     limiter_report = {
-        "final_true_peak_db": round(_true_peak_db(limited, oversample_factor=16), 3),
+        # Scalar trim: the 16x measurement above minus the trim IS the
+        # final true peak — no second 16x pass over the whole song.
+        "final_true_peak_db": round(final_tp_db - true_peak_trim_db, 3),
         "true_peak_trim_db": round(true_peak_trim_db, 3),
         "limiter_gain_reduction_db": round(limiter_gain_reduction_db, 3),
         "pre_clipper_peak_db": round(pre_peak_db, 3),
@@ -373,6 +351,12 @@ def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compr
         "true_peak_aware": True,
         "loudness_recovery_db": round(recovery_gain_db, 3),
         "loudness_recovery_iterations": recovery_iterations,
+        # Why recovery stopped: target_reached | crest_floor (the genre's
+        # dynamics floor acting as a loudness cap) | diminishing_returns
+        # (the limiter was absorbing the extra gain) | limiter_cap (the
+        # renderer's limiter caps) | max_iterations.
+        "loudness_recovery_stop_reason": recovery_stop_reason,
+        "loudness_recovery_crest_floor_db": round(float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))), 2),
     }
 
     return np.asarray(limited, dtype=np.float32), gain_db, loudness_guard, limiter_report
@@ -438,10 +422,10 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
     # fix (a spec violation), not a Professional-tier feature — the actual
     # lookahead true-peak *limiter* and sub/punch band split stay Pro-only.
     target_peak_db = ceiling_db
-    # 16x: the 4x meter's own ~0.07 dB uncertainty is the entire margin
-    # being judged here, so measuring the compliance check at 4x can
-    # (and did) pass a file sitting above the ceiling.
-    observed_true_peak_db = _true_peak_db(stereo_pb.T, oversample_factor=16)
+    # 4x here: this only seeds loudness recovery. The compliance check that
+    # decides delivery is the 16x one at the end of this function, after
+    # every gain change.
+    observed_true_peak_db = _true_peak_db(stereo_pb.T)
     if observed_true_peak_db > target_peak_db:
         stereo_pb = stereo_pb * (10.0 ** ((target_peak_db - observed_true_peak_db) / 20.0))
 
@@ -455,13 +439,14 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
         return limited_c
 
     measured_lufs = float(meter.integrated_loudness(stereo_pb.T))
-    stereo_pb, measured_lufs, recovery_gain_db, recovery_iterations = _recover_undershot_loudness(
+    stereo_pb, measured_lufs, recovery_gain_db, recovery_iterations, recovery_stop_reason = _recover_undershot_loudness(
         render_candidate=_render_recovery_candidate,
         measure_lufs=lambda x: float(meter.integrated_loudness(x.T)),
         limited=stereo_pb,
         measured_lufs=measured_lufs,
         target_lufs=float(params["target_lufs"]),
         crest_floor_db=float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))),
+        max_recovery_gain_db=float(params.get("max_recovery_gain_db", float("inf"))),
     )
     if recovery_iterations:
         final_input = pre_limiter * (10.0 ** (recovery_gain_db / 20.0))
@@ -508,6 +493,12 @@ def _bus_process(stereo: np.ndarray, sr: int, params: dict, apply_glue_compressi
         "release_ms": round(limiter_release_ms, 1),
         "loudness_recovery_db": round(recovery_gain_db, 3),
         "loudness_recovery_iterations": recovery_iterations,
+        # Why recovery stopped: target_reached | crest_floor (the genre's
+        # dynamics floor acting as a loudness cap) | diminishing_returns
+        # (the limiter was absorbing the extra gain) | limiter_cap (the
+        # renderer's limiter caps) | max_iterations.
+        "loudness_recovery_stop_reason": recovery_stop_reason,
+        "loudness_recovery_crest_floor_db": round(float(params.get("limiter_crest_floor_db", params.get("target_dynamic_range_db", 8.0))), 2),
     }
 
     return np.asarray(stereo_pb.T, dtype=np.float32), gain_db, loudness_guard, limiter_report

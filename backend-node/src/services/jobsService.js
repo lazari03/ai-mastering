@@ -73,6 +73,7 @@ const upsertStmt = jobsDb.prepare(`
 const getJobStmt = jobsDb.prepare("SELECT * FROM jobs WHERE uid = ? AND job_id = ?");
 const deleteJobStmt = jobsDb.prepare("DELETE FROM jobs WHERE uid = ? AND job_id = ?");
 const deleteAllJobsForUserStmt = jobsDb.prepare("DELETE FROM jobs WHERE uid = ?");
+const listJobIdsForUserStmt = jobsDb.prepare("SELECT job_id FROM jobs WHERE uid = ?");
 const listJobsStmt = jobsDb.prepare("SELECT * FROM jobs WHERE uid = ? ORDER BY created_at DESC LIMIT ?");
 
 // Recorded for every render, previews included — ownsJob() below needs a
@@ -151,9 +152,13 @@ export async function deleteJob(uid, jobId) {
 // cascade-delete alongside the rest of a user's data, so that deletion
 // flow needs an explicit SQLite-side equivalent or it'd silently leave a
 // deleted account's job history behind.
+// Returns the deleted job ids so the caller can remove their audio files
+// too (account deletion), not just the history rows.
 export async function deleteAllJobsForUser(uid) {
-  if (!uid) return 0;
-  return deleteAllJobsForUserStmt.run(uid).changes;
+  if (!uid) return [];
+  const ids = listJobIdsForUserStmt.all(uid).map((row) => row.job_id);
+  deleteAllJobsForUserStmt.run(uid);
+  return ids;
 }
 
 export async function listJobs(uid, limit = 25) {
