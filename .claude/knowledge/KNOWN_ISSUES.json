@@ -146,7 +146,7 @@
       "title": "EMBARGOED security finding (Critical). Details local-only until the fix is deployed.",
       "component": "python.api",
       "severity": "P0",
-      "status": "READY_FOR_REVIEW",
+      "status": "READY_FOR_QA",
       "owner": "backend-engineer",
       "root_cause": null,
       "repro": null,
@@ -155,7 +155,7 @@
         "to add: Node + Python route validation regression tests"
       ],
       "source": "local docs/agent-reports/SECURITY_REPORT.md #1; independently reproduced by technical-lead 2026-10-10 (local PoC only)",
-      "validated_commit": "298c856",
+      "validated_commit": "3b6c4e6",
       "history": [
         {
           "date": "2026-10-10",
@@ -166,7 +166,13 @@
           "date": "2026-10-10",
           "agent": "backend-engineer",
           "status": "READY_FOR_REVIEW",
-          "note": "(embargoed)"
+          "note": "(embargoed; see local security report)"
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "security-engineer",
+          "status": "READY_FOR_QA",
+          "note": "(embargoed; see local security report)"
         }
       ]
     },
@@ -193,7 +199,7 @@
           "date": "2026-10-10",
           "agent": "backend-engineer",
           "status": "IN_PROGRESS",
-          "note": "Validation part done in c53034a; remaining: service-to-service auth, network isolation, non-root container."
+          "note": "(embargoed; see local security report)"
         }
       ]
     },
