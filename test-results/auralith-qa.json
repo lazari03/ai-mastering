@@ -1,18 +1,18 @@
 {
  "tool": "backend/benchmark/api_qa.py",
- "commit": "d7346c8",
- "code_hash": "8b99ad632fedec92",
- "date": "2026-10-10T19:03:32",
+ "commit": "1616df0",
+ "code_hash": "ceb3292fd55b1bd1",
+ "date": "2026-10-10T19:46:06",
  "python": "3.12.3",
  "path_under_test": "uvicorn benchmark.qa_app \u2192 /api/master \u2192 run_in_worker \u2192 ai_mastering.master_track",
  "reused_cached_cases": 0,
  "cases": {
   "c01_balanced_pop": {
    "http_status": 200,
-   "processing_time_s": 12.9,
+   "processing_time_s": 12.1,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "dee79e783f6d7313ac93b46cce3532a0",
+   "job_id": "46a28885ae4eec9e735cd0cf7301de2d",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -106,13 +106,47 @@
     "after_lufs": -13.2,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -13.24,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 326.6,
-     "peak_child_rss_mb": 326.6,
+     "peak_rss_mb": 327.1,
+     "peak_child_rss_mb": 327.1,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 12.8
+     "wall_s": 12.1
     }
    },
    "files": {
@@ -132,16 +166,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "9f235b2a0341af0e"
+   "input_hash": "d1261e4481d652b1",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c02_bass_heavy_hiphop": {
    "http_status": 200,
-   "processing_time_s": 13.1,
+   "processing_time_s": 10.8,
    "status": "PASS_WITH_ANOMALIES",
    "actual": "mastered",
-   "job_id": "f4174f31ac8fac6723c0299c77a27350",
+   "job_id": "be6fa7b597eb8b223d8462424999a73c",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -242,13 +280,47 @@
     "after_lufs": -13.1,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -13.11,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.0
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 340.2,
-     "peak_child_rss_mb": 340.2,
+     "peak_rss_mb": 340.8,
+     "peak_child_rss_mb": 340.8,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 13.0
+     "wall_s": 10.8
     }
    },
    "files": {
@@ -274,16 +346,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "43131f452aa98b97"
+   "input_hash": "43906f19e86be027",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c03_thin_edm": {
    "http_status": 200,
-   "processing_time_s": 11.9,
+   "processing_time_s": 11.4,
    "status": "PASS_WITH_ANOMALIES",
    "actual": "mastered",
-   "job_id": "37280b942ceac5f718e97c7ea4f2ccac",
+   "job_id": "0e9b2c35af955b7030de38de3de0c813",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -384,13 +460,47 @@
     "after_lufs": -11.0,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -10.99,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.02,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 365.4,
-     "peak_child_rss_mb": 365.4,
+     "peak_rss_mb": 366.0,
+     "peak_child_rss_mb": 366.0,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 11.9
+     "wall_s": 11.4
     }
    },
    "files": {
@@ -416,16 +526,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "4ce1328e1f37f1c6"
+   "input_hash": "7843f17c94fae708",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c04_harsh_pop": {
    "http_status": 200,
    "processing_time_s": 10.0,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "04ca568dbace8b9d2ff2a57c40b7e05e",
+   "job_id": "bdf4f3976b746b985e289d839f3b7718",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -519,10 +633,44 @@
     "after_lufs": -12.7,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -12.72,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 330.9,
-     "peak_child_rss_mb": 330.9,
+     "peak_rss_mb": 331.4,
+     "peak_child_rss_mb": 331.4,
      "estimated_mb": 502,
      "duration_s": 10.0,
      "wall_s": 10.0
@@ -551,16 +699,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "551d5f504d20604c"
+   "input_hash": "42f409cc65fe5425",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c05_overcompressed_edm": {
    "http_status": 200,
-   "processing_time_s": 9.8,
+   "processing_time_s": 9.3,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "7b70e9f1fd7656e775e0a5df324ddc59",
+   "job_id": "6b30f34fd4c2e1382d5ba1eb865d4904",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -656,13 +808,47 @@
      "Mix note (over_compression): Source is already heavily limited/compressed (low PLR and short-term crest). Mastering cannot restore dynamics; loudness was not pushed further."
     ],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:plr"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -8.0,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -3.26,
+     "true_peak_dbtp": -3.25
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 320.6,
-     "peak_child_rss_mb": 320.6,
+     "peak_rss_mb": 321.1,
+     "peak_child_rss_mb": 321.1,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.8
+     "wall_s": 9.3
     }
    },
    "files": {
@@ -683,16 +869,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "40a7021e6f405583"
+   "input_hash": "dac90158da27b3ba",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c06_dynamic_jazz": {
    "http_status": 200,
-   "processing_time_s": 10.1,
+   "processing_time_s": 9.2,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "efa5f298d1792721a13fd0513e6a814e",
+   "job_id": "c9040a39a5cb7c52602fe5754516a57b",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -786,13 +976,45 @@
     "after_lufs": -16.0,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -1.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -16.02,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -1.01,
+     "true_peak_dbtp": -1.0
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 326.5,
-     "peak_child_rss_mb": 326.5,
+     "peak_rss_mb": 327.1,
+     "peak_child_rss_mb": 327.1,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.1
+     "wall_s": 9.2
     }
    },
    "files": {
@@ -814,16 +1036,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "ceae432c1b0833ce"
+   "input_hash": "9cf8c99d4b7997eb",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c07_transient_rock": {
    "http_status": 200,
-   "processing_time_s": 11.1,
+   "processing_time_s": 9.3,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "330300d7530f8da31086a4eeceebba7f",
+   "job_id": "dd14cae80ee28aa29acfe8fa2f6fa82b",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -917,13 +1143,47 @@
     "after_lufs": -17.3,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -17.29,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.02,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 327.4,
-     "peak_child_rss_mb": 327.4,
+     "peak_rss_mb": 327.8,
+     "peak_child_rss_mb": 327.8,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 11.1
+     "wall_s": 9.3
     }
    },
    "files": {
@@ -943,16 +1203,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "a86eddf137ad004a"
+   "input_hash": "f86b35b268acb359",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c08_presence_vocal_proxy": {
    "http_status": 200,
-   "processing_time_s": 10.2,
+   "processing_time_s": 9.8,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "d47a7f16324c2f435453879deda9915b",
+   "job_id": "bbd1eea9c712f2cd761c140c9a62b417",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1046,13 +1310,45 @@
     "after_lufs": -15.5,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -1.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -15.5,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -1.01,
+     "true_peak_dbtp": -1.0
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 336.7,
-     "peak_child_rss_mb": 336.7,
+     "peak_rss_mb": 337.3,
+     "peak_child_rss_mb": 337.3,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.1
+     "wall_s": 9.8
     }
    },
    "files": {
@@ -1078,14 +1374,19 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "2c066c2072aed5c9"
+   "input_hash": "21079eb084546f9e",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c09_phase_inverted": {
    "http_status": 400,
-   "processing_time_s": 11.2,
+   "processing_time_s": 11.0,
    "error": "No mastering candidate passed final verification (guardrail:excessive_band_change, guardrail:high_frequency_boost, guardrail:tilt_drift, quality_control:dynamics_preservation, quality_control:phase_correlation); no master was delivered.",
+   "error_code": "invalid_audio",
    "status": "FAIL",
    "actual": "HTTP 400",
    "input": {
@@ -1100,16 +1401,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "5bd0c0d3a404c622"
+   "input_hash": "4aee24e21012c947",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c10_mono_acoustic": {
    "http_status": 200,
-   "processing_time_s": 9.3,
+   "processing_time_s": 9.7,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "65f0a1fbaff7267d8d473e17e2ba3eea",
+   "job_id": "d8c8b323ca3fb40460f5c8dc64f2d5b1",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1204,13 +1509,45 @@
      "Source file has little to no stereo content (left/right channels are nearly identical) \u2014 mastering can't create real stereo separation that was never in the recording. The width/wider controls have nothing to widen here."
     ],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -1.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -15.04,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -1.01,
+     "true_peak_dbtp": -1.0
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 327.3,
-     "peak_child_rss_mb": 327.3,
+     "peak_rss_mb": 327.9,
+     "peak_child_rss_mb": 327.9,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.3
+     "wall_s": 9.7
     }
    },
    "files": {
@@ -1229,16 +1566,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "66cb4d7741071dd8"
+   "input_hash": "255b11bd75a6e8fe",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c11_clipped_metal": {
    "http_status": 200,
-   "processing_time_s": 9.5,
+   "processing_time_s": 10.2,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "c362f733e51f541f4878d1ae19e8127f",
+   "job_id": "5468d910b68e84e5d6d2c64cc0807834",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1336,13 +1677,47 @@
      "Mix note (over_compression): Source is already heavily limited/compressed (low PLR and short-term crest). Mastering cannot restore dynamics; loudness was not pushed further."
     ],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:plr"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -7.28,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.02,
+     "true_peak_dbtp": -2.02
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 327.4,
-     "peak_child_rss_mb": 327.4,
+     "peak_rss_mb": 327.8,
+     "peak_child_rss_mb": 327.8,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.5
+     "wall_s": 10.2
     }
    },
    "files": {
@@ -1361,16 +1736,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "be76cfc15d946b1f"
+   "input_hash": "10ebce36ad2abe6b",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c12_quiet_classical": {
    "http_status": 200,
-   "processing_time_s": 9.8,
+   "processing_time_s": 9.4,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "2324b3772f96c2c74e239d4c9b0d3b97",
+   "job_id": "b75e50e9023ff2f1960f9f05d78cf41d",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1464,13 +1843,45 @@
     "after_lufs": -19.0,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -1.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -19.0,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -3.57,
+     "true_peak_dbtp": -3.55
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 320.5,
-     "peak_child_rss_mb": 320.5,
+     "peak_rss_mb": 321.0,
+     "peak_child_rss_mb": 321.0,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.8
+     "wall_s": 9.4
     }
    },
    "files": {
@@ -1490,16 +1901,21 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "c2483ed7659826a4"
+   "input_hash": "b925a90d4cc10caf",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c13_near_silent": {
    "http_status": 400,
-   "processing_time_s": 25.3,
+   "processing_time_s": 23.5,
    "error": "No mastering candidate passed final verification (guardrail:excessive_band_change, guardrail:high_frequency_boost); no master was delivered.",
+   "error_code": "invalid_audio",
    "status": "PASS",
-   "actual": "refused cleanly (400)",
+   "actual": "refused cleanly (400, code invalid_audio)",
    "input": {
     "id": "c13_near_silent",
     "category": "near-silent audio (-18 LUFS mix attenuated 48 dB)",
@@ -1512,16 +1928,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master_or_refuse",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "43aac9f1254bfe23"
+   "input_hash": "248bce792a9be42d",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c14_dc_offset": {
    "http_status": 200,
-   "processing_time_s": 9.8,
+   "processing_time_s": 9.4,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "9b7ea654a2524cb6d8917d96c372c12d",
+   "job_id": "a289c09ec75c4b7ccd8f294e25d6e64e",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1617,13 +2037,47 @@
      "Your file had a DC offset (a constant shift away from zero); it was removed before mastering. Check your mix bus for a faulty plugin or converter."
     ],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -13.77,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.0
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 327.3,
-     "peak_child_rss_mb": 327.3,
+     "peak_rss_mb": 327.8,
+     "peak_child_rss_mb": 327.8,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.8
+     "wall_s": 9.4
     }
    },
    "files": {
@@ -1642,16 +2096,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "ceaa6275012b0525"
+   "input_hash": "4beb4361c5c97d4c",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c15_lr_imbalance": {
    "http_status": 200,
-   "processing_time_s": 10.5,
+   "processing_time_s": 9.7,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "11c6e4945a245e7804123f647d484405",
+   "job_id": "940570cbf9550316355b99bc097e8052",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1747,13 +2205,48 @@
      "Left and right channels differ in level by 8.0 dB in your upload. Mastering keeps your balance as it is; check it was intentional."
     ],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction",
+     "quality_control:channel_balance"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -15.47,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.0
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 327.2,
-     "peak_child_rss_mb": 327.2,
+     "peak_rss_mb": 327.9,
+     "peak_child_rss_mb": 327.9,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.5
+     "wall_s": 9.6
     }
    },
    "files": {
@@ -1772,16 +2265,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "111a6277e96fa3d4"
+   "input_hash": "0ec53005edfc94c3",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c16_short_2s": {
    "http_status": 200,
-   "processing_time_s": 5.3,
+   "processing_time_s": 5.1,
    "status": "PASS_WITH_ANOMALIES",
    "actual": "mastered",
-   "job_id": "2fd9a4878402d177f398738ed344a197",
+   "job_id": "50b45ba06ff92bda5a021ddccc496b29",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1882,13 +2379,47 @@
     "after_lufs": -13.5,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -13.49,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.0
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 260.7,
-     "peak_child_rss_mb": 260.7,
+     "peak_rss_mb": 261.1,
+     "peak_child_rss_mb": 261.1,
      "estimated_mb": 460,
      "duration_s": 2.0,
-     "wall_s": 5.3
+     "wall_s": 5.1
     }
    },
    "files": {
@@ -1907,16 +2438,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master_or_refuse",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "80d8eff0194f6032"
+   "input_hash": "88953c2d898b94c8",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c17_long_180s": {
    "http_status": 200,
-   "processing_time_s": 144.9,
+   "processing_time_s": 137.8,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "0bb3e31aa16f4f58e547947de99ab675",
+   "job_id": "99c13f608386fab6410b245f5262d4df",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2010,13 +2545,48 @@
     "after_lufs": -12.6,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction",
+     "quality_control:dynamics_preservation"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -12.63,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.02,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 1136.6,
-     "peak_child_rss_mb": 1136.6,
+     "peak_rss_mb": 1137.1,
+     "peak_child_rss_mb": 1137.1,
      "estimated_mb": 1380,
      "duration_s": 180.0,
-     "wall_s": 144.4
+     "wall_s": 137.2
     }
    },
    "files": {
@@ -2035,16 +2605,20 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "578133395789c08d"
+   "input_hash": "18105efeae1207be",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c18a_sr_48k": {
    "http_status": 200,
-   "processing_time_s": 10.5,
+   "processing_time_s": 10.3,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "85c78199f36d1addf00967b56281916c",
+   "job_id": "0b00bfb73738387cbec6bc12098df04d",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2138,13 +2712,47 @@
     "after_lufs": -13.3,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -13.3,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 339.9,
-     "peak_child_rss_mb": 339.9,
+     "peak_rss_mb": 340.3,
+     "peak_child_rss_mb": 340.3,
      "estimated_mb": 506,
      "duration_s": 10.000020833333334,
-     "wall_s": 10.4
+     "wall_s": 10.3
     }
    },
    "files": {
@@ -2163,16 +2771,20 @@
     "sample_rate": 48000,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "479156f0f874ab82"
+   "input_hash": "9ec4342f12d274e8",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c18b_sr_96k": {
    "http_status": 200,
-   "processing_time_s": 17.5,
+   "processing_time_s": 17.4,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "4610d63760f5a55d104302c40af53522",
+   "job_id": "c776eafcd2c6b9be94b3ca21f7a5a4a2",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2266,13 +2878,47 @@
     "after_lufs": -13.3,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -13.27,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.0
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 395.9,
-     "peak_child_rss_mb": 395.9,
+     "peak_rss_mb": 396.7,
+     "peak_child_rss_mb": 396.7,
      "estimated_mb": 562,
      "duration_s": 10.000010416666667,
-     "wall_s": 17.5
+     "wall_s": 17.3
     }
    },
    "files": {
@@ -2291,16 +2937,20 @@
     "sample_rate": 96000,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "499b41f3085e4654"
+   "input_hash": "42da5357193e021a",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c18c_sr_22k": {
    "http_status": 200,
-   "processing_time_s": 9.1,
+   "processing_time_s": 9.6,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "f4c49afbb7340d6753e9cd580d64e1f7",
+   "job_id": "f9876f784c1281eca1e89133550bfe2c",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2394,13 +3044,45 @@
     "after_lufs": -13.1,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -13.1,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.0
+    },
+    "ab_verdict": null,
     "worker": {
      "peak_rss_mb": 334.2,
      "peak_child_rss_mb": 334.2,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.1
+     "wall_s": 9.6
     }
    },
    "files": {
@@ -2419,16 +3101,20 @@
     "sample_rate": 22050,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "38ba69fc552b94b4"
+   "input_hash": "739637aa0aa94fc8",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c19a_pcm16": {
    "http_status": 200,
-   "processing_time_s": 9.5,
+   "processing_time_s": 9.8,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "fbae00fe67eb2ad004ce06bd08ee39e4",
+   "job_id": "d7990e6cb7dbc6e9553b04b7743cd4ea",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2522,13 +3208,47 @@
     "after_lufs": -13.3,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -13.28,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 326.4,
-     "peak_child_rss_mb": 326.4,
+     "peak_rss_mb": 326.9,
+     "peak_child_rss_mb": 326.9,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.5
+     "wall_s": 9.7
     }
    },
    "files": {
@@ -2547,16 +3267,20 @@
     "sample_rate": 44100,
     "subtype": "PCM_16",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "bd557f54e44ace4d"
+   "input_hash": "5d807c5fcd5d8c2b",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c19b_pcm24": {
    "http_status": 200,
-   "processing_time_s": 10.1,
+   "processing_time_s": 9.7,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "41269f6e42920d2d88eddf332a79a642",
+   "job_id": "d318db224850f37c33b02eaecafe1a7d",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2650,13 +3374,47 @@
     "after_lufs": -13.2,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -13.24,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 326.5,
-     "peak_child_rss_mb": 326.5,
+     "peak_rss_mb": 327.1,
+     "peak_child_rss_mb": 327.1,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.1
+     "wall_s": 9.7
     }
    },
    "files": {
@@ -2675,16 +3433,20 @@
     "sample_rate": 44100,
     "subtype": "PCM_24",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "c531d5656b967fc6"
+   "input_hash": "975f77f75e24b686",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c19c_pcm32": {
    "http_status": 200,
-   "processing_time_s": 9.6,
+   "processing_time_s": 9.8,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "e215f4b11be13469ab3c4c77e764dc2b",
+   "job_id": "5d33e4e518e417c15b6971cb8f00250d",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2778,13 +3540,47 @@
     "after_lufs": -13.2,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -13.22,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 326.4,
-     "peak_child_rss_mb": 326.4,
+     "peak_rss_mb": 326.9,
+     "peak_child_rss_mb": 326.9,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.6
+     "wall_s": 9.8
     }
    },
    "files": {
@@ -2803,16 +3599,21 @@
     "sample_rate": 44100,
     "subtype": "PCM_32",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "92e037d7e89a8545"
+   "input_hash": "53ac17cdf1b3b92b",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c20a_garbage": {
    "http_status": 400,
    "processing_time_s": 1.2,
    "error": "The uploaded file could not be decoded as audio (unsupported or corrupt format).",
+   "error_code": "invalid_audio",
    "status": "PASS",
-   "actual": "refused cleanly (400)",
+   "actual": "refused cleanly (400, code invalid_audio)",
    "input": {
     "id": "c20a_garbage",
     "category": "invalid: random bytes named .wav",
@@ -2823,16 +3624,21 @@
     "sample_rate": 44100,
     "subtype": null,
     "expect": "refuse",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "bc3425567288635c"
+   "input_hash": "e03c10af13904620",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c20b_truncated": {
    "http_status": 400,
    "processing_time_s": 0.0,
    "error": "Audio is too short to master (64 samples at 44100Hz).",
+   "error_code": "invalid_audio",
    "status": "PASS",
-   "actual": "refused cleanly (400)",
+   "actual": "refused cleanly (400, code invalid_audio)",
    "input": {
     "id": "c20b_truncated",
     "category": "invalid: truncated WAV",
@@ -2843,16 +3649,21 @@
     "sample_rate": 44100,
     "subtype": null,
     "expect": "refuse",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "f85e30ded3ebdeb4"
+   "input_hash": "bdd49d2e04ed394d",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "c20c_empty": {
    "http_status": 400,
-   "processing_time_s": 1.4,
+   "processing_time_s": 1.1,
    "error": "The uploaded file could not be decoded as audio (unsupported or corrupt format).",
+   "error_code": "invalid_audio",
    "status": "PASS",
-   "actual": "refused cleanly (400)",
+   "actual": "refused cleanly (400, code invalid_audio)",
    "input": {
     "id": "c20c_empty",
     "category": "invalid: empty file",
@@ -2863,16 +3674,20 @@
     "sample_rate": 44100,
     "subtype": null,
     "expect": "refuse",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {}
    },
-   "input_hash": "b616f18f71511c3e"
+   "input_hash": "ec3738da3f744b57",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "f01_professional_tier": {
    "http_status": 200,
-   "processing_time_s": 9.7,
+   "processing_time_s": 9.1,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "9dcd5f57821cee68f6038cded1a258e1",
+   "job_id": "1e79e9f00354a5544a1c90bedb51d5ce",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2966,13 +3781,47 @@
     "after_lufs": -17.3,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -17.29,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.02,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 326.5,
-     "peak_child_rss_mb": 326.5,
+     "peak_rss_mb": 327.1,
+     "peak_child_rss_mb": 327.1,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.7
+     "wall_s": 9.1
     }
    },
    "files": {
@@ -2992,18 +3841,22 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {
      "tier": "professional"
     }
    },
-   "input_hash": "f9c314a58cde149d"
+   "input_hash": "bf55e65fbdf72d8a",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "f02_category_club": {
    "http_status": 200,
-   "processing_time_s": 10.3,
+   "processing_time_s": 9.5,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "145399b67dedfb6812503809acf6ae05",
+   "job_id": "b91dcb244de218ebb92a0b36b69bf1f1",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -3097,13 +3950,47 @@
     "after_lufs": -12.6,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -12.61,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 333.4,
-     "peak_child_rss_mb": 333.4,
+     "peak_rss_mb": 333.9,
+     "peak_child_rss_mb": 333.9,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.2
+     "wall_s": 9.4
     }
    },
    "files": {
@@ -3123,18 +4010,22 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {
      "category": "club"
     }
    },
-   "input_hash": "032bb1b589a99f3b"
+   "input_hash": "242e4686e3b1a2d7",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "f03_output_mp3": {
    "http_status": 200,
-   "processing_time_s": 12.4,
+   "processing_time_s": 9.9,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "e5f83731ddb938d13a52d81dadcc69ee",
+   "job_id": "ce760a499fe3f4d218f905d18d55fd61",
    "output_format": "mp3",
    "checks": {
     "download_ok": true,
@@ -3228,13 +4119,47 @@
     "after_lufs": -13.0,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "mp3",
+     "checked": "decoded MP3",
+     "ceiling_dbtp": -1.5,
+     "gain_trim_db": 0.0,
+     "encodes": 1,
+     "passed": true,
+     "integrated_lufs": -13.04,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -1.87,
+     "true_peak_dbtp": -1.86
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 327.2,
-     "peak_child_rss_mb": 327.2,
+     "peak_rss_mb": 327.8,
+     "peak_child_rss_mb": 327.8,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 12.4
+     "wall_s": 9.9
     }
    },
    "files": {
@@ -3254,18 +4179,23 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {
      "output_format": "mp3"
     }
    },
-   "input_hash": "f9009ebd0bfb0889"
+   "input_hash": "733fbfde869c7adb",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "f04_output_flac_refused": {
    "http_status": 400,
    "processing_time_s": 0.0,
    "error": "output_format must be one of ['mp3', 'wav']",
+   "error_code": "",
    "status": "PASS",
-   "actual": "refused cleanly (400)",
+   "actual": "refused cleanly (400, code none)",
    "input": {
     "id": "f04_output_flac_refused",
     "category": "feature: unsupported output format (FLAC) refused cleanly",
@@ -3279,18 +4209,22 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "refuse",
+    "refuse_codes": [
+     ""
+    ],
     "form": {
      "output_format": "flac"
     }
    },
-   "input_hash": "743cb0d729feee8c"
+   "input_hash": "696679b9daa33c5d",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "f05_reference_mastering": {
    "http_status": 200,
-   "processing_time_s": 10.2,
+   "processing_time_s": 9.8,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "234b76f7aa88b874915ba633f7bae13b",
+   "job_id": "fe404a9d24e1259e8445fb1b22d088a3",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -3384,13 +4318,47 @@
     "after_lufs": -14.9,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -14.86,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.0
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 334.2,
-     "peak_child_rss_mb": 334.2,
+     "peak_rss_mb": 334.8,
+     "peak_child_rss_mb": 334.8,
      "estimated_mb": 652,
      "duration_s": 10.0,
-     "wall_s": 10.2
+     "wall_s": 9.8
     }
    },
    "files": {
@@ -3416,18 +4384,22 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {
      "_reference": "c01_balanced_pop"
     }
    },
-   "input_hash": "6baa684cc4f28b46"
+   "input_hash": "6a5f8d41872eceac",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "f06_tags_warmer": {
    "http_status": 200,
-   "processing_time_s": 9.4,
+   "processing_time_s": 9.9,
    "status": "PASS_WITH_ANOMALIES",
    "actual": "mastered",
-   "job_id": "febd125028cef8c14a470a4029715421",
+   "job_id": "414baf657cc0b26fc13c7a8eef771730",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -3528,13 +4500,45 @@
     "after_lufs": -12.9,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -12.88,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.01,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 333.4,
-     "peak_child_rss_mb": 333.4,
+     "peak_rss_mb": 333.9,
+     "peak_child_rss_mb": 333.9,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.4
+     "wall_s": 9.9
     }
    },
    "files": {
@@ -3554,18 +4558,22 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {
      "tags": "[\"warmer\"]"
     }
    },
-   "input_hash": "963d16719a714a36"
+   "input_hash": "644eb0b249171338",
+   "code_hash": "ceb3292fd55b1bd1"
   },
   "f07_tweaks_brightness": {
    "http_status": 200,
-   "processing_time_s": 9.9,
+   "processing_time_s": 10.1,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "04668cd1f0653e5295c1003a89834aad",
+   "job_id": "5f53de425f18ce0361923f1b771faebd",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -3659,13 +4667,47 @@
     "after_lufs": -13.2,
     "source_warnings": [],
     "qc_passed": true,
-    "verdict": null,
+    "engine": "adaptive_plan_v2",
+    "verdict_passed": true,
+    "verdict_failures": [],
+    "verdict_warnings": [
+     "quality_control:limiter_gain_reduction"
+    ],
+    "initial_verdict_passed": null,
+    "initial_verdict_failures": [],
+    "delivered_candidate": "initial",
+    "backoff_applied": false,
+    "backoff_actions": [],
+    "renders": 1,
+    "candidates": [
+     {
+      "label": "initial",
+      "passed": true,
+      "failures": [],
+      "actions": []
+     }
+    ],
+    "compression_enabled": false,
+    "delivery_check": {
+     "format": "wav",
+     "checked": "written file",
+     "ceiling_dbtp": -2.0,
+     "gain_trim_db": 0.0,
+     "encodes": 0,
+     "passed": true,
+     "integrated_lufs": -13.22,
+     "finite": true,
+     "clipped_samples": 0,
+     "sample_peak_dbfs": -2.02,
+     "true_peak_dbtp": -2.01
+    },
+    "ab_verdict": null,
     "worker": {
-     "peak_rss_mb": 336.5,
-     "peak_child_rss_mb": 336.5,
+     "peak_rss_mb": 337.1,
+     "peak_child_rss_mb": 337.1,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.9
+     "wall_s": 10.0
     }
    },
    "files": {
@@ -3685,11 +4727,15 @@
     "sample_rate": 44100,
     "subtype": "FLOAT",
     "expect": "master",
+    "refuse_codes": [
+     "invalid_audio"
+    ],
     "form": {
      "tweaks": "{\"brightness\": 0.5}"
     }
    },
-   "input_hash": "014897a25f3eda27"
+   "input_hash": "0eed886e362cb618",
+   "code_hash": "ceb3292fd55b1bd1"
   }
  },
  "endpoints": [
@@ -3733,7 +4779,7 @@
    "feature": "GET /mix-presets",
    "status": "PASS",
    "actual": "HTTP 200, 27 items",
-   "time_s": 0.01
+   "time_s": 0.0
   },
   {
    "id": "e_get_capacity",
@@ -3747,7 +4793,7 @@
    "feature": "POST /analyze (track analysis)",
    "status": "PASS",
    "actual": "HTTP 200",
-   "time_s": 3.93
+   "time_s": 4.25
   },
   {
    "id": "e_preview_params",
@@ -3760,7 +4806,7 @@
    "id": "e_job_state",
    "feature": "GET /jobs/{id}",
    "status": "PASS",
-   "actual": "{\"job_id\":\"dee79e783f6d7313ac93b46cce3532a0\",\"state\":\"completed\",\"detail\":null,\"peak_rss_mb\":326.6}",
+   "actual": "{\"job_id\":\"46a28885ae4eec9e735cd0cf7301de2d\",\"state\":\"completed\",\"detail\":null,\"peak_rss_mb\":327.1}",
    "time_s": 0.0
   },
   {
@@ -3775,20 +4821,20 @@
    "feature": "GET /original/{id} (A/B original)",
    "status": "PASS",
    "actual": "HTTP 200",
-   "time_s": 0.02
+   "time_s": 0.03
   },
   {
    "id": "e_codec_preview",
    "feature": "POST /codec-preview mp3_128",
    "status": "PASS",
    "actual": "HTTP 200 {\"codec\":\"mp3_128\",\"format\":\"mp3\",\"bitrate\":\"128k\",\"analysis_original\":{\"integrated_lufs\":-13.235,\"s",
-   "time_s": 1.75
+   "time_s": 1.64
   },
   {
    "id": "e_cancel_finished_idempotent",
    "feature": "POST /jobs/{id}/cancel on finished job",
    "status": "PASS",
-   "actual": "HTTP 200 {\"job_id\":\"dee79e783f6d7313ac93b46cce3532a0\",\"state\":\"completed\",\"cancel_requested\":false}",
+   "actual": "HTTP 200 {\"job_id\":\"46a28885ae4eec9e735cd0cf7301de2d\",\"state\":\"completed\",\"cancel_requested\":false}",
    "time_s": 0.0
   },
   {
@@ -3796,7 +4842,7 @@
    "feature": "DELETE /files/{id}",
    "status": "PASS",
    "actual": "{\"removed\":5}",
-   "time_s": 0.03
+   "time_s": 0.02
   },
   {
    "id": "e_download_after_delete",
@@ -3807,12 +4853,13 @@
   },
   {
    "id": "e_unknown_genre",
-   "feature": "POST /master with unknown genre is refused cleanly",
+   "feature": "POST /master with unknown genre is refused (HTTP 4xx, never 200)",
    "status": "PASS",
    "actual": "HTTP 400 {\"detail\":\"Unknown genre 'not-a-genre'. Options: ['pop', 'hiphop', 'rock', 'edm', 'acoustic', 'lofi', 'podcast', 'classi",
-   "time_s": 0.02
+   "time_s": 0.01
   }
  ],
+ "endpoints_note": null,
  "blocked": [
   {
    "id": "b_stems",

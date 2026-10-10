@@ -12,7 +12,21 @@ project (GuardrailConfig, benchmark.metrics, the engine's requested target);
 everything else is reported as a measurement for human review.
 
 Results are cached by (code hash, input hash): an unchanged case on unchanged
-DSP code is reused unless --force. Usage (from backend/, Python 3.12 venv):
+code (DSP + this harness) is reused unless --force. The input hash covers the
+audio, form, genre, the case's expectation/accepted refusal codes and the
+rendered reference audio.
+
+Partial runs (--quick / --cases) never drop other cases. Cases recorded under a
+different code hash that are not re-run are KEPT and marked STALE (with
+`status_before_stale`); STALE counts as non-PASS in the report, the status counts,
+TEST_BASELINES and the exit code, so a known FAIL cannot vanish by running a
+subset. Endpoint results are carried forward by --no-endpoints only when the
+previous run's code hash equals the current one; otherwise endpoints are [] and
+reported "not run".
+
+Refusals: a case that expects a refusal passes only on HTTP 400 AND an
+X-Error-Code header in the case's declared `refuse_codes` (default
+invalid_audio; "" = the route sends no code header). Usage (from backend/, Python 3.12 venv):
 
   python -m benchmark.api_qa                 # full corpus + feature cases
   python -m benchmark.api_qa --quick         # smoke subset
@@ -170,6 +184,83 @@ def _target_lufs(resp: dict):
     return None
 
 
+STALE = "STALE"
+NON_PASS_FOR_EXIT = ("FAIL", "ERROR", STALE)
+
+
+def judge_refusal(case: Case, http_status: int, error_code: str, detail) -> tuple[str, str]:
+    """Pure rule for a non-200 response. A clean refusal is HTTP 400 with a
+    detail AND an X-Error-Code in the case's declared set (409/413/499/503 etc.
+    are not input refusals and never pass)."""
+    if case.expect in ("refuse", "master_or_refuse"):
+        if http_status == 400 and bool(detail) and error_code in case.refuse_codes:
+            return "PASS", f"refused cleanly (400, code {error_code or 'none'})"
+        return "FAIL", f"HTTP {http_status} code {error_code or 'none'}; expected 400 with code in {list(case.refuse_codes)}"
+    return "FAIL", f"HTTP {http_status}"
+
+
+def loudness_check(expect: str, target, out_lufs):
+    """Pure rule. None = not applicable; for expect=master a missing target or
+    measurement is a failed check (a renamed response field must not pass)."""
+    if target is not None and out_lufs is not None:
+        return abs(out_lufs - target) <= LIMITS.loudness_tolerance_lu
+    return False if expect == "master" else None
+
+
+def status_counts(cases: dict) -> dict:
+    counts: dict = {}
+    for c in cases.values():
+        counts[c["status"]] = counts.get(c["status"], 0) + 1
+    return counts
+
+
+def carry_forward(prev: dict, code_hash: str, known: set) -> dict:
+    """Previously recorded cases (still in the corpus) for a new run. Same code
+    hash -> unchanged; different hash -> kept but marked STALE."""
+    out = {}
+    for cid, c in (prev.get("cases") or {}).items():
+        if cid not in known:
+            continue
+        c = dict(c)
+        if c.get("code_hash", prev.get("code_hash")) != code_hash and c["status"] != STALE:
+            c["status_before_stale"] = c["status"]
+            c["status"] = STALE
+        out[cid] = c
+    return out
+
+
+def reusable(cached: dict | None, h: str, code_hash: str) -> bool:
+    return bool(cached) and cached.get("input_hash") == h and cached.get("status") != STALE and cached.get("code_hash") == code_hash
+
+
+def engine_summary(body: dict) -> dict:
+    """Engine decisions from the real /master response: the final MasterVerdict,
+    delivered candidate, corrective-render (backoff) trail and the per-candidate
+    summaries all live under processing_applied.mastering_diagnostics."""
+    pa = body.get("processing_applied") or {}
+    diag = pa.get("mastering_diagnostics") or {}
+    verdict = diag.get("verdict") or {}
+    init_v = diag.get("initial_verdict") or {}
+    return {
+        "before_lufs": body.get("before_lufs"), "after_lufs": body.get("after_lufs"), "source_warnings": body.get("source_warnings"),
+        "qc_passed": (body.get("quality_control") or {}).get("passed"),
+        "engine": diag.get("engine"),
+        "verdict_passed": verdict.get("passed"),
+        "verdict_failures": [f"{f.get('source')}:{f.get('kind')}" for f in verdict.get("failures", [])],
+        "verdict_warnings": [f"{f.get('source')}:{f.get('kind')}" for f in verdict.get("warnings", [])],
+        "initial_verdict_passed": init_v.get("passed") if init_v else None,
+        "initial_verdict_failures": [f"{f.get('source')}:{f.get('kind')}" for f in init_v.get("failures", [])] if init_v else [],
+        "delivered_candidate": diag.get("delivered_candidate"),
+        "backoff_applied": diag.get("backoff_applied"), "backoff_actions": (diag.get("backoff") or {}).get("actions"),
+        "renders": diag.get("renders"),
+        "candidates": [{k: c.get(k) for k in ("label", "passed", "failures", "actions")} for c in diag.get("candidates", [])],
+        "compression_enabled": pa.get("compression_enabled"),
+        "delivery_check": pa.get("delivery_check"),
+        "ab_verdict": (body.get("ab_analysis") or {}).get("verdict"),
+        "worker": pa.get("worker"),
+    }
+
+
 def run_case(client: httpx.Client, case: Case, data: bytes, ref_bytes: bytes | None, run_dir: Path) -> dict:
     form = {k: v for k, v in case.form.items() if not k.startswith("_")}
     form.setdefault("genre", case.genre)
@@ -192,11 +283,8 @@ def run_case(client: httpx.Client, case: Case, data: bytes, ref_bytes: bytes | N
     if r.status_code != 200:
         detail = body.get("detail") if isinstance(body, dict) else None
         rec["error"] = detail if isinstance(detail, (str, dict)) else str(body)[:300]
-        clean_refusal = 400 <= r.status_code < 500 and bool(detail)
-        if case.expect in ("refuse", "master_or_refuse") and clean_refusal:
-            rec["status"], rec["actual"] = "PASS", f"refused cleanly ({r.status_code})"
-        else:
-            rec["status"], rec["actual"] = "FAIL", f"HTTP {r.status_code}"
+        rec["error_code"] = r.headers.get("X-Error-Code", "")
+        rec["status"], rec["actual"] = judge_refusal(case, r.status_code, rec["error_code"], detail)
         return rec
 
     if case.expect == "refuse":
@@ -230,8 +318,9 @@ def run_case(client: httpx.Client, case: Case, data: bytes, ref_bytes: bytes | N
     checks["true_peak_within_guardrail"] = m_out["true_peak_dbtp"] is not None and m_out["true_peak_dbtp"] <= max(tp_limit, LIMITS.max_true_peak_dbtp)
     checks["no_output_clipping"] = m_out["sample_peak_dbfs"] is not None and m_out["sample_peak_dbfs"] < 0.0
     tgt = _target_lufs(body)
-    if tgt is not None and m_out["integrated_lufs"] is not None:
-        checks["loudness_within_tolerance_of_requested_target"] = abs(m_out["integrated_lufs"] - tgt) <= LIMITS.loudness_tolerance_lu
+    lc = loudness_check(case.expect, tgt, m_out["integrated_lufs"])
+    if lc is not None:
+        checks["loudness_within_tolerance_of_requested_target"] = lc
     # Loudness-matched comparison at the master's rate (existing failure kinds and limits).
     # metrics._stereo only expands 1-D input; a mono file decodes as (n, 1).
     flat = lambda x: x[:, 0] if x.ndim == 2 and x.shape[1] == 1 else x  # noqa: E731
@@ -248,9 +337,7 @@ def run_case(client: httpx.Client, case: Case, data: bytes, ref_bytes: bytes | N
         "job_id": job_id, "output_format": ext, "checks": checks, "anomalies": anomalies,
         "requested_target_lufs": tgt, "measured_input": m_src, "measured_output": m_out,
         "comparison_loudness_matched": {k: cmp[k] for k in ("loudness_change_lu", "low_end_change_db", "high_change_db", "punch_loss", "pumping_db", "band_deltas_db")},
-        "engine_reported": {"before_lufs": body.get("before_lufs"), "after_lufs": body.get("after_lufs"), "source_warnings": body.get("source_warnings"),
-                            "qc_passed": (body.get("quality_control") or {}).get("passed"), "verdict": (body.get("ab_analysis") or {}).get("verdict"),
-                            "worker": (body.get("processing_applied") or {}).get("worker")},
+        "engine_reported": engine_summary(body),
         "files": {"source": str((case_dir / "source.wav").relative_to(ROOT)), "master": str((case_dir / f"master.{ext}").relative_to(ROOT))},
     })
     return rec
@@ -259,6 +346,7 @@ def run_case(client: httpx.Client, case: Case, data: bytes, ref_bytes: bytes | N
 # ---- endpoint feature checks ----------------------------------------------------
 
 def endpoint_checks(client: httpx.Client, done: dict) -> list[dict]:
+    """`done` = cases mastered in THIS run (job files must still exist on the server)."""
     out = []
 
     def check(tid, feature, fn):
@@ -287,11 +375,14 @@ def endpoint_checks(client: httpx.Client, done: dict) -> list[dict]:
         check("e_preview", "GET /preview/{id} (browser playback)", lambda: ((r := client.get(f"/preview/{job}")).status_code == 200 and len(r.content) > 1000, f"HTTP {r.status_code}, {len(r.content)} bytes"))
         check("e_original", "GET /original/{id} (A/B original)", lambda: ((r := client.get(f"/original/{job}")).status_code == 200, f"HTTP {r.status_code}"))
         check("e_codec_preview", "POST /codec-preview mp3_128", lambda: ((r := client.post("/codec-preview", data={"job_id": job, "codec": "mp3_128"}, timeout=120)).status_code == 200, f"HTTP {r.status_code} {r.text[:100]}"))
-        check("e_cancel_finished_idempotent", "POST /jobs/{id}/cancel on finished job", lambda: ((r := client.post(f"/jobs/{job}/cancel")).status_code in (200, 404, 409), f"HTTP {r.status_code} {r.text[:100]}"))
+        check("e_cancel_finished_idempotent", "POST /jobs/{id}/cancel on finished job", lambda: ((r := client.post(f"/jobs/{job}/cancel")).status_code == 200 and r.json().get("state") == "completed", f"HTTP {r.status_code} {r.text[:100]}"))
         check("e_delete_files", "DELETE /files/{id}", lambda: ((r := client.delete(f"/files/{job}")).status_code == 200 and r.json().get("removed", 0) > 0, r.text[:100]))
         check("e_download_after_delete", "download after delete returns 404", lambda: ((r := client.get(f"/download/{job}.wav")).status_code == 404, f"HTTP {r.status_code}"))
-    check("e_unknown_genre", "POST /master with unknown genre is refused cleanly",
-          lambda: (400 <= (r := client.post("/master", files={"file": ("a.wav", src, "audio/wav")}, data={"genre": "not-a-genre"}, timeout=300)).status_code < 500 or r.status_code == 200, f"HTTP {r.status_code} {r.text[:120]}"))
+    else:
+        out.append({"id": "e_job_dependent", "feature": "job endpoints (state/preview/original/codec/cancel/delete) need c01 mastered in this run",
+                    "status": "NOT_RUN", "actual": "c01_balanced_pop was cached or not selected; re-run it (--cases c01_balanced_pop --force)", "time_s": 0})
+    check("e_unknown_genre", "POST /master with unknown genre is refused (HTTP 4xx, never 200)",
+          lambda: (400 <= (r := client.post("/master", files={"file": ("a.wav", src, "audio/wav")}, data={"genre": "not-a-genre"}, timeout=300)).status_code < 500, f"HTTP {r.status_code} {r.text[:120]}"))
     return out
 
 
@@ -311,17 +402,21 @@ def write_reports(result: dict) -> None:
     RESULTS_JSON.parent.mkdir(parents=True, exist_ok=True)
     RESULTS_JSON.write_text(json.dumps(result, indent=1) + "\n")
     cases = result["cases"]
-    counts = {}
-    for c in cases.values():
-        counts[c["status"]] = counts.get(c["status"], 0) + 1
+    counts = status_counts(cases)
+    eps = result["endpoints"]
+    ep_summary = (f"endpoint checks {sum(e['status'] == 'PASS' for e in eps)}/{len(eps)} pass" if eps else "endpoint checks NOT RUN")
     lines = [
         "# QA report — API-level audio lab", "",
         f"Generated by `backend/benchmark/api_qa.py` · commit `{result['commit']}` · code hash `{result['code_hash']}` · {result['date']}", "",
         "Path under test: real uvicorn server → production `/api/master` route → `run_in_worker` (killable process) → `ai_mastering.master_track` → HTTP download. "
-        "Not in the loop: Node gateway (auth, billing), Demucs, essentia. **All audio is synthetic** (engineering validation, not music); "
+        "Not in the loop: Node gateway (auth, billing), Demucs, essentia. "
+        "**Untested paths:** every upload is sent as `<case>.wav`, so the compressed-upload ffmpeg decode path (.mp3/.m4a names, as the gateway forwards them) never runs; "
+        "no case sends `full_preset_json` or `mix_preset`, so the preset engine (`render_preset_master`) is never exercised. "
+        "**All audio is synthetic** (engineering validation, not music); "
         "**listening status: PENDING for every case.**", "",
         f"**Summary:** {len(cases)} audio cases · " + " · ".join(f"{k}: {v}" for k, v in sorted(counts.items())) +
-        f" · endpoint checks {sum(e['status'] == 'PASS' for e in result['endpoints'])}/{len(result['endpoints'])} pass · blocked features {len(result['blocked'])}", "",
+        f" · {ep_summary} · blocked features {len(result['blocked'])}", "",
+        "STALE = recorded under a different code hash and not re-run this time; counts as non-PASS until re-run (`--force`).", "",
         "Pass/fail uses only existing limits: GuardrailConfig (TP ≤ −0.8 dBTP, ±1.5 LU of requested target), integrity checks, and expected refusal behaviour. "
         "`benchmark.metrics` failure kinds (lost_drums, weaker_bass, harsh_highs, pumping) are reported as **anomalies for review**: on deliberately flawed "
         "inputs (e.g. bass-heavy) a correction can legitimately trigger them.", "",
@@ -338,7 +433,7 @@ def write_reports(result: dict) -> None:
     lines += ["", "Refusals / errors:", ""]
     for cid, c in cases.items():
         if c.get("error"):
-            lines.append(f"- `{cid}` → HTTP {c.get('http_status')}: {json.dumps(c['error'])[:200]}")
+            lines.append(f"- `{cid}` → HTTP {c.get('http_status')} code `{c.get('error_code', '')}`: {json.dumps(c['error'])[:200]}")
     lines += ["", "## Endpoint feature checks", "", "| ID | Feature | Status | Actual |", "|---|---|---|---|"]
     lines += [f"| {e['id']} | {e['feature']} | **{e['status']}** | {str(e['actual'])[:120]} |" for e in result["endpoints"]]
     lines += ["", "## Blocked", "", "| ID | Feature | Reason |", "|---|---|---|"]
@@ -364,13 +459,11 @@ def write_reports(result: dict) -> None:
 
 def update_baselines(result: dict) -> None:
     data = json.loads(BASELINES.read_text())
-    counts = {}
-    for c in result["cases"].values():
-        counts[c["status"]] = counts.get(c["status"], 0) + 1
+    counts = status_counts(result["cases"])
     data["api_qa"] = {
         "command": "cd backend && python -m benchmark.api_qa", "results_file": "test-results/auralith-qa.json", "report": "docs/agent-reports/QA_REPORT.md",
         "commit": result["commit"], "code_hash": result["code_hash"], "date": result["date"], "status_counts": counts,
-        "endpoints_pass": f"{sum(e['status'] == 'PASS' for e in result['endpoints'])}/{len(result['endpoints'])}",
+        "endpoints_pass": (f"{sum(e['status'] == 'PASS' for e in result['endpoints'])}/{len(result['endpoints'])}" if result["endpoints"] else "not run"),
         "listening_status": "PENDING",
         "cases": {cid: {"input_hash": c["input_hash"], "status": c["status"], "out_lufs": (c.get("measured_output") or {}).get("integrated_lufs"),
                         "out_tp": (c.get("measured_output") or {}).get("true_peak_dbtp"), "anomalies": [a["kind"] for a in c.get("anomalies", [])],
@@ -398,35 +491,37 @@ def main(argv=None) -> int:
         selected = [c for c in selected if c.id in want]
     code_hash = kb.codehash()
     prev = json.loads(RESULTS_JSON.read_text()) if RESULTS_JSON.exists() else {}
-    prev_cases = prev.get("cases", {}) if prev.get("code_hash") == code_hash else {}
 
     run_dir = RUNS_DIR / dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
     proc, base = start_server(run_dir)
     known = {c.id for c in CASES + FEATURE_CASES}
-    cases_out = {cid: c for cid, c in prev_cases.items() if cid in known}  # valid cached cases not re-run this time
+    prev_cases = carry_forward(prev, code_hash, known)
+    cases_out = dict(prev_cases)  # recorded cases not re-run this time stay (STALE when the code hash changed)
+    fresh: dict = {}
     reused = 0
     try:
         with httpx.Client(base_url=base) as client:
             by_id = {c.id: c for c in CASES}
             for case in selected:
                 data = render(case)
-                h = input_hash(case, data)
+                ref_id = case.form.get("_reference")
+                ref = render(by_id[ref_id]) if ref_id else None
+                h = input_hash(case, data, ref)
                 cached = prev_cases.get(case.id)
-                if cached and cached.get("input_hash") == h and not a.force:
+                if reusable(cached, h, code_hash) and not a.force:
                     reused += 1
                     print(f"[cached] {case.id}: {cached['status']}", flush=True)
                     continue
-                ref_id = case.form.get("_reference")
-                ref = render(by_id[ref_id]) if ref_id else None
                 try:
                     rec = run_case(client, case, data, ref, run_dir)
                 except Exception as exc:  # noqa: BLE001 — a harness fault is recorded, never silently skipped
                     rec = {"status": "ERROR", "actual": f"harness error: {type(exc).__name__}: {exc}"}
-                rec.update(input={"id": case.id, **describe(case)}, input_hash=h)
+                rec.update(input={"id": case.id, **describe(case)}, input_hash=h, code_hash=code_hash)
                 cases_out[case.id] = rec
+                fresh[case.id] = rec
                 print(f"{case.id}: {rec['status']} (HTTP {rec.get('http_status')}, {rec.get('processing_time_s')} s) {rec.get('actual', '')}", flush=True)
-            endpoints = [] if a.no_endpoints else endpoint_checks(client, cases_out)
+            endpoints = [] if a.no_endpoints else endpoint_checks(client, fresh)
     finally:
         proc.terminate()
         try:
@@ -438,13 +533,15 @@ def main(argv=None) -> int:
         "tool": "backend/benchmark/api_qa.py", "commit": kb._head(), "code_hash": code_hash, "date": dt.datetime.now().isoformat(timespec="seconds"),
         "python": sys.version.split()[0], "path_under_test": "uvicorn benchmark.qa_app → /api/master → run_in_worker → ai_mastering.master_track",
         "reused_cached_cases": reused, "cases": dict(sorted(cases_out.items())),
-        "endpoints": endpoints or prev.get("endpoints", []), "blocked": BLOCKED_FEATURES,
+        "endpoints": endpoints or (prev.get("endpoints", []) if prev.get("code_hash") == code_hash else []),
+        "endpoints_note": None if endpoints else ("carried forward (same code hash)" if prev.get("endpoints") and prev.get("code_hash") == code_hash else "not run"),
+        "blocked": BLOCKED_FEATURES,
     }
     write_reports(result)
     update_baselines(result)
-    fails = [cid for cid, c in result["cases"].items() if c["status"] in ("FAIL", "ERROR")]
-    print(f"\n{len(result['cases'])} cases; FAIL: {fails or 'none'}; reused {reused}; report {REPORT_MD.relative_to(ROOT)}")
-    return 1 if fails or any(e["status"] == "FAIL" for e in result["endpoints"]) else 0
+    fails = [cid for cid, c in result["cases"].items() if c["status"] in NON_PASS_FOR_EXIT]
+    print(f"\n{len(result['cases'])} cases; FAIL/ERROR/STALE: {fails or 'none'}; reused {reused}; report {REPORT_MD.relative_to(ROOT)}")
+    return 1 if fails or any(e["status"] in ("FAIL", "NOT_RUN") for e in result["endpoints"]) else 0
 
 
 if __name__ == "__main__":

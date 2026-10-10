@@ -17,7 +17,7 @@
   },
   "next_ids": {
     "AUDIO": 7,
-    "BACKEND": 7,
+    "BACKEND": 8,
     "BILLING": 1,
     "FRONTEND": 3,
     "SECURITY": 6,
@@ -759,19 +759,25 @@
       "title": "api_qa: engine verdict/processing_applied not captured (reads wrong response keys) — guardrail/corrective-render decisions untraceable from QA JSON",
       "component": "qa.api_lab",
       "severity": "P3",
-      "status": "OPEN",
+      "status": "READY_FOR_AUDIT",
       "owner": "qa-automation-engineer",
       "root_cause": null,
       "repro": null,
       "evidence": "MASTERING_QUALITY_REPORT.md; auralith-qa.json engine_reported.verdict null on all cases",
       "tests": [],
       "source": "MASTERING_QUALITY_REPORT.md; auralith-qa.json engine_reported.verdict null on all cases",
-      "validated_commit": "677d56a",
+      "validated_commit": "1616df0",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "qa-automation-engineer",
+          "status": "READY_FOR_AUDIT",
+          "note": "engine_reported now read from processing_applied.mastering_diagnostics (verdict, initial_verdict, delivered_candidate, backoff, candidates) + delivery_check; no case needed corrective render in the full run."
         }
       ]
     },
@@ -824,7 +830,7 @@
       "title": "QA lab correctness (auditor review): lenient checks pass on 200/any 4xx; partial runs drop known FAILs; stale endpoint results carried across code hashes; cache key misses harness/expect/reference audio; loudness check silently skipped; untested paths (ffmpeg, presets) not declared",
       "component": "qa.api_lab",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_AUDIT",
       "owner": "qa-automation-engineer",
       "root_cause": null,
       "repro": null,
@@ -833,12 +839,18 @@
         "qa.api_lab"
       ],
       "source": "docs/agent-reports/INDEPENDENT_AUDIT.md (QA lab review, findings 1-7)",
-      "validated_commit": "c4333e0",
+      "validated_commit": "1616df0",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "qa-automation-engineer",
+          "status": "READY_FOR_AUDIT",
+          "note": "Fixed Q1-Q7 in api_qa.py/qa_corpus.py: genre/cancel strict; STALE carry-forward; refusal=400+X-Error-Code per-case refuse_codes; input_hash has expect+codes+reference audio; endpoints carried only on same code hash; missing loudness target fails for master; untested paths in report header. tests/test_api_qa_rules.py 8 pass. Full run: 28 PASS/4 PWA/1 FAIL (c09, unchanged), no status changes from stricter rules."
         }
       ]
     },
@@ -872,6 +884,27 @@
           "agent": "technical-lead",
           "status": "READY_FOR_AUDIT",
           "note": "Also: issue-add now derives ids from max existing (duplicate AURALITH-PRODUCT-002 found and renumbered to -005)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-BACKEND-007",
+      "title": "Guardrail refusals (no candidate passed verification, e.g. c09/c13) return the same error code invalid_audio as undecodable input; clients/UI cannot distinguish 'your file is broken' from 'we could not master it safely'",
+      "component": "python.api",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "backend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "QA_REPORT.md (X-Error-Code now recorded); test-results/auralith-qa.json c09,c13,c20a",
+      "tests": [],
+      "source": "QA_REPORT.md (X-Error-Code now recorded); test-results/auralith-qa.json c09,c13,c20a",
+      "validated_commit": "1616df0",
+      "history": [
+        {
+          "date": "2026-10-10",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
         }
       ]
     }

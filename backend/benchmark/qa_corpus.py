@@ -45,6 +45,9 @@ class Case:
     subtype: str = "FLOAT"
     raw_bytes: bytes | None = None                    # invalid inputs bypass synthesis
     expect: str = "master"                            # "master" | "refuse" | "master_or_refuse"
+    # X-Error-Code values a refusal may carry (a refusal must be HTTP 400 AND one of these).
+    # "" = the route sent no X-Error-Code header (declare it explicitly; never implied).
+    refuse_codes: tuple = ("invalid_audio",)
     form: dict = field(default_factory=dict)          # extra /master form fields
     quick: bool = False                               # part of the --quick subset
 
@@ -115,7 +118,8 @@ FEATURE_CASES: list[Case] = [
     Case("f03_output_mp3", "feature: MP3 output", "pop", dict(healthy_variation_db=1.0), seed=31, form={"output_format": "mp3"}),
     # FLAC export is not a product feature (export is WAV or MP3, i18n.js / product.js): an
     # unsupported output format must be refused cleanly before any processing.
-    Case("f04_output_flac_refused", "feature: unsupported output format (FLAC) refused cleanly", "pop", dict(healthy_variation_db=1.0), seed=32, form={"output_format": "flac"}, expect="refuse"),
+    Case("f04_output_flac_refused", "feature: unsupported output format (FLAC) refused cleanly", "pop", dict(healthy_variation_db=1.0), seed=32, form={"output_format": "flac"}, expect="refuse",
+         refuse_codes=("",)),  # raised by stage_mastering_request as a bare HTTPException(400): no X-Error-Code (contract gap, see QA report)
     Case("f05_reference_mastering", "feature: reference mastering (dark mix vs balanced reference)", "rock", dict(offsets_db=[(3000, 20000, -7.5)]), seed=33, form={"_reference": "c01_balanced_pop"}),
     Case("f06_tags_warmer", "feature: tags (warmer)", "pop", dict(healthy_variation_db=1.0), seed=34, form={"tags": json.dumps(["warmer"])}),
     Case("f07_tweaks_brightness", "feature: manual tweak (brightness +)", "pop", dict(healthy_variation_db=1.0), seed=35, form={"tweaks": json.dumps({"brightness": 0.5})}),
@@ -137,18 +141,27 @@ def render(case: Case) -> bytes:
     return buf.getvalue()
 
 
-def input_hash(case: Case, data: bytes) -> str:
-    """Hash of what the engine receives: decoded samples + rate + subtype for
-    audio (libsndfile stamps float WAVs with a timestamped PEAK chunk, so raw
-    bytes differ run to run for identical audio), raw bytes for invalid inputs."""
-    if case.raw_bytes is not None:
-        h = hashlib.sha256(data)
-    else:
-        x, sr = sf.read(io.BytesIO(data), dtype="float64", always_2d=True)
-        h = hashlib.sha256(np.ascontiguousarray(x).tobytes())
-        h.update(f"{sr}:{case.subtype}".encode())
+def _audio_digest(data: bytes, raw: bool, subtype: str = "") -> str:
+    if raw:
+        return hashlib.sha256(data).hexdigest()
+    x, sr = sf.read(io.BytesIO(data), dtype="float64", always_2d=True)
+    h = hashlib.sha256(np.ascontiguousarray(x).tobytes())
+    h.update(f"{sr}:{subtype}".encode())
+    return h.hexdigest()
+
+
+def input_hash(case: Case, data: bytes, ref_bytes: bytes | None = None) -> str:
+    """Hash of everything that decides the verdict besides the code: decoded
+    samples + rate + subtype for audio (libsndfile stamps float WAVs with a
+    timestamped PEAK chunk, so raw bytes differ run to run for identical audio),
+    raw bytes for invalid inputs, the form, genre, the case's expectation and
+    accepted refusal codes, and the rendered reference audio (not just its name)."""
+    h = hashlib.sha256(_audio_digest(data, case.raw_bytes is not None, case.subtype).encode())
     h.update(json.dumps(case.form, sort_keys=True).encode())
     h.update(case.genre.encode())
+    h.update(f"expect={case.expect};codes={json.dumps(list(case.refuse_codes))}".encode())
+    if ref_bytes is not None:
+        h.update(b"ref:" + _audio_digest(ref_bytes, False).encode())
     return h.hexdigest()[:16]
 
 
@@ -156,5 +169,5 @@ def describe(case: Case) -> dict:
     return {
         "category": case.category, "genre": case.genre, "seed": case.seed, "make_mix": {"seconds": SECONDS, **case.mix} if case.raw_bytes is None else None,
         "transform": case.transform_desc or None, "sample_rate": case.sr, "subtype": case.subtype if case.raw_bytes is None else None,
-        "expect": case.expect, "form": case.form,
+        "expect": case.expect, "refuse_codes": list(case.refuse_codes), "form": case.form,
     }

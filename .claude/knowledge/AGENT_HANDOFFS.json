@@ -183,6 +183,33 @@
       "next_agent": "independent-auditor",
       "commit": "c4333e0",
       "date": "2026-10-10T19:35:50"
+    },
+    {
+      "handoff_id": "H-0009",
+      "task_id": "AURALITH-QA-006",
+      "agent": "qa-automation-engineer",
+      "status": "READY_FOR_AUDIT",
+      "summary": "QA-006 (Q1-Q7) and QA-004 fixed in api_qa/qa_corpus. Full run 28 PASS, 4 PWA, 1 FAIL (c09, unchanged); endpoints 17/17; no status flips. 8 new rule tests pass.",
+      "files_changed": [
+        "backend/benchmark/api_qa.py",
+        "backend/benchmark/qa_corpus.py",
+        "backend/tests/test_api_qa_rules.py"
+      ],
+      "tests_executed": [
+        "backend/tests/test_api_qa_rules.py"
+      ],
+      "results": [
+        "test-results/auralith-qa.json",
+        "docs/agent-reports/QA_REPORT.md"
+      ],
+      "risks": [
+        "guardrail refusals (c09",
+        "c13) share code invalid_audio with input refusals; f04 400 has no X-Error-Code; no corrective render occurred live so backoff capture untested on real data"
+      ],
+      "evidence": null,
+      "next_agent": "independent-auditor",
+      "commit": "1616df0",
+      "date": "2026-10-10T19:46:29"
     }
   ]
 }
