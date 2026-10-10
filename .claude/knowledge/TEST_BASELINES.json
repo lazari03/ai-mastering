@@ -44,19 +44,19 @@
     "command": "cd backend && python -m benchmark.api_qa",
     "results_file": "test-results/auralith-qa.json",
     "report": "docs/agent-reports/QA_REPORT.md",
-    "commit": "69e7a60",
-    "code_hash": "e584db5a8f7cdd89",
-    "date": "2026-10-10T18:37:42",
+    "commit": "d7346c8",
+    "code_hash": "8b99ad632fedec92",
+    "date": "2026-10-10T19:03:32",
     "status_counts": {
-      "PASS": 25,
+      "PASS": 28,
       "PASS_WITH_ANOMALIES": 4,
-      "FAIL": 4
+      "FAIL": 1
     },
     "endpoints_pass": "17/17",
     "listening_status": "PENDING",
     "cases": {
       "c01_balanced_pop": {
-        "input_hash": "9ef17be5046e8a4a",
+        "input_hash": "9f235b2a0341af0e",
         "status": "PASS",
         "out_lufs": -13.24,
         "out_tp": -2.01,
@@ -69,7 +69,7 @@
         ]
       },
       "c02_bass_heavy_hiphop": {
-        "input_hash": "68c1befc16f96adf",
+        "input_hash": "43131f452aa98b97",
         "status": "PASS_WITH_ANOMALIES",
         "out_lufs": -13.11,
         "out_tp": -2.0,
@@ -84,7 +84,7 @@
         ]
       },
       "c03_thin_edm": {
-        "input_hash": "4c2a2b1e1bfc5366",
+        "input_hash": "4ce1328e1f37f1c6",
         "status": "PASS_WITH_ANOMALIES",
         "out_lufs": -10.99,
         "out_tp": -2.01,
@@ -99,7 +99,7 @@
         ]
       },
       "c04_harsh_pop": {
-        "input_hash": "40a7c39cf6bfab80",
+        "input_hash": "551d5f504d20604c",
         "status": "PASS",
         "out_lufs": -12.72,
         "out_tp": -2.01,
@@ -112,7 +112,7 @@
         ]
       },
       "c05_overcompressed_edm": {
-        "input_hash": "683dcffd85578d00",
+        "input_hash": "40a7021e6f405583",
         "status": "PASS",
         "out_lufs": -8.0,
         "out_tp": -3.25,
@@ -125,7 +125,7 @@
         ]
       },
       "c06_dynamic_jazz": {
-        "input_hash": "1500d1c6924d88b2",
+        "input_hash": "ceae432c1b0833ce",
         "status": "PASS",
         "out_lufs": -16.02,
         "out_tp": -1.0,
@@ -138,7 +138,7 @@
         ]
       },
       "c07_transient_rock": {
-        "input_hash": "5ed0d6336dfc4b86",
+        "input_hash": "a86eddf137ad004a",
         "status": "PASS",
         "out_lufs": -17.29,
         "out_tp": -2.01,
@@ -151,7 +151,7 @@
         ]
       },
       "c08_presence_vocal_proxy": {
-        "input_hash": "4fbe27276ad518fe",
+        "input_hash": "2c066c2072aed5c9",
         "status": "PASS",
         "out_lufs": -15.5,
         "out_tp": -1.0,
@@ -164,7 +164,7 @@
         ]
       },
       "c09_phase_inverted": {
-        "input_hash": "7a83d1d0c61963fd",
+        "input_hash": "5bd0c0d3a404c622",
         "status": "FAIL",
         "out_lufs": null,
         "out_tp": null,
@@ -177,7 +177,7 @@
         ]
       },
       "c10_mono_acoustic": {
-        "input_hash": "64290ec3b2625559",
+        "input_hash": "66cb4d7741071dd8",
         "status": "PASS",
         "out_lufs": -15.04,
         "out_tp": -1.0,
@@ -190,7 +190,7 @@
         ]
       },
       "c11_clipped_metal": {
-        "input_hash": "45fed933189dfe56",
+        "input_hash": "be76cfc15d946b1f",
         "status": "PASS",
         "out_lufs": -7.28,
         "out_tp": -2.02,
@@ -203,7 +203,7 @@
         ]
       },
       "c12_quiet_classical": {
-        "input_hash": "6fd171732bee04c9",
+        "input_hash": "c2483ed7659826a4",
         "status": "PASS",
         "out_lufs": -19.0,
         "out_tp": -3.55,
@@ -216,7 +216,7 @@
         ]
       },
       "c13_near_silent": {
-        "input_hash": "083ec0619e0b8c63",
+        "input_hash": "43aac9f1254bfe23",
         "status": "PASS",
         "out_lufs": null,
         "out_tp": null,
@@ -227,7 +227,7 @@
         ]
       },
       "c14_dc_offset": {
-        "input_hash": "3ec77c915110a997",
+        "input_hash": "ceaa6275012b0525",
         "status": "PASS",
         "out_lufs": -13.77,
         "out_tp": -2.0,
@@ -240,7 +240,7 @@
         ]
       },
       "c15_lr_imbalance": {
-        "input_hash": "4cdef91c64f5cba1",
+        "input_hash": "111a6277e96fa3d4",
         "status": "PASS",
         "out_lufs": -15.47,
         "out_tp": -2.0,
@@ -253,7 +253,7 @@
         ]
       },
       "c16_short_2s": {
-        "input_hash": "3a4b76559f0ee5e6",
+        "input_hash": "80d8eff0194f6032",
         "status": "PASS_WITH_ANOMALIES",
         "out_lufs": -13.49,
         "out_tp": -2.0,
@@ -266,7 +266,7 @@
         ]
       },
       "c17_long_180s": {
-        "input_hash": "85afffde655ef1bf",
+        "input_hash": "578133395789c08d",
         "status": "PASS",
         "out_lufs": -12.63,
         "out_tp": -2.01,
@@ -279,7 +279,7 @@
         ]
       },
       "c18a_sr_48k": {
-        "input_hash": "58f575c746177cdb",
+        "input_hash": "479156f0f874ab82",
         "status": "PASS",
         "out_lufs": -13.3,
         "out_tp": -2.01,
@@ -292,7 +292,7 @@
         ]
       },
       "c18b_sr_96k": {
-        "input_hash": "a5c8b8bb6e60ac4a",
+        "input_hash": "499b41f3085e4654",
         "status": "PASS",
         "out_lufs": -13.27,
         "out_tp": -2.0,
@@ -305,7 +305,7 @@
         ]
       },
       "c18c_sr_22k": {
-        "input_hash": "d4ba374beba52af2",
+        "input_hash": "38ba69fc552b94b4",
         "status": "PASS",
         "out_lufs": -13.1,
         "out_tp": -2.0,
@@ -318,7 +318,7 @@
         ]
       },
       "c19a_pcm16": {
-        "input_hash": "3a8c99e404f66dee",
+        "input_hash": "bd557f54e44ace4d",
         "status": "PASS",
         "out_lufs": -13.28,
         "out_tp": -2.01,
@@ -331,7 +331,7 @@
         ]
       },
       "c19b_pcm24": {
-        "input_hash": "45709f4ee8141d1c",
+        "input_hash": "c531d5656b967fc6",
         "status": "PASS",
         "out_lufs": -13.24,
         "out_tp": -2.01,
@@ -344,7 +344,7 @@
         ]
       },
       "c19c_pcm32": {
-        "input_hash": "c893c81b768d4bab",
+        "input_hash": "92e037d7e89a8545",
         "status": "PASS",
         "out_lufs": -13.22,
         "out_tp": -2.01,
@@ -358,7 +358,7 @@
       },
       "c20a_garbage": {
         "input_hash": "bc3425567288635c",
-        "status": "FAIL",
+        "status": "PASS",
         "out_lufs": null,
         "out_tp": null,
         "anomalies": [],
@@ -380,7 +380,7 @@
       },
       "c20c_empty": {
         "input_hash": "b616f18f71511c3e",
-        "status": "FAIL",
+        "status": "PASS",
         "out_lufs": null,
         "out_tp": null,
         "anomalies": [],
@@ -390,7 +390,7 @@
         ]
       },
       "f01_professional_tier": {
-        "input_hash": "4416bf831a11429a",
+        "input_hash": "f9c314a58cde149d",
         "status": "PASS",
         "out_lufs": -17.29,
         "out_tp": -2.01,
@@ -403,7 +403,7 @@
         ]
       },
       "f02_category_club": {
-        "input_hash": "5659c362a1600751",
+        "input_hash": "032bb1b589a99f3b",
         "status": "PASS",
         "out_lufs": -12.61,
         "out_tp": -2.01,
@@ -416,7 +416,7 @@
         ]
       },
       "f03_output_mp3": {
-        "input_hash": "de9c020dcdc4204f",
+        "input_hash": "f9009ebd0bfb0889",
         "status": "PASS",
         "out_lufs": -13.04,
         "out_tp": -1.86,
@@ -428,21 +428,19 @@
           "dsp.evaluation"
         ]
       },
-      "f04_output_flac": {
-        "input_hash": "a2afa9fbe047ebaf",
-        "status": "FAIL",
+      "f04_output_flac_refused": {
+        "input_hash": "743cb0d729feee8c",
+        "status": "PASS",
         "out_lufs": null,
         "out_tp": null,
         "anomalies": [],
         "dsp_components": [
           "dsp.mastering_engine",
-          "dsp.eq",
-          "dsp.bus",
-          "dsp.evaluation"
+          "dsp.qc"
         ]
       },
       "f05_reference_mastering": {
-        "input_hash": "eaa6c2ae86768900",
+        "input_hash": "6baa684cc4f28b46",
         "status": "PASS",
         "out_lufs": -14.86,
         "out_tp": -2.0,
@@ -455,7 +453,7 @@
         ]
       },
       "f06_tags_warmer": {
-        "input_hash": "7803b52076032778",
+        "input_hash": "963d16719a714a36",
         "status": "PASS_WITH_ANOMALIES",
         "out_lufs": -12.88,
         "out_tp": -2.01,
@@ -470,7 +468,7 @@
         ]
       },
       "f07_tweaks_brightness": {
-        "input_hash": "d6c6fe12982e82b8",
+        "input_hash": "014897a25f3eda27",
         "status": "PASS",
         "out_lufs": -13.22,
         "out_tp": -2.01,

@@ -730,7 +730,7 @@
       "title": "Undecodable input (random bytes named .wav) returns HTTP 500 render_failed instead of 400 invalid_audio",
       "component": "dsp.bus",
       "severity": "P2",
-      "status": "READY_FOR_QA",
+      "status": "READY_FOR_AUDIT",
       "owner": "audio-dsp-engineer",
       "root_cause": "ai_mastering/audio_utils.py:101-107 sf.read fails, librosa fallback raises audioread NoBackendError, not mapped to InvalidAudioError (quality_control.py:39); service L525 maps to HTTP 500. Fix detail: AUDIO_DSP_REPORT.md section 3",
       "repro": "cd backend && /home/user/venv-auralith/bin/python -m benchmark.api_qa --cases c20a_garbage --force --no-endpoints",
@@ -739,7 +739,7 @@
         "api_qa:c20a_garbage"
       ],
       "source": "test-results/auralith-qa.json (case c20a_garbage); docs/agent-reports/AUDIO_DSP_REPORT.md section 3",
-      "validated_commit": "c4d9727",
+      "validated_commit": "d7346c8",
       "history": [
         {
           "date": "2026-10-10",
@@ -763,6 +763,12 @@
           "agent": "audio-dsp-engineer",
           "status": "READY_FOR_QA",
           "note": "Fix 257eb67 (cherry-picked as c4d9727 by lead). Undecodable input -> InvalidAudioError -> 400 invalid_audio. 3 regression tests fail-before/pass-after; pytest 231 passed; synthetic drift 0. [merged from worktree by technical-lead]"
+        },
+        {
+          "date": "2026-10-10",
+          "agent": "qa-automation-engineer",
+          "status": "READY_FOR_AUDIT",
+          "note": "Parent 50956be: c20a/c20c HTTP 500, 3 new tests fail. HEAD: both 400 invalid_audio, test_input_limits 12 pass, full api_qa 33 cases (c09 known AUDIO-002 only FAIL), pytest 232 pass. ffmpeg path = BACKEND-006 open. Gateway credit checks BLOCKED. Detail: QA_REPORT.md Verification."
         }
       ]
     },

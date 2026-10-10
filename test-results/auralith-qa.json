@@ -1,18 +1,18 @@
 {
  "tool": "backend/benchmark/api_qa.py",
- "commit": "69e7a60",
- "code_hash": "e584db5a8f7cdd89",
- "date": "2026-10-10T18:37:42",
+ "commit": "d7346c8",
+ "code_hash": "8b99ad632fedec92",
+ "date": "2026-10-10T19:03:32",
  "python": "3.12.3",
  "path_under_test": "uvicorn benchmark.qa_app \u2192 /api/master \u2192 run_in_worker \u2192 ai_mastering.master_track",
- "reused_cached_cases": 2,
+ "reused_cached_cases": 0,
  "cases": {
   "c01_balanced_pop": {
    "http_status": 200,
-   "processing_time_s": 13.0,
+   "processing_time_s": 12.9,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "812b01edcd0e1ef4739edb0c6559b36c",
+   "job_id": "dee79e783f6d7313ac93b46cce3532a0",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -108,11 +108,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 326.9,
-     "peak_child_rss_mb": 326.9,
+     "peak_rss_mb": 326.6,
+     "peak_child_rss_mb": 326.6,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 13.0
+     "wall_s": 12.8
     }
    },
    "files": {
@@ -134,14 +134,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "9ef17be5046e8a4a"
+   "input_hash": "9f235b2a0341af0e"
   },
   "c02_bass_heavy_hiphop": {
    "http_status": 200,
-   "processing_time_s": 11.3,
+   "processing_time_s": 13.1,
    "status": "PASS_WITH_ANOMALIES",
    "actual": "mastered",
-   "job_id": "ab6377ff7565afd88a8cc5cde274a7a9",
+   "job_id": "f4174f31ac8fac6723c0299c77a27350",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -244,11 +244,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 340.6,
-     "peak_child_rss_mb": 340.6,
+     "peak_rss_mb": 340.2,
+     "peak_child_rss_mb": 340.2,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 11.3
+     "wall_s": 13.0
     }
    },
    "files": {
@@ -276,14 +276,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "68c1befc16f96adf"
+   "input_hash": "43131f452aa98b97"
   },
   "c03_thin_edm": {
    "http_status": 200,
-   "processing_time_s": 12.2,
+   "processing_time_s": 11.9,
    "status": "PASS_WITH_ANOMALIES",
    "actual": "mastered",
-   "job_id": "55e2c3bc20193c52c8ef2e23cdcbc9fc",
+   "job_id": "37280b942ceac5f718e97c7ea4f2ccac",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -386,11 +386,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 365.7,
-     "peak_child_rss_mb": 365.7,
+     "peak_rss_mb": 365.4,
+     "peak_child_rss_mb": 365.4,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 12.1
+     "wall_s": 11.9
     }
    },
    "files": {
@@ -418,14 +418,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "4c2a2b1e1bfc5366"
+   "input_hash": "4ce1328e1f37f1c6"
   },
   "c04_harsh_pop": {
    "http_status": 200,
-   "processing_time_s": 10.4,
+   "processing_time_s": 10.0,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "53c6ddef08a504f5842c0bf5522edbba",
+   "job_id": "04ca568dbace8b9d2ff2a57c40b7e05e",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -521,11 +521,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 331.2,
-     "peak_child_rss_mb": 331.2,
+     "peak_rss_mb": 330.9,
+     "peak_child_rss_mb": 330.9,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.4
+     "wall_s": 10.0
     }
    },
    "files": {
@@ -553,14 +553,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "40a7c39cf6bfab80"
+   "input_hash": "551d5f504d20604c"
   },
   "c05_overcompressed_edm": {
    "http_status": 200,
-   "processing_time_s": 9.7,
+   "processing_time_s": 9.8,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "5e6746b4f2fa2bf5f925889ca858e2d5",
+   "job_id": "7b70e9f1fd7656e775e0a5df324ddc59",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -658,11 +658,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 321.0,
-     "peak_child_rss_mb": 321.0,
+     "peak_rss_mb": 320.6,
+     "peak_child_rss_mb": 320.6,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.6
+     "wall_s": 9.8
     }
    },
    "files": {
@@ -685,14 +685,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "683dcffd85578d00"
+   "input_hash": "40a7021e6f405583"
   },
   "c06_dynamic_jazz": {
    "http_status": 200,
-   "processing_time_s": 10.3,
+   "processing_time_s": 10.1,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "543bb094ff07e2f102c8b957da903680",
+   "job_id": "efa5f298d1792721a13fd0513e6a814e",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -788,11 +788,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 327.0,
-     "peak_child_rss_mb": 327.0,
+     "peak_rss_mb": 326.5,
+     "peak_child_rss_mb": 326.5,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.2
+     "wall_s": 10.1
     }
    },
    "files": {
@@ -816,14 +816,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "1500d1c6924d88b2"
+   "input_hash": "ceae432c1b0833ce"
   },
   "c07_transient_rock": {
    "http_status": 200,
-   "processing_time_s": 9.7,
+   "processing_time_s": 11.1,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "1fc5e99f995a4fe9214f5de3105790a6",
+   "job_id": "330300d7530f8da31086a4eeceebba7f",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -919,11 +919,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 327.8,
-     "peak_child_rss_mb": 327.8,
+     "peak_rss_mb": 327.4,
+     "peak_child_rss_mb": 327.4,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.6
+     "wall_s": 11.1
     }
    },
    "files": {
@@ -945,14 +945,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "5ed0d6336dfc4b86"
+   "input_hash": "a86eddf137ad004a"
   },
   "c08_presence_vocal_proxy": {
    "http_status": 200,
-   "processing_time_s": 10.4,
+   "processing_time_s": 10.2,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "252b145b453186943a91d6ad4af7d65f",
+   "job_id": "d47a7f16324c2f435453879deda9915b",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1048,11 +1048,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 337.1,
-     "peak_child_rss_mb": 337.1,
+     "peak_rss_mb": 336.7,
+     "peak_child_rss_mb": 336.7,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.3
+     "wall_s": 10.1
     }
    },
    "files": {
@@ -1080,11 +1080,11 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "4fbe27276ad518fe"
+   "input_hash": "2c066c2072aed5c9"
   },
   "c09_phase_inverted": {
    "http_status": 400,
-   "processing_time_s": 10.4,
+   "processing_time_s": 11.2,
    "error": "No mastering candidate passed final verification (guardrail:excessive_band_change, guardrail:high_frequency_boost, guardrail:tilt_drift, quality_control:dynamics_preservation, quality_control:phase_correlation); no master was delivered.",
    "status": "FAIL",
    "actual": "HTTP 400",
@@ -1102,14 +1102,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "7a83d1d0c61963fd"
+   "input_hash": "5bd0c0d3a404c622"
   },
   "c10_mono_acoustic": {
    "http_status": 200,
-   "processing_time_s": 9.2,
+   "processing_time_s": 9.3,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "52b4ff740dfe0211c904a207441c87ff",
+   "job_id": "65f0a1fbaff7267d8d473e17e2ba3eea",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1206,11 +1206,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 327.8,
-     "peak_child_rss_mb": 327.8,
+     "peak_rss_mb": 327.3,
+     "peak_child_rss_mb": 327.3,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.2
+     "wall_s": 9.3
     }
    },
    "files": {
@@ -1231,14 +1231,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "64290ec3b2625559"
+   "input_hash": "66cb4d7741071dd8"
   },
   "c11_clipped_metal": {
    "http_status": 200,
    "processing_time_s": 9.5,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "a7503f4e4cbf8b82c89e1ff81ae2f924",
+   "job_id": "c362f733e51f541f4878d1ae19e8127f",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1338,8 +1338,8 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 327.8,
-     "peak_child_rss_mb": 327.8,
+     "peak_rss_mb": 327.4,
+     "peak_child_rss_mb": 327.4,
      "estimated_mb": 502,
      "duration_s": 10.0,
      "wall_s": 9.5
@@ -1363,14 +1363,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "45fed933189dfe56"
+   "input_hash": "be76cfc15d946b1f"
   },
   "c12_quiet_classical": {
    "http_status": 200,
-   "processing_time_s": 9.7,
+   "processing_time_s": 9.8,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "2fae853e8862b6231710e7948557236f",
+   "job_id": "2324b3772f96c2c74e239d4c9b0d3b97",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1466,11 +1466,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 320.8,
-     "peak_child_rss_mb": 320.8,
+     "peak_rss_mb": 320.5,
+     "peak_child_rss_mb": 320.5,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.6
+     "wall_s": 9.8
     }
    },
    "files": {
@@ -1492,11 +1492,11 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "6fd171732bee04c9"
+   "input_hash": "c2483ed7659826a4"
   },
   "c13_near_silent": {
    "http_status": 400,
-   "processing_time_s": 24.9,
+   "processing_time_s": 25.3,
    "error": "No mastering candidate passed final verification (guardrail:excessive_band_change, guardrail:high_frequency_boost); no master was delivered.",
    "status": "PASS",
    "actual": "refused cleanly (400)",
@@ -1514,14 +1514,14 @@
     "expect": "master_or_refuse",
     "form": {}
    },
-   "input_hash": "083ec0619e0b8c63"
+   "input_hash": "43aac9f1254bfe23"
   },
   "c14_dc_offset": {
    "http_status": 200,
-   "processing_time_s": 9.7,
+   "processing_time_s": 9.8,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "bc1b1a930c5d08bb9214f182fb1b0add",
+   "job_id": "9b7ea654a2524cb6d8917d96c372c12d",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1619,11 +1619,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 327.8,
-     "peak_child_rss_mb": 327.8,
+     "peak_rss_mb": 327.3,
+     "peak_child_rss_mb": 327.3,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.7
+     "wall_s": 9.8
     }
    },
    "files": {
@@ -1644,14 +1644,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "3ec77c915110a997"
+   "input_hash": "ceaa6275012b0525"
   },
   "c15_lr_imbalance": {
    "http_status": 200,
-   "processing_time_s": 10.1,
+   "processing_time_s": 10.5,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "02157738c23d0bac96f7444a6438d4ab",
+   "job_id": "11c6e4945a245e7804123f647d484405",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1749,11 +1749,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 327.8,
-     "peak_child_rss_mb": 327.8,
+     "peak_rss_mb": 327.2,
+     "peak_child_rss_mb": 327.2,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.1
+     "wall_s": 10.5
     }
    },
    "files": {
@@ -1774,14 +1774,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "4cdef91c64f5cba1"
+   "input_hash": "111a6277e96fa3d4"
   },
   "c16_short_2s": {
    "http_status": 200,
    "processing_time_s": 5.3,
    "status": "PASS_WITH_ANOMALIES",
    "actual": "mastered",
-   "job_id": "ec5d1994cfc2dba80fe90f270f7f78f9",
+   "job_id": "2fd9a4878402d177f398738ed344a197",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -1884,8 +1884,8 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 260.9,
-     "peak_child_rss_mb": 260.9,
+     "peak_rss_mb": 260.7,
+     "peak_child_rss_mb": 260.7,
      "estimated_mb": 460,
      "duration_s": 2.0,
      "wall_s": 5.3
@@ -1909,14 +1909,14 @@
     "expect": "master_or_refuse",
     "form": {}
    },
-   "input_hash": "3a4b76559f0ee5e6"
+   "input_hash": "80d8eff0194f6032"
   },
   "c17_long_180s": {
    "http_status": 200,
-   "processing_time_s": 147.8,
+   "processing_time_s": 144.9,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "146c0e4971e55bee67c46bc50a51b5c5",
+   "job_id": "0bb3e31aa16f4f58e547947de99ab675",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2012,11 +2012,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 1136.8,
-     "peak_child_rss_mb": 1136.8,
+     "peak_rss_mb": 1136.6,
+     "peak_child_rss_mb": 1136.6,
      "estimated_mb": 1380,
      "duration_s": 180.0,
-     "wall_s": 147.3
+     "wall_s": 144.4
     }
    },
    "files": {
@@ -2037,14 +2037,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "85afffde655ef1bf"
+   "input_hash": "578133395789c08d"
   },
   "c18a_sr_48k": {
    "http_status": 200,
-   "processing_time_s": 10.2,
+   "processing_time_s": 10.5,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "79bed3cae101e348521cb635669e3b26",
+   "job_id": "85c78199f36d1addf00967b56281916c",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2140,11 +2140,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 336.4,
-     "peak_child_rss_mb": 336.4,
+     "peak_rss_mb": 339.9,
+     "peak_child_rss_mb": 339.9,
      "estimated_mb": 506,
      "duration_s": 10.000020833333334,
-     "wall_s": 10.1
+     "wall_s": 10.4
     }
    },
    "files": {
@@ -2165,14 +2165,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "58f575c746177cdb"
+   "input_hash": "479156f0f874ab82"
   },
   "c18b_sr_96k": {
    "http_status": 200,
-   "processing_time_s": 18.1,
+   "processing_time_s": 17.5,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "3bd1a00c336bbf0094dcbd1d8982ac8b",
+   "job_id": "4610d63760f5a55d104302c40af53522",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2268,11 +2268,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 396.4,
-     "peak_child_rss_mb": 396.4,
+     "peak_rss_mb": 395.9,
+     "peak_child_rss_mb": 395.9,
      "estimated_mb": 562,
      "duration_s": 10.000010416666667,
-     "wall_s": 18.1
+     "wall_s": 17.5
     }
    },
    "files": {
@@ -2293,14 +2293,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "a5c8b8bb6e60ac4a"
+   "input_hash": "499b41f3085e4654"
   },
   "c18c_sr_22k": {
    "http_status": 200,
-   "processing_time_s": 10.5,
+   "processing_time_s": 9.1,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "cc6d5801645caf8889b53defd6fdb879",
+   "job_id": "f4c49afbb7340d6753e9cd580d64e1f7",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2400,7 +2400,7 @@
      "peak_child_rss_mb": 334.2,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.4
+     "wall_s": 9.1
     }
    },
    "files": {
@@ -2421,14 +2421,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "d4ba374beba52af2"
+   "input_hash": "38ba69fc552b94b4"
   },
   "c19a_pcm16": {
    "http_status": 200,
-   "processing_time_s": 9.8,
+   "processing_time_s": 9.5,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "030e094bab50817036582c12e99be4b7",
+   "job_id": "fbae00fe67eb2ad004ce06bd08ee39e4",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2524,11 +2524,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 326.7,
-     "peak_child_rss_mb": 326.7,
+     "peak_rss_mb": 326.4,
+     "peak_child_rss_mb": 326.4,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.8
+     "wall_s": 9.5
     }
    },
    "files": {
@@ -2549,14 +2549,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "3a8c99e404f66dee"
+   "input_hash": "bd557f54e44ace4d"
   },
   "c19b_pcm24": {
    "http_status": 200,
    "processing_time_s": 10.1,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "4b54e5344fd942b3cdb50e7599ed0da3",
+   "job_id": "41269f6e42920d2d88eddf332a79a642",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2652,8 +2652,8 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 326.8,
-     "peak_child_rss_mb": 326.8,
+     "peak_rss_mb": 326.5,
+     "peak_child_rss_mb": 326.5,
      "estimated_mb": 502,
      "duration_s": 10.0,
      "wall_s": 10.1
@@ -2677,14 +2677,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "45709f4ee8141d1c"
+   "input_hash": "c531d5656b967fc6"
   },
   "c19c_pcm32": {
    "http_status": 200,
-   "processing_time_s": 10.0,
+   "processing_time_s": 9.6,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "1622e9e276cb44a1e760fb6a32eb6deb",
+   "job_id": "e215f4b11be13469ab3c4c77e764dc2b",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2780,11 +2780,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 326.6,
-     "peak_child_rss_mb": 326.6,
+     "peak_rss_mb": 326.4,
+     "peak_child_rss_mb": 326.4,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.9
+     "wall_s": 9.6
     }
    },
    "files": {
@@ -2805,14 +2805,14 @@
     "expect": "master",
     "form": {}
    },
-   "input_hash": "c893c81b768d4bab"
+   "input_hash": "92e037d7e89a8545"
   },
   "c20a_garbage": {
-   "http_status": 500,
-   "processing_time_s": 1.5,
-   "error": "Adaptive mastering failed: NoBackendError: ",
-   "status": "FAIL",
-   "actual": "HTTP 500",
+   "http_status": 400,
+   "processing_time_s": 1.2,
+   "error": "The uploaded file could not be decoded as audio (unsupported or corrupt format).",
+   "status": "PASS",
+   "actual": "refused cleanly (400)",
    "input": {
     "id": "c20a_garbage",
     "category": "invalid: random bytes named .wav",
@@ -2848,11 +2848,11 @@
    "input_hash": "f85e30ded3ebdeb4"
   },
   "c20c_empty": {
-   "http_status": 500,
-   "processing_time_s": 1.0,
-   "error": "Adaptive mastering failed: EOFError: ",
-   "status": "FAIL",
-   "actual": "HTTP 500",
+   "http_status": 400,
+   "processing_time_s": 1.4,
+   "error": "The uploaded file could not be decoded as audio (unsupported or corrupt format).",
+   "status": "PASS",
+   "actual": "refused cleanly (400)",
    "input": {
     "id": "c20c_empty",
     "category": "invalid: empty file",
@@ -2869,10 +2869,10 @@
   },
   "f01_professional_tier": {
    "http_status": 200,
-   "processing_time_s": 10.0,
+   "processing_time_s": 9.7,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "17d073814dd86316b0c76b6996c8d4a6",
+   "job_id": "9dcd5f57821cee68f6038cded1a258e1",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -2968,11 +2968,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 326.9,
-     "peak_child_rss_mb": 326.9,
+     "peak_rss_mb": 326.5,
+     "peak_child_rss_mb": 326.5,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 9.9
+     "wall_s": 9.7
     }
    },
    "files": {
@@ -2996,14 +2996,14 @@
      "tier": "professional"
     }
    },
-   "input_hash": "4416bf831a11429a"
+   "input_hash": "f9c314a58cde149d"
   },
   "f02_category_club": {
    "http_status": 200,
-   "processing_time_s": 10.9,
+   "processing_time_s": 10.3,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "9360a1ba1ba4a03f9871408fe8e2a26c",
+   "job_id": "145399b67dedfb6812503809acf6ae05",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -3099,11 +3099,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 333.8,
-     "peak_child_rss_mb": 333.8,
+     "peak_rss_mb": 333.4,
+     "peak_child_rss_mb": 333.4,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.9
+     "wall_s": 10.2
     }
    },
    "files": {
@@ -3127,14 +3127,14 @@
      "category": "club"
     }
    },
-   "input_hash": "5659c362a1600751"
+   "input_hash": "032bb1b589a99f3b"
   },
   "f03_output_mp3": {
    "http_status": 200,
-   "processing_time_s": 11.6,
+   "processing_time_s": 12.4,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "30f44136c9a097aacc7b45bc0eade329",
+   "job_id": "e5f83731ddb938d13a52d81dadcc69ee",
    "output_format": "mp3",
    "checks": {
     "download_ok": true,
@@ -3230,11 +3230,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 327.7,
-     "peak_child_rss_mb": 327.7,
+     "peak_rss_mb": 327.2,
+     "peak_child_rss_mb": 327.2,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 11.5
+     "wall_s": 12.4
     }
    },
    "files": {
@@ -3258,17 +3258,17 @@
      "output_format": "mp3"
     }
    },
-   "input_hash": "de9c020dcdc4204f"
+   "input_hash": "f9009ebd0bfb0889"
   },
-  "f04_output_flac": {
+  "f04_output_flac_refused": {
    "http_status": 400,
    "processing_time_s": 0.0,
    "error": "output_format must be one of ['mp3', 'wav']",
-   "status": "FAIL",
-   "actual": "HTTP 400",
+   "status": "PASS",
+   "actual": "refused cleanly (400)",
    "input": {
-    "id": "f04_output_flac",
-    "category": "feature: FLAC output",
+    "id": "f04_output_flac_refused",
+    "category": "feature: unsupported output format (FLAC) refused cleanly",
     "genre": "pop",
     "seed": 32,
     "make_mix": {
@@ -3278,19 +3278,19 @@
     "transform": null,
     "sample_rate": 44100,
     "subtype": "FLOAT",
-    "expect": "master",
+    "expect": "refuse",
     "form": {
      "output_format": "flac"
     }
    },
-   "input_hash": "a2afa9fbe047ebaf"
+   "input_hash": "743cb0d729feee8c"
   },
   "f05_reference_mastering": {
    "http_status": 200,
-   "processing_time_s": 12.8,
+   "processing_time_s": 10.2,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "23866d732ad9b43f8bd283bc1380e155",
+   "job_id": "234b76f7aa88b874915ba633f7bae13b",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -3386,11 +3386,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 334.6,
-     "peak_child_rss_mb": 334.6,
+     "peak_rss_mb": 334.2,
+     "peak_child_rss_mb": 334.2,
      "estimated_mb": 652,
      "duration_s": 10.0,
-     "wall_s": 12.7
+     "wall_s": 10.2
     }
    },
    "files": {
@@ -3420,14 +3420,14 @@
      "_reference": "c01_balanced_pop"
     }
    },
-   "input_hash": "eaa6c2ae86768900"
+   "input_hash": "6baa684cc4f28b46"
   },
   "f06_tags_warmer": {
    "http_status": 200,
-   "processing_time_s": 15.6,
+   "processing_time_s": 9.4,
    "status": "PASS_WITH_ANOMALIES",
    "actual": "mastered",
-   "job_id": "83610aeffcce2d67e0174d4cd1349037",
+   "job_id": "febd125028cef8c14a470a4029715421",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -3530,11 +3530,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 333.8,
-     "peak_child_rss_mb": 333.8,
+     "peak_rss_mb": 333.4,
+     "peak_child_rss_mb": 333.4,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 15.6
+     "wall_s": 9.4
     }
    },
    "files": {
@@ -3558,14 +3558,14 @@
      "tags": "[\"warmer\"]"
     }
    },
-   "input_hash": "7803b52076032778"
+   "input_hash": "963d16719a714a36"
   },
   "f07_tweaks_brightness": {
    "http_status": 200,
-   "processing_time_s": 10.8,
+   "processing_time_s": 9.9,
    "status": "PASS",
    "actual": "mastered",
-   "job_id": "83d253755fb4d8d3a93df271c278dfd2",
+   "job_id": "04668cd1f0653e5295c1003a89834aad",
    "output_format": "wav",
    "checks": {
     "download_ok": true,
@@ -3661,11 +3661,11 @@
     "qc_passed": true,
     "verdict": null,
     "worker": {
-     "peak_rss_mb": 336.8,
-     "peak_child_rss_mb": 336.8,
+     "peak_rss_mb": 336.5,
+     "peak_child_rss_mb": 336.5,
      "estimated_mb": 502,
      "duration_s": 10.0,
-     "wall_s": 10.8
+     "wall_s": 9.9
     }
    },
    "files": {
@@ -3689,7 +3689,7 @@
      "tweaks": "{\"brightness\": 0.5}"
     }
    },
-   "input_hash": "d6c6fe12982e82b8"
+   "input_hash": "014897a25f3eda27"
   }
  },
  "endpoints": [
@@ -3747,7 +3747,7 @@
    "feature": "POST /analyze (track analysis)",
    "status": "PASS",
    "actual": "HTTP 200",
-   "time_s": 4.68
+   "time_s": 3.93
   },
   {
    "id": "e_preview_params",
@@ -3760,8 +3760,8 @@
    "id": "e_job_state",
    "feature": "GET /jobs/{id}",
    "status": "PASS",
-   "actual": "{\"job_id\":\"812b01edcd0e1ef4739edb0c6559b36c\",\"state\":\"completed\",\"detail\":null,\"peak_rss_mb\":326.9}",
-   "time_s": 0.01
+   "actual": "{\"job_id\":\"dee79e783f6d7313ac93b46cce3532a0\",\"state\":\"completed\",\"detail\":null,\"peak_rss_mb\":326.6}",
+   "time_s": 0.0
   },
   {
    "id": "e_preview",
@@ -3775,21 +3775,21 @@
    "feature": "GET /original/{id} (A/B original)",
    "status": "PASS",
    "actual": "HTTP 200",
-   "time_s": 0.03
+   "time_s": 0.02
   },
   {
    "id": "e_codec_preview",
    "feature": "POST /codec-preview mp3_128",
    "status": "PASS",
    "actual": "HTTP 200 {\"codec\":\"mp3_128\",\"format\":\"mp3\",\"bitrate\":\"128k\",\"analysis_original\":{\"integrated_lufs\":-13.235,\"s",
-   "time_s": 2.57
+   "time_s": 1.75
   },
   {
    "id": "e_cancel_finished_idempotent",
    "feature": "POST /jobs/{id}/cancel on finished job",
    "status": "PASS",
-   "actual": "HTTP 200 {\"job_id\":\"812b01edcd0e1ef4739edb0c6559b36c\",\"state\":\"completed\",\"cancel_requested\":false}",
-   "time_s": 0.01
+   "actual": "HTTP 200 {\"job_id\":\"dee79e783f6d7313ac93b46cce3532a0\",\"state\":\"completed\",\"cancel_requested\":false}",
+   "time_s": 0.0
   },
   {
    "id": "e_delete_files",
@@ -3810,7 +3810,7 @@
    "feature": "POST /master with unknown genre is refused cleanly",
    "status": "PASS",
    "actual": "HTTP 400 {\"detail\":\"Unknown genre 'not-a-genre'. Options: ['pop', 'hiphop', 'rock', 'edm', 'acoustic', 'lofi', 'podcast', 'classi",
-   "time_s": 0.01
+   "time_s": 0.02
   }
  ],
  "blocked": [
