@@ -319,10 +319,10 @@ def _run_master_job(file, resolved_config: dict, reference_file, job_id: str | N
 
 @router.post("/jobs/{job_id}/cancel")
 def cancel_job(job_id: str) -> dict:
-    require_job_id(job_id)
     """Idempotent. Queued: removed from the queue. Running: the worker's
     process group is killed within ~0.25 s. Terminal: unchanged (a completed
     job stays completed; the caller decides what to do with it)."""
+    require_job_id(job_id)
     rec = registry.request_cancel(job_id)
     governor.cancel_queued(job_id)
     if rec is None:

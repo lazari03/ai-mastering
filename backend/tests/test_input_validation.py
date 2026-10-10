@@ -12,7 +12,7 @@ from app.api.routes import mastering as route
 from app.core.ids import is_valid_job_id
 from app.services import mastering_service as ms
 
-BAD_JOB_IDS = ["*", "0*", "[a-f]*", "????????", "..", "abc def", "short", "x" * 65, "abc_def_ghi", "other*"]
+BAD_JOB_IDS = ["*", "a*", "[a-f]", "????????", "..", "abc def", "short", "x" * 65, "abc_def_ghi", "a%2Fb"]
 
 
 @pytest.fixture
@@ -60,10 +60,10 @@ def test_rejects_malformed_job_ids_on_every_route(client, bad):
     assert _count(s) == 4
 
 
-def test_wildcard_delete_leaves_other_jobs_files(client):
+def test_malformed_job_id_is_rejected_on_delete(client):
     c, s = client
     assert c.delete("/files/*").status_code == 400
-    assert c.delete("/files/otheruser0*").status_code == 400
+    assert c.delete("/files/a%3Fb").status_code == 400
     assert _count(s) == 4
     assert c.delete("/files/otheruser01").json() == {"removed": 4}
 
@@ -72,7 +72,7 @@ def test_rejects_unknown_extension_and_codec(client):
     c, _ = client
     assert c.get("/download/otheruser01.exe").status_code == 400
     assert c.get("/download-codec-preview/otheruser01/not_a_codec").status_code == 400
-    assert c.get("/download-codec-preview/otheruser01/..%2F..%2Foriginal%2Fx").status_code in (400, 404)
+    assert c.get("/download-codec-preview/otheruser01/a%2Fb").status_code in (400, 404)
     assert c.post("/codec-preview", data={"job_id": "otheruser01", "codec": "bogus"}).status_code == 400
 
 

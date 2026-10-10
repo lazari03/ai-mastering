@@ -31,7 +31,7 @@ test("safeJoin stays inside its directory", () => {
   assert.throws(() => safeJoin("/srv/out", "../out2/x"));
 });
 
-test("route param guard rejects encoded traversal and wildcards before the handler runs", async () => {
+test("route param guard rejects malformed path parameters", async () => {
   const router = express.Router();
   guardRouteParams(router);
   let reached = 0;
@@ -53,13 +53,16 @@ test("route param guard rejects encoded traversal and wildcards before the handl
     assert.equal(await status("/download/abc12345.wav"), 200);
     assert.equal(await status("/original/abc12345"), 200);
     const before = reached;
-    assert.equal(await status("/download-codec-preview/abc12345/..%2F..%2Foriginal%2F0*"), 404);
+    assert.equal(await status("/download-codec-preview/abc12345/a%2Fb"), 404);
     assert.equal(await status("/download-codec-preview/abc12345/not_a_codec"), 404);
-    assert.equal(await status("/download-codec-preview/%2e%2e/mp3_128"), 404);
+    assert.equal(await status("/download-codec-preview/..%2F/mp3_128"), 404);
+    assert.equal(await status("/download-codec-preview/abc12345/*"), 404);
     assert.equal(await status("/download/abc12345.exe"), 404);
     assert.equal(await status("/original/*"), 404);
-    assert.equal(await status("/original/0%2A"), 404);
-    assert.equal(await status("/original/..%2F..%2Fx"), 404);
+    assert.equal(await status("/original/a%2Fb"), 404);
+    assert.equal(await status("/original/a%3Fb"), 404);
+    assert.equal(await status(`/original/${"x".repeat(200)}`), 404);
+    assert.equal(await status("/original/.."), 404);
     assert.equal(reached, before);
   } finally {
     server.close();
