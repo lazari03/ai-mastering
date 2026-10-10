@@ -45,5 +45,8 @@ must not automatically overwrite its baseline to make CI pass.
 
 Missing corpus/baselines fail explicitly; absent runners leave the checks
 queued. Synthetic regression remains the fast check against the committed
-Standard baseline. Measurements detect drift and safety regressions, but
+mixed-tier baseline. This change updates only its four intentional categorical
+expectations: the three Professional fixtures run a second render, and the
+dense-drums Professional fixture selects the refinement. Existing numerical
+baseline values and tolerances remain intact. Measurements detect drift and safety regressions, but
 listening remains necessary to assess perceived quality.
