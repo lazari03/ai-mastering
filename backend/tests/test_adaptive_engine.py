@@ -428,3 +428,17 @@ def test_backoff_is_none_without_significant_flags():
         flags = [{"kind": "hf_growth", "severity": 0.1, "blamed_stage": "eq", "measured": 1.1, "limit": 1.0, "detail": "tiny"}]
 
     assert derive_backoff_plan(plan, _Eval()) == (None, [])
+
+
+def test_split_bell_halves_are_kept_or_dropped_together(monkeypatch):
+    """A cluster wider than WIDE_BELL_SPLIT_OCT becomes two bells. The
+    automated-node cap must never keep one half of that correction alone."""
+    prof = SourceProfile.from_dict(_analysis_from_audio(make_mix(seconds=16.0, seed=4, offsets_db=[(40, 250, 9.0)]), SR)["source_profile"])
+    ctx = build_target_context(prof.band_layout, "pop", [], "modern")
+    problems = detect_mastering_problems(prof, ctx)
+    split = [d for d in auto_eq(build_mastering_plan(prof, ctx, problems)) if any("covered by two bells" in n for n in d.notes)]
+    assert len(split) == 2, "fixture must produce a split bell"
+    for cap in (1, 2):
+        monkeypatch.setattr(C, "EQ_MAX_AUTOMATED_NODES", cap)
+        kept = [d for d in auto_eq(build_mastering_plan(prof, ctx, problems)) if any("covered by two bells" in n for n in d.notes)]
+        assert len(kept) in (0, 2), (cap, kept)

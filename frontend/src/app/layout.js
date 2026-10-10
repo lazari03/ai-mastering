@@ -63,9 +63,23 @@ export const metadata = {
   twitter: { card: "summary_large_image" },
 };
 
+// A signed-in user opening "/" is sent to the dashboard (HomeClient.jsx),
+// but the server-rendered landing page paints before any JS can decide
+// that, so returning users saw it flash first. AuthInit.jsx keeps a
+// "was signed in" hint in localStorage; when it is set this hides the page
+// until auth resolves. HomeClient then either redirects or reveals it. The
+// timeout guarantees it can never stay blank, and crawlers and new visitors
+// (no hint) are unaffected. A section link (/#faq) is a request to read
+// the page, so it is never hidden.
+const SIGNED_IN_HOME_GATE = `try{if(location.pathname==="/"&&!location.hash&&localStorage.getItem("af_signed_in")==="1"){var d=document.documentElement;d.setAttribute("data-auth-pending","");setTimeout(function(){d.removeAttribute("data-auth-pending")},4000)}}catch(e){}`;
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Runs before first paint: see SIGNED_IN_HOME_GATE. */}
+        <script dangerouslySetInnerHTML={{ __html: SIGNED_IN_HOME_GATE }} />
+      </head>
       <body className={`${titleFont.variable} ${bodyFont.variable}`}>
         <LanguageProvider>
           <ClientOnlyMounts />

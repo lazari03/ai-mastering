@@ -214,6 +214,33 @@ def test_high_frequency_boost_is_caught():
     assert "high_frequency_boost" in {f.name for f in result.failures}
 
 
+def test_planned_bass_cut_level_shift_is_not_a_high_boost():
+    """A large PLANNED low cut lowers loudness; matching then lifts every
+    other band by the same amount. That uniform shift must not read as a
+    high-frequency boost (it used to trip the absolute cap and the fallback
+    shipped a boomy mix with no EQ at all)."""
+    low = ("sub_bass_35_60hz", "kick_bass_60_120hz", "upper_bass_120_250hz")
+    deltas = {b: (-1.0 if b in low else 3.7) for b in BAND_EDGES_HZ}
+    planned = dict(deltas)  # all of it is the planned cut + matching
+    result = validate_render(**_clean_args(band_deltas_db=deltas, planned_deltas_db=planned))
+    assert "high_frequency_boost" not in {f.name for f in result.failures}
+
+
+def test_real_high_boost_on_top_of_a_level_shift_is_still_caught():
+    deltas = {b: 1.0 for b in BAND_EDGES_HZ}
+    deltas["high_6000_20000hz"] = 5.0  # 4 dB above the midrange
+    planned = dict(deltas)
+    result = validate_render(**_clean_args(band_deltas_db=deltas, planned_deltas_db=planned))
+    assert "high_frequency_boost" in {f.name for f in result.failures}
+
+
+def test_planned_air_boost_level_shift_is_not_low_end_loss():
+    deltas = {b: -5.0 for b in BAND_EDGES_HZ}  # a big planned air boost, matched
+    deltas["high_6000_20000hz"] = 3.0
+    result = validate_render(**_clean_args(band_deltas_db=deltas, planned_deltas_db=dict(deltas)))
+    assert "low_end_loss" not in {f.name for f in result.failures}
+
+
 def test_subsonic_cut_is_allowed():
     """Cutting genuine rumble is legitimate and must NOT be flagged."""
     deltas = {b: 0.0 for b in BAND_EDGES_HZ}

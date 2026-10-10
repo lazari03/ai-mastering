@@ -100,13 +100,23 @@ export default function HomeClient() {
   const { user, loading } = useAuthStore();
   // Signed in, the homepage IS the dashboard. Anonymous Firebase users
   // (the free tools sign visitors in anonymously) are still visitors and
-  // see the landing page. The page itself stays server-rendered for
-  // crawlers and signed-out visitors; this only redirects once auth has
-  // resolved in the browser.
+  // see the landing page. A section link (/#faq, /#contact, /#pricing) is
+  // a request to read this page, so it is honoured for signed-in users
+  // too: those sections exist only here. The page stays server-rendered
+  // for crawlers and signed-out visitors; layout.js's SIGNED_IN_HOME_GATE
+  // keeps it hidden for a returning signed-in user until this decides.
   const signedIn = !loading && Boolean(user) && !user.isAnonymous;
   useEffect(() => {
-    if (signedIn) router.replace("/app");
-  }, [signedIn, router]);
+    if (loading) return;
+    if (signedIn && !window.location.hash) {
+      router.replace("/app");
+      return;
+    }
+    document.documentElement.removeAttribute("data-auth-pending");
+  }, [loading, signedIn, router]);
+  // Leaving this page (the redirect included) must never carry the gate
+  // into the next one: <html> survives client-side navigation.
+  useEffect(() => () => document.documentElement.removeAttribute("data-auth-pending"), []);
   const pricingSectionRef = useRef(null);
   usePricingSectionView(pricingSectionRef);
   const [billing, setBilling] = useState("monthly");

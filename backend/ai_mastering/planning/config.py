@@ -331,15 +331,17 @@ TRUE_PEAK_TOLERANCE_DB = 0.15
 # (backend/benchmark/gate_audit.py, pop/modern), dB of the flaw corrected:
 #
 #                       4 dB flaw        6 dB flaw        healthy mix (+/-2 dB ripple)
-#   conservative        0.00 - 0.25      0.00 - 1.27      untouched
-#   balanced            0.26 - 0.65      1.00 - 1.79      untouched
-#   assertive           0.47 - 0.99      1.56 - 2.29      <= 0.56 dB total movement
+#   conservative        0.00             0.00 - 1.06      untouched
+#   balanced            0.08 - 0.65      0.62 - 1.79      untouched
+#   assertive           0.12 - 0.99      0.91 - 2.29      untouched
 #
-# Conservative left a 6 dB dark, dull-air, boxy or recessed-mid mix
-# completely uncorrected — a master that is only louder. Balanced corrects
-# every category without touching a single healthy fixture, so it is the
-# default. Which one SOUNDS right is a listening decision: render a track
-# at all three with backend/benchmark/calibration_ab.py and pick by ear.
+# Conservative left a 6 dB dark, dull-air or recessed-mid mix uncorrected
+# (a master that is only louder). Balanced corrects every category without
+# touching a healthy fixture, so it is the default. HF deficits (dark,
+# dull air) remain the least-corrected on every profile by design: adding
+# HF energy is the move this engine guards hardest. Which profile SOUNDS
+# right is a listening decision: render a track at all three with
+# backend/benchmark/calibration_ab.py and pick by ear.
 #
 # Select with MASTERING_CALIBRATION=<name> (read once at import).
 # apply_calibration()/calibration() rebind module globals: they are for

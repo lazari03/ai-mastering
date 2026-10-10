@@ -37,6 +37,8 @@ from .band_levels import BAND_EDGES_HZ
 # subsonic rumble is legitimate and shouldn't be flagged as damage.
 LOW_END_MUSICAL_BANDS = ("sub_bass_35_60hz", "kick_bass_60_120hz", "upper_bass_120_250hz")
 HIGH_BANDS = ("presence_4000_6000hz", "high_6000_20000hz")
+# What the absolute caps measure against (see validate_render).
+MID_REFERENCE_BAND = "mid_500_2000hz"
 # Bands the tilt fit runs over (subsonic excluded for the same reason).
 TILT_BANDS = tuple(b for b in BAND_EDGES_HZ if b != "subsonic_20_35hz")
 
@@ -69,8 +71,9 @@ class GuardrailConfig:
     max_tilt_drift_db_per_oct: float = 0.3
     # Plan-independent caps on TOTAL movement (planned + unplanned) in the
     # historically-wrong directions. Above the planner's own maxima
-    # (EQ_MAX_CUT_DB 3 dB blind, 4 dB reference-driven; 1 dB HF budget),
-    # so only a runaway plan or stage reaches them.
+    # (EQ_MAX_CUT_DB 3-5 dB depending on calibration, 4 dB reference-driven;
+    # HF budget 1-2.5 dB), measured against the midrange, so only a runaway
+    # plan or stage reaches them.
     absolute_max_low_end_loss_db: float = 4.5
     absolute_max_high_boost_db: float = 3.5
 
@@ -140,6 +143,17 @@ def validate_render(
     def automatic(band: str) -> float:
         return float(band_deltas_db.get(band, 0.0)) - float(user.get(band, 0.0))
 
+    # The absolute caps judge the shape of the change, not a level shift.
+    # Deltas are loudness-matched, so a large planned cut at one end lowers
+    # the master's loudness, and matching then raises EVERY other band by
+    # the same amount: a correct 4-5 dB cut of a boomy mix read as highs
+    # "+3.7 dB in total" (mids rising equally) and tripped the high-boost
+    # cap, and the fallback then shipped the mix with no EQ at all. A
+    # real brightening raises the highs relative to the midrange, so the
+    # caps measure against it, and only ever in the direction that removes
+    # the shift (a mid that FELL never makes a band look better).
+    mid_shift = float(band_deltas_db.get(MID_REFERENCE_BAND, 0.0)) - float(user.get(MID_REFERENCE_BAND, 0.0))
+
     # --- low end gutted -------------------------------------------------
     for band in LOW_END_MUSICAL_BANDS:
         delta = unplanned(band)
@@ -158,7 +172,7 @@ def validate_render(
                     detail=f"{band} fell {abs(delta):.2f} dB more than planned at matched loudness (limit {cfg.max_low_end_loss_db} dB)",
                 )
             )
-        total = automatic(band)
+        total = automatic(band) - min(0.0, mid_shift)
         if total < -cfg.absolute_max_low_end_loss_db:
             failures.append(
                 GuardrailFailure(
@@ -167,7 +181,7 @@ def validate_render(
                     limit=-cfg.absolute_max_low_end_loss_db,
                     band=band,
                     blame_stage="eq_low_shelf_and_highpass",
-                    detail=f"{band} fell {abs(total):.2f} dB in total at matched loudness (absolute cap {cfg.absolute_max_low_end_loss_db} dB, plan or not)",
+                    detail=f"{band} fell {abs(total):.2f} dB in total vs the midrange at matched loudness (absolute cap {cfg.absolute_max_low_end_loss_db} dB, plan or not)",
                     basis="total",
                 )
             )
@@ -186,7 +200,7 @@ def validate_render(
                     detail=f"{band} rose {delta:.2f} dB more than planned at matched loudness (limit {cfg.max_high_boost_db} dB)",
                 )
             )
-        total = automatic(band)
+        total = automatic(band) - max(0.0, mid_shift)
         if total > cfg.absolute_max_high_boost_db:
             failures.append(
                 GuardrailFailure(
@@ -195,7 +209,7 @@ def validate_render(
                     limit=cfg.absolute_max_high_boost_db,
                     band=band,
                     blame_stage="eq_high_shelf_and_saturation",
-                    detail=f"{band} rose {total:.2f} dB in total at matched loudness (absolute cap {cfg.absolute_max_high_boost_db} dB, plan or not)",
+                    detail=f"{band} rose {total:.2f} dB in total vs the midrange at matched loudness (absolute cap {cfg.absolute_max_high_boost_db} dB, plan or not)",
                     basis="total",
                 )
             )

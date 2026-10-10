@@ -19,6 +19,8 @@ import { identify } from "@/lib/analyticsClient";
 // Renders nothing itself.
 
 const LAST_ACTIVITY_KEY = "lastActivityAt";
+// Must match the key in app/layout.js's SIGNED_IN_HOME_GATE.
+const SIGNED_IN_HINT_KEY = "af_signed_in";
 const INACTIVITY_MS = 24 * 3600 * 1000;
 // How often the idle check runs — 60s means "logged out immediately" is
 // accurate to within a minute, not to the millisecond; that's the right
@@ -28,6 +30,19 @@ const CHECK_INTERVAL_MS = 60 * 1000;
 // like scroll-by-inertia or a stray mousemove from a window manager
 // animation counting as "the user is here."
 const ACTIVITY_EVENTS = ["mousedown", "keydown", "touchstart", "wheel"];
+
+// "Was signed in" hint for layout.js's SIGNED_IN_HOME_GATE. Only written
+// once auth has resolved, so a page load never clears it during the brief
+// window before Firebase restores the session.
+function syncSignedInHint(state) {
+  if (state.loading) return;
+  try {
+    if (state.user && !state.user.isAnonymous) window.localStorage.setItem(SIGNED_IN_HINT_KEY, "1");
+    else window.localStorage.removeItem(SIGNED_IN_HINT_KEY);
+  } catch {
+    // Storage unavailable: no hint, so no gate; the redirect still works.
+  }
+}
 
 function recordActivity() {
   try {
@@ -72,7 +87,11 @@ export default function AuthInit() {
     // resets the clock immediately instead of waiting for a qualifying
     // DOM event to happen to fire first.
     let hadUser = Boolean(useAuthStore.getState().user);
+    // subscribe() only reports LATER changes; auth may already have
+    // resolved (e.g. Firebase not configured) before this effect ran.
+    syncSignedInHint(useAuthStore.getState());
     const unsubscribeActivity = useAuthStore.subscribe((state) => {
+      syncSignedInHint(state);
       const hasUser = Boolean(state.user);
       if (hasUser && !hadUser) recordActivity();
       hadUser = hasUser;

@@ -216,9 +216,8 @@ def _true_peak_limiter(
 
 def _bus_process_pro(stereo: np.ndarray, sr: int, params: dict, apply_glue_compression: bool = True) -> tuple[np.ndarray, float, dict, dict]:
     """Professional-engine bus stage: gain staging, clipper, true-peak
-    limiting and loudness recovery.
-    Same structure, guards and reporting as the standard _bus_process; the
-    limiting chain is the difference."""
+    limiting and loudness recovery. Same limiter as the standard
+    _bus_process; what differs between the engines is in engines.py."""
     stereo_pb = np.ascontiguousarray(stereo.T, dtype=np.float32)
 
     if apply_glue_compression and bool(params.get("glue_enabled", True)):

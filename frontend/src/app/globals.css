@@ -501,3 +501,8 @@ select:focus-visible,
   .indeterminate-bar > span { animation: none; width: 100%; opacity: 0.35; }
   .pulse-ring { animation: none !important; }
 }
+
+/* See SIGNED_IN_HOME_GATE in app/layout.js. */
+html[data-auth-pending] body {
+  visibility: hidden;
+}

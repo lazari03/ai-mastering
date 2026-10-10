@@ -367,8 +367,12 @@ def test_injected_brightening_stage_is_caught_and_not_delivered(source, tmp_path
     assert any(f["basis"] == "total" for f in diag["initial_verdict"]["failures"] if f["source"] == "guardrail")
     assert diag["verdict"]["passed"]
     measured = result["level_diagnostics"]["loudness_matched_band_deltas_db"]
-    assert measured["high_6000_20000hz"] <= GuardrailConfig().absolute_max_high_boost_db
-    assert measured["kick_bass_60_120hz"] >= -GuardrailConfig().absolute_max_low_end_loss_db
+    # The absolute caps are judged against the midrange (validate_render):
+    # loudness matching shifts every band when one end is cut, and that
+    # shift is not a tonal change.
+    mid = measured["mid_500_2000hz"]
+    assert measured["high_6000_20000hz"] - mid <= GuardrailConfig().absolute_max_high_boost_db
+    assert measured["kick_bass_60_120hz"] - mid >= -GuardrailConfig().absolute_max_low_end_loss_db
 
 
 def test_transparent_fallback_is_surfaced_not_buried(source, tmp_path, monkeypatch):

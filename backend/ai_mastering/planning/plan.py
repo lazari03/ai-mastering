@@ -318,13 +318,16 @@ def _plan_eq(profile: SourceProfile, context: TargetContext, problems: list[Prob
         if abs(d.gain_db) < C.EQ_MIN_NODE_GAIN_DB:
             rejected.append({"stage": "eq", "problem": p.kind, "reason": f"correction {d.gain_db:+.2f} dB below audibility floor"})
             continue
-        for part in _split_wide_bell(d, p):
-            candidates.append((p.severity * p.confidence, part))
+        # A split bell's halves are ONE correction: kept or dropped together.
+        candidates.append((p.severity * p.confidence, _split_wide_bell(d, p)))
 
     candidates.sort(key=lambda t: t[0], reverse=True)
-    for _, d in candidates[C.EQ_MAX_AUTOMATED_NODES:]:
-        rejected.append({"stage": "eq", "problem": d.problem, "reason": "exceeded max automated EQ nodes"})
-    decisions = [d for _, d in candidates[: C.EQ_MAX_AUTOMATED_NODES]]
+    decisions = []
+    for _, parts in candidates:
+        if len(decisions) + len(parts) <= C.EQ_MAX_AUTOMATED_NODES:
+            decisions.extend(parts)
+        else:
+            rejected.append({"stage": "eq", "problem": parts[0].problem, "reason": "exceeded max automated EQ nodes"})
     _enforce_eq_constraints(decisions, profile, context, problems, sr, eq_budget_db, notes)
     kept = []
     for d in decisions:

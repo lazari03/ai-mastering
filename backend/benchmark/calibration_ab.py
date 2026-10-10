@@ -73,7 +73,11 @@ def summarize(result: dict) -> dict:
         ],
         "rejected": [f"{r['stage']}: {r['reason']}" for r in plan["rejected_decisions"] if r["stage"] in ("eq", "dynamic_eq", "deesser")],
         "target_lufs": plan["loudness"]["target_lufs"],
-        "backoff_applied": diag["backoff_applied"],
+        # Which render was delivered. "transparent_fallback" means every
+        # corrective render failed QC and the master has NO tonal
+        # processing: judge it as such, not as this calibration's sound.
+        "delivered_candidate": diag.get("delivered_candidate"),
+        "recovered": diag.get("backoff_applied"),
     }
 
 
@@ -117,7 +121,7 @@ def main() -> int:
                 versions[name] = audio
                 metrics = compare(source, audio, SR)
                 details[name] = {**summarize(result), "punch_loss": metrics.get("punch_loss"), "benchmark_flags": metrics["failures"]}
-                print(f"   {name:28s} {len(details[name]['eq_decisions'])} EQ moves, punch loss {details[name]['punch_loss']}")
+                print(f"   {name:28s} {len(details[name]['eq_decisions'])} EQ moves, punch loss {details[name]['punch_loss']}, delivered {details[name]['delivered_candidate']}")
         if args.excerpt:
             start_s, dur_s = (float(v) for v in args.excerpt.split(","))
             a, b = int(start_s * SR), int((start_s + dur_s) * SR)
