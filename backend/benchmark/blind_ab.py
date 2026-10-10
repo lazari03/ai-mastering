@@ -76,11 +76,17 @@ def tally(key: dict[str, dict[str, str]], ballots: list[dict]) -> dict:
     firsts: dict[str, int] = {}
     pair: dict[str, list[int]] = {}  # other version -> [subject wins, subject losses]
     listeners, rated_tracks, rejected = set(), {}, []
+    seen_listeners = set()
     for ballot in ballots:
         errs = validate_ballot(ballot, key)
         if errs:
             rejected.append({"listener": ballot.get("listener"), "errors": errs})
             continue
+        listener = ballot["listener"]
+        if listener in seen_listeners:
+            rejected.append({"listener": listener, "errors": ["duplicate listener ballot"]})
+            continue
+        seen_listeners.add(listener)
         for track, entry in ballot["tracks"].items():
             ranking = entry.get("ranking") or []
             if not ranking:
@@ -99,14 +105,16 @@ def tally(key: dict[str, dict[str, str]], ballots: list[dict]) -> dict:
                     w = pair.setdefault(other, [0, 0])
                     w[0 if s < i else 1] += 1
     judgements = sum(len(v) for v in rated_tracks.values())
-    enough = len(listeners) >= MIN_LISTENERS and len(rated_tracks) >= MIN_TRACKS
+    fully_rated_tracks = sum(len(v) >= MIN_LISTENERS for v in rated_tracks.values())
+    enough = len(listeners) >= MIN_LISTENERS and fully_rated_tracks >= MIN_TRACKS
     return {
         "status": "complete" if enough else "pending",
         "why_pending": None
         if enough
-        else f"needs >= {MIN_LISTENERS} listeners and >= {MIN_TRACKS} ranked tracks; have {len(listeners)} listeners, {len(rated_tracks)} tracks",
+        else f"needs >= {MIN_LISTENERS} independent listeners on each of >= {MIN_TRACKS} tracks; have {len(listeners)} listeners, {fully_rated_tracks} sufficiently rated tracks",
         "listeners": sorted(listeners),
         "tracks_ranked": len(rated_tracks),
+        "tracks_with_enough_listeners": fully_rated_tracks,
         "judgements": judgements,
         "mean_rank": {n: round(sum(r) / len(r), 2) for n, r in sorted(ranks.items())},
         "first_place": dict(sorted(firsts.items())),
