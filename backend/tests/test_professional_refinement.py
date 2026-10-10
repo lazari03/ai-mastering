@@ -18,8 +18,9 @@ from test_engines import _plans, COMPRESSING
 
 
 def candidate(*, passed=True, loudness=0.0, transient=-0.03, crest=-1.0,
-              gr=2.0, collateral=0.2, tonal=0.4, new_bands=()):
+              gr=2.0, collateral=0.2, tonal=0.4, new_bands=(), distortion=-30.0):
     return NS(
+        distortion={"worst_db": distortion},
         verdict=NS(passed=passed, loudness={"shortfall_vs_requested_lu": loudness}),
         evaluation=NS(
             transients={"delta": transient},
@@ -43,11 +44,15 @@ def test_verified_measured_benefit_is_selected():
 @pytest.mark.parametrize("changes", [
     {"passed": False}, {"loudness": 0.31}, {"transient": -0.04},
     {"crest": -1.2}, {"collateral": 0.31}, {"tonal": 0.51},
-    {"new_bands": ("air",)}, {"gr": float("nan")},
+    {"new_bands": ("air",)}, {"gr": float("nan")}, {"distortion": -29.0},
 ])
 def test_benefit_cannot_override_safety_or_preservation(changes):
     trial = candidate(**({"gr": 1.0} | changes))
     assert not prefer_refinement(candidate(), trial)[0]
+
+
+def test_transient_benefit_cannot_hide_more_limiting():
+    assert not prefer_refinement(candidate(), candidate(transient=0.0, gr=2.2))[0]
 
 
 def test_identical_trial_is_not_a_premium_improvement():

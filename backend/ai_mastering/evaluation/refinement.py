@@ -44,6 +44,7 @@ def refinement_metrics(candidate):
         "transient_delta": float(ev.transients["delta"]),
         "short_term_crest_change_db": float(ev.dynamics["short_term_crest_change_db"]),
         "limiter_gr_db": float(ev.limiter["gr_at_p995_peaks_db"]),
+        "added_distortion_db": float(candidate.distortion["worst_db"]),
         "collateral_db": max((abs(float(v)) for v in ev.collateral_db.values()), default=0.0),
     }
 
@@ -63,6 +64,10 @@ def prefer_refinement(original, trial):
         return False, "trial reduced short-term dynamics"
     if b["collateral_db"] > a["collateral_db"] + 0.1:
         return False, "trial increased tonal collateral"
+    if b["limiter_gr_db"] > a["limiter_gr_db"] + 0.1:
+        return False, "trial increased limiter load"
+    if b["added_distortion_db"] > a["added_distortion_db"] + 0.5:
+        return False, "trial increased measured distortion"
     before = original.evaluation.problem_outcomes
     after = trial.evaluation.problem_outcomes
     if set(after.get("_new_problems_created", {}).get("bands", [])) - set(before.get("_new_problems_created", {}).get("bands", [])):
