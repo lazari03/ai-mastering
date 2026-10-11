@@ -11,7 +11,7 @@ export const HOME_FAQ = [
   },
   {
     q: "What's the difference between Standard and Professional?",
-    a: `Both run the same analysis, the same correction decisions and the same delivery checks, so a Standard master is never a cut-down one. Professional adds finer low-end control: when compression is needed, it gives the sub and the kick/bass their own bands. Standard is what your ${PRODUCT.freeMasters} free masters and the ${PLANS.indie.label} plan use; Professional comes with ${PLANS.studio.label} and ${PLANS.pro.label}.`,
+    a: `Both run the same analysis, the same correction decisions and the same delivery checks, so a Standard master is never a cut-down one. Professional adds finer low-end control and a measured refinement pass: when peak processing is active, it compares a gentler render for transient retention, dynamics and limiter load. It keeps that version only when verification passes and tonal correction and loudness stay within comparison tolerances. When compression is needed, sub and kick/bass have their own bands. Already-balanced tracks may still match. Standard is what your ${PRODUCT.freeMasters} free masters and the ${PLANS.indie.label} plan use; Professional comes with ${PLANS.studio.label} and ${PLANS.pro.label}.`,
   },
   {
     q: "Can I keep an artist's sound consistent across releases?",

@@ -1,11 +1,7 @@
-"""Standard vs Professional: what the engines share and where they differ.
+"""Shared initial planning, distinct compression and Professional refinement.
 
-The product copy (frontend homeFaq.js / i18n help.topic3, engines.py) says:
-both engines make the same decisions; Professional differs only by giving
-the sub and kick/bass their own compression bands, and only when the plan
-compresses at all, so many masters are identical on both. These tests pin
-that contract, so an engine change that makes the copy untrue fails here
-instead of shipping a claim the product doesn't keep.
+Low-level rendering still matches without compression. Professional's
+extra workflow runs in master_track, after full verification.
 """
 
 from __future__ import annotations
@@ -73,5 +69,7 @@ def test_without_compression_both_engines_render_the_same_master():
 def test_registry_and_fallback():
     assert get_engine("professional") is PROFESSIONAL
     assert get_engine(None) is STANDARD and get_engine("bogus") is STANDARD
-    # Shared limiter: the only rendering difference is the compression split.
+    # The limiter stays shared; refinement is an orchestration capability.
+    assert STANDARD.refinement_trials == 0 and PROFESSIONAL.refinement_trials == 1
+    assert PROFESSIONAL.describe()["refinement_trials"] == 1
     assert STANDARD.limiter.startswith("ramped-attack") and "shared with Standard" in PROFESSIONAL.limiter

@@ -98,7 +98,7 @@
    "limiter_max_gr_db": 3.33,
    "added_distortion_db": -24.04,
    "delivered_candidate": "initial",
-   "renders": 1,
+   "renders": 2,
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
@@ -269,8 +269,8 @@
    "limiter_gr_p995_db": 2.02,
    "limiter_max_gr_db": 3.07,
    "added_distortion_db": -22.91,
-   "delivered_candidate": "initial",
-   "renders": 1,
+   "delivered_candidate": "professional_refinement",
+   "renders": 2,
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
@@ -516,7 +516,7 @@
    "limiter_max_gr_db": 4.94,
    "added_distortion_db": -29.87,
    "delivered_candidate": "initial",
-   "renders": 1,
+   "renders": 2,
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"

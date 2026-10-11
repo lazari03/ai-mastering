@@ -22,6 +22,7 @@ from .audio_utils import (
 from .band_levels import band_levels_db
 from .analysis.loudness import FastMeter
 from .evaluation.backoff import derive_corrective_plan, derive_transparent_plan
+from .evaluation.refinement import derive_refinement_plan, prefer_refinement, refinement_metrics
 from .evaluation.distortion import added_distortion_db
 from .evaluation.evaluate import MasterEvaluation, evaluate_master
 from .evaluation.verdict import MasterVerdict, build_verdict
@@ -457,6 +458,29 @@ def master_track(
         failed = sorted({f"{f.source}:{f.kind}" for f in candidates[-1].verdict.failures})
         raise InvalidAudioError(f"No mastering candidate passed final verification ({', '.join(failed)}); no master was delivered.")
     initial = candidates[0]
+    # Safety recovery gets its full budget before optional optimisation.
+    recovered = final is not initial
+    recovery_end = next(i for i, c in enumerate(candidates) if c is final)
+    refinement = {"attempted": False, "selected": False, "reason": "engine has no refinement trial"}
+    if get_engine(tier).refinement_trials:
+        refinement["reason"] = "render budget exhausted or transparent fallback"
+        if len(candidates) < C.MAX_CANDIDATE_RENDERS and final.label != "transparent_fallback":
+            trial_plan, trial_actions = derive_refinement_plan(final.plan, final.evaluation)
+            refinement["reason"] = "no active peak processing to refine"
+            if trial_plan is not None:
+                trial = build("professional_refinement", trial_plan, params_for(trial_plan), trial_actions)
+                candidates.append(trial)
+                selected, reason = prefer_refinement(final, trial)
+                refinement = {
+                    "attempted": True, "selected": selected, "reason": reason,
+                    "original_candidate": final.label,
+                    "original_metrics": refinement_metrics(final),
+                    "trial_metrics": refinement_metrics(trial),
+                    "trial_passed": trial.verdict.passed,
+                    "actions": trial_actions,
+                }
+                if selected:
+                    final = trial
     renders = len(candidates)
 
     plan = final.plan
@@ -471,11 +495,10 @@ def master_track(
     lufs_gain_db = render["lufs_gain_db"]
     ev = evaluation.to_dict()
 
-    recovered = final is not initial
     backoff_info = {
-        "attempted": renders > 1,
+        "attempted": recovery_end > 0,
         "applied": recovered,
-        "actions": [a for c in candidates[1 : candidates.index(final) + 1] for a in c.actions],
+        "actions": [a for c in candidates[1 : recovery_end + 1] for a in c.actions],
         "initial_collateral_score": initial.evaluation.collateral_score,
         "final_collateral_score": evaluation.collateral_score,
         "reason": (
@@ -511,6 +534,7 @@ def master_track(
         "backoff": backoff_info,
         "renders": renders,
         "render_budget": C.MAX_CANDIDATE_RENDERS,
+        "professional_refinement": refinement,
     }
 
     public = public_params(processing_params)
@@ -577,6 +601,7 @@ def master_track(
             "initial_failures": [f"{f.source}:{f.kind}" for f in initial.verdict.failures],
             "loudness_shortfall_lu": final.verdict.loudness["shortfall_vs_requested_lu"],
             "vocal_enhancement": _vocal_enhancement_status(stems_requested, stem_metadata),
+            "professional_refinement": refinement,
         },
         "mastering_diagnostics": diagnostics,
     }
