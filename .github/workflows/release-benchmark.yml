@@ -1,69 +1,90 @@
 name: Release gate — real-audio benchmark
 
-# The synthetic regression in deploy.yml catches behaviour changes on
-# fixtures with known tonal state; it can't tell you how real music fares.
-# This runs the same harness (benchmark/regression.py) over the licensed
-# real-mix corpus, which is NOT in the repository (licences, size), so it
-# runs on a self-hosted runner that has the corpus on disk.
-#
-# Run it before every release that touches backend/ai_mastering/. It FAILS,
-# never silently passes, when:
-#   * the corpus directory is missing or holds fewer than MIN_TRACKS mixes,
-#   * there is no approved baseline to compare against,
-#   * any metric drifts beyond benchmark/regression.py's TOLERANCES.
-#
-# If no runner carries the `auralith-benchmark` label, the job stays queued
-# rather than running somewhere without the corpus — visibly not done.
-
+# Corpus audio and reviewed baselines live on the benchmark runner.
+# Never create or update a baseline automatically after a DSP change.
 on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/ai_mastering/**"
+      - "backend/benchmark/**"
+      - "backend/requirements*.txt"
+      - ".github/workflows/release-benchmark.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/ai_mastering/**"
+      - "backend/benchmark/**"
+      - "backend/requirements*.txt"
+      - ".github/workflows/release-benchmark.yml"
   workflow_dispatch:
     inputs:
       corpus_path:
-        description: "Corpus directory on the runner (benchmark/corpus layout)"
+        description: "Licensed corpus directory on the runner"
         required: true
         default: "/srv/auralith/benchmark-corpus"
       baseline_path:
-        description: "Approved baseline snapshot on the runner"
+        description: "Reviewed Standard baseline; Professional uses the -professional suffix"
         required: true
         default: "/srv/auralith/baselines/real.json"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: real-audio-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   MIN_TRACKS: "50"
+  CORPUS_PATH: ${{ inputs.corpus_path || '/srv/auralith/benchmark-corpus' }}
+  BASELINE_PATH: ${{ inputs.baseline_path || '/srv/auralith/baselines/real.json' }}
 
 jobs:
   real-corpus-regression:
-    name: Real-corpus regression (${{ inputs.corpus_path }})
+    # Do not execute fork code on the machine holding the licensed corpus.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    name: Real-corpus regression (${{ matrix.tier }})
     runs-on: [self-hosted, auralith-benchmark]
     timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        tier: [standard, professional]
+    env:
+      TIER: ${{ matrix.tier }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Corpus and baseline must exist
+      - name: Corpus and reviewed tier baseline must exist
         run: |
-          corpus="${{ inputs.corpus_path }}"
+          corpus="$CORPUS_PATH"
+          baseline="$BASELINE_PATH"
+          if [ "$TIER" = "professional" ]; then baseline="${baseline%.json}-professional.json"; fi
+          echo "TIER_BASELINE=$baseline" >> "$GITHUB_ENV"
           if [ ! -d "$corpus" ]; then echo "::error::corpus not found at $corpus"; exit 1; fi
           n=$(find "$corpus" -mindepth 2 -maxdepth 2 -name mix.wav | wc -l)
-          echo "corpus tracks: $n"
-          if [ "$n" -lt "$MIN_TRACKS" ]; then echo "::error::only $n tracks in $corpus; the release gate needs at least $MIN_TRACKS licensed mixes"; exit 1; fi
-          if [ ! -f "${{ inputs.baseline_path }}" ]; then
-            echo "::error::no approved baseline at ${{ inputs.baseline_path }}. Create one from a reviewed release with:"
-            echo "  python -m benchmark.regression --corpus $corpus --write ${{ inputs.baseline_path }}"
+          if [ "$n" -lt "$MIN_TRACKS" ]; then echo "::error::only $n tracks; need $MIN_TRACKS licensed mixes"; exit 1; fi
+          if [ ! -f "$baseline" ]; then
+            echo "::error::no reviewed $TIER baseline at $baseline"
             exit 1
           fi
 
       - name: Install dependencies
         working-directory: backend
         run: |
-          python3 -m venv .venv-bench
-          .venv-bench/bin/pip install -q -r requirements-test.txt
+          python3 -m venv ".venv-bench-$TIER"
+          ".venv-bench-$TIER/bin/pip" install -q -r requirements-test.txt
 
-      - name: Compare against the approved baseline
+      - name: Compare against the reviewed baseline
         working-directory: backend
-        run: .venv-bench/bin/python -m benchmark.regression --corpus "${{ inputs.corpus_path }}" --baseline "${{ inputs.baseline_path }}" --out real-regression-report
+        run: |
+          ".venv-bench-$TIER/bin/python" -m benchmark.regression --corpus "$CORPUS_PATH" --tier "$TIER" --baseline "$TIER_BASELINE" --out "real-regression-report-$TIER"
 
       - name: Upload the report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: real-corpus-regression-report
-          path: backend/real-regression-report/
+          name: real-corpus-regression-${{ matrix.tier }}
+          path: backend/real-regression-report-${{ matrix.tier }}/
