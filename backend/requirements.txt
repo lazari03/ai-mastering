@@ -4,6 +4,7 @@ python-multipart
 numpy
 scipy
 librosa
+audioread>=3.0.1,<4
 numba
 pyloudnorm
 pedalboard
