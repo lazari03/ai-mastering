@@ -23,6 +23,7 @@ from ..processing.eq import band_response_db, q_for_bandwidth
 from . import config as C
 from .budgets import calculate_change_budget, calculate_compression_need, calculate_limiter_budget
 from .target_model import TargetContext
+from params import STREAMING_REFERENCE_LUFS, TRUE_PEAK_CEILING_DBTP
 
 
 @dataclass
@@ -565,6 +566,35 @@ def _plan_loudness(profile: SourceProfile, context: TargetContext, limiter: dict
     }
 
 
+def delivery_ceiling_dbtp(target_lufs: float, context_ceiling_dbtp: float) -> float:
+    """True-peak ceiling for the loudness actually planned. The -2 dBTP
+    rule (Spotify) is for masters LOUDER than -14 LUFS; the context's
+    ceiling comes from the genre's loudness *window*, so a master planned
+    at or below -14 LUFS was limited 1 dB harder than delivery needs
+    (measured c07: limiter max GR 4.37 -> 3.37 dB, punch loss 2.9 -> 1.4 %
+    at the same target). Relax-only: a context ceiling that is already
+    -1 dBTP is never tightened here."""
+    if float(target_lufs) <= STREAMING_REFERENCE_LUFS + 1e-9:
+        return max(float(context_ceiling_dbtp), TRUE_PEAK_CEILING_DBTP)
+    return float(context_ceiling_dbtp)
+
+
+def apply_delivery_ceiling(plan: "MasteringPlan") -> None:
+    """Re-derive the limiter ceiling from the plan's CURRENT target (call
+    after anything that moves target_lufs: user loudness tweak, backoff).
+    The target itself is not touched, so the freed headroom becomes less
+    gain reduction, not more loudness."""
+    base = float(plan.target_context.get("ceiling_dbtp", plan.limiter["ceiling_dbtp"]))
+    new = delivery_ceiling_dbtp(float(plan.loudness["target_lufs"]), base)
+    if abs(new - float(plan.limiter["ceiling_dbtp"])) > 1e-9:
+        plan.limiter["ceiling_dbtp"] = new
+    plan.limiter["ceiling_basis"] = (
+        f"planned {float(plan.loudness['target_lufs']):.2f} LUFS <= {STREAMING_REFERENCE_LUFS:.0f}: {new:.0f} dBTP is enough"
+        if new != base
+        else f"genre/delivery ceiling {base:.0f} dBTP"
+    )
+
+
 def _plan_limiter_and_clipper(profile: SourceProfile, context: TargetContext, rejected: list) -> tuple[dict, dict]:
     budget = calculate_limiter_budget(profile, context)
     tempo = profile.tempo_bpm if profile.tempo_bpm > 0 else 120.0
@@ -658,6 +688,7 @@ def build_mastering_plan(profile: SourceProfile, context: TargetContext, problem
         limiter["budget_db"] + (clipper["share_db"] if clipper["enabled"] else 0.0) + (compression["multiband"]["bands"][next(iter(compression["multiband"]["bands"]))]["max_gain_reduction_db"] if compression["multiband"]["enabled"] else 0.0),
         3,
     )
+    apply_delivery_ceiling(plan)
     plan.refresh_expected()
     return plan
 
@@ -704,5 +735,6 @@ def apply_user_tweaks_to_plan(plan: MasteringPlan, tweaks: dict) -> MasteringPla
         lo["user_shift_lu"] = round(shift, 3)
         lo["desired_lufs"] = round(lo["desired_lufs"] + shift, 2)
         lo["target_lufs"] = round(min(lo["desired_lufs"], lo["achievable_lufs_by_budget"] + max(0.0, shift) * 0.5), 2)
+    apply_delivery_ceiling(plan)
     plan.refresh_expected()
     return plan

@@ -83,7 +83,11 @@ def test_api_master_and_preview_route_intent_presets_and_delivery():
     preset = {"name": "streaming_pop_glue", **PRESETS["streaming_pop_glue"]}
     client = TestClient(app)
 
-    for delivery, ceiling in (("auto", -2.0), ("streaming", -1.0)):
+    # Ceiling follows the PLANNED loudness (AURALITH-AUDIO-008): -2 dBTP only
+    # for a master planned louder than -14 LUFS. This fixture is held at about
+    # -14.3 LUFS by the preset's 3 dB limiter cap, so "auto" is -1 dBTP too;
+    # the rule itself is asserted against the reported target below.
+    for delivery, ceiling in (("auto", None), ("streaming", -1.0)):
         res = client.post(
             "/master",
             data={"genre": "pop", "full_preset_json": json.dumps(preset), "delivery": delivery, "category": "punch"},
@@ -93,6 +97,9 @@ def test_api_master_and_preview_route_intent_presets_and_delivery():
         body = res.json()
         assert body["processing_applied"].get("chain_type") != "manual"  # adaptive, not the literal engine
         assert body["target_profile_used"]["delivery"] == delivery
+        target = body["target_profile_used"]["target_lufs"]
+        if ceiling is None:
+            ceiling = -2.0 if target > -14.0 else -1.0
         assert body["target_profile_used"]["true_peak_ceiling_dbtp"] == ceiling
         assert body["target_profile_used"]["category"] == "punch"  # objective chip still applies with a preset
         assert body["processing_applied"]["delivery_check"]["true_peak_dbtp"] <= ceiling + 0.15

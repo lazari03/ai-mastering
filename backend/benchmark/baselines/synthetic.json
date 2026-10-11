@@ -1,5 +1,5 @@
 {
- "date": "2026-10-10",
+ "date": "2026-10-11",
  "tolerances": {
   "master_lufs": 0.3,
   "true_peak_dbtp": 0.2,
@@ -17,7 +17,9 @@
   "stereo_correlation": 0.03,
   "limiter_gr_p995_db": 0.5,
   "limiter_max_gr_db": 0.75,
-  "added_distortion_db": 1.0
+  "added_distortion_db": 1.0,
+  "mono_fold_loss_change_db": 0.1,
+  "sample_peak_dbfs": 0.1
  },
  "tracks": {
   "already_limited_edm": {
@@ -46,7 +48,12 @@
    "initial_failures": [],
    "final_warnings": [
     "quality_control:plr"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.27,
+   "mono_fold_loss_master_db": -0.27,
+   "mono_fold_loss_change_db": 0.0,
+   "sample_peak_dbfs": -2.16,
+   "clipped_samples": 0
   },
   "bass_heavy_hiphop": {
    "genre": "hiphop",
@@ -74,7 +81,12 @@
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.18,
+   "mono_fold_loss_master_db": -0.22,
+   "mono_fold_loss_change_db": -0.05,
+   "sample_peak_dbfs": -2.01,
+   "clipped_samples": 0
   },
   "bass_heavy_hiphop_pro": {
    "genre": "hiphop",
@@ -102,7 +114,12 @@
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.18,
+   "mono_fold_loss_master_db": -0.22,
+   "mono_fold_loss_change_db": -0.05,
+   "sample_peak_dbfs": -2.01,
+   "clipped_samples": 0
   },
   "boomy_extreme_trap": {
    "genre": "trap",
@@ -134,7 +151,12 @@
    "final_warnings": [
     "quality_control:limiter_gain_reduction",
     "verdict:loudness_below_request"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.17,
+   "mono_fold_loss_master_db": -0.19,
+   "mono_fold_loss_change_db": -0.02,
+   "sample_peak_dbfs": -2.04,
+   "clipped_samples": 0
   },
   "bright_harsh_pop": {
    "genre": "pop",
@@ -162,7 +184,12 @@
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.24,
+   "mono_fold_loss_master_db": -0.25,
+   "mono_fold_loss_change_db": -0.01,
+   "sample_peak_dbfs": -2.02,
+   "clipped_samples": 0
   },
   "clipped_metal": {
    "genre": "metal",
@@ -190,7 +217,12 @@
    "initial_failures": [],
    "final_warnings": [
     "quality_control:plr"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.28,
+   "mono_fold_loss_master_db": -0.29,
+   "mono_fold_loss_change_db": -0.0,
+   "sample_peak_dbfs": -2.04,
+   "clipped_samples": 0
   },
   "dark_rock": {
    "genre": "rock",
@@ -218,63 +250,74 @@
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.21,
+   "mono_fold_loss_master_db": -0.23,
+   "mono_fold_loss_change_db": -0.02,
+   "sample_peak_dbfs": -2.01,
+   "clipped_samples": 0
   },
   "dense_drums_edm": {
    "genre": "edm",
    "source_lufs": -22.0,
-   "master_lufs": -15.73,
+   "master_lufs": -15.64,
    "requested_lufs": -15.57,
-   "true_peak_dbtp": -2.0,
-   "plr_db": 13.73,
-   "short_term_crest_change_db": -2.64,
-   "lra_change_lu": 0.14,
-   "transient_retention": 0.894,
-   "low_end_actual_db": -0.594,
-   "low_end_collateral_db": -0.594,
-   "hf_actual_db": -0.041,
-   "hf_collateral_db": -0.041,
-   "unplanned_low_end_min_db": -0.5,
-   "unplanned_hf_max_db": 0.42,
-   "tilt_drift_db_per_oct": 0.069,
-   "stereo_correlation": 0.888,
-   "limiter_gr_p995_db": 2.13,
-   "limiter_max_gr_db": 3.09,
-   "added_distortion_db": -22.83,
+   "true_peak_dbtp": -1.0,
+   "plr_db": 14.63,
+   "short_term_crest_change_db": -1.97,
+   "lra_change_lu": 0.11,
+   "transient_retention": 0.932,
+   "low_end_actual_db": -0.499,
+   "low_end_collateral_db": -0.499,
+   "hf_actual_db": -0.032,
+   "hf_collateral_db": -0.032,
+   "unplanned_low_end_min_db": -0.41,
+   "unplanned_hf_max_db": 0.34,
+   "tilt_drift_db_per_oct": 0.055,
+   "stereo_correlation": 0.89,
+   "limiter_gr_p995_db": 1.13,
+   "limiter_max_gr_db": 2.09,
+   "added_distortion_db": -23.53,
    "delivered_candidate": "initial",
    "renders": 1,
    "initial_failures": [],
-   "final_warnings": [
-    "quality_control:limiter_gain_reduction"
-   ]
+   "final_warnings": [],
+   "mono_fold_loss_source_db": -0.21,
+   "mono_fold_loss_master_db": -0.25,
+   "mono_fold_loss_change_db": -0.03,
+   "sample_peak_dbfs": -1.01,
+   "clipped_samples": 0
   },
   "dense_drums_edm_pro": {
    "genre": "edm",
    "source_lufs": -22.0,
-   "master_lufs": -15.72,
+   "master_lufs": -15.63,
    "requested_lufs": -15.57,
-   "true_peak_dbtp": -2.0,
-   "plr_db": 13.72,
-   "short_term_crest_change_db": -2.65,
-   "lra_change_lu": 0.14,
-   "transient_retention": 0.881,
-   "low_end_actual_db": -0.609,
-   "low_end_collateral_db": -0.609,
-   "hf_actual_db": -0.04,
-   "hf_collateral_db": -0.04,
-   "unplanned_low_end_min_db": -0.53,
-   "unplanned_hf_max_db": 0.43,
-   "tilt_drift_db_per_oct": 0.069,
-   "stereo_correlation": 0.888,
-   "limiter_gr_p995_db": 2.02,
-   "limiter_max_gr_db": 3.07,
-   "added_distortion_db": -22.91,
+   "true_peak_dbtp": -1.0,
+   "plr_db": 14.63,
+   "short_term_crest_change_db": -1.97,
+   "lra_change_lu": 0.12,
+   "transient_retention": 0.925,
+   "low_end_actual_db": -0.516,
+   "low_end_collateral_db": -0.516,
+   "hf_actual_db": -0.031,
+   "hf_collateral_db": -0.031,
+   "unplanned_low_end_min_db": -0.43,
+   "unplanned_hf_max_db": 0.35,
+   "tilt_drift_db_per_oct": 0.055,
+   "stereo_correlation": 0.89,
+   "limiter_gr_p995_db": 1.02,
+   "limiter_max_gr_db": 2.07,
+   "added_distortion_db": -23.61,
    "delivered_candidate": "initial",
    "renders": 1,
    "initial_failures": [],
-   "final_warnings": [
-    "quality_control:limiter_gain_reduction"
-   ]
+   "final_warnings": [],
+   "mono_fold_loss_source_db": -0.21,
+   "mono_fold_loss_master_db": -0.25,
+   "mono_fold_loss_change_db": -0.03,
+   "sample_peak_dbfs": -1.01,
+   "clipped_samples": 0
   },
   "healthy_master_pop": {
    "genre": "pop",
@@ -300,7 +343,12 @@
    "delivered_candidate": "initial",
    "renders": 1,
    "initial_failures": [],
-   "final_warnings": []
+   "final_warnings": [],
+   "mono_fold_loss_source_db": -0.24,
+   "mono_fold_loss_master_db": -0.24,
+   "mono_fold_loss_change_db": -0.0,
+   "sample_peak_dbfs": -2.01,
+   "clipped_samples": 0
   },
   "healthy_pop": {
    "genre": "pop",
@@ -328,7 +376,12 @@
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.22,
+   "mono_fold_loss_master_db": -0.23,
+   "mono_fold_loss_change_db": -0.01,
+   "sample_peak_dbfs": -2.01,
+   "clipped_samples": 0
   },
   "mono_acoustic": {
    "genre": "acoustic",
@@ -354,7 +407,12 @@
    "delivered_candidate": "initial",
    "renders": 1,
    "initial_failures": [],
-   "final_warnings": []
+   "final_warnings": [],
+   "mono_fold_loss_source_db": 0.0,
+   "mono_fold_loss_master_db": 0.0,
+   "mono_fold_loss_change_db": 0.0,
+   "sample_peak_dbfs": -1.01,
+   "clipped_samples": 0
   },
   "one_dead_channel_rnb": {
    "genre": "rnb",
@@ -382,7 +440,12 @@
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.0,
+   "mono_fold_loss_master_db": 0.0,
+   "mono_fold_loss_change_db": 0.0,
+   "sample_peak_dbfs": -2.01,
+   "clipped_samples": 0
   },
   "pop_48k": {
    "genre": "pop",
@@ -410,7 +473,12 @@
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.22,
+   "mono_fold_loss_master_db": -0.23,
+   "mono_fold_loss_change_db": -0.01,
+   "sample_peak_dbfs": -2.0,
+   "clipped_samples": 0
   },
   "quiet_dynamic_jazz": {
    "genre": "jazz",
@@ -436,7 +504,12 @@
    "delivered_candidate": "initial",
    "renders": 1,
    "initial_failures": [],
-   "final_warnings": []
+   "final_warnings": [],
+   "mono_fold_loss_source_db": -0.21,
+   "mono_fold_loss_master_db": -0.21,
+   "mono_fold_loss_change_db": -0.0,
+   "sample_peak_dbfs": -1.01,
+   "clipped_samples": 0
   },
   "regression_mix_pop": {
    "genre": "pop",
@@ -464,63 +537,78 @@
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.33,
+   "mono_fold_loss_master_db": -0.34,
+   "mono_fold_loss_change_db": -0.01,
+   "sample_peak_dbfs": -2.01,
+   "clipped_samples": 0
   },
   "rock_transient": {
    "genre": "rock",
    "source_lufs": -18.96,
-   "master_lufs": -16.01,
+   "master_lufs": -15.92,
    "requested_lufs": -15.81,
-   "true_peak_dbtp": -2.01,
-   "plr_db": 14.0,
-   "short_term_crest_change_db": -1.52,
-   "lra_change_lu": -0.04,
-   "transient_retention": 0.955,
-   "low_end_actual_db": -0.195,
-   "low_end_collateral_db": -0.195,
-   "hf_actual_db": -0.012,
-   "hf_collateral_db": -0.012,
-   "unplanned_low_end_min_db": -0.26,
-   "unplanned_hf_max_db": 0.16,
-   "tilt_drift_db_per_oct": 0.027,
-   "stereo_correlation": 0.903,
-   "limiter_gr_p995_db": 3.12,
-   "limiter_max_gr_db": 4.94,
-   "added_distortion_db": -29.87,
+   "true_peak_dbtp": -1.01,
+   "plr_db": 14.91,
+   "short_term_crest_change_db": -0.83,
+   "lra_change_lu": -0.06,
+   "transient_retention": 0.978,
+   "low_end_actual_db": -0.101,
+   "low_end_collateral_db": -0.101,
+   "hf_actual_db": -0.005,
+   "hf_collateral_db": -0.005,
+   "unplanned_low_end_min_db": -0.14,
+   "unplanned_hf_max_db": 0.09,
+   "tilt_drift_db_per_oct": 0.014,
+   "stereo_correlation": 0.905,
+   "limiter_gr_p995_db": 2.12,
+   "limiter_max_gr_db": 3.94,
+   "added_distortion_db": -31.78,
    "delivered_candidate": "initial",
    "renders": 1,
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.21,
+   "mono_fold_loss_master_db": -0.21,
+   "mono_fold_loss_change_db": -0.0,
+   "sample_peak_dbfs": -1.02,
+   "clipped_samples": 0
   },
   "rock_transient_pro": {
    "genre": "rock",
    "source_lufs": -18.96,
-   "master_lufs": -16.01,
+   "master_lufs": -15.92,
    "requested_lufs": -15.81,
-   "true_peak_dbtp": -2.01,
-   "plr_db": 14.0,
-   "short_term_crest_change_db": -1.52,
-   "lra_change_lu": -0.04,
-   "transient_retention": 0.955,
-   "low_end_actual_db": -0.195,
-   "low_end_collateral_db": -0.195,
-   "hf_actual_db": -0.012,
-   "hf_collateral_db": -0.012,
-   "unplanned_low_end_min_db": -0.26,
-   "unplanned_hf_max_db": 0.16,
-   "tilt_drift_db_per_oct": 0.027,
-   "stereo_correlation": 0.903,
-   "limiter_gr_p995_db": 3.12,
-   "limiter_max_gr_db": 4.94,
-   "added_distortion_db": -29.87,
+   "true_peak_dbtp": -1.01,
+   "plr_db": 14.91,
+   "short_term_crest_change_db": -0.83,
+   "lra_change_lu": -0.06,
+   "transient_retention": 0.978,
+   "low_end_actual_db": -0.101,
+   "low_end_collateral_db": -0.101,
+   "hf_actual_db": -0.005,
+   "hf_collateral_db": -0.005,
+   "unplanned_low_end_min_db": -0.14,
+   "unplanned_hf_max_db": 0.09,
+   "tilt_drift_db_per_oct": 0.014,
+   "stereo_correlation": 0.905,
+   "limiter_gr_p995_db": 2.12,
+   "limiter_max_gr_db": 3.94,
+   "added_distortion_db": -31.78,
    "delivered_candidate": "initial",
    "renders": 1,
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.21,
+   "mono_fold_loss_master_db": -0.21,
+   "mono_fold_loss_change_db": -0.0,
+   "sample_peak_dbfs": -1.02,
+   "clipped_samples": 0
   },
   "short_3s_pop": {
    "genre": "pop",
@@ -548,7 +636,12 @@
    "initial_failures": [],
    "final_warnings": [
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.25,
+   "mono_fold_loss_master_db": -0.27,
+   "mono_fold_loss_change_db": -0.02,
+   "sample_peak_dbfs": -2.01,
+   "clipped_samples": 0
   },
   "thin_edm": {
    "genre": "edm",
@@ -577,7 +670,12 @@
    "final_warnings": [
     "quality_control:dynamics_preservation",
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -0.27,
+   "mono_fold_loss_master_db": -0.29,
+   "mono_fold_loss_change_db": -0.02,
+   "sample_peak_dbfs": -2.02,
+   "clipped_samples": 0
   },
   "wide_low_techno": {
    "genre": "techno",
@@ -606,14 +704,19 @@
    "final_warnings": [
     "quality_control:dynamics_preservation",
     "quality_control:limiter_gain_reduction"
-   ]
+   ],
+   "mono_fold_loss_source_db": -1.01,
+   "mono_fold_loss_master_db": -0.22,
+   "mono_fold_loss_change_db": 0.79,
+   "sample_peak_dbfs": -2.01,
+   "clipped_samples": 0
   }
  },
  "calibration": {
   "thresholds": {
    "unplanned_low_end_min_db": {
     "rule": "guardrail max_low_end_loss_db=2.0",
-    "headroom_p5": 1.47,
+    "headroom_p5": 1.54,
     "headroom_p50": 1.7,
     "headroom_min": 1.42,
     "beyond_limit": 0,
@@ -629,9 +732,9 @@
    },
    "tilt_drift_db_per_oct": {
     "rule": "guardrail max_tilt_drift_db_per_oct=0.3",
-    "headroom_p5": 0.231,
+    "headroom_p5": 0.245,
     "headroom_p50": 0.253,
-    "headroom_min": 0.231,
+    "headroom_min": 0.245,
     "beyond_limit": 0,
     "tracks": 21
    },
@@ -669,9 +772,9 @@
    },
    "added_distortion_db": {
     "rule": "verdict MAX_ADDED_DISTORTION_DB=-18.0",
-    "headroom_p5": 4.91,
+    "headroom_p5": 5.53,
     "headroom_p50": 11.47,
-    "headroom_min": 4.83,
+    "headroom_min": 5.51,
     "beyond_limit": 0,
     "tracks": 21
    }
@@ -753,40 +856,40 @@
     "thresholds": {
      "unplanned_low_end_min_db": {
       "rule": "guardrail max_low_end_loss_db=2.0",
-      "headroom_p5": 1.427,
-      "headroom_p50": 1.485,
+      "headroom_p5": 1.442,
+      "headroom_p50": 1.58,
       "headroom_min": 1.42,
       "beyond_limit": 0,
       "tracks": 4
      },
      "unplanned_hf_max_db": {
       "rule": "guardrail max_high_boost_db=2.5",
-      "headroom_p5": 2.071,
-      "headroom_p50": 2.215,
-      "headroom_min": 2.07,
+      "headroom_p5": 2.151,
+      "headroom_p50": 2.255,
+      "headroom_min": 2.15,
       "beyond_limit": 0,
       "tracks": 4
      },
      "tilt_drift_db_per_oct": {
       "rule": "guardrail max_tilt_drift_db_per_oct=0.3",
-      "headroom_p5": 0.231,
-      "headroom_p50": 0.238,
-      "headroom_min": 0.231,
+      "headroom_p5": 0.245,
+      "headroom_p50": 0.245,
+      "headroom_min": 0.245,
       "beyond_limit": 0,
       "tracks": 4
      },
      "low_end_collateral_db": {
       "rule": "evaluation LOW_END_COLLATERAL_TOLERANCE_DB=1.0",
-      "headroom_p5": 0.393,
-      "headroom_p50": 0.431,
-      "headroom_min": 0.391,
+      "headroom_p5": 0.461,
+      "headroom_p50": 0.492,
+      "headroom_min": 0.457,
       "beyond_limit": 0,
       "tracks": 4
      },
      "hf_collateral_db": {
       "rule": "evaluation HF_COLLATERAL_TOLERANCE_DB=1.0",
       "headroom_p5": 0.994,
-      "headroom_p50": 1.02,
+      "headroom_p50": 1.015,
       "headroom_min": 0.993,
       "beyond_limit": 0,
       "tracks": 4
@@ -794,24 +897,24 @@
      "plr_db": {
       "rule": "QC plr fail < 4.0 dB",
       "headroom_p5": 2.387,
-      "headroom_p50": 7.575,
+      "headroom_p50": 8.03,
       "headroom_min": 1.85,
       "beyond_limit": 0,
       "tracks": 4
      },
      "limiter_max_gr_db": {
       "rule": "QC limiter_gain_reduction fail > 6.0 dB",
-      "headroom_p5": 2.162,
-      "headroom_p50": 2.92,
+      "headroom_p5": 2.312,
+      "headroom_p50": 3.92,
       "headroom_min": 2.03,
       "beyond_limit": 0,
       "tracks": 4
      },
      "added_distortion_db": {
       "rule": "verdict MAX_ADDED_DISTORTION_DB=-18.0",
-      "headroom_p5": 4.842,
-      "headroom_p50": 5.47,
-      "headroom_min": 4.83,
+      "headroom_p5": 5.542,
+      "headroom_p50": 5.82,
+      "headroom_min": 5.53,
       "beyond_limit": 0,
       "tracks": 4
      }
@@ -1173,64 +1276,64 @@
     "thresholds": {
      "unplanned_low_end_min_db": {
       "rule": "guardrail max_low_end_loss_db=2.0",
-      "headroom_p5": 1.74,
-      "headroom_p50": 1.74,
-      "headroom_min": 1.74,
+      "headroom_p5": 1.77,
+      "headroom_p50": 1.86,
+      "headroom_min": 1.76,
       "beyond_limit": 0,
       "tracks": 3
      },
      "unplanned_hf_max_db": {
       "rule": "guardrail max_high_boost_db=2.5",
-      "headroom_p5": 2.259,
-      "headroom_p50": 2.34,
+      "headroom_p5": 2.266,
+      "headroom_p50": 2.41,
       "headroom_min": 2.25,
       "beyond_limit": 0,
       "tracks": 3
      },
      "tilt_drift_db_per_oct": {
       "rule": "guardrail max_tilt_drift_db_per_oct=0.3",
-      "headroom_p5": 0.26,
-      "headroom_p50": 0.273,
+      "headroom_p5": 0.261,
+      "headroom_p50": 0.286,
       "headroom_min": 0.258,
       "beyond_limit": 0,
       "tracks": 3
      },
      "low_end_collateral_db": {
       "rule": "evaluation LOW_END_COLLATERAL_TOLERANCE_DB=1.0",
-      "headroom_p5": 0.66,
-      "headroom_p50": 0.805,
+      "headroom_p5": 0.669,
+      "headroom_p50": 0.899,
       "headroom_min": 0.644,
       "beyond_limit": 0,
       "tracks": 3
      },
      "hf_collateral_db": {
       "rule": "evaluation HF_COLLATERAL_TOLERANCE_DB=1.0",
-      "headroom_p5": 1.003,
-      "headroom_p50": 1.012,
+      "headroom_p5": 1.002,
+      "headroom_p50": 1.005,
       "headroom_min": 1.002,
       "beyond_limit": 0,
       "tracks": 3
      },
      "plr_db": {
       "rule": "QC plr fail < 4.0 dB",
-      "headroom_p5": 7.678,
-      "headroom_p50": 10.0,
+      "headroom_p5": 7.769,
+      "headroom_p50": 10.91,
       "headroom_min": 7.42,
       "beyond_limit": 0,
       "tracks": 3
      },
      "limiter_max_gr_db": {
       "rule": "QC limiter_gain_reduction fail > 6.0 dB",
-      "headroom_p5": 1.06,
-      "headroom_p50": 1.06,
-      "headroom_min": 1.06,
+      "headroom_p5": 1.547,
+      "headroom_p50": 2.06,
+      "headroom_min": 1.49,
       "beyond_limit": 0,
       "tracks": 3
      },
      "added_distortion_db": {
       "rule": "verdict MAX_ADDED_DISTORTION_DB=-18.0",
-      "headroom_p5": 11.609,
-      "headroom_p50": 11.87,
+      "headroom_p5": 11.8,
+      "headroom_p50": 13.78,
       "headroom_min": 11.58,
       "beyond_limit": 0,
       "tracks": 3

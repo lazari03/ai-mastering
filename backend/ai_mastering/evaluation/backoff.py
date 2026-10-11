@@ -25,7 +25,7 @@ from __future__ import annotations
 import numpy as np
 
 from ..planning import config as C
-from ..planning.plan import MasteringPlan
+from ..planning.plan import MasteringPlan, apply_delivery_ceiling
 from ..processing.eq import band_response_db
 
 
@@ -33,6 +33,8 @@ def _lower_loudness(plan: MasteringPlan, by_db: float, actions: list, why: str) 
     by_db = float(np.clip(by_db, 0.5, 3.0))
     plan.loudness["target_lufs"] = round(plan.loudness["target_lufs"] - by_db, 2)
     actions.append(f"loudness target lowered {by_db:.2f} dB ({why})")
+    # Lowering can only relax the delivery ceiling (-1 dBTP at <= -14 LUFS).
+    apply_delivery_ceiling(plan)
 
 
 def _disable(plan: MasteringPlan, stage: str, actions: list, why: str) -> None:

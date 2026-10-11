@@ -28,3 +28,9 @@ Before re-opening a decision, cite new evidence. Owner: technical-lead; auditor 
 ## D-006 · 2026-10-10 · Local Python must be 3.12
 - **Decision:** Use a Python 3.12 venv locally (matches CI and `backend/Dockerfile`).
 - **Rationale:** `pedalboard==0.9.25` raises SIGILL on import under Python 3.13 in this container (exit 132 for the whole pytest run). Under 3.12: 229 passed, synthetic drift 0.
+
+## D-007 · 2026-10-11 · True-peak ceiling follows the planned loudness (AURALITH-AUDIO-008)
+- **Decision:** `planning/plan.py:apply_delivery_ceiling` sets the limiter ceiling to -1 dBTP whenever the plan's target is at or below -14 LUFS; above it, the context ceiling (-2 dBTP for genres whose window reaches above -14) stays. Re-applied after the user loudness tweak and after every backoff loudness reduction. The target is not recomputed, so the freed 1 dB becomes less limiting, not more loudness. Relax-only: never tightens a -1 dBTP context.
+- **Rationale:** Spotify's -2 dBTP applies only to masters louder than -14 LUFS. Measured synthetic rows: rock_transient(_pro) and dense_drums_edm(_pro) limiter max GR -1.0 dB, transient retention +0.02 to +0.04, PLR +0.9 dB, same LUFS (±0.1). Real tracks unaffected (both planned above -14).
+- **Alternatives:** recompute the target with the extra headroom (rejected: spends the gain on loudness, against the priority order).
+- **Components:** dsp.planning, dsp.evaluation (backoff) · **Source:** docs/agent-reports/DSP_FIXES.md C1.
