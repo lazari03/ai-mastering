@@ -100,6 +100,18 @@ def _match_expected(expected: dict, layout: list[dict]) -> dict:
     return {k: float(v) - offset for k, v in expected.items()}
 
 
+# Below this source punch score the relative change is not judged.
+TRANSIENT_MIN_SOURCE_SCORE = 0.15
+
+
+def transient_relative_delta(src_score: float, mst_score: float) -> float:
+    """(master - source) / source punch at matched loudness; 0 when the
+    source has too little punch for the ratio to mean anything."""
+    if float(src_score) < TRANSIENT_MIN_SOURCE_SCORE:
+        return 0.0
+    return float((float(mst_score) - float(src_score)) / float(src_score))
+
+
 def _blame(contrib: dict, key: str, sign: float) -> str | None:
     best, best_val = None, 0.0
     for stage, c in contrib.items():
@@ -186,9 +198,15 @@ def evaluate_master(
     priority = float(context.preservation_priorities.get("transients", 0.75))
     allowed_loss = float(np.clip(0.22 - priority * 0.15, 0.04, 0.22))
     delta = mst_score - src_score
-    passed_trans = bool(delta >= -allowed_loss or src_score < 0.15)
+    # allowed_loss is a FRACTION of the source's punch (as documented), so it
+    # is compared with the relative change, the same unit benchmark.metrics
+    # uses. Comparing it with the absolute score delta made the check about
+    # 2x looser than documented (AURALITH-AUDIO-001). Sources with almost no
+    # punch (< 0.15) stay exempt: a ratio of tiny scores is noise.
+    relative_delta = transient_relative_delta(src_score, mst_score)
+    passed_trans = bool(relative_delta >= -allowed_loss)
     if not passed_trans:
-        flag("transient_loss", delta, -allowed_loss, (abs(delta) - allowed_loss) * 4.0 + 0.3, "bus" if not plan.compression.get("enabled") else "multiband_compression", f"drum punch {src_score:.3f} -> {mst_score:.3f} at matched loudness")
+        flag("transient_loss", relative_delta, -allowed_loss, (abs(relative_delta) - allowed_loss) * 4.0 + 0.3, "bus" if not plan.compression.get("enabled") else "multiband_compression", f"drum punch {src_score:.3f} -> {mst_score:.3f} ({100.0 * relative_delta:+.1f} %) at matched loudness")
 
     # --- stereo / safety -----------------------------------------------------
     if master.stereo_correlation < C.SAFE_MIN_CORRELATION and master.stereo_correlation < source.stereo_correlation - 0.1:
@@ -236,7 +254,7 @@ def evaluate_master(
             "plr_before_db": source.plr_db,
             "plr_after_db": master.plr_db,
         },
-        transients={"source_transient_score": round(src_score, 4), "master_transient_score": round(mst_score, 4), "delta": round(delta, 4), "allowed_loss": round(allowed_loss, 4), "passed": passed_trans},
+        transients={"source_transient_score": round(src_score, 4), "master_transient_score": round(mst_score, 4), "delta": round(delta, 4), "relative_delta": round(relative_delta, 4), "allowed_loss": round(allowed_loss, 4), "passed": passed_trans},
         loudness={
             "integrated_lufs": lufs,
             "target_lufs": loud["target_lufs"],

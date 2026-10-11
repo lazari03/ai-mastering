@@ -233,7 +233,9 @@ def _build_candidate(label, premaster_audio, sr, plan, processing_params, profil
         true_peak_dbtp=float(analysis_after["true_peak_db"]),
         rendered_lufs=float(analysis_after["integrated_lufs"]),
         target_lufs=effective_target,
-        transient_delta=float(evaluation.transients["delta"]),
+        # Relative loss (fraction of the source's punch), the unit
+        # GuardrailConfig.max_transient_loss is documented in.
+        transient_delta=float(evaluation.transients["relative_delta"]),
         config=GuardrailConfig(max_true_peak_dbtp=ceiling + C.TRUE_PEAK_TOLERANCE_DB),
         planned_deltas_db=planned,
         user_deltas_db=user,

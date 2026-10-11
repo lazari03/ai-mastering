@@ -286,7 +286,7 @@ def validate_render(
                 limit=-cfg.max_transient_loss,
                 band=None,
                 blame_stage="limiter_and_clipper",
-                detail=f"punch fell {abs(transient_delta):.3f} at matched loudness (limit {cfg.max_transient_loss})",
+                detail=f"punch fell {100.0 * abs(transient_delta):.1f} % at matched loudness (limit {100.0 * cfg.max_transient_loss:.0f} %)",
             )
         )
 

@@ -77,3 +77,38 @@ def test_ceiling_is_rederived_after_loudness_tweak_and_backoff():
 def test_quiet_genre_window_ceiling_is_never_tightened():
     ctx, plan = _plan("healthy", "pop", delivery="streaming")
     assert ctx.ceiling_dbtp == -1.0 and plan.limiter["ceiling_dbtp"] == -1.0
+
+
+# --- C2 / AURALITH-AUDIO-001: transient checks in relative units ---------------------------
+
+
+def test_guardrail_transient_limit_is_a_fraction_of_source_punch():
+    """src 0.50 -> 0.42 is an absolute delta of -0.08 but a 16 % loss: it must
+    fail the documented 12 % guardrail (it passed when the absolute delta was
+    compared with the fraction)."""
+    from ai_mastering.evaluation.evaluate import transient_relative_delta
+    from ai_mastering.output_validation import validate_render
+
+    rel = transient_relative_delta(0.50, 0.42)
+    assert abs(rel + 0.16) < 1e-9
+    zero = {b: 0.0 for b in ("subsonic_20_35hz", "sub_bass_35_60hz", "kick_bass_60_120hz", "upper_bass_120_250hz", "low_mid_250_500hz", "mid_500_2000hz", "high_mid_2000_4000hz", "presence_4000_6000hz", "high_6000_20000hz")}
+    r = validate_render(band_deltas_db=zero, true_peak_dbtp=-1.2, rendered_lufs=-10.0, target_lufs=-10.0, transient_delta=rel)
+    assert any(f.name == "transient_loss" for f in r.failures)
+    # Exemption for sources with almost no punch stays.
+    assert transient_relative_delta(0.10, 0.02) == 0.0
+
+
+def test_evaluator_transient_check_uses_relative_loss(tmp_path):
+    """End-to-end on the engine's own evaluation: the reported relative_delta
+    is (master - source) / source and is what passes/fails the check."""
+    import soundfile as sf
+
+    from ai_mastering.mastering import master_track
+
+    src = tmp_path / "in.wav"
+    sf.write(str(src), make_mix(seconds=8.0, seed=3, drum_level=1.2), SR)
+    r = master_track(str(src), str(tmp_path / "out.wav"), "pop", [])
+    t = r["mastering_diagnostics"]["evaluation"]["transients"]
+    expected = (t["master_transient_score"] - t["source_transient_score"]) / t["source_transient_score"]
+    assert abs(t["relative_delta"] - expected) < 2e-3
+    assert t["passed"] == (t["relative_delta"] >= -t["allowed_loss"])

@@ -34,3 +34,9 @@ Before re-opening a decision, cite new evidence. Owner: technical-lead; auditor 
 - **Rationale:** Spotify's -2 dBTP applies only to masters louder than -14 LUFS. Measured synthetic rows: rock_transient(_pro) and dense_drums_edm(_pro) limiter max GR -1.0 dB, transient retention +0.02 to +0.04, PLR +0.9 dB, same LUFS (±0.1). Real tracks unaffected (both planned above -14).
 - **Alternatives:** recompute the target with the extra headroom (rejected: spends the gain on loudness, against the priority order).
 - **Components:** dsp.planning, dsp.evaluation (backoff) · **Source:** docs/agent-reports/DSP_FIXES.md C1.
+
+## D-008 · 2026-10-11 · Transient checks use relative loss (AURALITH-AUDIO-001)
+- **Decision:** Both transient checks (evaluator `allowed_loss = 0.22 − 0.15·priority`, guardrail `max_transient_loss = 0.12`) compare the documented FRACTION with the relative change `(master − source)/source` at matched loudness (0 when source punch < 0.15). Thresholds unchanged. `evaluation.transients` gains `relative_delta`; `delta` (absolute) is kept for API compatibility.
+- **Rationale:** The absolute delta made the checks about 2× looser than documented and disagreed with `benchmark.metrics`. Synthetic rows that now fail first and are delivered by the existing corrective ladder (−1.5 LU nominal relief): short_3s_pop (retention 0.844→0.925), one_dead_channel_rnb (0.871→0.940), dark_rock (0.910→0.972); boomy_extreme_trap's existing corrective now also relieves the limiter (0.936→1.031, −2.2 LU, limiter GR 5.7→2.95). Each costs 1.3–2.2 LU of loudness and one extra render; loudness shortfall is reported (`loudness_below_request`). Real gate: 0 drift (Dune pop margin 0.35 pt).
+- **Alternatives:** raise the thresholds to keep current behaviour (rejected: weakens a guardrail).
+- **Components:** dsp.evaluation · **Source:** docs/agent-reports/DSP_FIXES.md C2.

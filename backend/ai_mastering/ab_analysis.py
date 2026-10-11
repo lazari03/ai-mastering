@@ -162,7 +162,7 @@ def build_decision_report(
         transient_decision = (
             f"Transient preservation: {'within budget' if transient_qc.get('passed', True) else 'regression'} "
             f"(source {transient_qc.get('source_transient_score', 0):.2f}, master {transient_qc.get('master_transient_score', 0):.2f}, "
-            f"delta {transient_qc.get('delta', 0):+.3f}, allowed {-transient_qc.get('allowed_loss', 0):.3f})."
+            f"change {100.0 * transient_qc.get('relative_delta', transient_qc.get('delta', 0)):+.1f} %, allowed {-100.0 * transient_qc.get('allowed_loss', 0):.0f} %)."
         )
 
     mix_diagnosis = processing_params.get("mix_diagnosis", []) or []
@@ -245,7 +245,7 @@ def build_ab_report(
         improved = False
         reasons.append(
             f"Transient/drum-punch preservation regressed beyond this genre's tolerance "
-            f"(delta {transient_qc.get('delta', 0):+.3f}, allowed {-transient_qc.get('allowed_loss', 0):.3f}) — "
+            f"(change {100.0 * transient_qc.get('relative_delta', transient_qc.get('delta', 0)):+.1f} %, allowed {-100.0 * transient_qc.get('allowed_loss', 0):.0f} %) — "
             f"see quality_control's transient_qc for the corrective action attempted."
         )
 
