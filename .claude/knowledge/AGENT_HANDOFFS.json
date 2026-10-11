@@ -325,6 +325,33 @@
       "next_agent": "technical-lead",
       "commit": "1d33454",
       "date": "2026-10-10T19:53:36"
+    },
+    {
+      "handoff_id": "H-0017",
+      "task_id": "AURALITH-QA-008",
+      "agent": "qa-automation-engineer",
+      "status": "READY_FOR_AUDIT",
+      "summary": "Real-audio gate: real_corpus.py, regression --real, real.json baseline (pop demo + private Dune Slinger numbers), mono_fold/sample_peak/clipped metrics, pytest. Real gate 3 runs bit-identical (drift 0); synthetic drift 0; full suite 257 passed. Private track absent => BLOCKED not drift.",
+      "files_changed": [
+        "backend/benchmark/real_corpus.py",
+        "backend/benchmark/regression.py",
+        "backend/benchmark/baselines/real.json",
+        "backend/tests/test_real_audio_gate.py",
+        "docs/agent-reports/QA_REPORT.md"
+      ],
+      "tests_executed": [
+        "backend/tests/test_real_audio_gate.py"
+      ],
+      "results": [
+        "257 passed; real drift 0; synthetic drift 0"
+      ],
+      "risks": [
+        "2 real tracks only; listening PENDING; corrupt numba cache segfault in sandbox (use fresh NUMBA_CACHE_DIR)"
+      ],
+      "evidence": null,
+      "next_agent": "independent-auditor",
+      "commit": "7ffcc09",
+      "date": "2026-10-11T10:36:41"
     }
   ]
 }

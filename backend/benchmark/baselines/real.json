@@ -1,0 +1,323 @@
+{
+ "date": "2026-10-11",
+ "tolerances": {
+  "master_lufs": 0.3,
+  "true_peak_dbtp": 0.2,
+  "plr_db": 0.4,
+  "short_term_crest_change_db": 0.5,
+  "lra_change_lu": 0.5,
+  "transient_retention": 0.03,
+  "low_end_actual_db": 0.3,
+  "low_end_collateral_db": 0.3,
+  "hf_actual_db": 0.3,
+  "hf_collateral_db": 0.3,
+  "unplanned_low_end_min_db": 0.3,
+  "unplanned_hf_max_db": 0.3,
+  "tilt_drift_db_per_oct": 0.05,
+  "stereo_correlation": 0.03,
+  "limiter_gr_p995_db": 0.5,
+  "limiter_max_gr_db": 0.75,
+  "added_distortion_db": 1.0,
+  "mono_fold_loss_change_db": 0.1,
+  "sample_peak_dbfs": 0.1
+ },
+ "tracks": {
+  "dune_slinger_what_did_i_say": {
+   "genre": "rock",
+   "source_lufs": -17.94,
+   "master_lufs": -11.53,
+   "requested_lufs": -11.5,
+   "true_peak_dbtp": -2.02,
+   "plr_db": 9.51,
+   "short_term_crest_change_db": -1.8,
+   "lra_change_lu": -0.54,
+   "transient_retention": 0.927,
+   "low_end_actual_db": 1.421,
+   "low_end_collateral_db": 0.014,
+   "hf_actual_db": -0.557,
+   "hf_collateral_db": -0.213,
+   "unplanned_low_end_min_db": 0.06,
+   "unplanned_hf_max_db": 0.08,
+   "tilt_drift_db_per_oct": -0.063,
+   "stereo_correlation": 0.893,
+   "limiter_gr_p995_db": 0.64,
+   "limiter_max_gr_db": 1.7,
+   "added_distortion_db": -23.42,
+   "delivered_candidate": "initial",
+   "renders": 1,
+   "initial_failures": [],
+   "final_warnings": [],
+   "mono_fold_loss_source_db": -0.23,
+   "mono_fold_loss_master_db": -0.24,
+   "mono_fold_loss_change_db": -0.0,
+   "sample_peak_dbfs": -2.02,
+   "clipped_samples": 0
+  },
+  "pop_homepage_demo": {
+   "genre": "pop",
+   "source_lufs": -15.89,
+   "master_lufs": -10.12,
+   "requested_lufs": -10.0,
+   "true_peak_dbtp": -2.07,
+   "plr_db": 8.05,
+   "short_term_crest_change_db": -1.83,
+   "lra_change_lu": -0.33,
+   "transient_retention": 0.966,
+   "low_end_actual_db": 0.812,
+   "low_end_collateral_db": -0.107,
+   "hf_actual_db": -0.801,
+   "hf_collateral_db": 0.164,
+   "unplanned_low_end_min_db": -0.24,
+   "unplanned_hf_max_db": 0.18,
+   "tilt_drift_db_per_oct": 0.047,
+   "stereo_correlation": 0.646,
+   "limiter_gr_p995_db": 3.88,
+   "limiter_max_gr_db": 5.17,
+   "added_distortion_db": -25.83,
+   "delivered_candidate": "initial",
+   "renders": 1,
+   "initial_failures": [],
+   "final_warnings": [
+    "quality_control:limiter_gain_reduction"
+   ],
+   "mono_fold_loss_source_db": -0.9,
+   "mono_fold_loss_master_db": -0.85,
+   "mono_fold_loss_change_db": 0.05,
+   "sample_peak_dbfs": -2.08,
+   "clipped_samples": 0
+  }
+ },
+ "calibration": {
+  "thresholds": {
+   "unplanned_low_end_min_db": {
+    "rule": "guardrail max_low_end_loss_db=2.0",
+    "headroom_p5": 1.775,
+    "headroom_p50": 1.91,
+    "headroom_min": 1.76,
+    "beyond_limit": 0,
+    "tracks": 2
+   },
+   "unplanned_hf_max_db": {
+    "rule": "guardrail max_high_boost_db=2.5",
+    "headroom_p5": 2.325,
+    "headroom_p50": 2.37,
+    "headroom_min": 2.32,
+    "beyond_limit": 0,
+    "tracks": 2
+   },
+   "tilt_drift_db_per_oct": {
+    "rule": "guardrail max_tilt_drift_db_per_oct=0.3",
+    "headroom_p5": 0.238,
+    "headroom_p50": 0.245,
+    "headroom_min": 0.237,
+    "beyond_limit": 0,
+    "tracks": 2
+   },
+   "low_end_collateral_db": {
+    "rule": "evaluation LOW_END_COLLATERAL_TOLERANCE_DB=1.0",
+    "headroom_p5": 0.899,
+    "headroom_p50": 0.954,
+    "headroom_min": 0.893,
+    "beyond_limit": 0,
+    "tracks": 2
+   },
+   "hf_collateral_db": {
+    "rule": "evaluation HF_COLLATERAL_TOLERANCE_DB=1.0",
+    "headroom_p5": 0.855,
+    "headroom_p50": 1.024,
+    "headroom_min": 0.836,
+    "beyond_limit": 0,
+    "tracks": 2
+   },
+   "plr_db": {
+    "rule": "QC plr fail < 4.0 dB",
+    "headroom_p5": 4.123,
+    "headroom_p50": 4.78,
+    "headroom_min": 4.05,
+    "beyond_limit": 0,
+    "tracks": 2
+   },
+   "limiter_max_gr_db": {
+    "rule": "QC limiter_gain_reduction fail > 6.0 dB",
+    "headroom_p5": 1.004,
+    "headroom_p50": 2.565,
+    "headroom_min": 0.83,
+    "beyond_limit": 0,
+    "tracks": 2
+   },
+   "added_distortion_db": {
+    "rule": "verdict MAX_ADDED_DISTORTION_DB=-18.0",
+    "headroom_p5": 5.541,
+    "headroom_p50": 6.625,
+    "headroom_min": 5.42,
+    "beyond_limit": 0,
+    "tracks": 2
+   }
+  },
+  "by_genre": {
+   "pop": {
+    "tracks": 1,
+    "too_few_to_calibrate": true,
+    "thresholds": {
+     "unplanned_low_end_min_db": {
+      "rule": "guardrail max_low_end_loss_db=2.0",
+      "headroom_p5": 1.76,
+      "headroom_p50": 1.76,
+      "headroom_min": 1.76,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "unplanned_hf_max_db": {
+      "rule": "guardrail max_high_boost_db=2.5",
+      "headroom_p5": 2.32,
+      "headroom_p50": 2.32,
+      "headroom_min": 2.32,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "tilt_drift_db_per_oct": {
+      "rule": "guardrail max_tilt_drift_db_per_oct=0.3",
+      "headroom_p5": 0.253,
+      "headroom_p50": 0.253,
+      "headroom_min": 0.253,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "low_end_collateral_db": {
+      "rule": "evaluation LOW_END_COLLATERAL_TOLERANCE_DB=1.0",
+      "headroom_p5": 0.893,
+      "headroom_p50": 0.893,
+      "headroom_min": 0.893,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "hf_collateral_db": {
+      "rule": "evaluation HF_COLLATERAL_TOLERANCE_DB=1.0",
+      "headroom_p5": 0.836,
+      "headroom_p50": 0.836,
+      "headroom_min": 0.836,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "plr_db": {
+      "rule": "QC plr fail < 4.0 dB",
+      "headroom_p5": 4.05,
+      "headroom_p50": 4.05,
+      "headroom_min": 4.05,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "limiter_max_gr_db": {
+      "rule": "QC limiter_gain_reduction fail > 6.0 dB",
+      "headroom_p5": 0.83,
+      "headroom_p50": 0.83,
+      "headroom_min": 0.83,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "added_distortion_db": {
+      "rule": "verdict MAX_ADDED_DISTORTION_DB=-18.0",
+      "headroom_p5": 7.83,
+      "headroom_p50": 7.83,
+      "headroom_min": 7.83,
+      "beyond_limit": 0,
+      "tracks": 1
+     }
+    }
+   },
+   "rock": {
+    "tracks": 1,
+    "too_few_to_calibrate": true,
+    "thresholds": {
+     "unplanned_low_end_min_db": {
+      "rule": "guardrail max_low_end_loss_db=2.0",
+      "headroom_p5": 2.06,
+      "headroom_p50": 2.06,
+      "headroom_min": 2.06,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "unplanned_hf_max_db": {
+      "rule": "guardrail max_high_boost_db=2.5",
+      "headroom_p5": 2.42,
+      "headroom_p50": 2.42,
+      "headroom_min": 2.42,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "tilt_drift_db_per_oct": {
+      "rule": "guardrail max_tilt_drift_db_per_oct=0.3",
+      "headroom_p5": 0.237,
+      "headroom_p50": 0.237,
+      "headroom_min": 0.237,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "low_end_collateral_db": {
+      "rule": "evaluation LOW_END_COLLATERAL_TOLERANCE_DB=1.0",
+      "headroom_p5": 1.014,
+      "headroom_p50": 1.014,
+      "headroom_min": 1.014,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "hf_collateral_db": {
+      "rule": "evaluation HF_COLLATERAL_TOLERANCE_DB=1.0",
+      "headroom_p5": 1.213,
+      "headroom_p50": 1.213,
+      "headroom_min": 1.213,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "plr_db": {
+      "rule": "QC plr fail < 4.0 dB",
+      "headroom_p5": 5.51,
+      "headroom_p50": 5.51,
+      "headroom_min": 5.51,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "limiter_max_gr_db": {
+      "rule": "QC limiter_gain_reduction fail > 6.0 dB",
+      "headroom_p5": 4.3,
+      "headroom_p50": 4.3,
+      "headroom_min": 4.3,
+      "beyond_limit": 0,
+      "tracks": 1
+     },
+     "added_distortion_db": {
+      "rule": "verdict MAX_ADDED_DISTORTION_DB=-18.0",
+      "headroom_p5": 5.42,
+      "headroom_p50": 5.42,
+      "headroom_min": 5.42,
+      "beyond_limit": 0,
+      "tracks": 1
+     }
+    }
+   }
+  },
+  "delivered_candidates": {
+   "initial": 2
+  },
+  "initial_failure_kinds": {},
+  "rejected_tracks": [],
+  "avg_renders": 1.0
+ },
+ "corpus": {
+  "included": {
+   "pop_homepage_demo": {
+    "source": "frontend/public/audio/demos/pop-before.mp3",
+    "sha256_16": "aa7635eb3df7e7b9",
+    "license": "project-owned homepage demo",
+    "origin": "manifest"
+   },
+   "dune_slinger_what_did_i_say": {
+    "source": "benchmark/corpus/dune_slinger_what_did_i_say/mix.wav",
+    "sha256_16": "61b79c654c325689",
+    "license": "Supplied by the product owner for internal regression testing only. Not for redistribution; never commit.",
+    "origin": "user"
+   }
+  },
+  "skipped": {}
+ }
+}

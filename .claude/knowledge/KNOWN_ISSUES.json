@@ -23,7 +23,7 @@
     "SECURITY": 6,
     "DEVOPS": 8,
     "PRODUCT": 5,
-    "QA": 8,
+    "QA": 9,
     "DOCS": 1
   },
   "issues": [
@@ -843,6 +843,29 @@
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-QA-008",
+      "title": "Real-audio regression gate (--real) with committed baseline, mono-fold/peak/clip metrics",
+      "component": "regression.synthetic",
+      "severity": "P2",
+      "status": "READY_FOR_AUDIT",
+      "owner": "qa-automation-engineer",
+      "root_cause": null,
+      "repro": "cd backend && NUMBA_CACHE_DIR=<fresh dir> python -m benchmark.regression --real --baseline benchmark/baselines/real.json",
+      "evidence": "docs/agent-reports/QA_REPORT.md",
+      "tests": [
+        "backend/tests/test_real_audio_gate.py"
+      ],
+      "source": "docs/agent-reports/QA_REPORT.md",
+      "validated_commit": "7ffcc09",
+      "history": [
+        {
+          "date": "2026-10-11",
+          "agent": "qa-automation-engineer",
+          "note": "Created (READY_FOR_AUDIT)."
         }
       ]
     }

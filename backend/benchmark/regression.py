@@ -22,6 +22,7 @@ Usage (from backend/):
   python -m benchmark.regression --corpus benchmark/corpus --write benchmark/baselines/main.json
   python -m benchmark.regression --corpus benchmark/corpus --baseline benchmark/baselines/main.json
   python -m benchmark.regression --synthetic --baseline benchmark/baselines/synthetic.json   # CI gate
+  python -m benchmark.regression --real --baseline benchmark/baselines/real.json             # real-audio gate
 """
 
 from __future__ import annotations
@@ -63,12 +64,43 @@ TOLERANCES = {
     "limiter_gr_p995_db": 0.5,
     "limiter_max_gr_db": 0.75,
     "added_distortion_db": 1.0,
+    # Added with the real-audio gate. Tolerances are measurement noise only
+    # (see QA_REPORT "Real-audio regression gate"); absent from older baselines
+    # (synthetic.json), where compare() skips them.
+    "mono_fold_loss_change_db": 0.1,
+    "sample_peak_dbfs": 0.1,
 }
 # Below this many tracks a genre's numbers are reported but not treated as
 # calibration evidence.
 MIN_TRACKS_PER_GENRE = 5
 # Categorical fields: any change is reported.
 EXACT = ("delivered_candidate", "renders", "initial_failures", "final_warnings")
+CLIP_LEVEL = 0.9999  # same clipping criterion as audio_utils.analyze (clipping_detected)
+
+
+def mono_fold_loss_db(audio: np.ndarray) -> float:
+    """Level of the L+R mono fold relative to the average per-channel RMS (dB;
+    0 = perfectly mono-compatible, -3 or lower is the engine's own
+    mono_compatibility_risk line). A ratio, so inherently loudness-matched."""
+    left, right = audio[:, 0].astype(np.float64), audio[:, 1].astype(np.float64)
+    rms = lambda x: float(np.sqrt(np.mean(x * x)) + 1e-12)  # noqa: E731
+    return 20 * np.log10(rms((left + right) * 0.5) / (0.5 * (rms(left) + rms(right))))
+
+
+def measure_files(source_path: str, master_path: str) -> dict:
+    """Metrics the report does not carry, measured on the delivered files."""
+    from ai_mastering.audio_utils import _load_audio
+
+    src, _ = _load_audio(source_path)
+    out, _ = _load_audio(master_path)
+    peak = float(np.max(np.abs(out)))
+    return {
+        "mono_fold_loss_source_db": round(mono_fold_loss_db(src), 2),
+        "mono_fold_loss_master_db": round(mono_fold_loss_db(out), 2),
+        "mono_fold_loss_change_db": round(mono_fold_loss_db(out) - mono_fold_loss_db(src), 2),
+        "sample_peak_dbfs": round(20 * np.log10(max(peak, 1e-9)), 2),
+        "clipped_samples": int(np.sum(np.abs(out) >= CLIP_LEVEL)),
+    }
 
 
 def measure(result: dict) -> dict:
@@ -127,7 +159,7 @@ def run_corpus(corpus: Path, tier_override: str | None = None) -> dict:
                     style=meta.get("style", "modern"),
                     tier=tier_override or meta.get("tier", "standard"),
                 )
-                out[track.name] = {"genre": meta.get("genre", "pop"), **measure(result)}
+                out[track.name] = {"genre": meta.get("genre", "pop"), **measure(result), **measure_files(str(track / "mix.wav"), str(Path(tmp) / "master.wav"))}
             except Exception as exc:  # a rejected master is a result, not a crash
                 out[track.name] = {"error": f"{type(exc).__name__}: {exc}"[:400]}
         print(f"{track.name}: {_one_line(out[track.name])}", flush=True)
@@ -252,11 +284,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--baseline", help="snapshot to compare against; exit 1 on drift")
     parser.add_argument("--write", help="write this run's snapshot here (e.g. benchmark/baselines/main.json)")
     parser.add_argument("--out", default=None, help="report dir (default benchmark/results/regression-<date>)")
+    parser.add_argument("--real", action="store_true", help="real-audio gate: committed licensed sources + licensed tracks in benchmark/corpus (benchmark/real_corpus.py)")
+    parser.add_argument("--only-manifest", action="store_true", help="with --real: skip user-supplied tracks in benchmark/corpus")
     parser.add_argument("--tier", default=None, choices=["standard", "professional"], help="override every track's tier")
     parser.add_argument("--synthetic", action="store_true", help="run the deterministic synthetic corpus (benchmark/synthetic_corpus.py) instead of --corpus")
     args = parser.parse_args(argv)
 
-    if args.synthetic:
+    corpus_info = None
+    if args.real:
+        from benchmark.real_corpus import build as build_real
+
+        with tempfile.TemporaryDirectory() as tmp:
+            real_dir, corpus_info = build_real(Path(tmp) / "real", include_user=not args.only_manifest)
+            for tid, why in corpus_info["skipped"].items():
+                print(f"SKIPPED {tid}: {why}", flush=True)
+            tracks = run_corpus(real_dir, args.tier)
+    elif args.synthetic:
         from benchmark.synthetic_corpus import build
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -264,9 +307,24 @@ def main(argv: list[str] | None = None) -> int:
     else:
         tracks = run_corpus(Path(args.corpus), args.tier)
     snapshot = {"date": date.today().isoformat(), "tolerances": TOLERANCES, "tracks": tracks, "calibration": calibration(tracks)}
+    if corpus_info:
+        snapshot["corpus"] = corpus_info
     drift = None
     if args.baseline:
-        drift = compare(tracks, json.loads(Path(args.baseline).read_text())["tracks"])
+        base_snap = json.loads(Path(args.baseline).read_text())
+        base_tracks = dict(base_snap["tracks"])
+        if args.real:
+            # Private (user-origin) tracks may be absent on another machine (CI):
+            # that is BLOCKED/SKIPPED coverage, reported loudly, never a pass or drift.
+            for tid, meta in (base_snap.get("corpus", {}).get("included", {})).items():
+                if meta.get("origin") == "user" and tid not in tracks:
+                    base_tracks.pop(tid, None)
+                    print(f"BLOCKED {tid}: private licensed track absent on this machine; its baseline numbers were NOT checked", flush=True)
+            for tid in list(tracks):
+                if tid not in base_tracks and corpus_info["included"].get(tid, {}).get("origin") == "user":
+                    print(f"UNBASELINED {tid}: user track not in the baseline; measured but not gated", flush=True)
+                    tracks_unbaselined = tracks.pop(tid)  # noqa: F841
+        drift = compare(tracks, base_tracks)
     out = Path(args.out or BACKEND / "benchmark/results" / f"regression-{snapshot['date']}")
     out.mkdir(parents=True, exist_ok=True)
     (out / "snapshot.json").write_text(json.dumps(snapshot, indent=1))

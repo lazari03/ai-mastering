@@ -90,3 +90,30 @@ Refusals / errors:
 cd backend && /home/user/venv-auralith/bin/python -m benchmark.api_qa --cases <id> --force
 ```
 Machine-readable: `test-results/auralith-qa.json`. Audio: `test-results/audio/<id>/` (git-ignored), HTML player: `test-results/audio/index.html`.
+
+## Real-audio regression gate
+
+Command (from `backend/`): `python -m benchmark.regression --real --baseline benchmark/baselines/real.json`
+(`--only-manifest` skips private tracks; CI/pytest use that). Baseline: `backend/benchmark/baselines/real.json`
+(numbers only, written at the engine on branch claude/dsp-quality before any DSP change; re-write with `--write` only after a reviewed change).
+
+**Sources** (`backend/benchmark/real_corpus.py`): the committed manifest (`pop_homepage_demo` = `frontend/public/audio/demos/pop-before.mp3`,
+license "project-owned homepage demo"), decoded with the engine's own loader, plus any `backend/benchmark/corpus/<id>/{mix.wav,meta.json}`
+whose meta.json has a non-empty `license` (entries without one are skipped and printed). To add a licensed track (e.g. Dune Slinger): create the
+directory, copy `mix.wav`, write `meta.json` with `genre` and `license`, run `--real --write benchmark/baselines/real.json`, review the diff.
+The corpus dir is git-ignored; never commit audio. If a baselined private track is absent on a machine, the gate prints `BLOCKED <id>`
+(its numbers were NOT checked); it is neither a pass nor drift. A new unbaselined private track prints `UNBASELINED` and is not gated.
+
+**Metrics** (all already in `measure()` except the last three): integrated LUFS, true peak, PLR, short-term crest change, LRA change, transient
+retention, low-end / HF region deltas and collateral, unplanned band deltas and tilt, stereo correlation, limiter GR (p99.5 / max), added
+distortion, delivered candidate, renders, failures/warnings. Added: `mono_fold_loss_{source,master,change}_db` (level of the L+R fold vs the
+mean channel RMS; a ratio, hence loudness-independent; change = master - source), `sample_peak_dbfs`, `clipped_samples` (|x| >= 0.9999, the
+engine's own clipping criterion; informational). Tolerances for the two gated additions (0.1 dB each) are measurement resolution only:
+three runs of the real gate were bit-identical for every field (run-to-run delta 0.00), so no noise-derived value larger than the 0.01 dB
+rounding exists to justify; no quality thresholds were invented. `compare()` skips metrics absent from a baseline, so synthetic.json
+is unaffected (synthetic gate re-run: drift 0).
+
+**Limits**: two real tracks (one committed, one private/internal-only) are NOT professional validation: no genre coverage, rock genre label is a
+placeholder, and the gate detects change in objective numbers, not whether a change sounds better. Listening/A-B evidence remains PENDING.
+Environment note: a corrupt numba cache made `librosa.beat.beat_track` segfault (exit 139) in this sandbox; running with a fresh
+`NUMBA_CACHE_DIR` fixed it.
