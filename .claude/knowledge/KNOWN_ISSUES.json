@@ -16,7 +16,7 @@
     "rule": "Before investigating a suspected defect run: python3 .claude/knowledge/kb.py issues --component <id> --grep <word>. Edit only the entry you own; append to history, never rewrite it."
   },
   "next_ids": {
-    "AUDIO": 11,
+    "AUDIO": 12,
     "BACKEND": 9,
     "BILLING": 1,
     "FRONTEND": 3,
@@ -990,6 +990,29 @@
       "tests": [],
       "source": "docs/agent-reports/DSP_PHASE1_INVESTIGATION.md",
       "validated_commit": "85c2450",
+      "history": [
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-011",
+      "title": "Loudness-oriented chips produce the OPPOSITE loudness on real audio: tag louder -1.5 LU, category modern -0.6, club -0.9; tag softer +0.8, category dynamic +0.8, style streaming_safe +0.8 (vs baseline pop render)",
+      "component": "dsp.planning",
+      "severity": "P1",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": null,
+      "repro": "render pop-before genre=pop style=modern with and without tags=[louder]; compare integrated LUFS",
+      "evidence": "scratchpad chip_effects run on pop-before (results.json; to be published in docs/agent-reports/CHIP_EFFECTS.md)",
+      "tests": [
+        "to add: monotonic loudness intent test"
+      ],
+      "source": "scratchpad chip_effects run on pop-before (results.json; to be published in docs/agent-reports/CHIP_EFFECTS.md)",
+      "validated_commit": "d891f2b",
       "history": [
         {
           "date": "2026-10-11",
