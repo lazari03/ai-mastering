@@ -67,6 +67,7 @@ export default function AdaptiveControlsPanel({
   isPreviewLoading,
   previewUnavailable,
   previewError,
+  compactDirection = false,
 }) {
   const { t } = useLanguage();
 
@@ -81,7 +82,7 @@ export default function AdaptiveControlsPanel({
       <p className="mt-1 text-[10px] leading-relaxed text-text-secondary">{t("adaptive.body")}</p>
 
       <div className="mt-3">
-        <DirectionControls direction={direction} tweaks={tweaks} onDirection={onDirection} onTweak={onTweak} onReset={onReset} idPrefix="console-dir" />
+        <DirectionControls direction={direction} tweaks={tweaks} onDirection={onDirection} onTweak={onTweak} onReset={onReset} idPrefix="console-dir" showFineTune={!compactDirection} showLoudness={!compactDirection} />
       </div>
 
       {/* The live band view needs the adaptive engine's preview endpoint;

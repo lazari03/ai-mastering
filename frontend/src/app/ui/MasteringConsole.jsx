@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
 
 import { takePendingToolFile } from "@/lib/toolHandoff";
 import AdaptiveControlsPanel from "@/components/audio/AdaptiveControlsPanel";
@@ -9,6 +8,7 @@ import PresetSaveBar from "@/components/audio/PresetSaveBar";
 import ProcessingSummary from "@/components/audio/ProcessingSummary";
 import MasteringDecisions from "@/components/audio/MasteringDecisions";
 import ProParamsPanel from "@/components/audio/ProParamsPanel";
+import SoundControls from "@/components/audio/SoundControls";
 import SignalVisualizer from "@/components/audio/SignalVisualizer";
 import FileDropzone from "@/components/ui/FileDropzone";
 import { previewCodec } from "@/domain/mastering/masteringDomain";
@@ -38,26 +38,23 @@ const CHIP_BASE = "border-border-subtle bg-black/[0.045] text-text-secondary";
 const CHIP_EMBER = "border-accent bg-accent/[0.15] text-accent";
 const CHIP_BRASS = "border-accent bg-black/[0.05] text-accent";
 
-// Shared step-transition motion — a quick, subtle fade/slide rather than
-// an instant swap, so moving through the wizard reads as one continuous
-// flow instead of the content just snapping to something else. Kept fast
-// (180ms) since this fires on every Next/Back/step-tab click and a
-// sluggish transition there would read as lag, not polish.
-const STEP_TRANSITION = { duration: 0.18, ease: "easeOut" };
-const stepMotionProps = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-  transition: STEP_TRANSITION,
-};
-
-function SectionLabel({ children }) {
-  return <h2 className="m-0 mb-2.5 text-xs uppercase tracking-[0.14em] text-accent">{children}</h2>;
+function SectionLabel({ n, children, hint }) {
+  return (
+    <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
+      <h2 className="m-0 text-[13px] font-bold text-text-primary">
+        {n ? <span className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[11px] text-bg" aria-hidden="true">{n}</span> : null}
+        {children}
+      </h2>
+      {hint ? <span className="text-[11px] text-text-secondary">{hint}</span> : null}
+    </div>
+  );
 }
+
+const HIDDEN_FIELD = "text-[11px] uppercase tracking-[0.1em] text-text-secondary";
 
 export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPresets }) {
   const { t } = useLanguage();
-  const [activeStep, setActiveStep] = useState(0);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [inputPreviewUrl, setInputPreviewUrl] = useState("");
   // Progress simulation moved to a shared hook (useMasteringProgress) so
   // the fullscreen loader overlay (rendered from AppClient, above this
@@ -201,12 +198,6 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
     }
   };
 
-  const steps = useMemo(
-    () => [t("console.step.audio"), t("console.step.mode"), t("console.step.master")],
-    [t]
-  );
-  const wizardProgress = ((activeStep + 1) / steps.length) * 100;
-
   const selectedPresetMeta = useMemo(() => presets.find((preset) => preset.name === selectedPreset) || null, [presets, selectedPreset]);
   const builtInPresets = useMemo(() => presets.filter((preset) => !preset.custom), [presets]);
   const savedArtistPresets = useMemo(() => presets.filter((preset) => preset.custom), [presets]);
@@ -275,65 +266,161 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
     }
   };
 
-  const canGoNextFromAudio = Boolean(file);
-  const canGoNextFromMode = referenceMode || mode === "pro" || Boolean(selectedGenre || selectedPreset);
-  const nextStep = () => {
-    if (activeStep === 0 && !canGoNextFromAudio) return;
-    if (activeStep === 1 && !canGoNextFromMode) return;
-    setActiveStep((prev) => Math.min(prev + 1, steps.length - 1));
-  };
-  const prevStep = () => setActiveStep((prev) => Math.max(prev - 1, 0));
-
   const chipClass = (active, tone = "ember") =>
-    `rounded-xl border px-3.5 py-2 text-xs font-semibold capitalize transition ${active ? (tone === "brass" ? CHIP_BRASS : CHIP_EMBER) : `${CHIP_BASE} hover:border-text-primary/30`}`;
+    `rounded-xl border px-3 py-1.5 text-xs font-semibold capitalize transition ${active ? (tone === "brass" ? CHIP_BRASS : CHIP_EMBER) : `${CHIP_BASE} hover:border-text-primary/30`}`;
+
+  const keptClarity = tags.includes("clearer");
+  // Merged controls (old tag/objective chips) have no UI of their own any
+  // more, but a preset or imported preset can still set them — say so, and
+  // let the user clear them with the same store actions the chips used.
+  const extraTags = selectedTags.filter((tag) => tag !== "clearer");
+  const extras = [...extraTags.map((tag) => tag.replaceAll("_", " ")), ...(selectedCategory ? [[selectedCategory, selectedFlavour].filter(Boolean).join(" · ").replaceAll("_", " ")] : [])];
+  const clearExtras = () => {
+    extraTags.forEach((tag) => toggleTag(tag));
+    if (selectedCategory) setCategory("");
+  };
+  const adjustedCount = ["loudness", "punch", "low_end", "warmth", "brightness", "presence", "width"].filter((k) => Number(tweaks[k]) !== 0).length + (selectedTags.includes("clearer") ? 1 : 0);
+  const needGenre = !referenceMode && !selectedGenre && !selectedPreset;
+  const field = "w-full rounded-[10px] border border-border-subtle bg-black/[0.045] p-2.5 text-[13px] text-text-primary";
+  const box = "rounded-xl border border-border-subtle bg-black/[0.045] p-3";
+
+  const stemToggle = (
+    <div>
+      <label className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-black/[0.045] p-3 text-sm">
+        <span className="flex items-center gap-2">
+          {t("console.stemSeparation")}
+          {!stemUnlocked ? (
+            <span className="rounded-full border border-border-subtle bg-accent/[0.12] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-accent">{t("console.premium")}</span>
+          ) : null}
+        </span>
+        <input type="checkbox" checked={useStemSeparation} disabled={!stemUnlocked} onChange={(event) => setUseStemSeparation(event.target.checked)} className="h-4 w-4 disabled:opacity-40" />
+      </label>
+      {!stemUnlocked ? (
+        <div className="mt-1.5 flex items-center justify-between gap-3">
+          <p className="m-0 text-[11px] text-text-secondary">{plan === "pro" ? t("console.stemUsedUp") : t("console.stemIncluded")}</p>
+          <button type="button" onClick={buyStemSeparation} disabled={stemBuyBusy} className="shrink-0 rounded-full border border-border-subtle bg-accent/[0.1] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-accent hover:bg-black/[0.05] disabled:opacity-50">
+            {stemBuyBusy ? t("console.redirecting") : stemBuyLabel}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
-    <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] [&>*]:min-w-0">
-      <div>
-        <h1 className="m-0 text-[26px]">{t("console.title")}</h1>
-        <p className="mt-2 text-sm text-text-secondary">{t("console.subtitle")}</p>
-
-        <div className="glass-panel mt-5 rounded-2xl p-4">
-          <div className="mb-3.5 h-1.5 w-full overflow-hidden rounded-full bg-black/[0.05]">
-            <div
-              className="h-full rounded-full bg-accent transition-all duration-300"
-              style={{ width: `${wizardProgress}%` }}
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {steps.map((label, idx) => {
-              const isActive = idx === activeStep;
-              const isDone = idx < activeStep;
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => setActiveStep(idx)}
-                  className={`rounded-[10px] border px-2.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] transition ${
-                    isActive ? CHIP_EMBER : isDone ? CHIP_BRASS : CHIP_BASE
-                  }`}
-                >
-                  {idx + 1}. {label}
-                </button>
-              );
-            })}
-          </div>
+    <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] [&>*]:min-w-0">
+      <div className="flex flex-col gap-4">
+        <div>
+          <h1 className="m-0 text-[24px]">{t("mc.title")}</h1>
+          <p className="mt-1 text-sm text-text-secondary">{t("mc.subtitle")}</p>
         </div>
 
-        <AnimatePresence mode="wait">
-        {activeStep === 0 ? (
-          <motion.div key="step-audio" {...stepMotionProps} className="mt-5 flex flex-col gap-5">
-            <section>
-              <SectionLabel>{t("console.files")}</SectionLabel>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FileDropzone
-                  id="masterFileInput"
-                  compact
-                  label={t("console.audioFile")}
-                  fileName={file?.name}
-                  onChange={(event) => setFile(event.target.files?.[0] || null)}
-                  onRemove={() => setFile(null)}
-                />
+        {/* 1. Upload */}
+        <section className="glass-panel rounded-2xl p-4" aria-labelledby="mc-s1">
+          <div id="mc-s1"><SectionLabel n="1">{t("mc.step.upload")}</SectionLabel></div>
+          <FileDropzone
+            id="masterFileInput"
+            compact
+            label={t("console.audioFile")}
+            fileName={file?.name}
+            onChange={(event) => setFile(event.target.files?.[0] || null)}
+            onRemove={() => setFile(null)}
+          />
+        </section>
+
+        {referenceMode ? (
+          <section className="glass-panel rounded-2xl p-4" aria-labelledby="mc-ref">
+            <div id="mc-ref"><SectionLabel n="2">{t("mc.reference.active")}</SectionLabel></div>
+            <p className="m-0 text-sm text-text-secondary">
+              <strong className="text-accent">{t("console.referenceIsActive")}</strong> {t("console.referenceAnalyze")}{" "}
+              <span className="text-text-primary">{referenceFile.name}</span> {t("console.referenceBody2")}
+            </p>
+            <p className="mt-2 text-xs text-text-secondary">{t("console.referenceBody3")}</p>
+            <button type="button" onClick={() => setReferenceFile(null)} className="mt-3 rounded-lg border border-border-subtle bg-black/[0.045] px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30">
+              {t("console.switchManual")}
+            </button>
+          </section>
+        ) : (
+          <>
+            {/* 2. Genre */}
+            <section className="glass-panel rounded-2xl p-4" aria-labelledby="mc-s2">
+              <div id="mc-s2"><SectionLabel n="2" hint={t("mc.genre.hint")}>{t("mc.step.genre")}</SectionLabel></div>
+              <div className="flex flex-wrap gap-1.5">
+                {genres.map((genre) => (
+                  <button key={genre} type="button" aria-pressed={selectedGenre === genre} onClick={() => setGenre(genre)} className={chipClass(selectedGenre === genre)}>
+                    {genre.replaceAll("_", " ")}
+                  </button>
+                ))}
+              </div>
+              {selectedPresetMeta ? (
+                <p className="mb-0 mt-2 break-words text-[11px] text-accent/90">
+                  {t("mc.genre.presetActive", { name: selectedPresetMeta.display_name || selectedPresetMeta.name })} {selectedPresetMeta.description}
+                </p>
+              ) : null}
+            </section>
+
+            {/* 3. Sound (optional) */}
+            <section className="glass-panel rounded-2xl p-4" aria-labelledby="mc-s3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div id="mc-s3"><SectionLabel n="3" hint={`(${t("mc.optional")}) ${adjustedCount ? t("mc.sound.adjusted", { n: adjustedCount }) : t("mc.sound.untouched")}`}>{t("mc.step.sound")}</SectionLabel></div>
+                {mode === "quick" && adjustedCount ? (
+                  <button type="button" onClick={resetDirection} className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary hover:text-accent">{t("mc.sound.reset")}</button>
+                ) : null}
+              </div>
+              <p className="mb-3 mt-0 text-[11px] text-text-secondary">{mode === "pro" ? t("mc.sound.proNote") : t("mc.sound.body")}</p>
+              <SoundControls
+                tweaks={tweaks}
+                onTweak={setTweak}
+                styles={styles}
+                selectedStyle={selectedStyle}
+                onStyle={setStyle}
+                hasClarity={keptClarity}
+                clarityOn={selectedTags.includes("clearer")}
+                onToggleClarity={() => toggleTag("clearer")}
+                hideSliders={mode === "pro"}
+              />
+              {extras.length ? (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-border-subtle p-2.5">
+                  <p className="m-0 min-w-0 break-words text-[11px] text-text-secondary">{t("mc.extras.title", { list: extras.join(", ") })}</p>
+                  <button type="button" onClick={clearExtras} className="shrink-0 text-[11px] font-semibold text-accent underline">{t("mc.extras.clear")}</button>
+                </div>
+              ) : null}
+            </section>
+          </>
+        )}
+
+        {/* More options: advanced controls, progressively disclosed */}
+        <section className="glass-panel rounded-2xl">
+          <button
+            type="button"
+            aria-expanded={moreOpen}
+            aria-controls="mc-more"
+            onClick={() => setMoreOpen((v) => !v)}
+            className="flex w-full items-center gap-3 rounded-2xl p-4 text-left"
+          >
+            <span className={`inline-block text-lg transition-transform ${moreOpen ? "rotate-90" : ""}`} aria-hidden="true">›</span>
+            <span className="min-w-0">
+              <span className="block text-[13px] font-bold text-text-primary">{t("mc.more")}</span>
+              <span className="block text-[11px] text-text-secondary">{t("mc.more.summary")}</span>
+            </span>
+          </button>
+          {moreOpen ? (
+            <div id="mc-more" className="flex flex-col gap-5 border-t border-border-subtle p-4">
+              {!referenceMode ? (
+                <div>
+                  <span className={`mb-2 block ${HIDDEN_FIELD}`}>{t("mc.more.delivery")}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DELIVERY_TARGETS.map((target) => (
+                      <button key={target} type="button" aria-pressed={selectedDelivery === target} onClick={() => setDelivery(target)} className={chipClass(selectedDelivery === target)}>
+                        {t(`delivery.${target}`)}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mb-0 mt-2 text-[11px] text-text-secondary">{t(`delivery.${selectedDelivery}.hint`)}</p>
+                </div>
+              ) : null}
+
+              <div>
+                <span className={`mb-2 block ${HIDDEN_FIELD}`}>{t("mc.more.reference")}</span>
                 <FileDropzone
                   id="refFileInput"
                   compact
@@ -342,345 +429,52 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
                   onChange={(event) => setReferenceFile(event.target.files?.[0] || null)}
                   onRemove={() => setReferenceFile(null)}
                 />
+                <p className="mb-0 mt-2 text-[11px] text-text-secondary">{referenceMode ? t("console.referenceActive") : t("console.referenceHint")}</p>
               </div>
-              {referenceMode ? (
-                <p className="mt-2 text-[11px] text-accent/90">{t("console.referenceActive")}</p>
-              ) : (
-                <p className="mt-2 text-[11px] text-text-secondary">{t("console.referenceHint")}</p>
-              )}
-            </section>
-          </motion.div>
-        ) : null}
 
-        {activeStep === 1 ? (
-          <motion.div key="step-mode" {...stepMotionProps} className="mt-5 flex flex-col gap-5">
-            {referenceMode ? (
-              <section className="glass-panel rounded-2xl p-5">
-                <SectionLabel>{t("console.referenceMastering")}</SectionLabel>
-                <p className="text-sm text-text-secondary">
-                  <strong className="text-accent">{t("console.referenceIsActive")}</strong> {t("console.referenceAnalyze")}{" "}
-                  <span className="text-text-primary">{referenceFile.name}</span> {t("console.referenceBody2")}
-                </p>
-                <p className="mt-2 text-xs text-text-secondary">{t("console.referenceBody3")}</p>
-                <button
-                  type="button"
-                  onClick={() => setReferenceFile(null)}
-                  className="mt-3 rounded-lg border border-border-subtle bg-black/[0.045] px-4 py-2 text-[11px] uppercase tracking-[0.1em] text-text-primary hover:border-text-primary/30"
-                >
-                  {t("console.switchManual")}
-                </button>
-
-                <div className="mt-4">
-                  <label className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-black/[0.045] p-3.5 text-sm">
-                    <span className="flex items-center gap-2">
-                      {t("console.stemSeparation")}
-                      {!stemUnlocked ? (
-                        <span className="rounded-full border border-border-subtle bg-accent/[0.12] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-accent">
-                          {t("console.premium")}
-                        </span>
-                      ) : null}
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={useStemSeparation}
-                      disabled={!stemUnlocked}
-                      onChange={(event) => setUseStemSeparation(event.target.checked)}
-                      className="h-4 w-4 disabled:opacity-40"
-                    />
-                  </label>
-                  {!stemUnlocked ? (
-                    <div className="mt-1.5 flex items-center justify-between gap-3">
-                      <p className="m-0 text-[11px] text-text-secondary">
-                        {plan === "pro" ? t("console.stemUsedUp") : t("console.stemIncluded")}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={buyStemSeparation}
-                        disabled={stemBuyBusy}
-                        className="shrink-0 rounded-full border border-border-subtle bg-accent/[0.1] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-accent hover:bg-black/[0.05] disabled:opacity-50"
-                      >
-                        {stemBuyBusy ? t("console.redirecting") : stemBuyLabel}
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              </section>
-            ) : (
-              <>
-                <section>
-                  <SectionLabel>{t("console.masteringMode")}</SectionLabel>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={() => setMode("quick")}
-                      aria-pressed={mode === "quick"}
-                      className={`relative rounded-2xl border p-4 text-left transition ${mode === "quick" ? "border-accent bg-accent/[0.1]" : "border-border-subtle bg-black/[0.045] hover:border-border-subtle"}`}
-                    >
-                      {mode === "quick" ? (
-                        <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-bg">✓</span>
-                      ) : null}
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle bg-black/[0.045] text-base">🎚️</span>
-                      <p className="m-0 mt-2.5 text-sm font-bold uppercase tracking-[0.1em] text-text-primary">{t("console.quickMaster")}</p>
-                      <p className="mt-1.5 text-xs text-text-secondary">{t("console.quickMasterBody")}</p>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMode("pro")}
-                      aria-pressed={mode === "pro"}
-                      className={`relative rounded-2xl border p-4 text-left transition ${mode === "pro" ? "border-accent bg-accent/[0.1]" : "border-border-subtle bg-black/[0.045] hover:border-border-subtle"}`}
-                    >
-                      {mode === "pro" ? (
-                        <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-bg">✓</span>
-                      ) : null}
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle bg-black/[0.045] text-base">🎛️</span>
-                      <p className="m-0 mt-2.5 text-sm font-bold uppercase tracking-[0.1em] text-text-primary">{t("console.proMaster")}</p>
-                      <p className="mt-1.5 text-xs text-text-secondary">{t("console.proMasterBody")}</p>
-                    </button>
-                  </div>
-                </section>
-
-                <section>
-                  <SectionLabel>{t("console.profile")}</SectionLabel>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <label className="block">
-                      <span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.preset")}</span>
-                      <select
-                        value={builtInPresets.some((p) => p.name === selectedPreset) ? selectedPreset : ""}
-                        onChange={(event) => setPreset(event.target.value)}
-                        className="w-full rounded-[10px] border border-border-subtle bg-black/[0.045] p-2.5 text-[13px] text-text-primary"
-                      >
-                        <option value="">{t("console.custom")}</option>
-                        {builtInPresets.map((preset) => (
-                          <option key={preset.name} value={preset.name}>
-                            {preset.display_name || preset.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="block">
-                      <span className="mb-1.5 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.engine")}</span>
-                      <select
-                        value={tier}
-                        onChange={(event) => setTier(event.target.value)}
-                        className="w-full rounded-[10px] border border-border-subtle bg-black/[0.045] p-2.5 text-[13px] text-text-primary"
-                      >
-                        <option value="standard">{t("console.standard")}</option>
-                        <option value="professional" disabled={!professionalUnlocked}>
-                          {t("console.professionalOption")}{!professionalUnlocked ? t("console.studioPlanSuffix") : ""}
-                        </option>
-                      </select>
-                      {!professionalUnlocked ? (
-                        <span className="mt-1 block text-[10px] text-text-secondary">{t("console.needsStudio")}</span>
-                      ) : null}
-                    </label>
-                  </div>
-                  {selectedPresetMeta ? (
-                    <p className="mt-2 break-words text-xs text-accent/90">{selectedPresetMeta.description}</p>
-                  ) : null}
-
-                  <div className="mt-3.5">
-                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.genre")}</span>
-                    <div className="flex flex-wrap gap-2">
-                      {genres.map((genre) => (
-                        <button key={genre} type="button" onClick={() => setGenre(genre)} className={chipClass(selectedGenre === genre)}>
-                          {genre}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-3.5">
-                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.masteringStyle")}</span>
-                    <div className="flex flex-wrap gap-2">
-                      {styles.map((style) => (
-                        <button key={style} type="button" onClick={() => setStyle(style)} className={chipClass(selectedStyle === style)}>
-                          {style.replaceAll("_", " ")}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Where the master is going. Sets the loudness target and
-                      true-peak ceiling (see lib/deliveryTargets.js); works
-                      with a preset, so it doesn't clear one. */}
-                  <div className="mt-3.5">
-                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.delivery")}</span>
-                    <div className="flex flex-wrap gap-2">
-                      {DELIVERY_TARGETS.map((target) => (
-                        <button key={target} type="button" onClick={() => setDelivery(target)} className={chipClass(selectedDelivery === target)}>
-                          {t(`delivery.${target}`)}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mb-0 mt-2 text-[10px] text-text-secondary">{t(`delivery.${selectedDelivery}.hint`)}</p>
-                  </div>
-
-                  {/* Always visible, Quick or Pro — objective/tags are a
-                      real DSP-affecting choice either way now: Quick uses
-                      them to bias the adaptive engine directly, Pro uses
-                      them to seed the manual knobs below with real
-                      computed values (see masteringStore.js's
-                      applyPreviewParamsToProParams / adaptiveToProParams.js)
-                      instead of always starting from flat defaults. */}
-                  <div className="mt-3.5">
-                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.masteringObjective")}</span>
-                    <p className="mb-2 text-[10px] text-text-secondary">{mode === "pro" ? t("console.masteringObjectiveProHint") : t("console.masteringObjectiveHint")}</p>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={() => setCategory("")} className={chipClass(!selectedCategory, "brass")}>
-                        {t("console.objectiveAuto")}
-                      </button>
-                      {categories.map((category) => (
-                        <button key={category} type="button" onClick={() => setCategory(category)} className={chipClass(selectedCategory === category, "brass")}>
-                          {category.replaceAll("_", " ")}
-                        </button>
-                      ))}
-                    </div>
-                    {selectedCategory && (flavoursByCategory[selectedCategory] || []).length ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <button type="button" onClick={() => setFlavour("")} className={chipClass(!selectedFlavour)}>
-                          {t("console.objectiveAuto")}
-                        </button>
-                        {flavoursByCategory[selectedCategory].map((flavour) => (
-                          <button key={flavour} type="button" onClick={() => setFlavour(flavour)} className={chipClass(selectedFlavour === flavour)}>
-                            {flavour}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-3.5">
-                    <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.tags")}</span>
-                    <div className="flex flex-wrap gap-2">
-                      {tags.map((tag) => (
-                        <button key={tag} type="button" onClick={() => toggleTag(tag)} className={`${chipClass(selectedTags.includes(tag), "brass")} rounded-full lowercase`}>
-                          {tag.replaceAll("_", " ")}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {mode === "quick" ? (
-                    <AdaptiveControlsPanel
-                      tweaks={tweaks}
-                      onTweak={setTweak}
-                      direction={direction}
-                      onDirection={setDirection}
-                      onReset={resetDirection}
-                      footer={<PresetSaveBar onOpenPresets={onOpenPresets} />}
-                      analysis={analysis}
-                      livePreviewParams={livePreviewParams}
-                      isAnalyzing={isAnalyzing}
-                      isPreviewLoading={isPreviewLoading}
-                      previewUnavailable={previewUnavailable}
-                      previewError={previewError}
-                    />
-                  ) : null}
-
-                  <div className="mt-4">
-                    <label className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle bg-black/[0.045] p-3.5 text-sm">
-                      <span className="flex items-center gap-2">
-                        {t("console.stemSeparation")}
-                        {!stemUnlocked ? (
-                          <span className="rounded-full border border-border-subtle bg-accent/[0.12] px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-accent">
-                            {t("console.premium")}
-                          </span>
-                        ) : null}
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={useStemSeparation}
-                        disabled={!stemUnlocked}
-                        onChange={(event) => setUseStemSeparation(event.target.checked)}
-                        className="h-4 w-4 disabled:opacity-40"
-                      />
-                    </label>
-                    {!stemUnlocked ? (
-                      <div className="mt-1.5 flex items-center justify-between gap-3">
-                        <p className="m-0 text-[11px] text-text-secondary">
-                          {plan === "pro" ? t("console.stemUsedUp") : t("console.stemIncluded")}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={buyStemSeparation}
-                          disabled={stemBuyBusy}
-                          className="shrink-0 rounded-full border border-border-subtle bg-accent/[0.1] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-accent hover:bg-black/[0.05] disabled:opacity-50"
-                        >
-                          {stemBuyBusy ? t("console.redirecting") : stemBuyLabel}
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-4 rounded-xl border border-border-subtle bg-black/[0.045] p-3.5">
-                    <span className="block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.savedArtists")}</span>
-                    <span className="mt-1 block text-[11px] text-text-secondary">{t("console.savedArtistsBody")}</span>
-
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <select
-                        value={savedArtistPresets.some((p) => p.name === selectedPreset) ? selectedPreset : ""}
-                        onChange={(event) => setPreset(event.target.value)}
-                        className="min-w-[10rem] flex-1 rounded-[10px] border border-border-subtle bg-black/[0.045] p-2.5 text-[13px] text-text-primary"
-                      >
-                        <option value="">{savedArtistPresets.length ? t("console.chooseArtist") : t("console.noSavedArtists")}</option>
-                        {savedArtistPresets.map((preset) => (
-                          <option key={preset.name} value={preset.name}>
-                            {preset.display_name || preset.name}
-                          </option>
-                        ))}
-                      </select>
-                      {savedArtistPresets.some((p) => p.name === selectedPreset) ? (
-                        <button
-                          type="button"
-                          onClick={() => deletePreset(selectedPreset)}
-                          className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-700 hover:border-red-400/50"
-                        >
-                          {t("console.remove")}
-                        </button>
-                      ) : null}
+              {!referenceMode ? (
+                <>
+                  <div>
+                    <span className={`mb-2 block ${HIDDEN_FIELD}`}>{t("mc.more.presets")}</span>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] text-text-secondary">{t("console.preset")}</span>
+                        <select value={builtInPresets.some((p) => p.name === selectedPreset) ? selectedPreset : ""} onChange={(event) => setPreset(event.target.value)} className={field}>
+                          <option value="">{t("console.custom")}</option>
+                          {builtInPresets.map((preset) => (
+                            <option key={preset.name} value={preset.name}>{preset.display_name || preset.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] text-text-secondary">{t("console.savedArtists")}</span>
+                        <div className="flex gap-2">
+                          <select value={savedArtistPresets.some((p) => p.name === selectedPreset) ? selectedPreset : ""} onChange={(event) => setPreset(event.target.value)} className={`${field} min-w-0 flex-1`}>
+                            <option value="">{savedArtistPresets.length ? t("console.chooseArtist") : t("console.noSavedArtists")}</option>
+                            {savedArtistPresets.map((preset) => (
+                              <option key={preset.name} value={preset.name}>{preset.display_name || preset.name}</option>
+                            ))}
+                          </select>
+                          {savedArtistPresets.some((p) => p.name === selectedPreset) ? (
+                            <button type="button" onClick={() => deletePreset(selectedPreset)} className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-700 hover:border-red-400/50">{t("console.remove")}</button>
+                          ) : null}
+                        </div>
+                      </label>
                     </div>
 
                     <div className="mt-3 rounded-lg border border-dashed border-border-subtle bg-black/10 p-3">
                       <span className="block text-[10px] uppercase tracking-[0.14em] text-text-secondary">{t("console.importPresetJson")}</span>
-                      <span className="mt-1 block text-[10px] text-text-secondary">{t("console.importPresetBody")}</span>
+                      <span className="mt-1 block text-[11px] text-text-secondary">{t("console.importPresetBody")}</span>
                       {onOpenHelp ? (
-                        <button
-                          type="button"
-                          onClick={onOpenHelp}
-                          className="mt-1 block text-[10px] text-accent hover:text-accent"
-                        >
-                          {t("console.getTemplate")}
-                        </button>
+                        <button type="button" onClick={onOpenHelp} className="mt-1 block text-[11px] text-accent hover:text-accent">{t("console.getTemplate")}</button>
                       ) : null}
-
                       <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                        <input
-                          type="text"
-                          value={importArtistName}
-                          onChange={(event) => setImportArtistName(event.target.value)}
-                          placeholder={t("console.artistNamePlaceholder")}
-                          disabled={isImportingPreset}
-                          className="flex-1 rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary"
-                        />
-                        <label
-                          htmlFor="presetImportInput"
-                          className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border border-border-subtle bg-accent/[0.12] px-3 py-2 text-xs text-accent hover:bg-black/[0.05]"
-                        >
+                        <input type="text" value={importArtistName} onChange={(event) => setImportArtistName(event.target.value)} placeholder={t("console.artistNamePlaceholder")} aria-label={t("console.artistNamePlaceholder")} disabled={isImportingPreset} className="min-w-0 flex-1 rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary" />
+                        <label htmlFor="presetImportInput" className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border border-border-subtle bg-accent/[0.12] px-3 py-2 text-xs text-accent hover:bg-black/[0.05]">
                           {importFilePending ? importFilePending.name : t("console.choosePresetFile")}
                         </label>
-                        <input
-                          id="presetImportInput"
-                          type="file"
-                          accept="application/json,.json"
-                          disabled={isImportingPreset}
-                          onClick={(event) => {
-                            event.currentTarget.value = "";
-                          }}
-                          onChange={(event) => setImportFilePending(event.target.files?.[0] || null)}
-                          className="hidden"
-                        />
+                        <input id="presetImportInput" type="file" accept="application/json,.json" disabled={isImportingPreset} onClick={(event) => { event.currentTarget.value = ""; }} onChange={(event) => setImportFilePending(event.target.files?.[0] || null)} className="hidden" />
                       </div>
-
                       <div className="mt-2 flex items-center gap-2">
                         <button
                           type="button"
@@ -692,201 +486,161 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
                           }}
                           className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-black/[0.05] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-accent disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          {isImportingPreset ? (
-                            <>
-                              <Spinner size={11} /> {t("console.importing")}
-                            </>
-                          ) : (
-                            t("console.importSave")
-                          )}
+                          {isImportingPreset ? (<><Spinner size={11} /> {t("console.importing")}</>) : t("console.importSave")}
                         </button>
                         {importFilePending ? (
-                          <button
-                            type="button"
-                            onClick={() => setImportFilePending(null)}
-                            className="rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30"
-                          >
-                            {t("console.clear")}
-                          </button>
+                          <button type="button" onClick={() => setImportFilePending(null)} className="rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30">{t("console.clear")}</button>
                         ) : null}
                       </div>
                       {importError ? <InlineAlert size="xs" className="mt-2">{importError}</InlineAlert> : null}
                     </div>
                   </div>
-                </section>
 
-                {mode === "pro" ? (
-                  <section>
-                    <SectionLabel>{t("console.professionalControls")}</SectionLabel>
-                    <ProParamsPanel
-                      proParams={proParams}
-                      setSection={setProSection}
-                      addBand={addProBand}
-                      updateBand={updateProBand}
-                      removeBand={removeProBand}
-                      addStereoBand={addStereoBand}
-                      updateStereoBand={updateStereoBand}
-                      removeStereoBand={removeStereoBand}
-                      onReset={resetProParams}
-                    />
-                  </section>
-                ) : null}
-              </>
-            )}
-          </motion.div>
-        ) : null}
-
-        {activeStep === 2 ? (
-          <motion.div key="step-master" {...stepMotionProps} className="glass-panel mt-5 rounded-2xl p-5">
-            <SectionLabel>{t("console.master")}</SectionLabel>
-            <div className="mb-4 flex flex-wrap gap-2">
-              <span className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs">{t("console.fileLabel", { name: file?.name || t("console.none") })}</span>
-              {referenceMode ? (
-                <span className="rounded-lg border border-border-subtle bg-accent/[0.1] px-3 py-1.5 text-xs text-accent">{t("console.referenceLabel", { name: referenceFile.name })}</span>
-              ) : (
-                <>
-                  <span className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs">{t("console.modeLabel", { mode: mode === "pro" ? t("console.pro") : t("console.quick") })}</span>
-                  <span className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs">{t("console.genreLabel", { genre: selectedGenre || t("console.notSet") })}</span>
-                  <span className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs">{t("console.styleLabel", { style: selectedStyle || t("console.notSet") })}</span>
-                  <span className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs">{t(`delivery.${selectedDelivery}`)}</span>
-                  {selectedCategory ? (
-                    <span className="rounded-lg border border-border-subtle bg-accent/10 px-3 py-1.5 text-xs text-accent">
-                      {selectedCategory.replaceAll("_", " ")}
-                      {selectedFlavour ? ` · ${selectedFlavour}` : ""}
-                    </span>
+                  {mode === "quick" ? (
+                    <div>
+                      <span className={`block ${HIDDEN_FIELD}`}>{t("mc.more.start")}</span>
+                      <p className="m-0 text-[11px] text-text-secondary">{t("mc.more.start.body")}</p>
+                      <AdaptiveControlsPanel
+                        tweaks={tweaks}
+                        onTweak={setTweak}
+                        direction={direction}
+                        onDirection={setDirection}
+                        onReset={resetDirection}
+                        footer={<PresetSaveBar onOpenPresets={onOpenPresets} />}
+                        analysis={analysis}
+                        livePreviewParams={livePreviewParams}
+                        isAnalyzing={isAnalyzing}
+                        isPreviewLoading={isPreviewLoading}
+                        previewUnavailable={previewUnavailable}
+                        previewError={previewError}
+                        compactDirection
+                      />
+                    </div>
                   ) : null}
                 </>
-              )}
-              <span className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs">{t("console.engineLabel", { engine: tier })}</span>
-              {useStemSeparation ? <span className="rounded-lg border border-border-subtle bg-accent/[0.1] px-3 py-1.5 text-xs text-accent">{t("console.stemsOn")}</span> : null}
-            </div>
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => submit(true)}
-                disabled={isSubmitting || isBootstrapping || !file}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border-subtle bg-black/[0.045] px-5 py-4 text-xs font-bold uppercase tracking-[0.14em] text-text-primary transition hover:border-text-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Spinner size={13} /> {t("console.rendering")}
-                  </>
-                ) : (
-                  t("console.previewFree")
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => submit(false)}
-                disabled={isSubmitting || isBootstrapping || !file || (masterQuota && !masterUnlocked)}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-4 text-sm font-bold uppercase tracking-[0.18em] text-bg transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {isSubmitting ? <Spinner size={14} /> : null}
-                {masterButtonLabel}
-              </button>
-            </div>
-            <p className="mt-2 text-[11px] text-text-secondary">{t("console.previewNote")}</p>
-            {masterQuota && masterQuota.remaining <= 0 && !hasCredit && onOpenBilling ? (
-              <p className="mt-2 text-[11px] text-accent">
-                {masterQuota.resets ? t("console.outOfMastersMonth") : t("console.usedFreeMasters")}{" "}
-                <button type="button" onClick={onOpenBilling} className="underline hover:text-accent">
-                  {t("console.buySingleMaster")}
-                </button>{" "}
-                {masterQuota.resets ? t("console.orUpgrade") : t("console.orSubscribe")}
-              </p>
-            ) : null}
-          </motion.div>
-        ) : null}
-        </AnimatePresence>
+              ) : null}
 
-        <div className="mt-5 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={prevStep}
-            disabled={activeStep === 0}
-            className="rounded-xl border border-border-subtle bg-black/[0.045] px-[22px] py-3 text-xs font-bold uppercase tracking-[0.12em] text-text-primary disabled:opacity-40"
-          >
-            {t("console.back")}
-          </button>
-          {activeStep < steps.length - 1 ? (
+              <div>
+                <span className={`mb-2 block ${HIDDEN_FIELD}`}>{t("mc.more.quality")}</span>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-1 block text-[11px] text-text-secondary">{t("console.engine")}</span>
+                    <select value={tier} onChange={(event) => setTier(event.target.value)} className={field}>
+                      <option value="standard">{t("console.standard")}</option>
+                      <option value="professional" disabled={!professionalUnlocked}>
+                        {t("console.professionalOption")}{!professionalUnlocked ? t("console.studioPlanSuffix") : ""}
+                      </option>
+                    </select>
+                    {!professionalUnlocked ? <span className="mt-1 block text-[11px] text-text-secondary">{t("console.needsStudio")}</span> : null}
+                  </label>
+                  <div className="sm:self-end">{stemToggle}</div>
+                </div>
+              </div>
+
+              {!referenceMode ? (
+                <div>
+                  <span className={`mb-2 block ${HIDDEN_FIELD}`}>{t("mc.more.mode")}</span>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {[["quick", "mc.mode.auto"], ["pro", "mc.mode.pro"]].map(([value, key]) => (
+                      <button key={value} type="button" onClick={() => setMode(value)} aria-pressed={mode === value} className={`rounded-xl border p-3 text-left transition ${mode === value ? "border-accent bg-accent/[0.1]" : "border-border-subtle bg-black/[0.045] hover:border-text-primary/30"}`}>
+                        <span className="block text-[13px] font-bold text-text-primary">{t(key)}</span>
+                        <span className="mt-0.5 block text-[11px] text-text-secondary">{t(`${key}.line`)}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {mode === "pro" ? (
+                    <div className="mt-3">
+                      <SectionLabel>{t("console.professionalControls")}</SectionLabel>
+                      <ProParamsPanel
+                        proParams={proParams}
+                        setSection={setProSection}
+                        addBand={addProBand}
+                        updateBand={updateProBand}
+                        removeBand={removeProBand}
+                        addStereoBand={addStereoBand}
+                        updateStereoBand={updateStereoBand}
+                        removeStereoBand={removeStereoBand}
+                        onReset={resetProParams}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+
+        {/* 4. Master */}
+        <section className="glass-panel rounded-2xl p-4" aria-labelledby="mc-s4">
+          <div id="mc-s4"><SectionLabel n="4">{t("mc.step.master")}</SectionLabel></div>
+          <p className="m-0 mb-3 break-words text-[12px] text-text-secondary">
+            {!file
+              ? t("mc.master.needFile")
+              : needGenre
+                ? t("mc.master.needGenre")
+                : `${t("mc.master.ready", { file: file.name })} — ${referenceMode ? t("console.referenceLabel", { name: referenceFile.name }) : t("mc.master.summary", { genre: selectedGenre || selectedPresetMeta?.display_name || t("console.notSet"), delivery: t(`delivery.${selectedDelivery}`), engine: tier })}${useStemSeparation ? ` · ${t("console.stemsOn")}` : ""}`}
+          </p>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <button
               type="button"
-              onClick={nextStep}
-              disabled={(activeStep === 0 && !canGoNextFromAudio) || (activeStep === 1 && !canGoNextFromMode)}
-              className="rounded-xl border border-accent/[0.55] bg-black/[0.05] px-[22px] py-3 text-xs font-bold uppercase tracking-[0.12em] text-accent disabled:opacity-40"
+              onClick={() => submit(true)}
+              disabled={isSubmitting || isBootstrapping || !file}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border-subtle bg-black/[0.045] px-5 py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-text-primary transition hover:border-text-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {t("console.next")}
+              {isSubmitting ? (<><Spinner size={13} /> {t("console.rendering")}</>) : t("console.previewFree")}
             </button>
+            <button
+              type="button"
+              onClick={() => submit(false)}
+              disabled={isSubmitting || isBootstrapping || !file || (masterQuota && !masterUnlocked)}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-3.5 text-sm font-bold uppercase tracking-[0.18em] text-bg transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isSubmitting ? <Spinner size={14} /> : null}
+              {masterButtonLabel}
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] text-text-secondary">{t("console.previewNote")}</p>
+          {masterQuota && masterQuota.remaining <= 0 && !hasCredit && onOpenBilling ? (
+            <p className="mt-2 text-[11px] text-accent">
+              {masterQuota.resets ? t("console.outOfMastersMonth") : t("console.usedFreeMasters")}{" "}
+              <button type="button" onClick={onOpenBilling} className="underline hover:text-accent">{t("console.buySingleMaster")}</button>{" "}
+              {masterQuota.resets ? t("console.orUpgrade") : t("console.orSubscribe")}
+            </p>
           ) : null}
-        </div>
-
-        {activeStep !== 2 ? (
-          <button
-            type="button"
-            onClick={() => submit(true)}
-            disabled={isSubmitting || isBootstrapping || !file}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border-subtle bg-black/[0.045] px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary transition hover:border-border-subtle disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {isSubmitting ? (
-              <>
-                <Spinner size={12} /> {t("console.rendering")}
-              </>
-            ) : (
-              t("console.quickPreviewAnyStep")
-            )}
-          </button>
-        ) : null}
-
-        {isBootstrapping ? (
-          <p className="mt-3 flex items-center gap-2 text-xs text-text-secondary">
-            <Spinner size={12} /> {t("console.loadingCatalog")}
-          </p>
-        ) : null}
-        {status ? <p className="mt-3 text-sm text-accent">{status}</p> : null}
-        {error ? <InlineAlert size="sm" className="mt-3">{masteringErrorText(t, error, errorCode)}</InlineAlert> : null}
+          {isBootstrapping ? (
+            <p className="mt-3 flex items-center gap-2 text-xs text-text-secondary"><Spinner size={12} /> {t("console.loadingCatalog")}</p>
+          ) : null}
+          {status ? <p className="mt-3 text-sm text-accent" role="status">{status}</p> : null}
+          {error ? <InlineAlert size="sm" className="mt-3">{masteringErrorText(t, error, errorCode)}</InlineAlert> : null}
+        </section>
       </div>
 
-      {/* sticky only from lg: up, where this sits beside the wizard in the
-          2-column grid — below that, `grid` with no column count stacks
-          single-column (wizard, then this), and an unconditionally sticky
-          panel there would cling to the top of the scroll container the
-          moment you scroll past it instead of just flowing like the rest
-          of the page. */}
-      <aside className="glass-panel min-w-0 rounded-[20px] p-[22px] lg:sticky lg:top-6">
+      <aside className="glass-panel min-w-0 rounded-[20px] p-[18px] lg:sticky lg:top-6">
         <h2 className="m-0 text-lg">{t("console.reviewCompare")}</h2>
 
-        {/* The fullscreen loader (rendered from AppClient, above every tab)
-            is the primary render-progress UI now — see
-            MasteringLoaderOverlay + useMasteringProgress. This just holds
-            the space open underneath it so the layout doesn't jump when
-            the overlay unmounts and the result panel below takes over. */}
         {isSubmitting ? (
-          <div className="mt-4 flex items-center gap-2 text-xs text-text-secondary">
-            <Spinner size={12} /> {progressMessage}
-          </div>
+          <div className="mt-4 flex items-center gap-2 text-xs text-text-secondary"><Spinner size={12} /> {progressMessage}</div>
         ) : null}
 
         {!isSubmitting && result ? (
-          <div className="mt-4 flex flex-col gap-3.5">
+          <div className="mt-3 flex flex-col gap-3">
             {localizeSourceWarnings(t, result.source_warnings, result.processing_applied).map((warning, i) => (
-              <div key={`${i}-${warning}`} className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-900">
-                ⚠ {warning}
-              </div>
+              <div key={`${i}-${warning}`} className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-900">⚠ {warning}</div>
             ))}
 
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+              <div className={box}>
                 <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.beforeLufs")}</p>
-                <p className="mt-1.5 text-[17px] font-bold">{result.before_lufs}</p>
+                <p className="mt-1 text-[17px] font-bold">{result.before_lufs}</p>
               </div>
-              <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+              <div className={box}>
                 <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.afterLufs")}</p>
-                <p className="mt-1.5 text-[17px] font-bold text-accent">{result.after_lufs}</p>
+                <p className="mt-1 text-[17px] font-bold text-accent">{result.after_lufs}</p>
               </div>
             </div>
 
             {result.ab_gain_match ? (
-              <p className="text-[11px] text-text-secondary">
+              <p className="m-0 text-[11px] text-text-secondary">
                 {t("console.abMatched", {
                   detail:
                     result.ab_gain_match.before_gain_db !== 0
@@ -896,13 +650,11 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
               </p>
             ) : null}
 
-            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
-              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.originalSignal")}</p>
+            <div className={box}>
+              <p className="m-0 mb-2 text-[11px] font-bold text-text-primary">{t("mc.res.compare")}</p>
+              <p className="m-0 mb-1 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.originalSignal")}</p>
               <SignalVisualizer src={result.originalUrl} gainDb={result.ab_gain_match?.before_gain_db || 0} />
-            </div>
-
-            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
-              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.masteredSignal")}</p>
+              <p className="m-0 mb-1 mt-3 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.masteredSignal")}</p>
               <SignalVisualizer src={result.previewUrl || result.masteredUrl} barColor="#dfc95a" gainDb={result.ab_gain_match?.after_gain_db || 0} />
               <button
                 type="button"
@@ -926,74 +678,47 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
               {downloadError ? <InlineAlert size="xs" className="mt-2">{downloadError}</InlineAlert> : null}
             </div>
 
-            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
-              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.codecPreview")}</p>
-              <p className="mb-3 text-[11px] text-text-secondary">{t("console.codecPreviewBody")}</p>
+            <MasteringDecisions result={result} source="console" />
+
+            <details className={box}>
+              <summary className="cursor-pointer text-[12px] font-semibold text-text-primary">{t("console.processingSummary")}</summary>
+              <div className="mt-3"><ProcessingSummary result={result} /></div>
+            </details>
+
+            <details className={box}>
+              <summary className="cursor-pointer text-[12px] font-semibold text-text-primary">{t("mc.res.codec")}</summary>
+              <p className="mb-3 mt-2 text-[11px] text-text-secondary">{t("console.codecPreviewBody")}</p>
               <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={codecChoice}
-                  onChange={(e) => setCodecChoice(e.target.value)}
-                  className="flex-1 rounded-lg border border-border-subtle bg-black/[0.045] px-2 py-2 text-xs text-text-primary"
-                >
-                  {CODEC_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
+                <select value={codecChoice} onChange={(e) => setCodecChoice(e.target.value)} aria-label={t("console.codecPreview")} className="min-w-0 flex-1 rounded-lg border border-border-subtle bg-black/[0.045] px-2 py-2 text-xs text-text-primary">
+                  {CODEC_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
                 </select>
-                <button
-                  type="button"
-                  onClick={handleCodecPreview}
-                  disabled={codecPreviewLoading}
-                  className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-black/[0.05] px-3.5 py-2 text-[11px] uppercase tracking-[0.1em] text-accent hover:bg-black/[0.06] disabled:opacity-50"
-                >
-                  {codecPreviewLoading ? (
-                    <>
-                      <Spinner size={11} /> {t("console.encoding")}
-                    </>
-                  ) : (
-                    t("console.preview")
-                  )}
+                <button type="button" onClick={handleCodecPreview} disabled={codecPreviewLoading} className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-black/[0.05] px-3.5 py-2 text-[11px] uppercase tracking-[0.1em] text-accent hover:bg-black/[0.06] disabled:opacity-50">
+                  {codecPreviewLoading ? (<><Spinner size={11} /> {t("console.encoding")}</>) : t("console.preview")}
                 </button>
               </div>
-
               {codecPreviewError ? <InlineAlert size="xs" className="mt-2">{codecPreviewError}</InlineAlert> : null}
-
               {codecPreview ? (
                 <div className="mt-3 space-y-3">
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-lg border border-border-subtle bg-black/[0.045] p-2">
-                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.truePeakDelta")}</p>
-                      <p className="mt-1 text-sm font-semibold">{codecPreview.true_peak_delta_db > 0 ? "+" : ""}{codecPreview.true_peak_delta_db} dB</p>
-                    </div>
-                    <div className="rounded-lg border border-border-subtle bg-black/[0.045] p-2">
-                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.lufsDelta")}</p>
-                      <p className="mt-1 text-sm font-semibold">{codecPreview.lufs_delta_db > 0 ? "+" : ""}{codecPreview.lufs_delta_db} dB</p>
-                    </div>
-                    <div className="rounded-lg border border-border-subtle bg-black/[0.045] p-2">
-                      <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.highFreqDelta")}</p>
-                      <p className="mt-1 text-sm font-semibold">{codecPreview.high_frequency_change_db > 0 ? "+" : ""}{codecPreview.high_frequency_change_db} dB</p>
-                    </div>
+                    {[["console.truePeakDelta", codecPreview.true_peak_delta_db], ["console.lufsDelta", codecPreview.lufs_delta_db], ["console.highFreqDelta", codecPreview.high_frequency_change_db]].map(([k, v]) => (
+                      <div key={k} className="rounded-lg border border-border-subtle bg-black/[0.045] p-2">
+                        <p className="m-0 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t(k)}</p>
+                        <p className="mt-1 text-sm font-semibold">{v > 0 ? "+" : ""}{v} dB</p>
+                      </div>
+                    ))}
                   </div>
                   <SignalVisualizer src={codecPreview.previewUrl} barColor="#8fb3ff" />
                 </div>
               ) : null}
-            </div>
-
-            <MasteringDecisions result={result} source="console" />
-
-            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
-              <p className="m-0 mb-2 text-[10px] uppercase tracking-[0.1em] text-text-secondary">{t("console.processingSummary")}</p>
-              <ProcessingSummary result={result} />
-            </div>
+            </details>
           </div>
         ) : null}
 
         {!isSubmitting && !result ? (
-          <div className="mt-4 space-y-3.5 text-sm text-text-secondary">
+          <div className="mt-3 space-y-3 text-sm text-text-secondary">
             <p className="m-0">{t("console.emptyReview")}</p>
             {inputPreviewUrl ? (
-              <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+              <div className={box}>
                 <p className="m-0 mb-2 text-xs uppercase tracking-[0.1em] text-text-secondary">{t("console.inputSignalPreview")}</p>
                 <SignalVisualizer src={inputPreviewUrl} />
               </div>

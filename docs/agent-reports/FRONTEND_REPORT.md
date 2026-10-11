@@ -57,3 +57,37 @@ All listed requested codes are mapped. Mapping is applied only in `MasteringCons
 ## 5. Accessibility quick pass
 Good: ABMasterPlayer has radiogroup A/B, `role=switch` level-match, `role=slider` seek with aria-value* + keyboard handler + tabIndex, play/pause aria-label, `role=alert` unavailable notice; Knob is a keyboard slider with typed-entry; loader overlay has `role=status`, `progressbar`; InlineAlert `role=alert`; DirectionControls radiogroups; labelled selects and dropzones.
 Gaps: (a) genre/style/delivery/category/flavour/tag chip buttons (MasteringConsole 485-556) have no `aria-pressed` (only 2 uses in file) so selection is visual only; (b) wizard step buttons (308-316) lack `aria-current="step"`; (c) ABMasterPlayer aria-labels are English-only; (d) `<canvas>` waveform has no text alternative; (e) disabled Professional option conveys reason only via visible suffix (OK).
+
+## Redesign (2026-10-11)
+
+Design-only redesign of the mastering console (`frontend/src/app/ui/MasteringConsole.jsx`). Store, domain builder, request fields and defaults are untouched.
+
+### What changed
+- The 3-step wizard is replaced by one compact page: 1 Upload, 2 Genre, 3 Shape the sound (optional), "More options" (collapsed), 4 Master (Preview free / Master). Results sit beside it (below on mobile).
+- New `components/audio/SoundControls.jsx`: the kept controls K1-K9, each with a title plus one plain-language line (en + sq, keys `mc.*`). Character (K2) is a 4-way choice mapped to existing API styles: modern, acoustic_natural (open), electronic_modern (dense), vintage_analog (vintage). Clarity (K8) toggles tag `clearer`.
+- Progressive disclosure under "More options": delivery target (K10), reference track, presets (built-in, saved, import), quick starting points (tone cards + live band preview + save-preset bar), engine tier, stems, Quick/Pro mode with the Pro knobs. Pro mode hides the sliders as before; character and clarity stay.
+- Results: loudness before/after, listen-and-compare with download, then "What Auralith changed" with an at-a-glance row (loudness change, adjusted, left alone, QC verdict) and the already-healthy regions grouped into one line (same `summarizeDecisions` data, no new fields). Processing summary and codec preview are collapsed `<details>`.
+- A11y: genre/delivery/character/clarity/mode buttons use `aria-pressed`; sliders carry `aria-describedby` to their line; no stepper remains, so no `aria-current` needed; status text has `role=status`.
+- If a preset sets merged controls, a line lists them with "Clear these" (uses the old `toggleTag`/`setCategory` actions).
+
+### Kept / hidden controls
+| Control | State / request field | UI now |
+|---|---|---|
+| K1 loudness, K3 punch, K4 low_end, K5 warmth, K6 brightness, K7 presence, K9 width | `tweaks.*` | slider, main |
+| K2 character | `style` | 4-way, main |
+| K8 clarity | tag `clearer` | toggle, main |
+| K10 delivery | `delivery` | More options |
+| Genre | `genre` | chips, main |
+| Other tags (7), categories (9), flavours (24), 12 styles | `tags`, `category`, `flavour`, `style` | no chips; still in store, still sent when set by presets/imports; defaults unchanged |
+| Direction loudness segment | `direction.loudness` | hidden (slider covers it); tone/intensity cards in More options |
+
+Known quirk kept from before: clicking a tone card recomputes loudness from `direction.loudness`, so it resets the loudness slider.
+
+### Payload equivalence
+`frontend/tests/payload.test.mjs` (`npm test`, node:test, no new framework) drives the REAL `masteringStore` + `masteringDomain.runMasteringJob` with network stubbed (`tests/loader.mjs`) across 29 scenarios (default, every kept control, merged tags/category/style, built-in/user-with-merged/chain presets, direction, tier+stems, reference mode, Pro mode, previews) and compares every FormData field/value to `payload.golden.json`. The golden was captured and committed BEFORE any UI edit (commit 5c53770); after the redesign 31/31 pass unchanged. Limit: this proves the store-to-request path and defaults; UI-control-to-action wiring was checked by code review, not an end-to-end run.
+
+### Screenshots
+`docs/agent-reports/ui/`: console-1280-{default,more-options,result,preset-extras}.png, console-375-{default,more-options,result}.png. No horizontal overflow at 375 px (measured 0 px). Rendered with a temporary, uncommitted harness route that seeded the zustand stores with mock catalog/entitlements (free plan) and `DEMO_MASTER` as the result, under `next dev` with Playwright Chromium; the harness was deleted before the build. The cookie banner and dev badge in the shots are artefacts.
+
+### Known limits
+Real stack workflows (login, upload to server, playback, download) remain BLOCKED here. Hard-coded English in ProParamsPanel/ProcessingSummary is still open (AURALITH-PRODUCT-002). Slider end labels are described in the line text only.

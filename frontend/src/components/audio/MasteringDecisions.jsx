@@ -149,8 +149,22 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
       </div>
       <p className="m-0 mt-1 text-[12px] text-text-secondary">{t("decisions.intro")}</p>
 
-      <ul className="m-0 mt-3 list-none p-0">
-        {regions.map((r) => (
+      <div className="mt-3 flex flex-wrap items-center gap-1.5" aria-label={t("mc.dec.glance")}>
+        {loudness.changeLu != null ? (
+          <span className="rounded-full border border-border-subtle bg-black/[0.045] px-2.5 py-0.5 text-[12px] font-semibold text-text-primary">
+            {t("mc.res.loudness")} {t("mc.dec.chip.loud", { lu: fmtDb(loudness.changeLu) })}
+          </span>
+        ) : null}
+        <span className="rounded-full border border-border-subtle bg-black/[0.045] px-2.5 py-0.5 text-[12px] font-semibold text-text-primary">{t("mc.dec.chip.changed", { n: counts.corrections })}</span>
+        <span className="rounded-full border border-border-subtle bg-black/[0.045] px-2.5 py-0.5 text-[12px] font-semibold text-text-primary">{t("mc.dec.chip.untouched", { n: counts.untouched })}</span>
+        <span className="rounded-full border border-border-subtle bg-black/[0.045] px-2.5 py-0.5 text-[12px] font-semibold text-text-primary">
+          {verification.status === "failed" ? t("decisions.verify.failed") : verification.status === "warned" ? t(verification.warnings.length === 1 ? "decisions.verify.warnedOne" : "decisions.verify.warnedMany", { n: verification.warnings.length }) : t("decisions.verify.passed")}
+        </span>
+      </div>
+      <p className="m-0 mt-2 text-[12px] text-text-secondary">{t("mc.dec.why")}</p>
+
+      <ul className="m-0 mt-2 list-none p-0">
+        {regions.filter((r) => r.moves.length || r.noted.length || r.status !== "preserved").map((r) => (
           <Row key={r.key} label={t(`decisions.region.${r.key}`)} status={r.status} t={t}>
             {r.moves.length
               ? r.moves.map((m) => (
@@ -169,6 +183,12 @@ export default function MasteringDecisions({ result, source = "result_view" }) {
                 : t("decisions.preservedBody")}
           </Row>
         ))}
+
+        {regions.some((r) => !(r.moves.length || r.noted.length || r.status !== "preserved")) ? (
+          <Row label={t("mc.dec.leftAlone")} status="preserved" t={t}>
+            {regions.filter((r) => !(r.moves.length || r.noted.length || r.status !== "preserved")).map((r) => t(`decisions.region.${r.key}`)).join(" · ")}
+          </Row>
+        ) : null}
 
         <Row label={t("decisions.dynamics")} status={dynamics.status} t={t}>
           <span className="block">

@@ -95,7 +95,7 @@ function FineSlider({ id, label, hint, value, onChange }) {
   );
 }
 
-export default function DirectionControls({ direction, tweaks, onDirection, onTweak, onReset, idPrefix = "dir", defaultOpen = false }) {
+export default function DirectionControls({ direction, tweaks, onDirection, onTweak, onReset, idPrefix = "dir", defaultOpen = false, showFineTune = true, showLoudness = true }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(defaultOpen);
   const custom = direction.tone === "custom";
@@ -141,18 +141,18 @@ export default function DirectionControls({ direction, tweaks, onDirection, onTw
           onChange={(intensity) => onDirection({ intensity })}
           renderLabel={(o) => t(`direction.intensity.${o}`)}
         />
-        <Segmented
+        {showLoudness ? <Segmented
           label={t("direction.loudness")}
           options={LOUDNESS_LEVELS}
           value={direction.loudness}
           onChange={(loudness) => onDirection({ loudness })}
           renderLabel={(o) => t(`direction.loudness.${o}`)}
-        />
+        /> : null}
       </div>
 
-      <div className="mt-3 rounded-xl border border-border-subtle">
+      {showFineTune || onReset ? <div className="mt-3 rounded-xl border border-border-subtle">
         <div className="flex items-center justify-between gap-2 px-3 py-2">
-          <button
+          {showFineTune ? <button
             type="button"
             aria-expanded={open}
             aria-controls={`${idPrefix}-fine`}
@@ -163,14 +163,14 @@ export default function DirectionControls({ direction, tweaks, onDirection, onTw
               ›
             </span>
             {t("direction.fineTune")}
-          </button>
+          </button> : <span />}
           {onReset ? (
             <button type="button" onClick={onReset} className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-secondary hover:text-accent">
               {t("direction.reset")}
             </button>
           ) : null}
         </div>
-        {open ? (
+        {open && showFineTune ? (
           <div id={`${idPrefix}-fine`} className="grid grid-cols-1 gap-x-5 gap-y-3 border-t border-border-subtle px-3 py-3 sm:grid-cols-2">
             {FINE_TUNE.map(([key, labelKey, hintKey]) => (
               <FineSlider
@@ -185,7 +185,7 @@ export default function DirectionControls({ direction, tweaks, onDirection, onTw
             <p className="m-0 text-[10px] text-text-secondary sm:col-span-2">{t("direction.fineTuneNote")}</p>
           </div>
         ) : null}
-      </div>
+      </div> : null}
     </div>
   );
 }
