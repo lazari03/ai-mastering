@@ -352,6 +352,21 @@
       "next_agent": "independent-auditor",
       "commit": "7ffcc09",
       "date": "2026-10-11T10:36:41"
+    },
+    {
+      "handoff_id": "H-0018",
+      "task_id": "CHIP-CONTRACTS",
+      "agent": "mastering-engineer",
+      "status": "APPROVED",
+      "summary": "Chip effect contracts: 10 kept controls, 53 merged; design targets pending listening",
+      "files_changed": [],
+      "tests_executed": [],
+      "results": [],
+      "risks": [],
+      "evidence": "docs/agent-reports/CHIP_CONTRACTS.md",
+      "next_agent": "audio-dsp-engineer",
+      "commit": "f91752d",
+      "date": "2026-10-11T11:12:18"
     }
   ]
 }
