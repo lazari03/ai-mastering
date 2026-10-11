@@ -159,3 +159,44 @@ def test_normal_stereo_input_is_bit_exact():
     out = validate_input_signal(x.copy(), SR)
     assert out["polarity_corrected"] is None
     assert np.array_equal(out["_corrected_audio"], x)
+
+
+# --- C5 / AURALITH-AUDIO-007: saturation only on explicit colour intent ---------------------
+
+
+def test_genre_default_no_longer_enables_saturation():
+    _, plan = _plan("thin", "edm")  # enabled by the edm base_saturation before the fix
+    assert not plan.saturation["enabled"]
+    assert any(r["stage"] == "saturation" and "no colour requested" in r["reason"] for r in plan.rejected_decisions)
+
+
+def test_explicit_colour_intent_still_enables_saturation():
+    _, tagged = _plan("thin", "edm", tags=["warmer"])
+    assert tagged.saturation["enabled"] and tagged.saturation["drive_db"] > 0
+    _, warm = _plan("thin", "edm", category="warm")
+    assert warm.saturation["enabled"]
+    _, plain = _plan("thin", "edm")
+    slider = plain.copy()
+    apply_user_tweaks_to_plan(slider, {"warmth": 0.5})
+    assert slider.saturation["enabled"] and slider.saturation["requested_by"] == ["warmth slider"]
+
+
+def test_colour_preset_requests_saturation_and_a_neutral_preset_does_not():
+    import json
+    from pathlib import Path
+
+    presets = json.loads((Path(__file__).resolve().parents[1] / "mixing_presets.json").read_text())["presets"]
+    profile = _profile("thin")
+    lofi = build_target_context(profile.band_layout, "edm", [], "modern", preset_intent=presets["lofi_vinyl_haze"])
+    glue = build_target_context(profile.band_layout, "edm", [], "modern", preset_intent=presets["streaming_pop_glue"])
+    assert lofi.saturation_requested and not glue.saturation_requested
+
+
+def test_saturation_amount_does_not_depend_on_eq_change_budget():
+    from ai_mastering.planning.plan import _plan_saturation
+
+    profile = _profile("thin")
+    ctx = build_target_context(profile.band_layout, "edm", ["warmer"], "modern")
+    small = _plan_saturation(profile, ctx, {"change_budget": 0.1}, [])
+    large = _plan_saturation(profile, ctx, {"change_budget": 0.9}, [])
+    assert small["amount"] == large["amount"] and small["enabled"]

@@ -489,6 +489,13 @@ def _plan_deesser(profile: SourceProfile, context: TargetContext, problems: list
 
 
 def _plan_saturation(profile: SourceProfile, context: TargetContext, change: dict, rejected: list) -> dict:
+    """Harmonic colour. Enabled ONLY on explicit intent (warmer tag, Warm
+    category, a colour preset, or the warmth slider, see
+    apply_user_tweaks_to_plan): it fixes no measured problem, and because it
+    is driven at the source's p99.5 peaks it shaves the loud hits (Dune rock:
+    punch loss 7.3 % with it vs -0.1 % without, AURALITH-AUDIO-007). Once
+    requested, the genre/style allowance sizes it, reduced by the source's
+    risk factors; the EQ change budget no longer scales it."""
     allowance = context.saturation_allowance
     hf_risk = max(profile.brightness_score, profile.harshness_score)
     transient_priority = float(context.preservation_priorities.get("transients", 0.75))
@@ -497,17 +504,19 @@ def _plan_saturation(profile: SourceProfile, context: TargetContext, change: dic
         "transient_protection": 1.0 - 0.7 * profile.transient_health * transient_priority,
         "not_already_limited": 1.0 - profile.already_limited_score,
         "not_clipped": 0.0 if (profile.clipping or {}).get("detected") else 1.0,
-        # A healthy mix keeps its identity: colouration scales with how
-        # much the source needs to change at all.
-        "identity": 0.3 + 0.7 * change["change_budget"],
     }
     amount = allowance * float(np.prod(list(factors.values())))
     factors = {k: round(v, 3) for k, v in factors.items()}
+    drive = float(min(C.SATURATION_MAX_DRIVE_DB, amount * C.SATURATION_DRIVE_PER_AMOUNT_DB))
+    # What a request would get (the warmth slider enables it after planning).
+    if_requested = {"amount_if_requested": round(amount, 4), "drive_db_if_requested": round(drive, 3) if amount >= C.SATURATION_MIN_AMOUNT else 0.0}
     if amount < C.SATURATION_MIN_AMOUNT:
         rejected.append({"stage": "saturation", "problem": None, "reason": f"amount {amount:.3f} below {C.SATURATION_MIN_AMOUNT} (allowance {allowance:.3f}, factors {factors})"})
-        return {"enabled": False, "amount": 0.0, "drive_db": 0.0, "allowance": round(allowance, 3), "factors": factors, "reason": "disabled: harmonic generation not justified for this source"}
-    drive = float(min(C.SATURATION_MAX_DRIVE_DB, amount * C.SATURATION_DRIVE_PER_AMOUNT_DB))
-    return {"enabled": True, "amount": round(amount, 4), "drive_db": round(drive, 3), "side_drive_scale": 0.3, "allowance": round(allowance, 3), "factors": factors, "reason": f"allowance {allowance:.3f} reduced by source risk factors"}
+        return {"enabled": False, "amount": 0.0, "drive_db": 0.0, "allowance": round(allowance, 3), "factors": factors, "requested_by": list(context.saturation_request_reasons), **if_requested, "reason": "disabled: harmonic generation not justified for this source"}
+    if not context.saturation_requested:
+        rejected.append({"stage": "saturation", "problem": None, "reason": "no colour requested (warmer tag, Warm category, colour preset or warmth slider): saturation fixes no measured problem"})
+        return {"enabled": False, "amount": 0.0, "drive_db": 0.0, "allowance": round(allowance, 3), "factors": factors, "requested_by": [], **if_requested, "reason": "disabled: no colour requested"}
+    return {"enabled": True, "amount": round(amount, 4), "drive_db": round(drive, 3), "side_drive_scale": 0.3, "allowance": round(allowance, 3), "factors": factors, "requested_by": list(context.saturation_request_reasons), **if_requested, "reason": f"requested by {', '.join(context.saturation_request_reasons)}; allowance {allowance:.3f} reduced by source risk factors"}
 
 
 def _plan_stereo(profile: SourceProfile, context: TargetContext, problems: list[Problem], rejected: list) -> dict:
@@ -729,6 +738,10 @@ def apply_user_tweaks_to_plan(plan: MasteringPlan, tweaks: dict) -> MasteringPla
             if hit:
                 d.notes.append(f"user boost adds energy to bands diagnosed as excessive: {sorted(hit)}")
 
+    sat = plan.saturation
+    if t["warmth"] > 1e-3 and not sat.get("enabled") and not sat.get("disabled_by_backoff") and float(sat.get("drive_db_if_requested", 0.0)) > 0.0:
+        # The warmth slider is an explicit colour request.
+        sat.update({"enabled": True, "amount": sat["amount_if_requested"], "drive_db": sat["drive_db_if_requested"], "side_drive_scale": 0.3, "requested_by": ["warmth slider"], "reason": "requested by warmth slider; allowance reduced by source risk factors"})
     if abs(t["punch"]) > 1e-3 and plan.compression["multiband"].get("enabled"):
         for name, band in plan.compression["multiband"]["bands"].items():
             if name in ("low", "punch", "low_mid"):

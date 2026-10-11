@@ -23,6 +23,7 @@ is acceptable", while the shared bias cancels out. That relative offset
 from __future__ import annotations
 
 import copy
+import re
 from dataclasses import asdict, dataclass, field
 
 import numpy as np
@@ -42,6 +43,11 @@ from params import (
 
 from . import config as C
 from .preset_intent import compile_intent
+
+# A preset asks for colour when its own name or description says so
+# (e.g. "Rock Impact Analog", "Lofi Vinyl Haze", "Warm, intimate R&B").
+# "warmth" alone (tonal: "low-mid warmth") is not a colour request.
+_COLOUR_WORDS = re.compile(r"\b(warm|analog|analogue|colou?r|lo-?fi|vinyl|tape|saturat\w*)\b", re.IGNORECASE)
 
 _LEGACY_BAND_RANGES = {
     "sub_bass_20_60hz": (20.0, 60.0),
@@ -155,6 +161,11 @@ class TargetContext:
     preset: str | None = None
     limiter_budget_cap_db: float | None = None
     clipper_max_share_db: float = C.CLIPPER_MAX_SHARE_DB
+    # Saturation is colour, not correction: it runs only when the user
+    # explicitly asked for it (AURALITH-AUDIO-007). The genre/style
+    # allowance above sizes it once requested; it never enables it.
+    saturation_requested: bool = False
+    saturation_request_reasons: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -364,6 +375,13 @@ def build_target_context(
         reference_used = True
         min_lufs = min(min_lufs, preferred - 0.5)
 
+    # Explicit colour intent (the only thing that can enable saturation).
+    sat_reasons = [f"tag '{t}'" for t in tags if float(ADJUSTMENT_TAG_BIASES.get(t, {}).get("saturation_delta", 0.0)) > 0.0]
+    if float(cat["tweak_bias"].get("warmth", 0.0)) > 0.0:
+        sat_reasons.append(f"category '{category}'" + (f" / '{flavour}'" if flavour else ""))
+    if preset_intent and _COLOUR_WORDS.search(f"{preset_intent.get('display_name') or preset_intent.get('name') or ''} {preset_intent.get('description') or ''}"):
+        sat_reasons.append(f"preset '{preset_intent.get('display_name') or preset_intent.get('name')}'")
+
     # Spotify: <= -1 dBTP, and -2 dBTP once a master is louder than
     # -14 LUFS (dense masters overshoot more in lossy transcoding).
     ceiling = LOUD_MASTER_TRUE_PEAK_CEILING_DBTP if max_lufs > STREAMING_REFERENCE_LUFS else TRUE_PEAK_CEILING_DBTP
@@ -407,6 +425,8 @@ def build_target_context(
         reference_used=reference_used,
         reference_shift_db={k: round(v, 3) for k, v in reference_shift.items()},
         reference_dynamics=reference_dyn_report,
+        saturation_requested=bool(sat_reasons),
+        saturation_request_reasons=sat_reasons,
         intent_notes=notes,
         style_profile=dict(style_profile),
     )
