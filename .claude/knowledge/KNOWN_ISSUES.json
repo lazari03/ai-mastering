@@ -16,14 +16,14 @@
     "rule": "Before investigating a suspected defect run: python3 .claude/knowledge/kb.py issues --component <id> --grep <word>. Edit only the entry you own; append to history, never rewrite it."
   },
   "next_ids": {
-    "AUDIO": 7,
+    "AUDIO": 11,
     "BACKEND": 9,
     "BILLING": 1,
     "FRONTEND": 3,
     "SECURITY": 6,
     "DEVOPS": 8,
     "PRODUCT": 5,
-    "QA": 9,
+    "QA": 10,
     "DOCS": 1
   },
   "issues": [
@@ -259,7 +259,7 @@
         "regression.synthetic"
       ],
       "source": "docs/agent-reports/AUDIO_DSP_REPORT.md",
-      "validated_commit": "677d56a",
+      "validated_commit": "85c2450",
       "history": [
         {
           "date": "2026-10-10",
@@ -277,6 +277,12 @@
           "agent": "technical-lead",
           "status": "OPEN",
           "note": "mastering-engineer: 13 ordinary cases cluster at punch_loss 0.099-0.119, just under 0.12; c03 0.206 is worst. Engine delta vs benchmark fraction must be reconciled before deciding the fix (risk: a correct-units guardrail may reject many currently delivered masters)."
+        },
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "Phase 1 (2026-10-11): see DSP_PHASE1_INVESTIGATION.md"
         }
       ]
     },
@@ -294,12 +300,18 @@
         "qa.api_lab c09_phase_inverted"
       ],
       "source": "test-results/auralith-qa.json c09_phase_inverted",
-      "validated_commit": "49d7907",
+      "validated_commit": "85c2450",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "Phase 1 (2026-10-11): see DSP_PHASE1_INVESTIGATION.md"
         }
       ]
     },
@@ -727,12 +739,18 @@
         "c12"
       ],
       "source": "docs/agent-reports/MASTERING_QUALITY_REPORT.md; test-results/auralith-qa.json",
-      "validated_commit": "677d56a",
+      "validated_commit": "85c2450",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "Phase 1 (2026-10-11): see DSP_PHASE1_INVESTIGATION.md"
         }
       ]
     },
@@ -751,12 +769,18 @@
         "f05_reference_mastering"
       ],
       "source": "MASTERING_QUALITY_REPORT.md; auralith-qa.json c07/f05",
-      "validated_commit": "677d56a",
+      "validated_commit": "85c2450",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "status": "OPEN",
+          "note": "Phase 1 (2026-10-11): see DSP_PHASE1_INVESTIGATION.md"
         }
       ]
     },
@@ -866,6 +890,111 @@
           "date": "2026-10-11",
           "agent": "qa-automation-engineer",
           "note": "Created (READY_FOR_AUDIT)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-007",
+      "title": "Saturation enabled as a genre-default colour without measured need; drive referenced to p99.5 peaks shaves transients (Dune rock punch loss 7.3% with vs ~0% without)",
+      "component": "dsp.planning",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": "plan.py:482-501 genre base_saturation; render.py:175 tanh drive vs p99.5 peak",
+      "repro": null,
+      "evidence": "docs/agent-reports/DSP_PHASE1_INVESTIGATION.md",
+      "tests": [],
+      "source": "docs/agent-reports/DSP_PHASE1_INVESTIGATION.md",
+      "validated_commit": "85c2450",
+      "history": [
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-008",
+      "title": "True-peak ceiling chosen from genre loudness window, not delivered loudness: masters <= -14 LUFS limited at -2 dBTP when -1 suffices (wasted ~1 dB GR)",
+      "component": "dsp.planning",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": "target_model.py:369",
+      "repro": null,
+      "evidence": "docs/agent-reports/DSP_PHASE1_INVESTIGATION.md",
+      "tests": [],
+      "source": "docs/agent-reports/DSP_PHASE1_INVESTIGATION.md",
+      "validated_commit": "85c2450",
+      "history": [
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-009",
+      "title": "Loudness never traded for quality: first passing candidate ships; no bounded selection on punch/limiter cost (pop demo -10.1 LUFS at 5.2 dB GR)",
+      "component": "dsp.evaluation",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": "mastering.py:455; evaluation/backoff.py runs only after hard failure",
+      "repro": null,
+      "evidence": "docs/agent-reports/DSP_PHASE1_INVESTIGATION.md",
+      "tests": [],
+      "source": "docs/agent-reports/DSP_PHASE1_INVESTIGATION.md",
+      "validated_commit": "85c2450",
+      "history": [
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-010",
+      "title": "Sub-40 Hz bell boost when only the 20-30 Hz band is deficient (35 Hz +1.67 dB on pop demo)",
+      "component": "dsp.planning",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": "plan.py:136-165",
+      "repro": null,
+      "evidence": "docs/agent-reports/DSP_PHASE1_INVESTIGATION.md",
+      "tests": [],
+      "source": "docs/agent-reports/DSP_PHASE1_INVESTIGATION.md",
+      "validated_commit": "85c2450",
+      "history": [
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-QA-009",
+      "title": "Synthetic gate misses real-audio-only behaviour (dynamic EQ fires 0/21 synthetic, 2/2 real; sub-40 Hz boost 0/21)",
+      "component": "regression.synthetic",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "qa-automation-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "docs/agent-reports/DSP_PHASE1_INVESTIGATION.md",
+      "tests": [],
+      "source": "docs/agent-reports/DSP_PHASE1_INVESTIGATION.md",
+      "validated_commit": "85c2450",
+      "history": [
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
         }
       ]
     }
