@@ -1,0 +1,330 @@
+{
+  "_schema": {
+    "fields": [
+      "handoff_id",
+      "task_id",
+      "agent",
+      "status",
+      "summary",
+      "files_changed",
+      "tests_executed",
+      "results",
+      "risks",
+      "evidence",
+      "next_agent",
+      "commit",
+      "date"
+    ],
+    "status": "READY_FOR_QA | READY_FOR_REVIEW | READY_FOR_AUDIT | APPROVED | REJECTED | BLOCKED | INFO",
+    "rules": "Append only (kb.py handoff add). summary <= 300 chars. Put detail in an evidence file and link it. Readers: kb.py handoffs --to <agent> | --task <id>."
+  },
+  "handoffs": [
+    {
+      "handoff_id": "H-0001",
+      "task_id": "AURALITH-AUDIO-004",
+      "agent": "qa-automation-engineer",
+      "status": "INFO",
+      "summary": "Reproduced c20a_garbage: random bytes as .wav gives HTTP 500 render_failed (NoBackendError) instead of 400 invalid_audio. Loader audio_utils.py:107 should raise InvalidAudioError. Fix outline: AUDIO_DSP_REPORT.md s3.",
+      "files_changed": [
+        "backend/ai_mastering/audio_utils.py"
+      ],
+      "tests_executed": [
+        "api_qa:c20a_garbage"
+      ],
+      "results": [],
+      "risks": [],
+      "evidence": "test-results/auralith-qa.json",
+      "next_agent": "audio-dsp-engineer",
+      "commit": "49d7907",
+      "date": "2026-10-10T18:34:20"
+    },
+    {
+      "handoff_id": "H-0002",
+      "task_id": "AURALITH-SECURITY-001",
+      "agent": "backend-engineer",
+      "status": "READY_FOR_REVIEW",
+      "summary": "Embargoed fix ready on a local branch; details in the local security report.",
+      "files_changed": [
+        "(embargoed)"
+      ],
+      "tests_executed": [
+        "(embargoed)"
+      ],
+      "results": [
+        "(embargoed)"
+      ],
+      "risks": [
+        "(embargoed)"
+      ],
+      "evidence": null,
+      "next_agent": "security-engineer",
+      "commit": "298c856",
+      "date": "2026-10-10T18:52:02"
+    },
+    {
+      "handoff_id": "H-0003",
+      "task_id": "AURALITH-AUDIO-004",
+      "agent": "audio-dsp-engineer",
+      "status": "READY_FOR_QA",
+      "summary": "Undecodable input (random bytes or zero-byte .wav) now raises InvalidAudioError from _load_audio; service maps it to 400 invalid_audio. Commit c4d9727. Re-run api_qa c20a_garbage and c20c_empty (expect PASS).",
+      "files_changed": [
+        "backend/ai_mastering/audio_utils.py",
+        "backend/tests/test_input_limits.py"
+      ],
+      "tests_executed": [
+        "test_input_limits.py::test_undecodable_bytes_raise_invalid_audio_from_the_loader",
+        "::test_zero_byte_wav_raises_invalid_audio_from_the_loader",
+        "::test_master_track_refuses_undecodable_input_and_writes_nothing",
+        "pytest full",
+        "regression.synthetic"
+      ],
+      "results": [
+        "3 regression tests fail before / pass after",
+        "pytest 231 passed (pre empty-file test)",
+        "synthetic drift 0"
+      ],
+      "risks": [
+        "ffmpeg path mastering_service.py:271 still 500 for corrupt compressed uploads (backend-owned)",
+        "api_qa not re-run by owner",
+        "mid-read libsndfile failures not covered"
+      ],
+      "evidence": "docs/agent-reports/AUDIO_DSP_REPORT.md",
+      "next_agent": "qa-automation-engineer",
+      "commit": "c4d9727",
+      "date": "2026-10-10T18:53:20"
+    },
+    {
+      "handoff_id": "H-0004",
+      "task_id": "AURALITH-SECURITY-001",
+      "agent": "security-engineer",
+      "status": "APPROVED",
+      "summary": "Embargoed fix reviewed: APPROVED by security-engineer; details in the local security report.",
+      "files_changed": [
+        "(embargoed)"
+      ],
+      "tests_executed": [
+        "(embargoed)"
+      ],
+      "results": [
+        "(embargoed)"
+      ],
+      "risks": [
+        "(embargoed)"
+      ],
+      "evidence": null,
+      "next_agent": "qa-automation-engineer",
+      "commit": "3b6c4e6",
+      "date": "2026-10-10T18:56:11"
+    },
+    {
+      "handoff_id": "H-0005",
+      "task_id": "AURALITH-AUDIO-004",
+      "agent": "qa-automation-engineer",
+      "status": "READY_FOR_AUDIT",
+      "summary": "AUDIO-004 verified: parent 500 reproduced, HEAD 400 invalid_audio for garbage/empty; full api_qa (hash changed) + pytest 232 pass. ffmpeg-path 500 is BACKEND-006. Node gateway credit checks BLOCKED.",
+      "files_changed": [
+        "docs/agent-reports/QA_REPORT.md"
+      ],
+      "tests_executed": [],
+      "results": [],
+      "risks": [],
+      "evidence": "docs/agent-reports/QA_REPORT.md",
+      "next_agent": "independent-auditor",
+      "commit": "d7346c8",
+      "date": "2026-10-10T19:16:50"
+    },
+    {
+      "handoff_id": "H-0006",
+      "task_id": "AURALITH-AUDIO-004",
+      "agent": "independent-auditor",
+      "status": "APPROVED",
+      "summary": "Fix c4d9727 approved: 3 regression tests fail at parent 50956be (NoBackendError/EOFError), 12 pass at HEAD; api_qa c20a/c20c 500->400; live X-Error-Code invalid_audio; full pytest 232 pass. H-0001 files_changed slip: record hygiene only.",
+      "files_changed": [],
+      "tests_executed": [],
+      "results": [],
+      "risks": [],
+      "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md",
+      "next_agent": "technical-lead",
+      "commit": "c4333e0",
+      "date": "2026-10-10T19:33:31"
+    },
+    {
+      "handoff_id": "H-0007",
+      "task_id": "AURALITH-BACKEND-001",
+      "agent": "independent-auditor",
+      "status": "APPROVED",
+      "summary": "A12 resolved at c88bc69: count-only semaphore gone; ResourceGovernor._fits budget check (job_runner.py:168-173) wraps run_in_worker (routes/mastering.py:283); no change since c88bc69; test_job_runner passes in full suite. Residual P3: unprobeable duration estimated as 1 min.",
+      "files_changed": [],
+      "tests_executed": [],
+      "results": [],
+      "risks": [],
+      "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md",
+      "next_agent": "technical-lead",
+      "commit": "c4333e0",
+      "date": "2026-10-10T19:33:31"
+    },
+    {
+      "handoff_id": "H-0008",
+      "task_id": "AURALITH-QA-007",
+      "agent": "technical-lead",
+      "status": "READY_FOR_AUDIT",
+      "summary": "kb.py integrity fixes per auditor finding 8; guards manually exercised (resolve with REJECTED audit refused, --set status refused, missing --files refused).",
+      "files_changed": [
+        ".claude/knowledge/kb.py"
+      ],
+      "tests_executed": [
+        "manual guard checks"
+      ],
+      "results": [],
+      "risks": [
+        "no automated tests for kb.py"
+      ],
+      "evidence": null,
+      "next_agent": "independent-auditor",
+      "commit": "c4333e0",
+      "date": "2026-10-10T19:35:50"
+    },
+    {
+      "handoff_id": "H-0009",
+      "task_id": "AURALITH-QA-006",
+      "agent": "qa-automation-engineer",
+      "status": "READY_FOR_AUDIT",
+      "summary": "QA-006 (Q1-Q7) and QA-004 fixed in api_qa/qa_corpus. Full run 28 PASS, 4 PWA, 1 FAIL (c09, unchanged); endpoints 17/17; no status flips. 8 new rule tests pass.",
+      "files_changed": [
+        "backend/benchmark/api_qa.py",
+        "backend/benchmark/qa_corpus.py",
+        "backend/tests/test_api_qa_rules.py"
+      ],
+      "tests_executed": [
+        "backend/tests/test_api_qa_rules.py"
+      ],
+      "results": [
+        "test-results/auralith-qa.json",
+        "docs/agent-reports/QA_REPORT.md"
+      ],
+      "risks": [
+        "guardrail refusals (c09",
+        "c13) share code invalid_audio with input refusals; f04 400 has no X-Error-Code; no corrective render occurred live so backoff capture untested on real data"
+      ],
+      "evidence": null,
+      "next_agent": "independent-auditor",
+      "commit": "1616df0",
+      "date": "2026-10-10T19:46:29"
+    },
+    {
+      "handoff_id": "H-0010",
+      "task_id": "AURALITH-QA-006",
+      "agent": "independent-auditor",
+      "status": "APPROVED",
+      "summary": "Q1-Q7 verified fixed in f1af9e1: strict refusal rule, STALE carry-forward, full cache key, endpoints only same hash, loudness missing=FAIL, untested paths declared. 8 rule tests pass (auditor run). Note: f04 bare-400 contract gap unfiled.",
+      "files_changed": [],
+      "tests_executed": [],
+      "results": [],
+      "risks": [],
+      "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md",
+      "next_agent": "technical-lead",
+      "commit": "73a485e",
+      "date": "2026-10-10T19:49:31"
+    },
+    {
+      "handoff_id": "H-0011",
+      "task_id": "AURALITH-QA-004",
+      "agent": "independent-auditor",
+      "status": "APPROVED",
+      "summary": "engine_summary keys verified against mastering.py diagnostics/verdict.to_dict/delivery_check; verdict_passed non-null on all 27 mastered cases.",
+      "files_changed": [],
+      "tests_executed": [],
+      "results": [],
+      "risks": [],
+      "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md",
+      "next_agent": "technical-lead",
+      "commit": "73a485e",
+      "date": "2026-10-10T19:49:31"
+    },
+    {
+      "handoff_id": "H-0012",
+      "task_id": "AURALITH-QA-007",
+      "agent": "independent-auditor",
+      "status": "REJECTED",
+      "summary": "Q8 a-e verified, but R1: issue-update/issue-add --status DONE bypasses the DoD gate (reproduced on scratch copy). Refuse DONE outside issue-resolve. Minor: --set audit_verdict allowed; absolute --files paths pass.",
+      "files_changed": [],
+      "tests_executed": [],
+      "results": [],
+      "risks": [],
+      "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md",
+      "next_agent": "technical-lead",
+      "commit": "73a485e",
+      "date": "2026-10-10T19:49:31"
+    },
+    {
+      "handoff_id": "H-0013",
+      "task_id": "AURALITH-QA-007",
+      "agent": "technical-lead",
+      "status": "READY_FOR_AUDIT",
+      "summary": "Rework of kb.py per H-0012: DONE only via issue-resolve; verdict fields protected; repo-relative --files. Verified on scratch copy.",
+      "files_changed": [
+        ".claude/knowledge/kb.py"
+      ],
+      "tests_executed": [
+        "scratch-copy guard checks (4 refusals",
+        "1 allowed)"
+      ],
+      "results": [],
+      "risks": [],
+      "evidence": null,
+      "next_agent": "independent-auditor",
+      "commit": "73a485e",
+      "date": "2026-10-10T19:50:13"
+    },
+    {
+      "handoff_id": "H-0014",
+      "task_id": "AURALITH-QA-007",
+      "agent": "independent-auditor",
+      "status": "REJECTED",
+      "summary": "Re-review 2: exact DONE/RESOLVED/CLOSED, protected --set fields, abs --files fixed. Still open: status denylist bypassed by ' DONE', 'DONE.', fullwidth, FIXED/COMPLETE (need allowlist); --files deleted:../x passes .. check.",
+      "files_changed": [],
+      "tests_executed": [],
+      "results": [],
+      "risks": [],
+      "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md",
+      "next_agent": "technical-lead",
+      "commit": "d2a7664",
+      "date": "2026-10-10T19:51:15"
+    },
+    {
+      "handoff_id": "H-0015",
+      "task_id": "AURALITH-QA-007",
+      "agent": "technical-lead",
+      "status": "READY_FOR_AUDIT",
+      "summary": "kb.py rework 2: status allowlist, normalized --set keys, deleted: path fix, automated guard tests (test_kb.py, 5/5 pass, covers all H-0014 bypasses).",
+      "files_changed": [
+        ".claude/knowledge/kb.py",
+        ".claude/knowledge/test_kb.py"
+      ],
+      "tests_executed": [
+        "python3 .claude/knowledge/test_kb.py"
+      ],
+      "results": [],
+      "risks": [],
+      "evidence": null,
+      "next_agent": "independent-auditor",
+      "commit": "d2a7664",
+      "date": "2026-10-10T19:52:32"
+    },
+    {
+      "handoff_id": "H-0016",
+      "task_id": "AURALITH-QA-007",
+      "agent": "independent-auditor",
+      "status": "APPROVED",
+      "summary": "Re-review 3: R1b allowlist, R3b deleted:-prefix, shadow --set keys fixed; test_kb.py 5/5 OK and 3 tests fail on d2a7664 kb.py. No other terminal/history path. Non-blocking: fullwidth --set key shadow, dead sys.exit at kb.py:172.",
+      "files_changed": [],
+      "tests_executed": [],
+      "results": [],
+      "risks": [],
+      "evidence": "docs/agent-reports/INDEPENDENT_AUDIT.md",
+      "next_agent": "technical-lead",
+      "commit": "1d33454",
+      "date": "2026-10-10T19:53:36"
+    }
+  ]
+}
