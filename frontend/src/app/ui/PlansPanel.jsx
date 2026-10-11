@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { postCheckout, postChangePlan, postBillingPortal } from "@/network/http/client";
-import { BILLING_PERIODS, PLANS, PLAN_ORDER, SINGLE_MASTER, STEM_SEPARATION, planPricing } from "@/lib/pricing";
+import { BILLING_PERIODS, PLANS, PLAN_ORDER, SINGLE_MASTER, STEM_SEPARATION, localized, planPricing } from "@/lib/pricing";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
 import { trackEvent } from "@/lib/analytics";
 import { LoadingBlock, Spinner } from "@/components/ui/Spinner";
