@@ -45,3 +45,9 @@ Before re-opening a decision, cite new evidence. Owner: technical-lead; auditor 
 - **Decision:** `_plan_eq` rejects a non-reference tonal deficit whose bands all end at or below `config.EQ_MIN_DEFICIT_BOOST_HZ` (40 Hz), recording "sub-40 Hz deficit: commonly an intentional high-pass".
 - **Rationale:** pop-before got a 35 Hz +1.67 dB bell from a 20-30 Hz-only deficit with no measurable benefit (unnecessary move; the evaluator itself ignores < 25 Hz). Synthetic drift 0, real drift 0 (pop row within tolerance).
 - **Components:** dsp.planning · **Source:** docs/agent-reports/DSP_FIXES.md C3.
+
+## D-010 · 2026-10-11 · Polarity-inverted stereo is corrected at input (AURALITH-AUDIO-002)
+- **Decision:** `validate_input_signal` inverts the right channel when stereo input has corr(L,R) < −0.5 (`POLARITY_INVERSION_CORRELATION`, the same value as the output `phase_correlation` QC fail line; no new threshold), reports `polarity_corrected: "right"` and `input_stereo_correlation`, and `master_track` surfaces warning code `polarity_corrected` (en+sq string `warn.polarity_corrected` added to `frontend/src/lib/i18n.js`, nothing else in the frontend). Normal stereo is bit-exact.
+- **Rationale:** c09 (L = −R) was refused after a full render with five unrelated-looking failures; the stereo planner removed the inverted "side" (the music). Now it is delivered (corr 0.90 out). An engineer would flip it and tell the client. Synthetic/real drift 0.
+- **Alternatives:** refuse early with a specific error (rejected: the fix is unambiguous and loss-free).
+- **Components:** dsp.input_validation, frontend i18n (one string) · **Source:** docs/agent-reports/DSP_FIXES.md C4.

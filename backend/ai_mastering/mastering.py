@@ -606,6 +606,14 @@ def master_track(
             "(the other channel on both sides). If that isn't what you intended, check the export settings of your mix.",
             channel=channel,
         )
+    if input_validation.get("polarity_corrected"):
+        channel = input_validation["polarity_corrected"]
+        warn(
+            "polarity_corrected",
+            f"The left and right channels of your file were in opposite polarity (they cancel when played in mono), so the {channel} channel "
+            "was flipped before mastering. Check the export settings of your mix.",
+            channel=channel,
+        )
     if input_validation.get("dc_offset_corrected"):
         warn("dc_offset_corrected", "Your file had a DC offset (a constant shift away from zero); it was removed before mastering. Check your mix bus for a faulty plugin or converter.")
     if float(input_validation.get("channel_imbalance_db") or 0.0) > CHANNEL_IMBALANCE_WARN_DB and not input_validation.get("silent_channel_restored"):

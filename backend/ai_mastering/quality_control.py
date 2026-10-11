@@ -25,6 +25,9 @@ CHANNEL_IMBALANCE_WARN_DB = 6.0
 # mix (hard-panned instrument, old stereo recording) is the artist's
 # balance, not a defect — it used to fail QC / get "corrected" to 0 dB.
 CHANNEL_IMBALANCE_ADDED_TOLERANCE_DB = 1.0
+# Input L/R correlation below this = polarity-inverted channel. Same value
+# as the output phase_correlation QC fail line (run_quality_control).
+POLARITY_INVERSION_CORRELATION = -0.5
 
 
 def lr_balance_db(audio: np.ndarray) -> float:
@@ -111,6 +114,24 @@ def validate_input_signal(audio: np.ndarray, sr: int) -> dict:
             corrected = np.repeat(corrected[:, live : live + 1], 2, axis=1).astype(np.float32)
             issues.append(f"The {silent_channel} channel was silent; the {('right' if live else 'left')} channel was used for both sides (mastered as mono).")
 
+    # A stereo file whose channels are in opposite polarity (L ~ -R) cancels
+    # in mono, and the stereo planner reads the inverted "side" as excess
+    # width and removes it, so every candidate fails the output phase check
+    # (correlation < -0.5) after a full render (AURALITH-AUDIO-002). Below
+    # that same QC fail line the right channel is flipped back, which is
+    # what an engineer does, and the user is told.
+    input_correlation = None
+    polarity_corrected = None
+    if corrected.shape[1] == 2 and silent_channel is None:
+        left = corrected[:, 0].astype(np.float64)
+        right = corrected[:, 1].astype(np.float64)
+        if float(np.std(left)) > EPS and float(np.std(right)) > EPS:
+            input_correlation = float(np.corrcoef(left, right)[0, 1])
+            if input_correlation < POLARITY_INVERSION_CORRELATION:
+                corrected = np.stack([corrected[:, 0], -corrected[:, 1]], axis=1).astype(np.float32)
+                polarity_corrected = "right"
+                issues.append(f"Left/right channels were in opposite polarity (correlation {input_correlation:.2f}); the right channel was inverted before mastering.")
+
     channel_rms_db = [round(float(_db(_rms(corrected[:, ch]))), 2) for ch in range(corrected.shape[1])]
     channel_imbalance_db = float(max(channel_rms_db) - min(channel_rms_db)) if len(channel_rms_db) > 1 else 0.0
     if channel_imbalance_db > CHANNEL_IMBALANCE_WARN_DB:
@@ -125,6 +146,8 @@ def validate_input_signal(audio: np.ndarray, sr: int) -> dict:
         "dc_offset_corrected": needs_dc_correction,
         "channel_imbalance_db": round(channel_imbalance_db, 2),
         "silent_channel_restored": silent_channel,
+        "input_stereo_correlation": None if input_correlation is None else round(input_correlation, 3),
+        "polarity_corrected": polarity_corrected,
         "issues": issues,
         "_corrected_audio": corrected,
     }

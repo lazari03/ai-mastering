@@ -129,3 +129,33 @@ def test_deficit_only_below_40hz_is_not_boosted():
 def test_bass_deficit_reaching_above_40hz_is_still_corrected():
     _, plan = _plan("thin", "edm")
     assert any(d.gain_db > 0 and d.frequency_hz < 300.0 for d in plan.eq_decisions)
+
+
+# --- C4 / AURALITH-AUDIO-002: polarity-inverted stereo is corrected at input ----------------
+
+
+def test_polarity_inverted_stereo_is_corrected_and_delivered(tmp_path):
+    import soundfile as sf
+
+    from ai_mastering.mastering import master_track
+
+    x = make_mix(seconds=8.0, seed=9)
+    inverted = np.stack([x[:, 0], -x[:, 1]], axis=1).astype(np.float32)
+    src = tmp_path / "inv.wav"
+    sf.write(str(src), inverted, SR)
+    r = master_track(str(src), str(tmp_path / "out.wav"), "pop", [])  # used to raise InvalidAudioError
+    iv = r["processing_applied"]["input_validation"]
+    assert iv["polarity_corrected"] == "right" and iv["input_stereo_correlation"] < -0.5
+    assert r["analysis_after"]["stereo_correlation"] > 0.5
+    codes = [w["code"] for w in r["processing_applied"]["source_warning_codes"]]
+    assert "polarity_corrected" in codes
+    assert any("opposite polarity" in w for w in r["source_warnings"])
+
+
+def test_normal_stereo_input_is_bit_exact():
+    from ai_mastering.quality_control import validate_input_signal
+
+    x = make_mix(seconds=4.0, seed=11).astype(np.float32)
+    out = validate_input_signal(x.copy(), SR)
+    assert out["polarity_corrected"] is None
+    assert np.array_equal(out["_corrected_audio"], x)
