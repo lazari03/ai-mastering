@@ -117,7 +117,13 @@ def test_normal_masters_sit_clear_of_the_distortion_limit(tmp_path):
         sf.write(str(src), _mix(seed=8, **kw), SR)
         result = master_track(str(src), str(tmp_path / f"{name}_out.wav"), "pop", [])
         diag = result["mastering_diagnostics"]
-        assert diag["delivered_candidate"] == "initial", (name, diag["candidates"])
+        # Since transient checks use relative loss (AURALITH-AUDIO-001, D-008) a
+        # normal master may be re-rendered for PUNCH; distortion must never be
+        # the reason, and every candidate (not only the delivered one) must sit
+        # clear of the distortion limit.
+        assert diag["delivered_candidate"] != "transparent_fallback", (name, diag["candidates"])
+        assert not any("distortion" in f for c in diag["candidates"] for f in c["failures"]), (name, diag["candidates"])
+        assert all(c["added_distortion_db"] < C.MAX_ADDED_DISTORTION_DB - 2.0 for c in diag["candidates"]), (name, diag["candidates"])
         assert diag["added_distortion"]["worst_db"] < C.MAX_ADDED_DISTORTION_DB - 2.0, (name, diag["added_distortion"])
 
 
