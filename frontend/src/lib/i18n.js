@@ -39,7 +39,7 @@ const DICT = {
   },
   "hero.ctaPrimary": { en: "Master a Track Free", sq: "Masterizo Falas" },
   "heroTry.title": { en: "Try it on your track", sq: "Provoje me këngën tënde" },
-  "heroTry.noSignup": { en: "No signup needed", sq: "Pa regjistrim" },
+  "heroTry.noSignup": { en: "No payment required", sq: "Pa pagesë" },
   "heroTry.sample": { en: "Try it with our sample", sq: "Provoje me shembullin tonë" },
   "heroTry.hint": { en: "Loudness, true peak & range in seconds", sq: "Zëri, kulmi i vërtetë dhe diapazoni në sekonda" },
   "heroTry.sampleFailed": { en: "Couldn't load the sample track", sq: "Shembulli nuk u ngarkua" },
