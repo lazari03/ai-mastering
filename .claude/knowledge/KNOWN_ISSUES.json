@@ -21,7 +21,7 @@
     "BILLING": 1,
     "FRONTEND": 4,
     "SECURITY": 6,
-    "DEVOPS": 8,
+    "DEVOPS": 9,
     "PRODUCT": 5,
     "QA": 10,
     "DOCS": 1
@@ -1062,6 +1062,27 @@
           "date": "2026-10-11",
           "agent": "frontend-engineer",
           "note": "Created (READY_FOR_QA)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-DEVOPS-008",
+      "title": "CI cannot detect production-image import failures: PR #8 added a top-level 'import audioread.exceptions'; audioread was pinned only in requirements-test.txt, so CI passed but the production python-service crashed at start (deploy #208 aborted 11:42; containers left down until fix 1493e80 deployed 14:17)",
+      "component": "devops.deploy",
+      "severity": "P1",
+      "status": "OPEN",
+      "owner": "devops-engineer",
+      "root_cause": "CI tests use requirements-test.txt; production requirements.txt not import-checked; deploy stops containers before health is known",
+      "repro": null,
+      "evidence": "Actions run 38136080558 job 114461301936 log: 'container ai-mastering-python-service-1 is unhealthy'; fix commit 1493e80 (owner)",
+      "tests": [],
+      "source": "Actions run 38136080558 job 114461301936 log: 'container ai-mastering-python-service-1 is unhealthy'; fix commit 1493e80 (owner)",
+      "validated_commit": "6ace619",
+      "history": [
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
         }
       ]
     }
