@@ -1,0 +1,1688 @@
+{
+  "default": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ],
+    "preview": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "true"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "genre_rock": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "rock"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K1_loudness_up": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":1}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K1_loudness_down": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":-1}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K2_style_open": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "acoustic_natural"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K2_style_dense": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "electronic_modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K2_style_vintage": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "vintage_analog"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K3_punch": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0.7,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K4_low_end": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":-0.5,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K5_warmth": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":1,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ],
+    "preview": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":1,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "true"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K6_brightness": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0.5,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K7_presence": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0.9,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K8_clarity": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[\"clearer\"]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K9_width": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0.65,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "K10_delivery_streaming": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "streaming"
+      ]
+    ]
+  },
+  "K10_delivery_apple": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "apple"
+      ]
+    ]
+  },
+  "K10_delivery_loud": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "loud"
+      ]
+    ]
+  },
+  "all_kept_on": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "edm"
+      ],
+      [
+        "style",
+        "electronic_modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[\"clearer\"]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0.3,\"punch\":0.4,\"presence\":0.2,\"brightness\":0.6,\"warmth\":-0.2,\"width\":0.8,\"loudness\":0.5}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "loud"
+      ]
+    ]
+  },
+  "merged_tags": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[\"louder\",\"softer\",\"deeper\"]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "merged_category_flavour": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ],
+      [
+        "category",
+        "warm"
+      ],
+      [
+        "flavour",
+        "analog"
+      ]
+    ]
+  },
+  "merged_style_cd": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "cd_loudness_war"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "preset_builtin": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "rock"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[\"punchier_drums\",\"warmer\"]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0.6,\"presence\":0,\"brightness\":0,\"warmth\":0.6,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "mix_preset",
+        "builtin_dir"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "preset_user_with_merged": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "edm"
+      ],
+      [
+        "style",
+        "rock_modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[\"louder\",\"wider\",\"better_vocals\"]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0.4}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "mix_preset",
+        "user_merged"
+      ],
+      [
+        "delivery",
+        "auto"
+      ],
+      [
+        "category",
+        "club"
+      ],
+      [
+        "flavour",
+        "deep"
+      ]
+    ],
+    "preview": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "edm"
+      ],
+      [
+        "style",
+        "rock_modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[\"louder\",\"wider\",\"better_vocals\"]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0.4}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "true"
+      ],
+      [
+        "mix_preset",
+        "user_merged"
+      ],
+      [
+        "delivery",
+        "auto"
+      ],
+      [
+        "category",
+        "club"
+      ],
+      [
+        "flavour",
+        "deep"
+      ]
+    ]
+  },
+  "preset_chain": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "mix_preset",
+        "chain_one"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "direction_warm_strong_loud": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0.45,\"punch\":0,\"presence\":-0.15,\"brightness\":-0.45,\"warmth\":0.9,\"width\":0,\"loudness\":0.6}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "tier_professional_stems": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "true"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "professional"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "reference_mode": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ],
+      [
+        "reference_file",
+        {
+          "file": "ref.wav",
+          "size": 8,
+          "type": "audio/wav"
+        }
+      ]
+    ],
+    "preview": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "true"
+      ],
+      [
+        "delivery",
+        "auto"
+      ],
+      [
+        "reference_file",
+        {
+          "file": "ref.wav",
+          "size": 8,
+          "type": "audio/wav"
+        }
+      ]
+    ]
+  },
+  "pro_mode": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ],
+      [
+        "processing",
+        "{\"input\":{\"auto_gain\":true,\"headroom_target_db\":-6},\"highpass\":{\"enabled\":false,\"frequency_hz\":30,\"slope_db_oct\":12},\"eq\":[{\"frequency_hz\":100,\"gain_db\":1.5,\"q\":1},{\"frequency_hz\":1000,\"gain_db\":0,\"q\":1},{\"frequency_hz\":8000,\"gain_db\":0,\"q\":1}],\"bus_compressor\":{\"ratio\":2,\"attack_ms\":20,\"release_ms\":150,\"max_gain_reduction_db\":3},\"dynamic_eq\":[],\"saturation\":{\"enabled\":false,\"amount\":0.03,\"oversampling\":4},\"stereo\":{\"low_end_mono_below_hz\":120,\"bands\":[]},\"clipper\":{\"enabled\":false,\"ceiling_dbtp\":-1,\"drive_db\":0,\"oversampling\":4},\"limiter\":{\"target_lufs_i\":-9,\"ceiling_dbtp\":-1},\"output\":{\"bit_depth\":24,\"dither\":\"triangular\"}}"
+      ]
+    ],
+    "preview": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "true"
+      ],
+      [
+        "delivery",
+        "auto"
+      ]
+    ]
+  },
+  "pro_mode_with_category": {
+    "master": [
+      [
+        "file",
+        {
+          "file": "song.wav",
+          "size": 16,
+          "type": "audio/wav"
+        }
+      ],
+      [
+        "genre",
+        "pop"
+      ],
+      [
+        "style",
+        "modern"
+      ],
+      [
+        "use_stem_separation",
+        "false"
+      ],
+      [
+        "tags",
+        "[]"
+      ],
+      [
+        "tweaks",
+        "{\"low_end\":0,\"punch\":0,\"presence\":0,\"brightness\":0,\"warmth\":0,\"width\":0,\"loudness\":0}"
+      ],
+      [
+        "output_format",
+        "wav"
+      ],
+      [
+        "tier",
+        "standard"
+      ],
+      [
+        "preview",
+        "false"
+      ],
+      [
+        "delivery",
+        "auto"
+      ],
+      [
+        "processing",
+        "{\"input\":{\"auto_gain\":true,\"headroom_target_db\":-6},\"highpass\":{\"enabled\":false,\"frequency_hz\":30,\"slope_db_oct\":12},\"eq\":[{\"frequency_hz\":100,\"gain_db\":0,\"q\":1},{\"frequency_hz\":1000,\"gain_db\":0,\"q\":1},{\"frequency_hz\":8000,\"gain_db\":0,\"q\":1}],\"bus_compressor\":{\"ratio\":2,\"attack_ms\":20,\"release_ms\":150,\"max_gain_reduction_db\":3},\"dynamic_eq\":[],\"saturation\":{\"enabled\":false,\"amount\":0.03,\"oversampling\":4},\"stereo\":{\"low_end_mono_below_hz\":120,\"bands\":[]},\"clipper\":{\"enabled\":false,\"ceiling_dbtp\":-1,\"drive_db\":0,\"oversampling\":4},\"limiter\":{\"target_lufs_i\":-10,\"ceiling_dbtp\":-1},\"output\":{\"bit_depth\":24,\"dither\":\"triangular\"}}"
+      ]
+    ]
+  }
+}

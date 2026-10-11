@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --import ./tests/register.mjs --test tests/*.test.mjs"
   },
   "dependencies": {
     "@telemetrydeck/sdk": "^2.0.4",
