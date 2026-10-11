@@ -19,7 +19,7 @@
     "AUDIO": 13,
     "BACKEND": 9,
     "BILLING": 1,
-    "FRONTEND": 4,
+    "FRONTEND": 5,
     "SECURITY": 6,
     "DEVOPS": 9,
     "PRODUCT": 5,
@@ -1083,6 +1083,29 @@
           "date": "2026-10-11",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-FRONTEND-004",
+      "title": "Plans/Billing tab crashed on every loaded render (ReferenceError: localized is not defined in PlansPanel.jsx) — users could not manage billing",
+      "component": "frontend.pricing",
+      "severity": "P0",
+      "status": "READY_FOR_QA",
+      "owner": "frontend-engineer",
+      "root_cause": "PlansPanel.jsx calls localized() 6x without importing it from @/lib/pricing (introduced 3ba1f63); frontend has no no-undef lint or tests in CI",
+      "repro": null,
+      "evidence": "Reproduced in Chromium (frontend-engineer); fix cb08a9e, PR #9",
+      "tests": [
+        "frontend/tests/localized-imports.test.mjs"
+      ],
+      "source": "Reproduced in Chromium (frontend-engineer); fix cb08a9e, PR #9",
+      "validated_commit": "6b0254e",
+      "history": [
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "note": "Created (READY_FOR_QA)."
         }
       ]
     }
