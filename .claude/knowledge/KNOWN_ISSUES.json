@@ -19,7 +19,7 @@
     "AUDIO": 13,
     "BACKEND": 9,
     "BILLING": 1,
-    "FRONTEND": 3,
+    "FRONTEND": 4,
     "SECURITY": 6,
     "DEVOPS": 8,
     "PRODUCT": 5,
@@ -1039,6 +1039,29 @@
           "date": "2026-10-11",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-FRONTEND-003",
+      "title": "Mastering console redesign: compact single-page flow, reduced chip set (design-only)",
+      "component": "frontend",
+      "severity": "low",
+      "status": "READY_FOR_QA",
+      "owner": "frontend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "docs/agent-reports/FRONTEND_REPORT.md Redesign 2026-10-11; frontend/tests/payload.test.mjs 31/31 vs golden",
+      "tests": [
+        "cd frontend && npm test"
+      ],
+      "source": "docs/agent-reports/FRONTEND_REPORT.md Redesign 2026-10-11; frontend/tests/payload.test.mjs 31/31 vs golden",
+      "validated_commit": "08475f3",
+      "history": [
+        {
+          "date": "2026-10-11",
+          "agent": "frontend-engineer",
+          "note": "Created (READY_FOR_QA)."
         }
       ]
     }
