@@ -2,21 +2,12 @@ name: Release gate — real-audio benchmark
 
 # Corpus audio and reviewed baselines live on the benchmark runner.
 # Never create or update a baseline automatically after a DSP change.
+# Manual only: this job needs the self-hosted `auralith-benchmark` runner that
+# holds the licensed corpus. Triggering it on push/pull_request left runs queued
+# forever when no such runner is registered. Run it via "Run workflow".
+# The GitHub-hosted real-audio gate (benchmark.regression --real --only-manifest)
+# arrives with the DSP release; that code is not on this branch.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "backend/ai_mastering/**"
-      - "backend/benchmark/**"
-      - "backend/requirements*.txt"
-      - ".github/workflows/release-benchmark.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "backend/ai_mastering/**"
-      - "backend/benchmark/**"
-      - "backend/requirements*.txt"
-      - ".github/workflows/release-benchmark.yml"
   workflow_dispatch:
     inputs:
       corpus_path:
