@@ -262,6 +262,12 @@ LOUDNESS_DYNAMIC_PRIORITY_EXTRA_LU = 1.5
 # ---------------------------------------------------------------------------
 # Saturation / stereo / de-essing
 # ---------------------------------------------------------------------------
+# A tonal DEFICIT whose bands all end at or below this frequency is not
+# boosted (AURALITH-AUDIO-010): a missing 20-40 Hz region is usually the
+# mix's own high-pass. Measured on pop-before: 35 Hz +1.67 dB bell from a
+# 20-30 Hz-only deficit, no measurable benefit. Reference-driven deficits
+# (the user's reference asks for it) are exempt.
+EQ_MIN_DEFICIT_BOOST_HZ = 40.0
 SATURATION_MAX_AMOUNT = 0.25
 SATURATION_MIN_AMOUNT = 0.03    # below this (~0.36 dB drive on the loud hits) the stage is disabled outright
 SATURATION_DRIVE_PER_AMOUNT_DB = 12.0

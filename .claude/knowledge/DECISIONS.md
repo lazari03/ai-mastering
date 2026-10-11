@@ -40,3 +40,8 @@ Before re-opening a decision, cite new evidence. Owner: technical-lead; auditor 
 - **Rationale:** The absolute delta made the checks about 2× looser than documented and disagreed with `benchmark.metrics`. Synthetic rows that now fail first and are delivered by the existing corrective ladder (−1.5 LU nominal relief): short_3s_pop (retention 0.844→0.925), one_dead_channel_rnb (0.871→0.940), dark_rock (0.910→0.972); boomy_extreme_trap's existing corrective now also relieves the limiter (0.936→1.031, −2.2 LU, limiter GR 5.7→2.95). Each costs 1.3–2.2 LU of loudness and one extra render; loudness shortfall is reported (`loudness_below_request`). Real gate: 0 drift (Dune pop margin 0.35 pt).
 - **Alternatives:** raise the thresholds to keep current behaviour (rejected: weakens a guardrail).
 - **Components:** dsp.evaluation · **Source:** docs/agent-reports/DSP_FIXES.md C2.
+
+## D-009 · 2026-10-11 · No automatic boost for a deficit entirely below 40 Hz (AURALITH-AUDIO-010)
+- **Decision:** `_plan_eq` rejects a non-reference tonal deficit whose bands all end at or below `config.EQ_MIN_DEFICIT_BOOST_HZ` (40 Hz), recording "sub-40 Hz deficit: commonly an intentional high-pass".
+- **Rationale:** pop-before got a 35 Hz +1.67 dB bell from a 20-30 Hz-only deficit with no measurable benefit (unnecessary move; the evaluator itself ignores < 25 Hz). Synthetic drift 0, real drift 0 (pop row within tolerance).
+- **Components:** dsp.planning · **Source:** docs/agent-reports/DSP_FIXES.md C3.

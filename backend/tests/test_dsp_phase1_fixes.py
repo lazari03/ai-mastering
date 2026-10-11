@@ -19,6 +19,8 @@ from synthetic import SR, make_mix
 FIXTURES = {
     "healthy": dict(healthy_variation_db=1.0),
     "rock_transient": dict(drum_level=1.2, healthy_variation_db=0.5),
+    "no_infra_sub": dict(offsets_db=[(20, 30, -12.0)]),
+    "thin": dict(offsets_db=[(40, 300, -7.0)]),
 }
 
 
@@ -112,3 +114,18 @@ def test_evaluator_transient_check_uses_relative_loss(tmp_path):
     expected = (t["master_transient_score"] - t["source_transient_score"]) / t["source_transient_score"]
     assert abs(t["relative_delta"] - expected) < 2e-3
     assert t["passed"] == (t["relative_delta"] >= -t["allowed_loss"])
+
+
+# --- C3 / AURALITH-AUDIO-010: no automatic boost for a deficit entirely below 40 Hz ----------
+
+
+def test_deficit_only_below_40hz_is_not_boosted():
+    _, plan = _plan("no_infra_sub", "pop")
+    assert "insufficient_sub" in plan.detected_problems
+    assert not [d for d in plan.eq_decisions if d.gain_db > 0 and d.frequency_hz < 60.0]
+    assert any(r["stage"] == "eq" and "high-pass" in r["reason"] for r in plan.rejected_decisions)
+
+
+def test_bass_deficit_reaching_above_40hz_is_still_corrected():
+    _, plan = _plan("thin", "edm")
+    assert any(d.gain_db > 0 and d.frequency_hz < 300.0 for d in plan.eq_decisions)

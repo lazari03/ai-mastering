@@ -307,6 +307,14 @@ def _plan_eq(profile: SourceProfile, context: TargetContext, problems: list[Prob
         if not p.actionable or p.confidence < required:
             rejected.append({"stage": "eq", "problem": p.kind, "reason": f"confidence {p.confidence:.2f} below {gate_name} gate {required:.2f}"})
             continue
+        if p.direction == "deficit" and not p.reference_driven:
+            band_hi = {b["name"]: float(b["hi_hz"]) for b in profile.band_layout}
+            if all(band_hi.get(n, 1e9) <= C.EQ_MIN_DEFICIT_BOOST_HZ for n in p.bands):
+                # A deficit only below 40 Hz is usually the mix's own
+                # high-pass (and below 25 Hz the evaluator does not even
+                # judge it): boosting it is an unnecessary move.
+                rejected.append({"stage": "eq", "problem": p.kind, "reason": f"sub-{C.EQ_MIN_DEFICIT_BOOST_HZ:.0f} Hz deficit: commonly an intentional high-pass, not boosted"})
+                continue
         if p.direction == "deficit" and p.frequency_class == "high":
             src_hf = max(profile.harshness_score, profile.brightness_score)
             if src_hf >= 0.5:
