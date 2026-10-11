@@ -16,7 +16,7 @@
     "rule": "Before investigating a suspected defect run: python3 .claude/knowledge/kb.py issues --component <id> --grep <word>. Edit only the entry you own; append to history, never rewrite it."
   },
   "next_ids": {
-    "AUDIO": 12,
+    "AUDIO": 13,
     "BACKEND": 9,
     "BILLING": 1,
     "FRONTEND": 3,
@@ -1013,6 +1013,27 @@
       ],
       "source": "scratchpad chip_effects run on pop-before (results.json; to be published in docs/agent-reports/CHIP_EFFECTS.md)",
       "validated_commit": "d891f2b",
+      "history": [
+        {
+          "date": "2026-10-11",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-012",
+      "title": "User controls with no or near-zero effect on real audio: punch tweak (0.00), tags better_vocals/wider (0.00), Professional tier (0.00), brightness -1 (~0), low_end +1 (no bass change); many flavours identical to parent category",
+      "component": "dsp.planning",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "docs/agent-reports/CHIP_EFFECTS.md",
+      "tests": [],
+      "source": "docs/agent-reports/CHIP_EFFECTS.md",
+      "validated_commit": "9f1c823",
       "history": [
         {
           "date": "2026-10-11",
