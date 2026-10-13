@@ -22,7 +22,7 @@ const fieldStyle = "field";
  * (claimWithGoogle tries to link, transparently falls back to signing
  * into an existing account if that Google account already has one).
  */
-export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow", titleKey = "chordGate.title", bodyKey = "chordGate.body" }) {
+export default function ChordAuthGate({ onDone, onClose, eyebrowKey = "chordGate.eyebrow", titleKey = "chordGate.title", bodyKey = "chordGate.body" }) {
   const { t } = useLanguage();
   const { busy, error, signIn, claimWithEmail, claimWithGoogle, clearError } = useAuthStore();
   const [mode, setMode] = useState("signup"); // "signup" | "signin"
@@ -60,6 +60,18 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
   // panel next to it painted over the dialog.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // Dismissible only when the caller passes onClose: the chord detector's
+  // gate deliberately hides an unpaid result, the LUFS/hero gates don't.
+  useEffect(() => {
+    if (!onClose) return undefined;
+    const onKey = (event) => {
+      if (event.key === "Escape" && !useAuthStore.getState().busy) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   if (!mounted) return null;
 
   return createPortal(
@@ -70,8 +82,22 @@ export default function ChordAuthGate({ onDone, eyebrowKey = "chordGate.eyebrow"
       role="dialog"
       aria-modal="true"
       aria-labelledby="chord-gate-title"
+      onClick={onClose ? (event) => event.target === event.currentTarget && !busy && onClose() : undefined}
     >
-      <div className="w-full max-w-[400px] rounded-[28px] border border-black/[0.07] bg-bg p-6 shadow-[var(--shadow-ambient-lifted)] sm:p-7">
+      <div className="relative w-full max-w-[400px] rounded-[28px] border border-black/[0.07] bg-bg p-6 shadow-[var(--shadow-ambient-lifted)] sm:p-7">
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            aria-label={t("authGate.close")}
+            className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-text-secondary transition hover:bg-black/[0.06] hover:text-text-primary"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
+        ) : null}
         <p className="eyebrow m-0">{t(eyebrowKey)}</p>
         <h2 id="chord-gate-title" className="mt-3 font-[var(--font-title)] text-2xl font-semibold tracking-[-0.02em] text-text-primary">{t(titleKey)}</h2>
         <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t(bodyKey)}</p>

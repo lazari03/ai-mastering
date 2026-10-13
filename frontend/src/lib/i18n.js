@@ -1025,6 +1025,7 @@ const DICT = {
   },
   "chordGate.newHere": { en: "New here", sq: "I ri këtu" },
   "chordGate.returning": { en: "I have an account", sq: "Kam një llogari" },
+  "authGate.close": { en: "Close", sq: "Mbyll" },
 
   "lufsGate.eyebrow": { en: "Still free", sq: "Ende falas" },
   "lufsGate.title": { en: "Your loudness reading is ready", sq: "Leximi i zërit është gati" },

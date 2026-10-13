@@ -138,6 +138,7 @@ export default function PublicLufsMeter() {
           eyebrowKey="lufsGate.eyebrow"
           titleKey="lufsGate.title"
           bodyKey="lufsGate.body"
+          onClose={() => setShowGate(false)}
           onDone={async () => {
             await stashPendingToolFile(file);
             router.push("/app?tab=master");
