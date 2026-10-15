@@ -8,6 +8,9 @@ export const metadata = buildMetadata({
   description: "Sign in or create a free account to start mastering tracks with Auralith Forge's adaptive DSP engine.",
   path: "/login",
   keywords: ["AI mastering sign up", "mastering studio login"],
+  // Auth form with no content to rank; kept out of sitemap.js for the same
+  // reason. Not disallowed in robots.js so crawlers can read this noindex.
+  noindex: true,
 });
 
 // Suspense boundary required by LoginClient's useSearchParams() (reads

@@ -50,6 +50,12 @@ export function absoluteUrl(path = "/") {
   return new URL(path, SITE_URL).toString();
 }
 
+// The site-wide generated card (app/opengraph-image.jsx). Named explicitly
+// because Next only falls back to that file when a page's openGraph object
+// has no own `images` key — and buildMetadata always sets one, so before this
+// every marketing page shipped with no og:image / twitter:image at all.
+const DEFAULT_OG_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: `${SITE_NAME} — AI Audio Mastering` };
+
 export function buildMetadata({ title, description, path = "/", keywords = [], noindex = false, image }) {
   const url = absoluteUrl(path);
   return {
@@ -66,13 +72,13 @@ export function buildMetadata({ title, description, path = "/", keywords = [], n
       url,
       siteName: SITE_NAME,
       type: "website",
-      images: image ? [{ url: image }] : undefined,
+      images: image ? [{ url: image }] : [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: image ? [image] : undefined,
+      images: image ? [image] : [DEFAULT_OG_IMAGE.url],
     },
   };
 }

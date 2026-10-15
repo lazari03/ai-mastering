@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Script from "next/script";
 
 import { getStoredConsent } from "./CookieBanner";
 
 // Plausible — cookieless, no personal data, no consent-mode complexity to
 // wire up. Set NEXT_PUBLIC_PLAUSIBLE_DOMAIN to turn this on. This is the
-// only analytics provider left in the app — Google Analytics, Meta Pixel,
-// and TikTok Pixel have all been removed entirely.
+// only third-party script tag in the app (first-party /analytics/collect and
+// TelemetryDeck are sent from lib/analyticsClient.js) — Google Analytics,
+// Meta Pixel, and TikTok Pixel have all been removed entirely.
 const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
 
 export default function Analytics() {
@@ -32,5 +34,10 @@ export default function Analytics() {
 
   if (!enabled || !PLAUSIBLE_DOMAIN) return null;
 
-  return <script defer data-domain={PLAUSIBLE_DOMAIN} src="https://plausible.io/js/script.js" />;
+  // next/script, not a bare <script>: this component only renders the tag
+  // client-side (after consent), and React never executes a <script> it
+  // creates on the client unless it is `async` (React's own dev warning:
+  // "Scripts inside React components are never executed when rendering on
+  // the client"). The old `<script defer ...>` therefore never loaded.
+  return <Script id="plausible" strategy="afterInteractive" data-domain={PLAUSIBLE_DOMAIN} src="https://plausible.io/js/script.js" />;
 }

@@ -8,9 +8,10 @@ import { SITE_URL } from "@/lib/seo";
 //
 // Coverage is every public route under src/app except the three that set
 // `noindex: true` and are disallowed in robots.js (/app, /thank-you,
-// /shared/[jobId]), plus /login — a bare auth form with no content, which
-// has nothing to rank for and would only compete with the homepage on
-// brand queries. Everything else is here:
+// /shared/[jobId]), plus /login (noindex) — a bare auth form with no content,
+// which has nothing to rank for and would only compete with the homepage on
+// brand queries — and /newsletter (noindex, paid/direct traffic only).
+// /pricing is listed below. Everything else is here:
 //
 //   /                            HomeClient
 //   /ai-mastering-online         broad-intent hub
