@@ -16,11 +16,11 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
 /**
- * The public, logged-out-friendly LUFS Meter on /lufs-meter — same shape
- * as PublicChordDetector.jsx: upload + analysis run before any account
- * exists (ensureAnonymous, same quota-free /analyze endpoint the Studio's
- * live preview already uses), only "Master This Track" requires an
- * account. Reuses the exact same DSP analysis Studio's adaptive engine
+ * The public LUFS Meter on /lufs-meter. Measuring needs a registered
+ * account (anonymous sign-in is off): a signed-out visitor who hits Measure
+ * gets ChordAuthGate, and the measurement runs as soon as they sign up or
+ * log in. Uses the same quota-free /analyze endpoint as the Studio's live
+ * preview. Reuses the exact same DSP analysis Studio's adaptive engine
  * runs on every upload — this isn't a separate lightweight approximation,
  * it's the same integrated_lufs/true_peak_db/loudness_range_lu numbers
  * the real mastering engine measures.
@@ -35,19 +35,19 @@ export default function PublicLufsMeter() {
   const [isLoading, setIsLoading] = useState(false);
   const [upload, setUpload] = useState(null);
   const [error, setError] = useState("");
-  const [showGate, setShowGate] = useState(false);
+  const [gate, setGate] = useState(null); // null | "analyze" | "master"
+  const registered = Boolean(user) && !user.isAnonymous;
 
   useEffect(() => {
     trackEvent("free_tool_opened", { source_tool: "lufs_meter" });
   }, []);
 
-  useEffect(() => {
-    if (loading) return;
-    if (!user) useAuthStore.getState().ensureAnonymous();
-  }, [loading, user]);
-
-  const analyze = async () => {
+  const analyze = async ({ signedIn = registered } = {}) => {
     if (!file) return;
+    if (!signedIn) {
+      setGate("analyze");
+      return;
+    }
     setIsLoading(true);
     setError("");
     try {
@@ -66,15 +66,15 @@ export default function PublicLufsMeter() {
 
   const masterThisTrack = () => {
     trackEvent("free_tool_master_cta_clicked", { source_tool: "lufs_meter" });
-    if (user && !user.isAnonymous) {
+    if (registered) {
       setMasteringFile(file, "lufs_meter");
       router.push("/app?tab=master");
       return;
     }
-    setShowGate(true);
+    setGate("master");
   };
 
-  const ready = !loading && Boolean(user);
+  const ready = !loading;
 
   return (
     <div className="relative">
@@ -93,7 +93,7 @@ export default function PublicLufsMeter() {
 
       <button
         type="button"
-        onClick={analyze}
+        onClick={() => analyze()}
         disabled={!file || isLoading || !ready}
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-bg transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
       >
@@ -111,7 +111,7 @@ export default function PublicLufsMeter() {
         <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-600/25 bg-red-600/[0.05] px-4 py-3 text-sm text-red-800">
           <span>{error}</span>
           {file ? (
-            <button type="button" onClick={analyze} className="btn-secondary btn-sm">
+            <button type="button" onClick={() => analyze()} className="btn-secondary btn-sm">
               {t("chordDetector.tryAgain")}
             </button>
           ) : null}
@@ -133,12 +133,25 @@ export default function PublicLufsMeter() {
         </div>
       ) : null}
 
-      {showGate ? (
+      {gate === "analyze" ? (
+        <ChordAuthGate
+          eyebrowKey="toolGate.eyebrow"
+          titleKey="toolGate.title"
+          bodyKey="toolGate.body"
+          onClose={() => setGate(null)}
+          onDone={() => {
+            setGate(null);
+            analyze({ signedIn: true });
+          }}
+        />
+      ) : null}
+
+      {gate === "master" ? (
         <ChordAuthGate
           eyebrowKey="lufsGate.eyebrow"
           titleKey="lufsGate.title"
           bodyKey="lufsGate.body"
-          onClose={() => setShowGate(false)}
+          onClose={() => setGate(null)}
           onDone={async () => {
             await stashPendingToolFile(file);
             router.push("/app?tab=master");

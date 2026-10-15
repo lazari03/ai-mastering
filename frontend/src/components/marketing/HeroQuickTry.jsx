@@ -32,10 +32,9 @@ const SAMPLE_SRC = `/audio/demos/${DEMO_MASTER.track}`;
  *    real result (and the before/after player next to it is that same
  *    track, mastered).
  *
- * ensureAnonymous() is deferred to the first try rather than run on mount
- * (as the tool pages do) — the homepage is the highest-traffic page, and
- * minting an anonymous Firebase user for every visitor who only reads is
- * pure waste.
+ * The analysis needs a registered account (anonymous sign-in is off). A
+ * signed-out visitor who drops a file or picks the sample gets
+ * ChordAuthGate first; the try runs as soon as they sign up or log in.
  */
 export default function HeroQuickTry() {
   const { t } = useLanguage();
@@ -47,12 +46,22 @@ export default function HeroQuickTry() {
   const [isLoading, setIsLoading] = useState(false);
   const [upload, setUpload] = useState(null);
   const [error, setError] = useState("");
-  const [showGate, setShowGate] = useState(false);
+  const [gate, setGate] = useState(null); // null | { kind: "analyze", file, source } | { kind: "master" }
   // A file dropped while the sample is still analyzing must win — only the
   // latest try may write results.
   const latestRun = useRef(0);
 
-  const run = async (nextFile, source) => {
+  const run = async (nextFile, source, { signedIn = false } = {}) => {
+    const { user } = useAuthStore.getState();
+    if (!signedIn && (!user || user.isAnonymous)) {
+      setFile(nextFile);
+      setInput(source);
+      setAnalysis(null);
+      setError("");
+      setIsLoading(false);
+      setGate({ kind: "analyze", file: nextFile, source });
+      return;
+    }
     const runId = ++latestRun.current;
     setFile(nextFile);
     setInput(source);
@@ -60,7 +69,6 @@ export default function HeroQuickTry() {
     setError("");
     setIsLoading(true);
     try {
-      await useAuthStore.getState().ensureAnonymous();
       const formData = new FormData();
       formData.append("file", nextFile);
       const response = await postAnalyzeAudio(formData, {
@@ -105,7 +113,7 @@ export default function HeroQuickTry() {
       router.push("/app?tab=master");
       return;
     }
-    setShowGate(true);
+    setGate({ kind: "master" });
   };
 
   const reset = () => {
@@ -206,12 +214,26 @@ export default function HeroQuickTry() {
         </p>
       </div>
 
-      {showGate ? (
+      {gate?.kind === "analyze" ? (
+        <ChordAuthGate
+          eyebrowKey="toolGate.eyebrow"
+          titleKey="toolGate.title"
+          bodyKey="toolGate.body"
+          onClose={() => setGate(null)}
+          onDone={() => {
+            const pending = gate;
+            setGate(null);
+            run(pending.file, pending.source, { signedIn: true });
+          }}
+        />
+      ) : null}
+
+      {gate?.kind === "master" ? (
         <ChordAuthGate
           eyebrowKey="lufsGate.eyebrow"
           titleKey="lufsGate.title"
           bodyKey="lufsGate.body"
-          onClose={() => setShowGate(false)}
+          onClose={() => setGate(null)}
           onDone={async () => {
             await stashPendingToolFile(file);
             router.push("/app?tab=master");

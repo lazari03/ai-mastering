@@ -194,7 +194,8 @@ export default function AppClient() {
   };
 
   useEffect(() => {
-    if (!loading && !user) {
+    // A leftover anonymous session counts as signed out: the API refuses it.
+    if (!loading && (!user || user.isAnonymous)) {
       router.replace("/login");
     }
   }, [loading, user, router]);
