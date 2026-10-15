@@ -31,11 +31,12 @@ import { UPSTREAM_TIMEOUT_MS } from "../services/pythonUpstream.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { subscribeToNewsletter } from "../services/newsletterService.js";
 import { getAuth } from "../config/firebase.js";
-import { expensiveLimiter, shareAccessLimiter } from "../middleware/rateLimit.js";
+import { expensiveLimiter, shareAccessLimiter, newsletterLimiter } from "../middleware/rateLimit.js";
 import { recordServerEvent, normalizeMasteringFailure } from "../services/analyticsService.js";
 import { mintDownloadToken, verifyShareToken, isShareJobExpired } from "../services/downloadTokenService.js";
 import { shareLinks, ShareLinkError } from "../services/shareLinkService.js";
 import { cleanupUploadsOnFinish } from "../middleware/cleanupUploads.js";
+import { toClientError } from "../services/clientError.js";
 import { masteringDspProps } from "../services/masteringTelemetry.js";
 import { cutPreviewExcerpt } from "../services/previewExcerpt.js";
 import { guardRouteParams, isValidJobId, isValidCodec, isValidExt, safeJoin, upstreamPath } from "../services/pathParams.js";
@@ -86,7 +87,9 @@ function audioFileFilter(_req, file, cb) {
   const ext = path.extname(file.originalname || "").toLowerCase();
   const looksLikeAudio = file.mimetype?.startsWith("audio/") || file.mimetype?.startsWith("video/");
   if (ALLOWED_UPLOAD_EXTS.has(ext) || looksLikeAudio) return cb(null, true);
-  cb(new Error(`Unsupported file type "${ext || file.mimetype || "unknown"}" — upload an audio file.`));
+  // 415 + code (not a bare Error → generic 500): it's the user's file, not
+  // a server fault, and the frontend localizes "unsupported_format".
+  cb(Object.assign(new Error(`Unsupported file type "${ext || file.mimetype || "unknown"}" — upload an audio file.`), { status: 415, code: "unsupported_format" }));
 }
 
 const upload = multer({
@@ -119,6 +122,24 @@ const uploadPresetJson = multer({
 // behind a shared secret rather than building out real per-user roles for
 // what's currently a single-operator catalog. 501s (not 403s) when unset
 // so it reads as "not configured" rather than "you're not allowed".
+// Post-checkout redirect target: only our own frontend origin(s); anything
+// else falls back to Polar's configured default (undefined).
+function safeReturnUrl(candidate) {
+  if (typeof candidate !== "string" || !candidate) return undefined;
+  if (settings.corsOrigins.includes("*")) return candidate; // dev: no fixed origin to compare against
+  try {
+    return settings.corsOrigins.includes(new URL(candidate).origin) ? candidate : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Preset names/slugs are used as Firestore document ids: "/" would address a
+// nested path and "."/".." are reserved, both surfacing as 500s.
+function isSafeDocId(value) {
+  return typeof value === "string" && value.length > 0 && value.length <= 100 && !value.includes("/") && value !== "." && value !== "..";
+}
+
 function requireAdminKey(req, res, next) {
   if (!settings.adminApiKey) {
     return res.status(501).json({ detail: "Admin preset management isn't configured — set ADMIN_API_KEY." });
@@ -154,15 +175,23 @@ router.post("/validate-email", async (req, res) => {
 // with typo'd/fake addresses. `source` is just a free-text tag (e.g.
 // "footer", "newsletter-page") for telling signup channels apart later,
 // never trusted for anything security-sensitive.
-router.post("/newsletter/subscribe", async (req, res) => {
+router.post("/newsletter/subscribe", newsletterLimiter, async (req, res) => {
   const email = req.body?.email;
+  // The normalized email becomes a Firestore document id: a string of sane
+  // length with no "/" (which would address a nested path).
+  if (typeof email !== "string" || email.length > 254 || email.includes("/")) {
+    return res.status(400).json({ detail: "That email address doesn't look deliverable — double check it." });
+  }
+  const source = typeof req.body?.source === "string" ? req.body.source.replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || undefined : undefined;
   const deliverable = await isEmailDeliverable(email).catch(() => false);
   if (!deliverable) {
     return res.status(400).json({ detail: "That email address doesn't look deliverable — double check it." });
   }
   try {
-    const { discountCode, alreadySubscribed } = await subscribeToNewsletter(email, req.body?.source);
-    return res.json({ discountCode, alreadySubscribed });
+    // Same response whether or not the address was already on the list, so
+    // this endpoint can't be used to test someone else's membership.
+    const { discountCode } = await subscribeToNewsletter(email, source);
+    return res.json({ discountCode });
   } catch (error) {
     console.error("Newsletter subscribe failed:", error.message);
     return res.status(500).json({ detail: "Couldn't save your subscription — try again in a moment." });
@@ -532,7 +561,7 @@ router.post("/billing/checkout", async (req, res) => {
       recordServerEvent("checkout_started", { uid: req.user.uid, props: { plan: productKey, via: "auto_switched_from_checkout" } });
       return res.json({ changedPlan: true, ...result });
     }
-    const url = await createCheckoutUrl(req.user.uid, req.user.email, productKey, req.body?.success_url);
+    const url = await createCheckoutUrl(req.user.uid, req.user.email, productKey, safeReturnUrl(req.body?.success_url));
     recordServerEvent("checkout_started", { uid: req.user.uid, props: { plan: productKey } });
     return res.json({ url });
   } catch (error) {
@@ -604,6 +633,7 @@ router.post("/custom-presets", async (req, res) => {
 });
 
 router.put("/custom-presets/:name", async (req, res) => {
+  if (!isSafeDocId(req.params.name)) return res.status(404).json({ detail: "Custom preset not found" });
   try {
     return res.json(await updateUserPreset(req.params.name, req.body || {}, req.user.uid));
   } catch (error) {
@@ -612,6 +642,7 @@ router.put("/custom-presets/:name", async (req, res) => {
 });
 
 router.delete("/custom-presets/:name", async (req, res) => {
+  if (!isSafeDocId(req.params.name)) return res.status(404).json({ detail: "Custom preset not found" });
   const removed = await deleteCustomPreset(req.params.name, req.user.uid);
   if (!removed) {
     return res.status(404).json({ detail: "Custom preset not found" });
@@ -624,6 +655,7 @@ router.delete("/custom-presets/:name", async (req, res) => {
 // mixing_presets.json: { display_name, genre, style, tags, tweaks,
 // use_stem_separation, output_format, processing?, quality_control?, output? }.
 router.put("/admin/presets/:slug", requireAdminKey, async (req, res) => {
+  if (!isSafeDocId(req.params.slug)) return res.status(400).json({ detail: "Invalid preset slug" });
   try {
     const saved = await upsertBuiltInPreset(req.params.slug, req.body || {});
     return res.json(saved);
@@ -633,6 +665,7 @@ router.put("/admin/presets/:slug", requireAdminKey, async (req, res) => {
 });
 
 router.delete("/admin/presets/:slug", requireAdminKey, async (req, res) => {
+  if (!isSafeDocId(req.params.slug)) return res.status(400).json({ detail: "Invalid preset slug" });
   const removed = await deleteBuiltInPreset(req.params.slug);
   if (!removed) {
     return res.status(404).json({ detail: "Preset not found" });
@@ -664,7 +697,9 @@ router.post("/analyze", expensiveLimiter, requireAdaptiveEngine, upload.single("
     });
     return res.json(result);
   } catch (error) {
-    return res.status(502).json({ detail: error?.message || "Analysis failed" });
+    if (!error?.status || error.status >= 500) console.error("analyze failed:", error?.message || error);
+    const { status, body } = toClientError(error, { fallbackDetail: "Analysis failed on our side. Please try again." });
+    return res.status(status).json(body);
   } finally {
     fs.unlink(req.file.path, () => {});
   }
@@ -1170,11 +1205,12 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     // same permanent-looking failure as a bad upload.
     // Upstream 4xx (bad/unsupported upload) stays a 4xx; an engine crash
     // (Python 5xx) is reported as a server error, not "bad request".
-    const upstream = Number(error?.status);
-    const status = [503, 504, 413, 409, 499].includes(upstream) ? upstream : upstream >= 500 ? 502 : 400;
     // `code` is the stable machine-readable reason (X-Error-Code from the
-    // Python service) the frontend localizes; `detail` stays as a fallback.
-    return res.status(status).json({ code: error?.code || null, detail: error?.message || "Mastering failed" });
+    // Python service) the frontend localizes; `detail` stays as a fallback
+    // and is generic for server-side failures (see clientError.js).
+    if (!error?.status || error.status >= 500) console.error(`master failed (job ${jobId}):`, error?.message || error);
+    const { status, body } = toClientError(error, { fallbackDetail: "Mastering failed on our side. You have not been charged — please try again." });
+    return res.status(status).json(body);
   }
 });
 
@@ -1228,7 +1264,9 @@ router.post("/codec-preview", expensiveLimiter, async (req, res) => {
     const result = await previewCodec(jobId, codec || "mp3_128");
     return res.json(result);
   } catch (error) {
-    return res.status(400).json({ detail: error?.message || "Codec preview failed" });
+    if (!error?.status || error.status >= 500) console.error("codec-preview failed:", error?.message || error);
+    const { status, body } = toClientError(error, { fallbackDetail: "Codec preview failed on our side. Please try again." });
+    return res.status(status).json(body);
   }
 });
 
@@ -1245,7 +1283,8 @@ async function proxyFromPython(pythonPath, res, notFoundMessage, req = null) {
   try {
     upstream = await fetch(`${settings.pythonApiBaseUrl}${pythonPath}`, range ? { headers: { Range: range } } : undefined);
   } catch (error) {
-    return res.status(502).json({ detail: `Cannot reach Python service: ${error.message}` });
+    console.error(`Cannot reach Python service for ${pythonPath}:`, error.message);
+    return res.status(503).json({ code: "service_unavailable", detail: "The mastering service is temporarily unavailable. Please try again in a minute." });
   }
   if (upstream.status === 416) {
     const contentRange = upstream.headers.get("content-range");

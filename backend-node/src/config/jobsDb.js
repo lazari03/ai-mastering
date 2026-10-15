@@ -46,6 +46,7 @@ db.exec(`
     PRIMARY KEY (uid, job_id)
   );
   CREATE INDEX IF NOT EXISTS idx_jobs_uid_created_at ON jobs(uid, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_jobs_uid_preview_created_at ON jobs(uid, preview, created_at DESC);
 `);
 
 // Additive column migrations.

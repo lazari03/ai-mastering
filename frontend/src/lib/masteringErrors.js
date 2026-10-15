@@ -14,6 +14,8 @@ export const MASTERING_ERROR_CODES = [
   "invalid_audio",
   "stems_unavailable",
   "render_failed",
+  "service_unavailable",
+  "unsupported_format",
   "duplicate_job",
   "billing_unavailable",
   "master_reservation_conflict",

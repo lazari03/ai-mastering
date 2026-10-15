@@ -58,6 +58,18 @@ export const analyticsCollectLimiter = rateLimit({
   message: { detail: "Too many analytics requests." },
 });
 
+// Anonymous newsletter signup — IP-keyed (no account yet). Each call can hit
+// Firestore, the email-deliverability check and Brevo, so it gets a far
+// tighter budget than the general floor.
+export const newsletterLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.clientIp || req.ip),
+  message: { detail: "Too many signup attempts — try again in a few minutes.", code: "rate_limited" },
+});
+
 // Public share-link endpoints (/shared/*) — no account, so IP-keyed.
 // Tokens are 256-bit random values, so this isn't what stops guessing
 // (that's computationally impossible regardless); it caps how hard one

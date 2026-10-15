@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { AUDIO_DECODE_EXTS, CATEGORIES, DELIVERY_KEYS, FLAVOURS_BY_CATEGORY, GENRES, STYLES, TAGS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
 import { postFormData, UpstreamTimeoutError } from "./pythonUpstream.js";
+import { UpstreamUnavailableError } from "./clientError.js";
 import { isValidJobId, upstreamPath } from "./pathParams.js";
 import { getMixPresetByName, isIntentPreset } from "./presetsService.js";
 
@@ -209,10 +210,12 @@ export async function postMultipartToPython(pathname, { fields = {}, files = {} 
     response = await postFormData(`${settings.pythonApiBaseUrl}${pathname}`, form);
   } catch (error) {
     if (error instanceof UpstreamTimeoutError) throw error;
-    throw new Error(
-      `Cannot reach Python service at ${settings.pythonApiBaseUrl}. Is it running? ` +
+    // Internals (URL, how to start it locally) go to the log, never to the browser.
+    console.error(
+      `Cannot reach Python service at ${settings.pythonApiBaseUrl}${pathname}. Is it running? ` +
         `(cd backend && venv312/bin/python -m uvicorn app.main:app --port 8001). ${error.message}`
     );
+    throw new UpstreamUnavailableError();
   }
 
   const payload = response.isJson ? response.json : null;

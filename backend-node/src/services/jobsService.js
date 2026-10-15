@@ -74,7 +74,9 @@ const getJobStmt = jobsDb.prepare("SELECT * FROM jobs WHERE uid = ? AND job_id =
 const deleteJobStmt = jobsDb.prepare("DELETE FROM jobs WHERE uid = ? AND job_id = ?");
 const deleteAllJobsForUserStmt = jobsDb.prepare("DELETE FROM jobs WHERE uid = ?");
 const listJobIdsForUserStmt = jobsDb.prepare("SELECT job_id FROM jobs WHERE uid = ?");
-const listJobsStmt = jobsDb.prepare("SELECT * FROM jobs WHERE uid = ? ORDER BY created_at DESC LIMIT ?");
+// Previews are filtered in SQL, not after the LIMIT: filtering afterwards let
+// a run of newer previews push every real master out of "My Masters".
+const listJobsStmt = jobsDb.prepare("SELECT * FROM jobs WHERE uid = ? AND preview = 0 ORDER BY created_at DESC LIMIT ?");
 
 // Recorded for every render, previews included — ownsJob() below needs a
 // record to exist for a legitimate preview download to pass its ownership
@@ -163,9 +165,5 @@ export async function deleteAllJobsForUser(uid) {
 
 export async function listJobs(uid, limit = 25) {
   if (!uid) return [];
-  return listJobsStmt
-    .all(uid, limit * 2)
-    .map(rowToJob)
-    .filter((data) => !data.preview)
-    .slice(0, limit);
+  return listJobsStmt.all(uid, limit).map(rowToJob);
 }

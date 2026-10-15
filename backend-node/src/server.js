@@ -177,7 +177,7 @@ app.use((err, req, res, _next) => {
   // 4xx messages are written for users (validation, file-type rejection);
   // an unexpected 5xx message can describe internals, so it stays in the log.
   const detail = status < 500 ? err.message || "Request rejected." : "Something went wrong on our side. Please try again.";
-  res.status(status).json({ detail });
+  res.status(status).json(err.code && status < 500 ? { detail, code: err.code } : { detail });
 });
 
 app.listen(settings.port, () => {
