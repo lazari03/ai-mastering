@@ -31,7 +31,7 @@ function confidenceLevel(value) {
  * (Song Key Finder) or "bpm" (BPM Finder). The focused value is shown
  * first and largest; everything else is still there.
  */
-export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAnalysisResult, initialAnalysis = null, sourceTool = "chord_detector", focus = "chords" }) {
+export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAnalysisResult, initialAnalysis = null, sourceTool = "chord_detector", focus = "chords", beforeDetect }) {
   const { t } = useLanguage();
   // initialAnalysis: a result computed elsewhere and handed off here — see
   // ChordsPanel.jsx's sessionStorage pickup for the public chord
@@ -63,6 +63,9 @@ export default function ChordDetector({ file, previewUrl, onMasterThisSong, onAn
   // subscription to check (see backend-node's /analyze-chords).
   const detect = async () => {
     if (!file) return;
+    // Optional guard — PublicChordDetector uses it to ask a signed-out
+    // visitor to create an account before anything is uploaded.
+    if (beforeDetect && !beforeDetect()) return;
     setIsLoading(true);
     setError("");
     try {

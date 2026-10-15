@@ -11,7 +11,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
 import { postAnalyzeAudio } from "@/network/http/client";
-import { stashPendingToolFile } from "@/lib/toolHandoff";
+import { stashPendingToolFile, takePendingToolFile } from "@/lib/toolHandoff";
 import { trackEvent } from "@/lib/analytics";
 import { uploadStatusText } from "@/lib/uploadProgress";
 import { CTA } from "@/lib/internalLinks";
@@ -32,10 +32,11 @@ const SAMPLE_SRC = `/audio/demos/${DEMO_MASTER.track}`;
  *    real result (and the before/after player next to it is that same
  *    track, mastered).
  *
- * ensureAnonymous() is deferred to the first try rather than run on mount
- * (as the tool pages do) — the homepage is the highest-traffic page, and
- * minting an anonymous Firebase user for every visitor who only reads is
- * pure waste.
+ * The analysis needs a registered account (anonymous sign-in is off). A
+ * signed-out visitor who drops a file or picks the sample gets
+ * ChordAuthGate first. Once signed in, HomeClient sends them to /app anyway,
+ * so an uploaded file is handed to the Master tab (same handoff as "Master
+ * this track") instead of the try resuming here.
  */
 export default function HeroQuickTry() {
   const { t } = useLanguage();
@@ -47,20 +48,34 @@ export default function HeroQuickTry() {
   const [isLoading, setIsLoading] = useState(false);
   const [upload, setUpload] = useState(null);
   const [error, setError] = useState("");
-  const [showGate, setShowGate] = useState(false);
+  const [gate, setGate] = useState(null); // null | { kind: "analyze", file, source } | { kind: "master" }
   // A file dropped while the sample is still analyzing must win — only the
   // latest try may write results.
   const latestRun = useRef(0);
 
   const run = async (nextFile, source) => {
+    // Bumped before the account check too, so a slow sample fetch can't
+    // replace a track the visitor picked meanwhile.
     const runId = ++latestRun.current;
+    const { user } = useAuthStore.getState();
+    if (!user || user.isAnonymous) {
+      setFile(nextFile);
+      setInput(source);
+      setAnalysis(null);
+      setError("");
+      setIsLoading(false);
+      setGate({ kind: "analyze", file: nextFile, source });
+      // Stashed now, not after sign-in: signing in makes HomeClient redirect
+      // to /app straight away, which can beat a stash started in onDone.
+      if (source === "upload") stashPendingToolFile(nextFile);
+      return;
+    }
     setFile(nextFile);
     setInput(source);
     setAnalysis(null);
     setError("");
     setIsLoading(true);
     try {
-      await useAuthStore.getState().ensureAnonymous();
       const formData = new FormData();
       formData.append("file", nextFile);
       const response = await postAnalyzeAudio(formData, {
@@ -105,7 +120,7 @@ export default function HeroQuickTry() {
       router.push("/app?tab=master");
       return;
     }
-    setShowGate(true);
+    setGate({ kind: "master" });
   };
 
   const reset = () => {
@@ -206,12 +221,25 @@ export default function HeroQuickTry() {
         </p>
       </div>
 
-      {showGate ? (
+      {gate?.kind === "analyze" ? (
+        <ChordAuthGate
+          eyebrowKey="toolGate.eyebrow"
+          titleKey="toolGate.title"
+          bodyKey="toolGate.body"
+          onClose={() => {
+            setGate(null);
+            takePendingToolFile(); // discard the stash; the visitor backed out
+          }}
+          onDone={() => router.push(gate.source === "upload" ? "/app?tab=master" : "/app")}
+        />
+      ) : null}
+
+      {gate?.kind === "master" ? (
         <ChordAuthGate
           eyebrowKey="lufsGate.eyebrow"
           titleKey="lufsGate.title"
           bodyKey="lufsGate.body"
-          onClose={() => setShowGate(false)}
+          onClose={() => setGate(null)}
           onDone={async () => {
             await stashPendingToolFile(file);
             router.push("/app?tab=master");

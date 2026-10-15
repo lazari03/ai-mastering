@@ -99,6 +99,10 @@ export function requiresEmailVerification(user) {
   return user?.signInProvider === "password" && !user?.emailVerified;
 }
 
+export function isAnonymousToken(decoded) {
+  return decoded?.firebase?.sign_in_provider === "anonymous";
+}
+
 // Verifies the Firebase ID token in the Authorization header and attaches
 // { uid, email } to req.user. Applied to every route except /health (see
 // server.js) — the whole app requires a signed-in user, not just specific
@@ -170,7 +174,16 @@ export async function requireAuth(req, res, next) {
     // possible at all), it just never touches Firestore until the person
     // actually registers — at which point linkWithCredential upgrades
     // the SAME uid in place and this logic applies normally from then on.
-    const isAnonymous = decoded.firebase?.sign_in_provider === "anonymous";
+    const isAnonymous = isAnonymousToken(decoded);
+    // Anonymous sign-in is switched off in Firebase; every tool now needs a
+    // registered account. Sessions minted before the switch-off can still
+    // refresh their tokens, so they are refused here too.
+    if (isAnonymous) {
+      return res.status(403).json({
+        detail: "Create a free account (or log in) to use this — it's free, no payment needed.",
+        code: "ACCOUNT_REQUIRED",
+      });
+    }
 
     if (!isAnonymous) {
       // Idle-session cap, independent of the absolute one above — ends a
