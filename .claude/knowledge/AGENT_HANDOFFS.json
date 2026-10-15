@@ -325,6 +325,21 @@
       "next_agent": "technical-lead",
       "commit": "1d33454",
       "date": "2026-10-10T19:53:36"
+    },
+    {
+      "handoff_id": "H-0017",
+      "task_id": "SEO/analytics audit 2026-10-15",
+      "agent": "seo-analytics-engineer",
+      "status": "DONE",
+      "summary": "has_paid never set on analytics sessions (payment_succeeded lacks sessionId) -> Funnel Paid, SEO organic customers/revenue, Acquisition customers structurally 0. Suggest uid-based paid attribution in analyticsQueryService like analyticsBehaviorService payerUids.",
+      "files_changed": [],
+      "tests_executed": [],
+      "results": [],
+      "risks": [],
+      "evidence": "docs/audits/SEO_ANALYTICS_REPORT.md",
+      "next_agent": "backend-engineer",
+      "commit": "e441297",
+      "date": "2026-10-15T00:46:33"
     }
   ]
 }
