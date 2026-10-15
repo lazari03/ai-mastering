@@ -11,7 +11,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
 import { postAnalyzeAudio } from "@/network/http/client";
-import { stashPendingToolFile } from "@/lib/toolHandoff";
+import { stashPendingToolFile, takePendingToolFile } from "@/lib/toolHandoff";
 import { trackEvent } from "@/lib/analytics";
 import { uploadStatusText } from "@/lib/uploadProgress";
 import { CTA } from "@/lib/internalLinks";
@@ -34,7 +34,9 @@ const SAMPLE_SRC = `/audio/demos/${DEMO_MASTER.track}`;
  *
  * The analysis needs a registered account (anonymous sign-in is off). A
  * signed-out visitor who drops a file or picks the sample gets
- * ChordAuthGate first; the try runs as soon as they sign up or log in.
+ * ChordAuthGate first. Once signed in, HomeClient sends them to /app anyway,
+ * so an uploaded file is handed to the Master tab (same handoff as "Master
+ * this track") instead of the try resuming here.
  */
 export default function HeroQuickTry() {
   const { t } = useLanguage();
@@ -51,18 +53,23 @@ export default function HeroQuickTry() {
   // latest try may write results.
   const latestRun = useRef(0);
 
-  const run = async (nextFile, source, { signedIn = false } = {}) => {
+  const run = async (nextFile, source) => {
+    // Bumped before the account check too, so a slow sample fetch can't
+    // replace a track the visitor picked meanwhile.
+    const runId = ++latestRun.current;
     const { user } = useAuthStore.getState();
-    if (!signedIn && (!user || user.isAnonymous)) {
+    if (!user || user.isAnonymous) {
       setFile(nextFile);
       setInput(source);
       setAnalysis(null);
       setError("");
       setIsLoading(false);
       setGate({ kind: "analyze", file: nextFile, source });
+      // Stashed now, not after sign-in: signing in makes HomeClient redirect
+      // to /app straight away, which can beat a stash started in onDone.
+      if (source === "upload") stashPendingToolFile(nextFile);
       return;
     }
-    const runId = ++latestRun.current;
     setFile(nextFile);
     setInput(source);
     setAnalysis(null);
@@ -219,12 +226,11 @@ export default function HeroQuickTry() {
           eyebrowKey="toolGate.eyebrow"
           titleKey="toolGate.title"
           bodyKey="toolGate.body"
-          onClose={() => setGate(null)}
-          onDone={() => {
-            const pending = gate;
+          onClose={() => {
             setGate(null);
-            run(pending.file, pending.source, { signedIn: true });
+            takePendingToolFile(); // discard the stash; the visitor backed out
           }}
+          onDone={() => router.push(gate.source === "upload" ? "/app?tab=master" : "/app")}
         />
       ) : null}
 

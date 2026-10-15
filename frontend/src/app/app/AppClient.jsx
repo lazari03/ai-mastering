@@ -154,6 +154,8 @@ export default function AppClient() {
   const jobIdParam = searchParams.get("job");
   const { t, lang, setLang } = useLanguage();
   const { user, loading, signOut } = useAuthStore();
+  // A leftover anonymous session counts as signed out: the API refuses it.
+  const registered = Boolean(user) && !user.isAnonymous;
   // ?tab=myMasters (from MasterResultView's "View All My Masters", or any
   // other future deep link into a specific tab) — read once on mount, not
   // synced continuously, same as every other tab switch that follows.
@@ -194,11 +196,10 @@ export default function AppClient() {
   };
 
   useEffect(() => {
-    // A leftover anonymous session counts as signed out: the API refuses it.
-    if (!loading && (!user || user.isAnonymous)) {
+    if (!loading && !registered) {
       router.replace("/login");
     }
-  }, [loading, user, router]);
+  }, [loading, registered, router]);
 
   // Fetched once here (not per-component) — every entitlement-gated button
   // and the badge below all read this same cached value instead of each
@@ -208,15 +209,15 @@ export default function AppClient() {
   const fetchEntitlements = useEntitlementsStore((s) => s.fetch);
   const refreshEntitlements = useEntitlementsStore((s) => s.refresh);
   useEffect(() => {
-    if (user) fetchEntitlements();
-  }, [user, fetchEntitlements]);
+    if (registered) fetchEntitlements();
+  }, [registered, fetchEntitlements]);
 
   // First-time-only onboarding tour — gated by profile.tutorialShown
   // (Firestore, survives reloads/devices, unlike a localStorage flag).
   // Checked once per sign-in; never re-shown once set.
   const [showTutorial, setShowTutorial] = useState(false);
   useEffect(() => {
-    if (!user) return;
+    if (!registered) return;
     let cancelled = false;
     getProfile()
       .then((profile) => {
@@ -226,7 +227,7 @@ export default function AppClient() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [registered]);
 
   const dismissTutorial = () => {
     setShowTutorial(false);
@@ -238,7 +239,7 @@ export default function AppClient() {
   // trusting a value fetched before they paid. Also covers the mundane
   // case of just switching tabs after a while — cheap enough to not matter.
   useEffect(() => {
-    if (user) refreshEntitlements();
+    if (registered) refreshEntitlements();
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hitting "Master Track" (a real render, not the free 30s preview) jumps
@@ -290,7 +291,7 @@ export default function AppClient() {
   // While Firebase's async session check is still running, or once it's
   // resolved to "not signed in" and the redirect above is about to fire —
   // render nothing rather than flashing the real app content first.
-  if (loading || !user) {
+  if (loading || !registered) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
         <LoadingBlock />

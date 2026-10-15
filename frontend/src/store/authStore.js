@@ -391,9 +391,10 @@ export const useAuthStore = create((set) => ({
           }
         }
       } else {
-        const result = await signInWithPopup(auth, getGoogleProvider());
-        const isNewUser = Boolean(getAdditionalUserInfo(result)?.isNewUser);
-        if (!isNewUser) trackEvent("login", { method: "google" });
+        // No anonymous session to link (anonymous sign-in is off): same
+        // path as the login page, which records terms for a new account.
+        await useAuthStore.getState().signInWithGoogle(termsAccepted);
+        return !useAuthStore.getState().error;
       }
       set({ busy: false });
       return true;
