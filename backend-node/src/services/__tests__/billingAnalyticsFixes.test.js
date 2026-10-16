@@ -121,6 +121,33 @@ async function seedSession(uid) {
   return { visitorId, sessionId };
 }
 
+// Independent-audit findings on the first version of this fix.
+test("audit F-1: a NEW paid subscription delivered late is not lost to an ended one edited later", async () => {
+  const endedA = { polarSubscriptionId: "subA", status: "canceled", productId: "p_studio_m", currentPeriodEnd: past(1), endedAt: past(1), modifiedAt: new Date("2026-10-12T00:00:00Z") };
+  const db = setupPolar({ subscription: endedA }, [
+    sub("subB", "active", new Date("2026-10-11T00:00:00Z")),
+    sub("subA", "canceled", new Date("2026-10-12T00:00:00Z"), { endedAt: past(1), currentPeriodEnd: past(1) }),
+  ]);
+  await polar.applyWebhookEvent({ type: "subscription.active", data: sub("subB", "active", new Date("2026-10-11T00:00:00Z")) });
+  assert.equal(stored(db).polarSubscriptionId, "subB");
+  assert.equal(polar.planFromUserData(db.store.get("users/u1")), "studio");
+  // Reconcile agrees rather than flipping it back.
+  await polar.reconcileUserSubscription("u1");
+  assert.equal(stored(db).polarSubscriptionId, "subB");
+});
+
+test("audit F-2: reconcile applies a revocation of the subscription on file even when a newer unrelated one failed", async () => {
+  const activeA = { polarSubscriptionId: "subA", status: "active", productId: "p_studio_m", currentPeriodEnd: future(300), endedAt: null, modifiedAt: new Date("2026-10-01T00:00:00Z") };
+  const db = setupPolar({ subscription: activeA }, [
+    sub("subB", "incomplete_expired", new Date("2026-10-14T00:00:00Z"), { currentPeriodEnd: null }),
+    sub("subA", "canceled", new Date("2026-10-12T00:00:00Z"), { endedAt: past(1), currentPeriodEnd: past(1) }),
+  ]);
+  await polar.reconcileUserSubscription("u1");
+  assert.equal(stored(db).polarSubscriptionId, "subA");
+  assert.equal(stored(db).status, "canceled");
+  assert.equal(polar.planFromUserData(db.store.get("users/u1")), "free");
+});
+
 test("ANALYTICS-001: payment_succeeded with only a uid marks the user's most recent session has_paid", async () => {
   analytics._setFirestoreForTests(createFakeFirestore());
   const uid = `payer-${uuid()}`;

@@ -545,18 +545,27 @@ function subscriptionFieldForProduct(productId) {
 
 // Single id- and entitlement-aware merge used by the webhook and the
 // reconciler. A user holds ONE record per field but can have several Polar
-// subscriptions over time, so timestamps alone are not enough:
-//   - an older record (by Polar's modifiedAt) never replaces a newer one;
-//   - a record for a DIFFERENT subscription id that is not entitled never
-//     replaces an entitled stored one (late revoke/expire of an old
-//     subscription must not wipe the current plan).
+// subscriptions over time. modifiedAt only orders states of the SAME
+// subscription; across different subscriptions entitlement decides:
+//   - same subscription: an older state never replaces a newer one;
+//   - different subscription: an entitled one replaces a non-entitled one
+//     whatever the timestamps (a new paid plan must not lose to an ended
+//     one edited later), and a non-entitled one never replaces an entitled
+//     one (a late revoke/expire of an old subscription must not wipe the
+//     current plan); otherwise the newer state wins.
+function isOlder(stored, incoming) {
+  const storedAt = toDate(stored.modifiedAt);
+  return Boolean(storedAt && incoming.modifiedAt && incoming.modifiedAt.getTime() < storedAt.getTime());
+}
+
 function shouldReplaceSubscription(stored, incoming) {
   if (!stored) return true;
-  const storedAt = toDate(stored.modifiedAt);
-  if (storedAt && incoming.modifiedAt && incoming.modifiedAt.getTime() < storedAt.getTime()) return false;
   const differentSubscription = stored.polarSubscriptionId && incoming.polarSubscriptionId && stored.polarSubscriptionId !== incoming.polarSubscriptionId;
-  if (differentSubscription && isEntitled(stored) && !isEntitled(incoming)) return false;
-  return true;
+  if (!differentSubscription) return !isOlder(stored, incoming);
+  const storedEntitled = isEntitled(stored);
+  const incomingEntitled = isEntitled(incoming);
+  if (incomingEntitled !== storedEntitled) return incomingEntitled;
+  return !isOlder(stored, incoming);
 }
 
 async function applySubscriptionRecord(uid, field, incoming) {
@@ -727,6 +736,17 @@ export async function reconcileUserSubscription(uid) {
     if (!field) continue;
     const current = chosen.get(field);
     if (!current || (!isEntitled(subscriptionRecord(current)) && isEntitled(subscriptionRecord(sub)))) chosen.set(field, sub);
+  }
+  // Nothing entitled for a field: if the subscription we have on file is in
+  // the list, apply ITS current state (e.g. revoked) rather than a newer,
+  // unrelated non-entitled one that the merge would rightly refuse —
+  // otherwise a revocation could never land through reconciliation.
+  const storedData = (await userDoc(uid).get()).data() || {};
+  for (const [field, sub] of chosen) {
+    if (isEntitled(subscriptionRecord(sub))) continue;
+    const storedId = storedData[field]?.polarSubscriptionId;
+    const onFile = storedId && items.find((item) => item.id === storedId && subscriptionFieldForProduct(item.productId) === field);
+    if (onFile) chosen.set(field, onFile);
   }
   let changed = false;
   for (const [field, sub] of chosen) {
