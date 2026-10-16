@@ -436,19 +436,25 @@
       "title": "No route-level /master tests (Python 5xx/503/504 mapping, ECONNREFUSED, bad type, oversize, refunds asserted)",
       "component": "node.gateway",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "qa-automation-engineer",
       "root_cause": null,
       "repro": null,
       "evidence": "BACKEND_REPORT.md test-gap table",
       "tests": [],
       "source": "BACKEND_REPORT.md test-gap table",
-      "validated_commit": "49d7907",
+      "validated_commit": "bae8557",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "qa-automation-engineer",
+          "status": "READY_FOR_QA",
+          "note": "3e7f767 masterRoute.test.js: 9 route-level cases incl. refund assertions, all pass."
         }
       ]
     },
@@ -499,19 +505,25 @@
       "title": "A11y: selection chips lack aria-pressed, wizard steps aria-current, waveform canvas text alternative",
       "component": "frontend.app",
       "severity": "P3",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "frontend-engineer",
       "root_cause": null,
       "repro": null,
       "evidence": "MasteringConsole.jsx:308-556; ABMasterPlayer",
       "tests": [],
       "source": "MasteringConsole.jsx:308-556; ABMasterPlayer",
-      "validated_commit": "49d7907",
+      "validated_commit": "bae8557",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "frontend-engineer",
+          "status": "READY_FOR_QA",
+          "note": "8ce3531 aria-pressed on chips, aria-current=step, waveform role=img + localized label."
         }
       ]
     },
@@ -896,19 +908,25 @@
       "title": "analytics_sessions.has_paid never set: payment_succeeded recorded without sessionId, so Funnel Paid / SEO organic customers+revenue / Acquisition customers read 0",
       "component": "backend.analytics",
       "severity": "P1",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "backend-engineer",
       "root_cause": "Webhook has uid only; session patch keyed on sessionId",
       "repro": null,
       "evidence": "backend-node/src/services/analyticsService.js:520-523; polarService.js:581,662; analyticsQueryService.js:364,513",
       "tests": [],
       "source": "backend-node/src/services/analyticsService.js:520-523; polarService.js:581,662; analyticsQueryService.js:364,513",
-      "validated_commit": "e441297",
+      "validated_commit": "bae8557",
       "history": [
         {
           "date": "2026-10-15",
           "agent": "seo-analytics-engineer",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "backend-engineer",
+          "status": "READY_FOR_QA",
+          "note": "8d69d67 payment attributed to user's latest session; 488660e client sends ID token. Test billingAnalyticsFixes.test.js."
         }
       ]
     },
@@ -917,19 +935,25 @@
       "title": "/pricing page emits no pricing_view; preset_created/preset_updated events not in allowlist (silently dropped); funnel has no signup step",
       "component": "frontend.analytics",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "seo-analytics-engineer",
       "root_cause": null,
       "repro": null,
       "evidence": "frontend/src/app/pricing/page.js; frontend/src/store/masteringStore.js:467; frontend/src/lib/analyticsClient.js:39-80; analyticsQueryService.js:366-373",
       "tests": [],
       "source": "frontend/src/app/pricing/page.js; frontend/src/store/masteringStore.js:467; frontend/src/lib/analyticsClient.js:39-80; analyticsQueryService.js:366-373",
-      "validated_commit": "e441297",
+      "validated_commit": "bae8557",
       "history": [
         {
           "date": "2026-10-15",
           "agent": "seo-analytics-engineer",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "frontend-engineer",
+          "status": "READY_FOR_QA",
+          "note": "8ce3531 pricing_view/signup_completed/preset_applied/preset_saved emitted; allowlist in 8d69d67."
         }
       ]
     },
@@ -1108,19 +1132,25 @@
       "title": "/preview-params has no expensive limiter and forwards up to 5 MB analysis JSON; generalLimiter runs before auth so it is IP-keyed (comment says uid); no strict limiter on admin-key failures",
       "component": "node.gateway",
       "severity": "P3",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "security-engineer",
       "root_cause": null,
       "repro": null,
       "evidence": "masteringRoutes.js /preview-params; server.js:117; rateLimit.js:3-13",
       "tests": [],
       "source": "masteringRoutes.js /preview-params; server.js:117; rateLimit.js:3-13",
-      "validated_commit": "e441297",
+      "validated_commit": "bae8557",
       "history": [
         {
           "date": "2026-10-15",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "security-engineer",
+          "status": "READY_FOR_QA",
+          "note": "81fa4b0 /preview-params 120/5min + 256KB analysis cap (413); admin-key failure limiter 10/15min/IP."
         }
       ]
     },
@@ -1129,19 +1159,25 @@
       "title": "/analytics/collect trusts body uid (event attribution spoofing) and returns accepted:0 for admin uids (admin enumeration)",
       "component": "node.analytics",
       "severity": "P3",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "backend-engineer",
       "root_cause": null,
       "repro": null,
       "evidence": "analyticsRoutes.js:86; analyticsService.js:326",
       "tests": [],
       "source": "analyticsRoutes.js:86; analyticsService.js:326",
-      "validated_commit": "e441297",
+      "validated_commit": "bae8557",
       "history": [
         {
           "date": "2026-10-15",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "backend-engineer",
+          "status": "READY_FOR_QA",
+          "note": "8d69d67 body uid only with matching verified Bearer token; uniform response. Client 488660e."
         }
       ]
     },
@@ -1150,19 +1186,25 @@
       "title": "Out-of-order Polar event for an older, ended subscription overwrites the current active subscription (timestamp check ignores subscription id)",
       "component": "node.billing",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "backend-engineer",
       "root_cause": null,
       "repro": null,
       "evidence": "docs/audits/PAYMENTS_AUDIT.md PAY-02 (verified by throwaway test)",
       "tests": [],
       "source": "docs/audits/PAYMENTS_AUDIT.md PAY-02 (verified by throwaway test)",
-      "validated_commit": "e441297",
+      "validated_commit": "bae8557",
       "history": [
         {
           "date": "2026-10-15",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "backend-engineer",
+          "status": "READY_FOR_QA",
+          "note": "8d69d67 merge compares subscription id + entitlement. Test billingAnalyticsFixes.test.js (fails on parent)."
         }
       ]
     },
@@ -1171,19 +1213,25 @@
       "title": "Reconciliation picks newest-started subscription even if inactive and has no staleness check (repeated downgrade / revoked plan re-activated)",
       "component": "node.billing",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "backend-engineer",
       "root_cause": null,
       "repro": null,
       "evidence": "docs/audits/PAYMENTS_AUDIT.md PAY-03, DATABASE_AUDIT.md DB-05",
       "tests": [],
       "source": "docs/audits/PAYMENTS_AUDIT.md PAY-03, DATABASE_AUDIT.md DB-05",
-      "validated_commit": "e441297",
+      "validated_commit": "bae8557",
       "history": [
         {
           "date": "2026-10-15",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "backend-engineer",
+          "status": "READY_FOR_QA",
+          "note": "8d69d67 reconcile prefers entitled sub, guarded merge. changeSubscriptionPlan/backfill writes still unguarded (follow-up)."
         }
       ]
     },
@@ -1215,19 +1263,25 @@
       "title": "jobs table has no retention; every preview (incl. anonymous) adds a permanent row",
       "component": "node.jobs",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "backend-engineer",
       "root_cause": null,
       "repro": null,
       "evidence": "DATABASE_AUDIT.md DB-01",
       "tests": [],
       "source": "DATABASE_AUDIT.md DB-01",
-      "validated_commit": "e441297",
+      "validated_commit": "bae8557",
       "history": [
         {
           "date": "2026-10-15",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "backend-engineer",
+          "status": "READY_FOR_QA",
+          "note": "81fa4b0 bounded jobs purge (previews at expiry; masters +30d). retention.test.js."
         }
       ]
     },
@@ -1236,19 +1290,25 @@
       "title": "Admin analytics: unbounded date ranges scanned synchronously in better-sqlite3 block the gateway event loop; admin user list walks all Auth users uncapped",
       "component": "node.analytics",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "backend-engineer",
       "root_cause": null,
       "repro": null,
       "evidence": "DATABASE_AUDIT.md DB-03, DB-04",
       "tests": [],
       "source": "DATABASE_AUDIT.md DB-03, DB-04",
-      "validated_commit": "e441297",
+      "validated_commit": "bae8557",
       "history": [
         {
           "date": "2026-10-15",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "backend-engineer",
+          "status": "READY_FOR_QA",
+          "note": "81fa4b0 range clamp 366d, getLive cap 2000, Auth walk max 5 pages. Tests added."
         }
       ]
     },
@@ -1280,7 +1340,7 @@
       "title": "Disk: decoded _internal.wav never deleted after render (comment says it is); Demucs /tmp dir left on SIGKILL; no free-space guard; 48 h retention ~150 GB at ~1k MAU",
       "component": "python.api",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "backend-engineer",
       "root_cause": null,
       "repro": "POST /master with an .mp3; after 200 OK, uploads/<job>_input_internal.wav remains",
@@ -1289,12 +1349,18 @@
         "Add test: render_staged_job on mp3 leaves no *_internal.wav"
       ],
       "source": "mastering_service.py:250,259,470-561; stem_separation.py:49; storage_cleanup.py:23-47; SCALABILITY_REPORT s5 R4-R6",
-      "validated_commit": "e441297",
+      "validated_commit": "bae8557",
       "history": [
         {
           "date": "2026-10-15",
           "agent": "performance-engineer",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "backend-engineer",
+          "status": "READY_FOR_QA",
+          "note": "5c27642 (cherry-picked) internal wav deleted in finally; demucs temp sweep >2h. test_temp_file_cleanup.py. Free-space guard not done."
         }
       ]
     },
