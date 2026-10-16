@@ -443,7 +443,7 @@
       "evidence": "BACKEND_REPORT.md test-gap table",
       "tests": [],
       "source": "BACKEND_REPORT.md test-gap table",
-      "validated_commit": "bae8557",
+      "validated_commit": "22bad62",
       "history": [
         {
           "date": "2026-10-10",
@@ -455,6 +455,12 @@
           "agent": "qa-automation-engineer",
           "status": "READY_FOR_QA",
           "note": "3e7f767 masterRoute.test.js: 9 route-level cases incl. refund assertions, all pass."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_QA",
+          "note": "audit: APPROVED (section 8)"
         }
       ]
     },
@@ -1193,7 +1199,7 @@
       "evidence": "docs/audits/PAYMENTS_AUDIT.md PAY-02 (verified by throwaway test)",
       "tests": [],
       "source": "docs/audits/PAYMENTS_AUDIT.md PAY-02 (verified by throwaway test)",
-      "validated_commit": "bae8557",
+      "validated_commit": "22bad62",
       "history": [
         {
           "date": "2026-10-15",
@@ -1205,6 +1211,12 @@
           "agent": "backend-engineer",
           "status": "READY_FOR_QA",
           "note": "8d69d67 merge compares subscription id + entitlement. Test billingAnalyticsFixes.test.js (fails on parent)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_QA",
+          "note": "audit: REJECTED (section 8)"
         }
       ]
     },
@@ -1220,7 +1232,7 @@
       "evidence": "docs/audits/PAYMENTS_AUDIT.md PAY-03, DATABASE_AUDIT.md DB-05",
       "tests": [],
       "source": "docs/audits/PAYMENTS_AUDIT.md PAY-03, DATABASE_AUDIT.md DB-05",
-      "validated_commit": "bae8557",
+      "validated_commit": "22bad62",
       "history": [
         {
           "date": "2026-10-15",
@@ -1232,6 +1244,12 @@
           "agent": "backend-engineer",
           "status": "READY_FOR_QA",
           "note": "8d69d67 reconcile prefers entitled sub, guarded merge. changeSubscriptionPlan/backfill writes still unguarded (follow-up)."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_QA",
+          "note": "audit: REJECTED (section 8)"
         }
       ]
     },
@@ -1349,7 +1367,7 @@
         "Add test: render_staged_job on mp3 leaves no *_internal.wav"
       ],
       "source": "mastering_service.py:250,259,470-561; stem_separation.py:49; storage_cleanup.py:23-47; SCALABILITY_REPORT s5 R4-R6",
-      "validated_commit": "bae8557",
+      "validated_commit": "22bad62",
       "history": [
         {
           "date": "2026-10-15",
@@ -1361,6 +1379,12 @@
           "agent": "backend-engineer",
           "status": "READY_FOR_QA",
           "note": "5c27642 (cherry-picked) internal wav deleted in finally; demucs temp sweep >2h. test_temp_file_cleanup.py. Free-space guard not done."
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_QA",
+          "note": "audit: APPROVED (section 8)"
         }
       ]
     },
