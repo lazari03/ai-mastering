@@ -2,7 +2,7 @@ import { Polar } from "@polar-sh/sdk";
 import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks";
 
 import { settings } from "../config/settings.js";
-import { getFirestore } from "../config/firebase.js";
+import { getFirestore as getRealFirestore } from "../config/firebase.js";
 import { notifyPurchase, notifyPaymentFailure } from "./telegramService.js";
 import { writeNotification } from "./adminNotificationService.js";
 import { recordServerEvent } from "./analyticsService.js";
@@ -68,8 +68,20 @@ export function isEntitled(sub) {
 
 const ENDED_STATUSES = new Set(["unpaid", "incomplete_expired"]);
 
+// Test seam: lets tests inject a fake Firestore and a fake Polar client.
+let firestoreOverride = null;
+let clientOverride = null;
+export function _setDepsForTests({ db = null, polar = null } = {}) {
+  firestoreOverride = db;
+  clientOverride = polar;
+}
+function getFirestore() {
+  return firestoreOverride || getRealFirestore();
+}
+
 let _client = null;
 function client() {
+  if (clientOverride) return clientOverride;
   if (!settings.polarAccessToken) {
     throw new Error("Billing isn't configured — set POLAR_ACCESS_TOKEN.");
   }
@@ -531,6 +543,32 @@ function subscriptionFieldForProduct(productId) {
   return null;
 }
 
+// Single id- and entitlement-aware merge used by the webhook and the
+// reconciler. A user holds ONE record per field but can have several Polar
+// subscriptions over time, so timestamps alone are not enough:
+//   - an older record (by Polar's modifiedAt) never replaces a newer one;
+//   - a record for a DIFFERENT subscription id that is not entitled never
+//     replaces an entitled stored one (late revoke/expire of an old
+//     subscription must not wipe the current plan).
+function shouldReplaceSubscription(stored, incoming) {
+  if (!stored) return true;
+  const storedAt = toDate(stored.modifiedAt);
+  if (storedAt && incoming.modifiedAt && incoming.modifiedAt.getTime() < storedAt.getTime()) return false;
+  const differentSubscription = stored.polarSubscriptionId && incoming.polarSubscriptionId && stored.polarSubscriptionId !== incoming.polarSubscriptionId;
+  if (differentSubscription && isEntitled(stored) && !isEntitled(incoming)) return false;
+  return true;
+}
+
+async function applySubscriptionRecord(uid, field, incoming) {
+  const ref = userDoc(uid);
+  return getFirestore().runTransaction(async (tx) => {
+    const stored = (await tx.get(ref)).data()?.[field];
+    if (!shouldReplaceSubscription(stored, incoming)) return false;
+    tx.set(ref, { [field]: incoming }, { merge: true });
+    return true;
+  });
+}
+
 async function applySubscriptionEvent(event) {
   const sub = event.data;
   const uid = sub.customer?.externalId;
@@ -550,17 +588,9 @@ async function applySubscriptionEvent(event) {
   // retried subscription.updated(active) landing after subscription.revoked
   // used to restore the revoked plan. An event older than the stored
   // record (by Polar's modifiedAt) is skipped.
-  const db = getFirestore();
-  const ref = userDoc(uid);
-  const incoming = subscriptionRecord(sub);
-  const applied = await db.runTransaction(async (tx) => {
-    const stored = toDate((await tx.get(ref)).data()?.[field]?.modifiedAt);
-    if (stored && incoming.modifiedAt && incoming.modifiedAt.getTime() < stored.getTime()) return false;
-    tx.set(ref, { [field]: incoming }, { merge: true });
-    return true;
-  });
+  const applied = await applySubscriptionRecord(uid, field, subscriptionRecord(sub));
   if (!applied) {
-    console.warn(`Polar ${event.type}: older than the stored subscription state for ${uid}, skipped`);
+    console.warn(`Polar ${event.type}: stale or superseded by the stored subscription state for ${uid}, skipped`);
     return;
   }
 
@@ -688,14 +718,22 @@ export async function reconcileUserSubscription(uid) {
     console.warn(`Reconciliation: Polar returned no subscriptions for uid ${uid} — leaving existing records untouched`);
     return false;
   }
-  const seenFields = new Set();
-  let changed = false;
+  // Per field, prefer an entitled subscription (newest-started first, since
+  // the list is sorted) over a newer one that is not entitled — a failed or
+  // expired checkout must not displace the user's live plan.
+  const chosen = new Map();
   for (const sub of items) {
     const field = subscriptionFieldForProduct(sub.productId);
-    if (!field || seenFields.has(field)) continue;
-    seenFields.add(field);
-    await userDoc(uid).set({ [field]: subscriptionRecord(sub) }, { merge: true });
-    changed = true;
+    if (!field) continue;
+    const current = chosen.get(field);
+    if (!current || (!isEntitled(subscriptionRecord(current)) && isEntitled(subscriptionRecord(sub)))) chosen.set(field, sub);
+  }
+  let changed = false;
+  for (const [field, sub] of chosen) {
+    // Same id/entitlement/modifiedAt guard as the webhook: a list snapshot
+    // older than an already-applied event must not re-activate a revoked plan.
+    if (await applySubscriptionRecord(uid, field, subscriptionRecord(sub))) changed = true;
+    else console.warn(`Reconciliation: Polar data for uid ${uid} "${field}" is stale or superseded — kept stored record`);
   }
   return changed;
 }

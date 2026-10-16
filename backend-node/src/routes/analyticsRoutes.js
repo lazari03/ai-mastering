@@ -2,7 +2,8 @@ import express from "express";
 
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { analyticsCollectLimiter } from "../middleware/rateLimit.js";
-import { ingestBatch } from "../services/analyticsService.js";
+import { getAuth } from "../config/firebase.js";
+import { ingestBatch, resolveCollectUid } from "../services/analyticsService.js";
 import {
   resolveRange,
   getOverview,
@@ -84,7 +85,7 @@ router.post("/analytics/collect", analyticsCollectLimiter, async (req, res) => {
     const result = await ingestBatch({
       visitorId: body.visitorId,
       sessionId: body.sessionId,
-      uid: typeof body.uid === "string" && body.uid.length <= 128 ? body.uid : null,
+      uid: await resolveCollectUid({ authHeader: req.headers.authorization, bodyUid: body.uid, verifyToken: (t) => getAuth().verifyIdToken(t) }),
       isNewSession: Boolean(body.isNewSession),
       ua: req.headers["user-agent"],
       ip: req.clientIp || req.ip,
