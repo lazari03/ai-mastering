@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { useLanguage } from "@/lib/i18n";
+
 const BAR_W = 3;
 const BAR_GAP = 2;
 const PEAK_RES = 1200; // envelope points per track, resampled to the bar count at draw time
@@ -132,6 +134,7 @@ export default function ABMasterPlayer({
   onModeChange,
   className = "",
 }) {
+  const { t } = useLanguage();
   // How much louder (positive) or QUIETER (negative) the mastered file is
   // than the original, before matching. The A/B attenuates the louder side
   // down (see _ab_gain_match on the backend), so after - before loudness =
@@ -647,7 +650,7 @@ export default function ABMasterPlayer({
         onKeyDown={onKeyDown}
         className="mx-4 my-3 h-28 cursor-pointer touch-none select-none rounded-lg sm:mx-5 sm:h-32"
       >
-        <canvas ref={canvasRef} className="h-full w-full" />
+        <canvas ref={canvasRef} role="img" aria-label={t("player.waveformAlt")} className="h-full w-full" />
       </div>
 
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}

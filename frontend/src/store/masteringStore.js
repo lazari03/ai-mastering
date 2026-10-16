@@ -464,7 +464,7 @@ export const useMasteringStore = create((set, get) => ({
       // Edited from My Presets while the console has it applied (and
       // unmodified): reload it so the console shows what will render.
       if (existingName && get().selectedPreset === existingName) get().setPreset(existingName);
-      trackEvent(existingName ? "preset_updated" : "preset_created", { tone: input.direction?.tone || "custom" });
+      trackEvent("preset_saved", { action: existingName ? "updated" : "created", tone: input.direction?.tone || "custom" });
       return saved;
     } catch (err) {
       set({ isSavingPreset: false, presetSaveError: err.message || "Couldn't save the preset" });
@@ -575,6 +575,7 @@ export const useMasteringStore = create((set, get) => ({
           ? { mode: "pro", proParams: { ...cloneProParams(DEFAULT_PRO_PARAMS), ...preset.processing } }
           : {}),
       });
+      trackEvent("preset_saved", { action: "imported" });
     } catch (err) {
       set({ isImportingPreset: false, importError: err.message || "Preset import failed" });
     }
@@ -630,6 +631,13 @@ export const useMasteringStore = create((set, get) => ({
       preview,
       authenticated: currentAuthState(),
     });
+
+    // A preset actually going into a real master (not a preview/reference
+    // render). Built-in names are safe to send; custom names are user text.
+    if (state.selectedPreset && !preview && !referenceMode) {
+      const applied = state.presets.find((p) => p.name === state.selectedPreset);
+      trackEvent("preset_applied", { source: applied?.custom ? "custom" : "builtin", preset: applied?.custom ? null : state.selectedPreset });
+    }
 
     try {
       const usingSavedPreset = Boolean(state.selectedPreset);

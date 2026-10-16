@@ -539,6 +539,7 @@ const DICT = {
 
   "console.title": { en: "Master Audio", sq: "Masterizo Audio" },
   "console.subtitle": { en: "Choose audio → choose mastering mode → master → review.", sq: "Zgjidh audio → zgjidh mënyrën → masterizo → shqyrto." },
+  "player.waveformAlt": { en: "Waveform of the track, showing the original and mastered audio levels over time", sq: "Forma valore e pjesës, që tregon nivelet e audios origjinale dhe të masterizuar gjatë kohës" },
   "console.step.audio": { en: "Audio", sq: "Audio" },
   "console.step.mode": { en: "Mode", sq: "Mënyra" },
   "console.step.master": { en: "Master", sq: "Master" },

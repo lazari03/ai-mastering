@@ -139,6 +139,7 @@ export const useAuthStore = create((set) => ({
 
       const auth = getFirebaseAuth();
       const credential = await createUserWithEmailAndPassword(auth, email, password);
+      trackEvent("signup_completed", { method: "password" });
 
       const displayName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
       if (displayName) {
@@ -246,6 +247,7 @@ export const useAuthStore = create((set) => ({
         } catch (profileError) {
           console.error("Failed to save profile details:", profileError);
         }
+        trackEvent("signup_completed", { method: "google" });
       } else {
         trackEvent("login", { method: "google" });
       }
@@ -319,6 +321,7 @@ export const useAuthStore = create((set) => ({
         }
         await createUserWithEmailAndPassword(auth, email, password);
       }
+      trackEvent("signup_completed", { method: "password" });
 
       if (auth.currentUser && !auth.currentUser.emailVerified) {
         try {
@@ -380,6 +383,7 @@ export const useAuthStore = create((set) => ({
           } catch (profileError) {
             console.error("Failed to save profile details:", profileError);
           }
+          trackEvent("signup_completed", { method: "google" });
           void result;
         } catch (linkError) {
           const credential = GoogleAuthProvider.credentialFromError(linkError);
@@ -393,7 +397,7 @@ export const useAuthStore = create((set) => ({
       } else {
         const result = await signInWithPopup(auth, getGoogleProvider());
         const isNewUser = Boolean(getAdditionalUserInfo(result)?.isNewUser);
-        if (!isNewUser) trackEvent("login", { method: "google" });
+        trackEvent(isNewUser ? "signup_completed" : "login", { method: "google" });
       }
       set({ busy: false });
       return true;
