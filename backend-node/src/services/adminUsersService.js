@@ -52,6 +52,10 @@ function mergeUserRecord(userRecord, profileData) {
 // filters in memory, capped at a few thousand users (MAX_SEARCH_SCAN)
 // since this is an internal tool, not a customer-facing search box.
 const MAX_SEARCH_SCAN = 5000;
+// Hard cap on Firebase Auth listUsers pages walked per request (1000 users
+// each), whatever the filters match — a mostly-anonymous user base must not
+// turn one admin click into an unbounded Auth walk.
+export const MAX_AUTH_PAGES_PER_REQUEST = 5;
 
 // PublicChordDetector.jsx (the free, no-signup tool) silently creates a
 // Firebase Anonymous Auth session per visitor so it can hold a result
@@ -93,19 +97,23 @@ export async function listUsers({ pageToken, search } = {}) {
     // Scan (bounded) for a partial-email match — no pageToken passthrough
     // while searching, since this already walks every page itself.
     let token;
+    let pages = 0;
     const needle = search.trim().toLowerCase();
     do {
       const page = await auth.listUsers(1000, token);
+      pages += 1;
       userRecords.push(...page.users.filter((u) => !isAnonymous(u) && (u.email || "").toLowerCase().includes(needle)));
       token = page.pageToken;
-    } while (token && userRecords.length < 200 && userRecords.length + 1000 <= MAX_SEARCH_SCAN);
+    } while (token && pages < MAX_AUTH_PAGES_PER_REQUEST && userRecords.length < 200 && pages * 1000 + 1000 <= MAX_SEARCH_SCAN);
   } else {
     let token = pageToken || undefined;
+    let pages = 0;
     do {
       const page = await auth.listUsers(1000, token);
+      pages += 1;
       userRecords.push(...page.users.filter((u) => !isAnonymous(u)));
       token = page.pageToken || null;
-    } while (token && userRecords.length < 200);
+    } while (token && pages < MAX_AUTH_PAGES_PER_REQUEST && userRecords.length < 200);
     nextPageToken = token || null;
   }
 

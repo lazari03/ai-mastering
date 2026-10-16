@@ -163,6 +163,30 @@ export async function deleteAllJobsForUser(uid) {
   return ids;
 }
 
+// Bounded retention purge. Previews: row removed once its files have expired
+// (expires_at passed) — ownsJob() only matters while the file exists. Real
+// masters: kept `historyRetentionDays` beyond expires_at so "My Masters" can
+// still show the stale entry. Rows whose files may still exist
+// (expires_at in the future) are never touched. Deletes at most `batchSize`
+// rows per call; returns the number deleted.
+const purgeExpiredStmt = jobsDb.prepare(`
+  DELETE FROM jobs WHERE rowid IN (
+    SELECT rowid FROM jobs
+    WHERE (preview = 1 AND expires_at < @previewCutoff)
+       OR (preview = 0 AND expires_at < @historyCutoff)
+    LIMIT @batchSize
+  )
+`);
+
+export function purgeExpiredJobs({ historyRetentionDays = 30, batchSize = 2000, now = Date.now() } = {}) {
+  if (!(historyRetentionDays > 0) || !(batchSize > 0)) return 0;
+  return purgeExpiredStmt.run({
+    previewCutoff: new Date(now).toISOString(),
+    historyCutoff: new Date(now - historyRetentionDays * 86400000).toISOString(),
+    batchSize,
+  }).changes;
+}
+
 export async function listJobs(uid, limit = 25) {
   if (!uid) return [];
   return listJobsStmt.all(uid, limit).map(rowToJob);

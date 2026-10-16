@@ -97,6 +97,25 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_events_ts ON analytics_events(ts);
   CREATE INDEX IF NOT EXISTS idx_events_session_id ON analytics_events(session_id);
   CREATE INDEX IF NOT EXISTS idx_events_name_ts ON analytics_events(name, ts);
+  CREATE INDEX IF NOT EXISTS idx_visitors_last_seen_at ON analytics_visitors(last_seen_at);
 `);
+
+// Bounded retention purge (DB-01 family). Deletes at most `batchSize` rows per
+// table per call (key-subselect, so no SQLITE_ENABLE_UPDATE_DELETE_LIMIT
+// needed) and never touches rows newer than `retentionDays`. Returns
+// per-table counts; callers loop while a table returned a full batch.
+export function purgeOldAnalytics({ retentionDays, batchSize = 2000, now = Date.now() } = {}) {
+  const result = { events: 0, sessions: 0, visitors: 0 };
+  if (!(retentionDays > 0) || !(batchSize > 0)) return result;
+  const cutoff = new Date(now - retentionDays * 86400000).toISOString();
+  result.events = db.prepare("DELETE FROM analytics_events WHERE id IN (SELECT id FROM analytics_events WHERE ts < ? LIMIT ?)").run(cutoff, batchSize).changes;
+  result.sessions = db
+    .prepare("DELETE FROM analytics_sessions WHERE session_id IN (SELECT session_id FROM analytics_sessions WHERE last_seen_at < ? LIMIT ?)")
+    .run(cutoff, batchSize).changes;
+  result.visitors = db
+    .prepare("DELETE FROM analytics_visitors WHERE visitor_id IN (SELECT visitor_id FROM analytics_visitors WHERE last_seen_at < ? LIMIT ?)")
+    .run(cutoff, batchSize).changes;
+  return result;
+}
 
 export default db;

@@ -31,7 +31,7 @@ import { UPSTREAM_TIMEOUT_MS } from "../services/pythonUpstream.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { subscribeToNewsletter } from "../services/newsletterService.js";
 import { getAuth } from "../config/firebase.js";
-import { expensiveLimiter, shareAccessLimiter, newsletterLimiter } from "../middleware/rateLimit.js";
+import { expensiveLimiter, shareAccessLimiter, newsletterLimiter, previewParamsLimiter, adminKeyFailureLimiter } from "../middleware/rateLimit.js";
 import { recordServerEvent, normalizeMasteringFailure } from "../services/analyticsService.js";
 import { mintDownloadToken, verifyShareToken, isShareJobExpired } from "../services/downloadTokenService.js";
 import { shareLinks, ShareLinkError } from "../services/shareLinkService.js";
@@ -654,7 +654,7 @@ router.delete("/custom-presets/:name", async (req, res) => {
 // admin-only, see requireAdminKey above. Body shape matches an entry of
 // mixing_presets.json: { display_name, genre, style, tags, tweaks,
 // use_stem_separation, output_format, processing?, quality_control?, output? }.
-router.put("/admin/presets/:slug", requireAdminKey, async (req, res) => {
+router.put("/admin/presets/:slug", adminKeyFailureLimiter, requireAdminKey, async (req, res) => {
   if (!isSafeDocId(req.params.slug)) return res.status(400).json({ detail: "Invalid preset slug" });
   try {
     const saved = await upsertBuiltInPreset(req.params.slug, req.body || {});
@@ -664,7 +664,7 @@ router.put("/admin/presets/:slug", requireAdminKey, async (req, res) => {
   }
 });
 
-router.delete("/admin/presets/:slug", requireAdminKey, async (req, res) => {
+router.delete("/admin/presets/:slug", adminKeyFailureLimiter, requireAdminKey, async (req, res) => {
   if (!isSafeDocId(req.params.slug)) return res.status(400).json({ detail: "Invalid preset slug" });
   const removed = await deleteBuiltInPreset(req.params.slug);
   if (!removed) {
@@ -717,10 +717,14 @@ router.post("/analyze", expensiveLimiter, requireAdaptiveEngine, upload.single("
 // chips: refreshPreviewParams() always failed silently upstream in the
 // store. upload.none() parses the multipart fields into req.body without
 // expecting any file part (there isn't one here).
-router.post("/preview-params", requireAdaptiveEngine, upload.none(), async (req, res) => {
+const MAX_PREVIEW_ANALYSIS_BYTES = 256 * 1024;
+router.post("/preview-params", previewParamsLimiter, requireAdaptiveEngine, upload.none(), async (req, res) => {
   const { analysis, genre, style, tags, tweaks, category, flavour, delivery, mix_preset } = req.body || {};
   if (!analysis || !genre) {
     return res.status(400).json({ detail: "analysis and genre are required" });
+  }
+  if (Buffer.byteLength(typeof analysis === "string" ? analysis : JSON.stringify(analysis)) > MAX_PREVIEW_ANALYSIS_BYTES) {
+    return res.status(413).json({ detail: "analysis payload is too large", code: "payload_too_large" });
   }
   try {
     // A selected intent preset steers the preview exactly as it steers the

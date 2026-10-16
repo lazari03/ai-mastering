@@ -1,9 +1,10 @@
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 
-// Keyed by uid once requireAuth has run (accurate per-account limiting,
-// not punishing everyone behind the same office/NAT IP) — falls back to IP
-// for anything before auth runs (health checks aren't limited at all, see
-// server.js, so this mostly matters for the pre-auth 401 case itself).
+// Keyed by uid when req.user is set (per-account limiting, not punishing
+// everyone behind the same office/NAT IP), else by IP. NOTE: generalLimiter
+// is mounted in server.js BEFORE requireAuth, so req.user is never set yet
+// and it is effectively IP-keyed. Limiters applied per-route (after auth),
+// e.g. expensiveLimiter and previewParamsLimiter, really are uid-keyed.
 // ipKeyGenerator (not raw req.ip) is required for the fallback — a plain
 // req.ip lets an IPv6 client cycle through its own /64 subnet to get a
 // "new" key on every request and bypass the limit entirely; the helper
@@ -39,6 +40,31 @@ export const expensiveLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: keyByUidOrIp,
   message: { detail: "Too many render requests — wait a few minutes before trying again." },
+});
+
+// POST /preview-params fires on knob/chip changes (cheap-ish Python call, but
+// forwards a large analysis JSON). 120 per 5 min = 1 every 2.5 s sustained,
+// above any realistic human knob dragging (the client debounces).
+export const previewParamsLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: keyByUidOrIp,
+  message: { detail: "Too many preview updates — wait a moment and try again.", code: "rate_limited" },
+});
+
+// Legacy shared-secret /admin/presets/* routes. IP-keyed and counts ONLY
+// failed attempts (skipSuccessfulRequests: responses < 400 are not counted),
+// so a legitimate admin is never throttled but key guessing is.
+export const adminKeyFailureLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => ipKeyGenerator(req.clientIp || req.ip),
+  message: { detail: "Too many failed admin attempts — try again later.", code: "rate_limited" },
 });
 
 // First-party analytics ingestion (/analytics/collect) — public and
