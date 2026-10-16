@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import shutil
+import tempfile
 import time
 from pathlib import Path
 
@@ -39,8 +41,31 @@ def _sweep_dir(directory: Path, max_age_seconds: float) -> int:
     return removed
 
 
+# Demucs separation runs in a TemporaryDirectory that a SIGKILLed/timed-out
+# worker can't clean itself, so stale ones are swept here.
+STEM_TEMP_PREFIX = "ai_mastering_demucs_"
+STEM_TEMP_MAX_AGE_SECONDS = 2 * 3600
+
+
+def sweep_stem_temp_dirs(max_age_seconds: float = STEM_TEMP_MAX_AGE_SECONDS, root: Path | None = None) -> int:
+    root = Path(root) if root else Path(tempfile.gettempdir())
+    if not root.exists():
+        return 0
+    now = time.time()
+    removed = 0
+    for path in root.glob(f"{STEM_TEMP_PREFIX}*"):
+        try:
+            if path.is_dir() and not path.is_symlink() and now - path.stat().st_mtime > max_age_seconds:
+                shutil.rmtree(path, ignore_errors=True)
+                removed += 1
+        except OSError as error:
+            logger.warning("Could not remove %s: %s", path, error)
+    return removed
+
+
 def sweep_once() -> int:
     """Runs one cleanup pass. Also called directly by tests/manual runs."""
+    sweep_stem_temp_dirs()
     if settings.file_retention_hours <= 0:
         return 0
     max_age_seconds = settings.file_retention_hours * 3600
