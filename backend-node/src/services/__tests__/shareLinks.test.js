@@ -15,7 +15,11 @@ test("tampered share token is rejected", () => {
   const [payload, sig] = token.split(".");
   const forged = Buffer.from(`u1.job2.${Date.now() + 60_000}`).toString("base64url");
   assert.equal(verifyShareToken(`${forged}.${sig}`), null);
-  assert.equal(verifyShareToken(`${payload}.x${sig.slice(1)}`), null);
+  // Swap the first signature char for a *different* one — a fixed "x" left
+  // the token unchanged whenever the real signature already began with "x"
+  // (~1 in 64 runs), which made this test flaky.
+  const swapped = sig[0] === "x" ? "y" : "x";
+  assert.equal(verifyShareToken(`${payload}.${swapped}${sig.slice(1)}`), null);
 });
 
 test("job expiry is enforced independently of the token", () => {
