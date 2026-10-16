@@ -17,7 +17,7 @@
   },
   "next_ids": {
     "AUDIO": 7,
-    "BACKEND": 14,
+    "BACKEND": 16,
     "BILLING": 1,
     "FRONTEND": 3,
     "SECURITY": 12,
@@ -1199,7 +1199,7 @@
       "evidence": "docs/audits/PAYMENTS_AUDIT.md PAY-02 (verified by throwaway test)",
       "tests": [],
       "source": "docs/audits/PAYMENTS_AUDIT.md PAY-02 (verified by throwaway test)",
-      "validated_commit": "22bad62",
+      "validated_commit": "fe7ec2e",
       "history": [
         {
           "date": "2026-10-15",
@@ -1217,6 +1217,12 @@
           "agent": "independent-auditor",
           "status": "READY_FOR_QA",
           "note": "audit: REJECTED (section 8)"
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_QA",
+          "note": "audit: APPROVED after 19839df (section 8.1)"
         }
       ]
     },
@@ -1232,7 +1238,7 @@
       "evidence": "docs/audits/PAYMENTS_AUDIT.md PAY-03, DATABASE_AUDIT.md DB-05",
       "tests": [],
       "source": "docs/audits/PAYMENTS_AUDIT.md PAY-03, DATABASE_AUDIT.md DB-05",
-      "validated_commit": "22bad62",
+      "validated_commit": "fe7ec2e",
       "history": [
         {
           "date": "2026-10-15",
@@ -1250,6 +1256,12 @@
           "agent": "independent-auditor",
           "status": "READY_FOR_QA",
           "note": "audit: REJECTED (section 8)"
+        },
+        {
+          "date": "2026-10-16",
+          "agent": "independent-auditor",
+          "status": "READY_FOR_QA",
+          "note": "audit: APPROVED after 19839df (section 8.1)"
         }
       ]
     },
@@ -1405,6 +1417,48 @@
         {
           "date": "2026-10-15",
           "agent": "performance-engineer",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-BACKEND-014",
+      "title": "Same-id Polar event without modifiedAt bypasses ordering and can re-activate a revoked plan",
+      "component": "node.billing",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "backend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "INDEPENDENT_AUDIT.md 8.1; polarService.js isOlder()/shouldReplaceSubscription",
+      "tests": [],
+      "source": "INDEPENDENT_AUDIT.md 8.1; polarService.js isOlder()/shouldReplaceSubscription",
+      "validated_commit": "fe7ec2e",
+      "history": [
+        {
+          "date": "2026-10-16",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-BACKEND-015",
+      "title": "Upgrade overlap (two entitled subs): late edit of old sub replaces new one; its later revoke leaves user free until reconcile",
+      "component": "node.billing",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "backend-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "INDEPENDENT_AUDIT.md 8.1",
+      "tests": [],
+      "source": "INDEPENDENT_AUDIT.md 8.1",
+      "validated_commit": "fe7ec2e",
+      "history": [
+        {
+          "date": "2026-10-16",
+          "agent": "technical-lead",
           "note": "Created (OPEN)."
         }
       ]
