@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import NotificationBell from "./NotificationBell";
 import { useLanguage } from "@/lib/i18n";
+import { ADMIN_NAV } from "@/lib/navigation";
 import {
   IconGrid,
   IconRadio,
@@ -24,20 +25,21 @@ import {
 // at every width (phone through desktop) rather than maintaining two
 // separate nav layouts, and never overflows awkwardly on a narrow screen —
 // it just scrolls, same convention as a native app's tab bar.
-const NAV = [
-  { href: "/admin/analytics/behavior", labelKey: "admin.nav.behavior", Icon: IconTarget },
-  { href: "/admin/analytics", labelKey: "admin.nav.overview", Icon: IconGrid },
-  { href: "/admin/analytics/live", labelKey: "admin.nav.live", Icon: IconRadio },
-  { href: "/admin/analytics/sessions", labelKey: "admin.nav.sessions", Icon: IconList },
-  { href: "/admin/analytics/funnel", labelKey: "admin.nav.funnel", Icon: IconFunnel },
-  { href: "/admin/analytics/acquisition", labelKey: "admin.nav.acquisition", Icon: IconTarget },
-  { href: "/admin/analytics/pages", labelKey: "admin.nav.pages", Icon: IconFileText },
-  { href: "/admin/analytics/seo", labelKey: "admin.nav.seo", Icon: IconSearch },
-  { href: "/admin/analytics/sales", labelKey: "admin.nav.sales", Icon: IconDollar },
-  { href: "/admin/analytics/errors", labelKey: "admin.nav.errors", Icon: IconAlertTriangle },
-  { href: "/admin/analytics/retention", labelKey: "admin.nav.retention", Icon: IconRefresh },
-  { href: "/admin/users", labelKey: "admin.nav.users", Icon: IconUsers },
-];
+const ICONS = {
+  "/admin/analytics/behavior": IconTarget,
+  "/admin/analytics": IconGrid,
+  "/admin/analytics/live": IconRadio,
+  "/admin/analytics/sessions": IconList,
+  "/admin/analytics/funnel": IconFunnel,
+  "/admin/analytics/acquisition": IconTarget,
+  "/admin/analytics/pages": IconFileText,
+  "/admin/analytics/seo": IconSearch,
+  "/admin/analytics/sales": IconDollar,
+  "/admin/analytics/errors": IconAlertTriangle,
+  "/admin/analytics/retention": IconRefresh,
+  "/admin/users": IconUsers,
+};
+const NAV = ADMIN_NAV.map((item) => ({ ...item, Icon: ICONS[item.href] }));
 
 export default function AdminShell({ children }) {
   const pathname = usePathname();
@@ -63,6 +65,7 @@ export default function AdminShell({ children }) {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition ${
                   active ? "bg-brass text-[#100b08]" : "border border-white/10 text-zinc-400 hover:border-white/25 hover:text-zinc-200"
                 }`}
