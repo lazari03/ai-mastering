@@ -430,6 +430,29 @@
       "next_agent": "technical-lead",
       "commit": "fe7ec2e",
       "date": "2026-10-16T00:30:07"
+    },
+    {
+      "handoff_id": "H-0024",
+      "task_id": "Metric validation scorecard (phase 1)",
+      "agent": "qa-automation-engineer",
+      "status": "READY_FOR_FIX",
+      "summary": "Detector accuracy baseline: AUDIO-007/008/009 (localized damage invisible, dynamics/pumping gaps, width+matched-bias) plus QA-005/QA-002 evidence",
+      "files_changed": [
+        "backend/benchmark/defect_corpus.py",
+        "backend/benchmark/metric_validation.py",
+        "backend/tests/test_metric_validation.py",
+        "docs/audits/METRIC_VALIDATION.md",
+        "test-results/metric_validation.json"
+      ],
+      "tests_executed": [
+        "tests/test_metric_validation.py"
+      ],
+      "results": [],
+      "risks": [],
+      "evidence": null,
+      "next_agent": "audio-dsp-engineer",
+      "commit": "17accec",
+      "date": "2026-10-17T14:11:36"
     }
   ]
 }

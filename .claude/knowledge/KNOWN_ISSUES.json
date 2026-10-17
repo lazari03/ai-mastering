@@ -16,7 +16,7 @@
     "rule": "Before investigating a suspected defect run: python3 .claude/knowledge/kb.py issues --component <id> --grep <word>. Edit only the entry you own; append to history, never rewrite it."
   },
   "next_ids": {
-    "AUDIO": 7,
+    "AUDIO": 10,
     "BACKEND": 16,
     "BILLING": 1,
     "FRONTEND": 3,
@@ -347,12 +347,18 @@
         "qa.api_lab c02_bass_heavy_hiphop"
       ],
       "source": "AUDIO_DSP_REPORT.md c02 analysis: 2.63 vs +0.13 rel-mid; output_validation uses MID_REFERENCE_BAND (d9c591a)",
-      "validated_commit": "49d7907",
+      "validated_commit": "17accec",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-17",
+          "agent": "qa-automation-engineer",
+          "status": "OPEN",
+          "note": "Not reproduced as a false positive on synthetic controls (0/16 controls fire any spectral detector; pure +-3 dB gain trips only loudness_target_missed). But mechanism confirmed in magnitudes: loudness-matched pure bass cut -6 dB on hiphop_bassheavy reports high_change_db +2.45 dB (limit 2.5) and low-end loss is underestimated ~1.2 dB. Real-music c02 still required."
         }
       ]
     },
@@ -825,12 +831,18 @@
         "qa.api_lab c14_dc_offset"
       ],
       "source": "auralith-qa.json c14_dc_offset",
-      "validated_commit": "677d56a",
+      "validated_commit": "17accec",
       "history": [
         {
           "date": "2026-10-10",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-17",
+          "agent": "qa-automation-engineer",
+          "status": "OPEN",
+          "note": "Confirmed with injected DC (metric_validation): punch_loss 0.28 at -34 dBFS DC on pop_mid (0.38 at -20 dBFS on edm_dense), trips eval/guardrail transient_loss and benchmark lost_drums with NO punch lost. Pipeline strips DC before measuring so practical exposure is benchmark/input side. docs/audits/METRIC_VALIDATION.md"
         }
       ]
     },
@@ -1459,6 +1471,75 @@
         {
           "date": "2026-10-16",
           "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-007",
+      "title": "Gate measurements are whole-file averages: a 300 ms hard-clip burst (distortion) and a 4 s transient-smear section are not detected",
+      "component": "dsp.evaluation",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": null,
+      "repro": "cd backend && python -m benchmark.metric_validation (docs/audits/METRIC_VALIDATION.md, test-results/metric_validation.json) ; see clip_burst (TPR 0/12, distortion.added error -23 dB vs injected) and transient_smear_section (gate blocks 1/12; only at 9 dB)",
+      "evidence": "docs/audits/METRIC_VALIDATION.md",
+      "tests": [
+        "tests/test_metric_validation.py"
+      ],
+      "source": "docs/audits/METRIC_VALIDATION.md",
+      "validated_commit": "17accec",
+      "history": [
+        {
+          "date": "2026-10-17",
+          "agent": "qa-automation-engineer",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-008",
+      "title": "Dynamics-crush and pumping blind spots: crest_collapse/dynamics_preservation/plr never fire at 2-8 dB crest crush, lra_collapse 25% at 12x range crush, pumping detector exists only in benchmark.metrics (not in the production verdict)",
+      "component": "dsp.evaluation",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": null,
+      "repro": "cd backend && python -m benchmark.metric_validation (docs/audits/METRIC_VALIDATION.md, test-results/metric_validation.json) ; see crest_crush, range_crush, pumping sections",
+      "evidence": "docs/audits/METRIC_VALIDATION.md",
+      "tests": [
+        "tests/test_metric_validation.py"
+      ],
+      "source": "docs/audits/METRIC_VALIDATION.md",
+      "validated_commit": "17accec",
+      "history": [
+        {
+          "date": "2026-10-17",
+          "agent": "qa-automation-engineer",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-009",
+      "title": "Stereo width: excessive side boost (+12 dB, side>mid) passes qc.mono_compatibility and phase_correlation; only +18 dB trips them; benchmark loudness-matched low_end/high readings are biased (low-end loss underestimated by mean 1.2 dB; pure -6 dB bass cut reads high_change +2.45 dB on bass-heavy material, next to the 2.5 harsh_highs limit)",
+      "component": "dsp.evaluation",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": null,
+      "repro": "cd backend && python -m benchmark.metric_validation (docs/audits/METRIC_VALIDATION.md, test-results/metric_validation.json) ; see excess_width and magnitude tables; loudness_matched rows of low_end_loss on hiphop_bassheavy",
+      "evidence": "docs/audits/METRIC_VALIDATION.md",
+      "tests": [
+        "tests/test_metric_validation.py"
+      ],
+      "source": "docs/audits/METRIC_VALIDATION.md",
+      "validated_commit": "17accec",
+      "history": [
+        {
+          "date": "2026-10-17",
+          "agent": "qa-automation-engineer",
           "note": "Created (OPEN)."
         }
       ]
