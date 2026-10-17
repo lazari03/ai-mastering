@@ -100,7 +100,10 @@ def main() -> int:
                 input_path=str(track / "mix.wav"),
                 output_path=str(mastered_path),
                 genre=meta.get("genre", "pop"),
-                tags=[],
+                # Engine tags only: meta["tags"] are corpus labels for the
+                # report (e.g. rock_drums), not ADJUSTMENT_TAG_BIASES keys —
+                # same convention as regression.py.
+                tags=list(meta.get("tags_for_engine", [])),
                 tweaks={},
                 style=meta.get("style", "modern"),
                 tier=args.tier,
