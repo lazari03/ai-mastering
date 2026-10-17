@@ -107,6 +107,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
     isPreviewLoading,
     previewUnavailable,
     previewError,
+    previewErrorCode,
     bootstrap,
     setFile,
     setReferenceFile,
@@ -575,6 +576,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
                       isPreviewLoading={isPreviewLoading}
                       previewUnavailable={previewUnavailable}
                       previewError={previewError}
+                      previewErrorCode={previewErrorCode}
                     />
                   ) : null}
 

@@ -55,6 +55,8 @@ class Settings:
     # queue_wait_s, before getting an explicit "server busy" answer.
     queue_max: int
     queue_wait_s: float
+    # Render slots free previews may never occupy (kept for paid masters).
+    preview_reserved_slots: int
     # Hard limit for one render, enforced by killing the worker. Below the
     # gateway's 19-minute HTTP deadline (backend-node pythonUpstream.js) so
     # this service answers first, with a real reason.
@@ -107,6 +109,7 @@ def load_settings() -> Settings:
         max_concurrent_stem_jobs=int(os.getenv("MASTERING_MAX_CONCURRENT_STEM_JOBS", "1")),
         queue_max=int(os.getenv("MASTERING_QUEUE_MAX", "6")),
         queue_wait_s=float(os.getenv("MASTERING_QUEUE_WAIT_SECONDS", "120")),
+        preview_reserved_slots=int(os.getenv("MASTERING_PREVIEW_RESERVED_SLOTS", "1")),
         job_timeout_s=float(os.getenv("MASTERING_JOB_TIMEOUT_SECONDS", "1080")),
         cost_worker_base_mb=float(os.getenv("MASTERING_COST_BASE_MB", "450")),
         cost_per_audio_minute_mb=float(os.getenv("MASTERING_COST_PER_MINUTE_MB", "310")),

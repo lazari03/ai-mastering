@@ -1474,6 +1474,9 @@ const DICT = {
   "masterError.stem_reservation_conflict": { en: "Another of your renders just used your last stem separation. Buy an extra one in Settings → Billing.", sq: "Një tjetër render yti sapo përdori ndarjen e fundit të stem-eve. Bli një shtesë te Cilësimet → Faturimi." },
   "masterError.reservation_expired": { en: "This render took too long and was cancelled. You have not been charged — please try again.", sq: "Ky render zgjati shumë dhe u anulua. Nuk je tarifuar — provo sërish." },
   "masterError.no_file": { en: "Select an audio file before mastering.", sq: "Zgjidh një skedar audio para masterizimit." },
+  "masterError.rate_limited": { en: "Too many requests — wait a few minutes and try again. Nothing was charged.", sq: "Shumë kërkesa — prit disa minuta dhe provo sërish. Nuk u tarifua asgjë." },
+  "masterError.payload_too_large": { en: "That request is too large to process. Try a shorter track or fewer settings.", sq: "Kërkesa është shumë e madhe për t'u përpunuar. Provo një këngë më të shkurtër ose më pak cilësime." },
+  "masterError.file_too_large": { en: "That file is too large. Export a shorter or compressed version and try again.", sq: "Skedari është shumë i madh. Eksporto një version më të shkurtër ose të kompresuar dhe provo sërish." },
   "masterError.no_genre": { en: "Select a genre or mixing preset.", sq: "Zgjidh një zhanër ose një preset miksimi." },
 };
 

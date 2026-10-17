@@ -23,6 +23,9 @@ export const MASTERING_ERROR_CODES = [
   "reservation_expired",
   "no_file",
   "no_genre",
+  "rate_limited",
+  "payload_too_large",
+  "file_too_large",
 ];
 
 export function masteringErrorText(t, error, code) {

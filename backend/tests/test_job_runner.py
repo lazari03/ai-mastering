@@ -207,3 +207,62 @@ def test_duplicate_job_id_while_running_is_refused():
     with pytest.raises(CapacityError) as err:
         reg.create("d1")
     assert err.value.status == 409
+
+
+# --- paid-render priority (AURALITH-PERF-001) ------------------------------
+
+def _hold(g, name, preview, started, release):
+    def run():
+        with g.admit(name, 100, False, preview=preview):
+            started.set()
+            release.wait(5)
+    t = threading.Thread(target=run)
+    t.start()
+    assert started.wait(2)
+    return t
+
+
+def test_previews_cannot_take_the_slots_reserved_for_full_renders():
+    g = ResourceGovernor(1000, 3, 1, 4, 2.0, preview_reserve=1)
+    release = threading.Event()
+    threads = [_hold(g, f"p{i}", True, threading.Event(), release) for i in range(2)]
+    try:
+        with pytest.raises(CapacityError) as err:
+            with g.admit("p3", 100, False, preview=True):
+                pass
+        assert err.value.status == 503 and err.value.code == "at_capacity"
+        with g.admit("full", 100, False, preview=False):
+            assert g.snapshot()["running"] == 3
+    finally:
+        release.set()
+        [t.join() for t in threads]
+
+
+def test_reserve_is_configurable_and_zero_restores_old_behaviour():
+    g = ResourceGovernor(1000, 3, 1, 4, 2.0, preview_reserve=0)
+    with g.admit("a", 100, False, preview=True), g.admit("b", 100, False, preview=True), g.admit("c", 100, False, preview=True):
+        assert g.snapshot()["running_previews"] == 3
+    g2 = ResourceGovernor(1000, 3, 1, 4, 2.0, preview_reserve=2)
+    assert g2.snapshot()["max_preview_jobs"] == 1
+    assert ResourceGovernor(1000, 1, 1, 4, 2.0, preview_reserve=1).max_preview_jobs == 1
+
+
+def test_waiting_full_render_is_admitted_before_an_earlier_waiting_preview():
+    g = ResourceGovernor(1000, 2, 1, 4, 5.0, preview_reserve=0)
+    release = threading.Event()
+    holders = [_hold(g, f"h{i}", False, threading.Event(), release) for i in range(2)]
+    order = []
+
+    def waiter(name, preview):
+        with g.admit(name, 100, False, preview=preview):
+            order.append(name)
+
+    tp = threading.Thread(target=waiter, args=("preview", True))
+    tp.start()
+    time.sleep(0.2)
+    tf = threading.Thread(target=waiter, args=("full", False))
+    tf.start()
+    time.sleep(0.2)
+    release.set()
+    [t.join() for t in holders + [tp, tf]]
+    assert order[0] == "full"

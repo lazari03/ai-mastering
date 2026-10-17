@@ -399,7 +399,7 @@ async function processMasteringViaFfmpegFallback({ file, config }) {
   };
 }
 
-export async function processMastering({ file, referenceFile = null, fields, uid, jobId = null, deadlineEpochMs = null }) {
+export async function processMastering({ file, referenceFile = null, fields, uid, jobId = null, deadlineEpochMs = null, preview = false }) {
   const config = await resolveConfig(fields, uid);
 
   if (settings.masteringEngine !== "adaptive_python") {
@@ -424,6 +424,9 @@ export async function processMastering({ file, referenceFile = null, fields, uid
   // by which this gateway needs the answer (Python stops the render first).
   if (jobId) pythonFields.job_id = jobId;
   if (deadlineEpochMs) pythonFields.deadline_epoch_ms = String(deadlineEpochMs);
+  // Server-derived by the route (never a client field): lets Python keep
+  // render slots free for paid full masters.
+  pythonFields.preview = preview ? "true" : "false";
   // Category/flavour only apply to the adaptive engine — a full preset spec
   // is a literal instruction set, same reasoning as the reference-file guard
   // right below.

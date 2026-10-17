@@ -1007,6 +1007,7 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
 
     const result = await processMastering({
       jobId,
+      preview,
       // Python stops the render before this gateway would give up on it,
       // so a timed-out job never finishes into a result nobody receives.
       deadlineEpochMs: Date.now() + UPSTREAM_TIMEOUT_MS,
