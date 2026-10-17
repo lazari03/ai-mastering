@@ -12,9 +12,15 @@ from app.core.storage_cleanup import run_forever as run_storage_cleanup_forever
 
 configure_logging()
 
+# Interactive docs/schema are a development aid: off in production so nothing
+# on the shared compose network can browse the internal API surface.
+_docs_enabled = settings.app_env != "production"
 app = FastAPI(
     title=settings.app_title,
     version=settings.app_version,
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
 )
 
 

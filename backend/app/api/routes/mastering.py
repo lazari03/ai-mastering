@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import glob
 import json
+import logging
 import time
 from pathlib import Path
 
@@ -442,7 +443,8 @@ def codec_preview(job_id: str = Form(...), codec: str = Form("mp3_128")) -> dict
     try:
         result = simulate_codec(str(mastered_wav), str(preview_wav), codec)
     except Exception as exc:  # pragma: no cover
-        raise HTTPException(500, f"Codec preview failed: {type(exc).__name__}: {exc}") from exc
+        logging.getLogger(__name__).exception("Codec preview failed for job %s (%s)", job_id, codec)
+        raise _error(500, "render_failed", "Codec preview failed. Please try again.") from exc
 
     return {**result, "preview_download_url": f"/download-codec-preview/{job_id}/{codec}"}
 

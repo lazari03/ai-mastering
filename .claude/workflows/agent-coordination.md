@@ -1,6 +1,6 @@
 # Agent coordination protocol
 
-Owner: technical-lead. Applies to all 10 agents in `.claude/agents/`.
+Owner: technical-lead. Applies to all 17 agents in `.claude/agents/` (7 added 2026-10-15; see `docs/audits/SKILLS_INVENTORY.md`).
 
 ## Roster and codebase ownership (one writer per path)
 | Agent | Writes (implementation ownership) | Report |
@@ -15,6 +15,13 @@ Owner: technical-lead. Applies to all 10 agents in `.claude/agents/`.
 | devops-engineer | `docker-compose.yml`, `*/Dockerfile`, `Caddyfile`, `Makefile`, `.github/workflows/**` | DEVOPS_REPORT.md |
 | product-specialist | `frontend/src/lib/pricing.js` copy, `frontend/src/content/**` copy — prices only with product-owner approval | PRODUCT_REPORT.md |
 | independent-auditor | **read-only** on code; writes only its report and verdicts | INDEPENDENT_AUDIT.md |
+| database-engineer | findings only (code → backend-engineer) | docs/audits/DATABASE_AUDIT.md |
+| payments-engineer | billing tests with QA; findings (code → backend-engineer) | docs/audits/PAYMENTS_AUDIT.md |
+| performance-engineer | `backend/benchmark/perf_*.py` (QA review) | docs/audits/SCALABILITY_REPORT.md |
+| seo-analytics-engineer | page `metadata`, `robots.js`, `sitemap.js`, `public/llms.txt` | docs/audits/SEO_ANALYTICS_REPORT.md |
+| ux-designer | findings/specs only | docs/audits/UX_AUDIT.md |
+| growth-marketer | docs/copy proposals only | docs/audits/GROWTH_PLAN.md |
+| tooling-manager | `docs/audits/SKILLS_INVENTORY.md`, workflow docs (lead review) | SKILLS_INVENTORY.md |
 Reports live in `docs/agent-reports/`. A report is the long-form evidence; the knowledge base stores the pointer.
 
 ## Lifecycle
@@ -33,6 +40,8 @@ Default review chains:
 - Backend/billing: backend-engineer → security-engineer → qa (concurrency + refund tests) → independent-auditor
 - Frontend: frontend-engineer → qa (e2e workflow) → independent-auditor
 - Infra: devops-engineer → security-engineer → qa → independent-auditor
+- Payments/DB: backend-engineer → payments-engineer / database-engineer → security-engineer → qa → independent-auditor
+- SEO/UX: seo-analytics-engineer / ux-designer → frontend-engineer → qa → independent-auditor
 
 ## Handoff format (only this goes between agents)
 ```json

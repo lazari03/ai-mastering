@@ -25,6 +25,25 @@ async function logWebhookFailure(reason, detail) {
   }
 }
 
+// Unsigned/forged POSTs need no credentials, so recording each one would let
+// anyone drive unbounded Firestore writes and bury real failures. Record at
+// most one verification_failed doc per minute, carrying how many were
+// suppressed since the last one.
+const VERIFICATION_FAILURE_LOG_INTERVAL_MS = 60_000;
+let lastVerificationFailureLoggedAt = 0;
+let suppressedVerificationFailures = 0;
+async function logVerificationFailure(error) {
+  const now = Date.now();
+  if (now - lastVerificationFailureLoggedAt < VERIFICATION_FAILURE_LOG_INTERVAL_MS) {
+    suppressedVerificationFailures += 1;
+    return;
+  }
+  const suppressed = suppressedVerificationFailures;
+  lastVerificationFailureLoggedAt = now;
+  suppressedVerificationFailures = 0;
+  await logWebhookFailure("verification_failed", suppressed ? `${error?.message || error} (+${suppressed} suppressed in the previous window)` : error);
+}
+
 // Mounted in server.js BEFORE express.json() — validateEvent needs the
 // raw, unparsed request body to verify the signature; JSON-parsing it
 // first would make verification fail (or worse, silently verify against
@@ -35,7 +54,7 @@ router.post("/webhooks/polar", express.raw({ type: "application/json" }), async 
     event = verifyWebhook(req.body, req.headers);
   } catch (error) {
     if (error instanceof WebhookVerificationError) {
-      await logWebhookFailure("verification_failed", error);
+      await logVerificationFailure(error);
       return res.status(403).send("");
     }
     // validateEvent verifies the signature BEFORE parsing the type, so this

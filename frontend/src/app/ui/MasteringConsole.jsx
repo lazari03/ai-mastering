@@ -309,6 +309,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
                   key={label}
                   type="button"
                   onClick={() => setActiveStep(idx)}
+                  aria-current={isActive ? "step" : undefined}
                   className={`rounded-[10px] border px-2.5 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] transition ${
                     isActive ? CHIP_EMBER : isDone ? CHIP_BRASS : CHIP_BASE
                   }`}
@@ -482,7 +483,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
                     <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.genre")}</span>
                     <div className="flex flex-wrap gap-2">
                       {genres.map((genre) => (
-                        <button key={genre} type="button" onClick={() => setGenre(genre)} className={chipClass(selectedGenre === genre)}>
+                        <button key={genre} type="button" onClick={() => setGenre(genre)} aria-pressed={selectedGenre === genre} className={chipClass(selectedGenre === genre)}>
                           {genre}
                         </button>
                       ))}
@@ -493,7 +494,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
                     <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.masteringStyle")}</span>
                     <div className="flex flex-wrap gap-2">
                       {styles.map((style) => (
-                        <button key={style} type="button" onClick={() => setStyle(style)} className={chipClass(selectedStyle === style)}>
+                        <button key={style} type="button" onClick={() => setStyle(style)} aria-pressed={selectedStyle === style} className={chipClass(selectedStyle === style)}>
                           {style.replaceAll("_", " ")}
                         </button>
                       ))}
@@ -507,7 +508,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
                     <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.delivery")}</span>
                     <div className="flex flex-wrap gap-2">
                       {DELIVERY_TARGETS.map((target) => (
-                        <button key={target} type="button" onClick={() => setDelivery(target)} className={chipClass(selectedDelivery === target)}>
+                        <button key={target} type="button" onClick={() => setDelivery(target)} aria-pressed={selectedDelivery === target} className={chipClass(selectedDelivery === target)}>
                           {t(`delivery.${target}`)}
                         </button>
                       ))}
@@ -526,22 +527,22 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
                     <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.masteringObjective")}</span>
                     <p className="mb-2 text-[10px] text-text-secondary">{mode === "pro" ? t("console.masteringObjectiveProHint") : t("console.masteringObjectiveHint")}</p>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={() => setCategory("")} className={chipClass(!selectedCategory, "brass")}>
+                      <button type="button" onClick={() => setCategory("")} aria-pressed={!selectedCategory} className={chipClass(!selectedCategory, "brass")}>
                         {t("console.objectiveAuto")}
                       </button>
                       {categories.map((category) => (
-                        <button key={category} type="button" onClick={() => setCategory(category)} className={chipClass(selectedCategory === category, "brass")}>
+                        <button key={category} type="button" onClick={() => setCategory(category)} aria-pressed={selectedCategory === category} className={chipClass(selectedCategory === category, "brass")}>
                           {category.replaceAll("_", " ")}
                         </button>
                       ))}
                     </div>
                     {selectedCategory && (flavoursByCategory[selectedCategory] || []).length ? (
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <button type="button" onClick={() => setFlavour("")} className={chipClass(!selectedFlavour)}>
+                        <button type="button" onClick={() => setFlavour("")} aria-pressed={!selectedFlavour} className={chipClass(!selectedFlavour)}>
                           {t("console.objectiveAuto")}
                         </button>
                         {flavoursByCategory[selectedCategory].map((flavour) => (
-                          <button key={flavour} type="button" onClick={() => setFlavour(flavour)} className={chipClass(selectedFlavour === flavour)}>
+                          <button key={flavour} type="button" onClick={() => setFlavour(flavour)} aria-pressed={selectedFlavour === flavour} className={chipClass(selectedFlavour === flavour)}>
                             {flavour}
                           </button>
                         ))}
@@ -553,7 +554,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
                     <span className="mb-2 block text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("console.tags")}</span>
                     <div className="flex flex-wrap gap-2">
                       {tags.map((tag) => (
-                        <button key={tag} type="button" onClick={() => toggleTag(tag)} className={`${chipClass(selectedTags.includes(tag), "brass")} rounded-full lowercase`}>
+                        <button key={tag} type="button" onClick={() => toggleTag(tag)} aria-pressed={selectedTags.includes(tag)} className={`${chipClass(selectedTags.includes(tag), "brass")} rounded-full lowercase`}>
                           {tag.replaceAll("_", " ")}
                         </button>
                       ))}

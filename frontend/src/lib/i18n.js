@@ -539,6 +539,7 @@ const DICT = {
 
   "console.title": { en: "Master Audio", sq: "Masterizo Audio" },
   "console.subtitle": { en: "Choose audio → choose mastering mode → master → review.", sq: "Zgjidh audio → zgjidh mënyrën → masterizo → shqyrto." },
+  "player.waveformAlt": { en: "Waveform of the track, showing the original and mastered audio levels over time", sq: "Forma valore e pjesës, që tregon nivelet e audios origjinale dhe të masterizuar gjatë kohës" },
   "console.step.audio": { en: "Audio", sq: "Audio" },
   "console.step.mode": { en: "Mode", sq: "Mënyra" },
   "console.step.master": { en: "Master", sq: "Master" },
@@ -1465,6 +1466,8 @@ const DICT = {
   "masterError.invalid_audio": { en: "We couldn't read this audio file. Check that it's a supported, undamaged audio file and try again.", sq: "Nuk mundëm ta lexojmë këtë skedar audio. Kontrollo që të jetë një skedar audio i mbështetur dhe i padëmtuar, dhe provo sërish." },
   "masterError.stems_unavailable": { en: "Stem separation isn't available on the server right now. You have not been charged.", sq: "Ndarja e stem-eve nuk është e disponueshme në server tani. Nuk je tarifuar." },
   "masterError.render_failed": { en: "Mastering failed. You have not been charged — please try again.", sq: "Masterizimi dështoi. Nuk je tarifuar — provo sërish." },
+  "masterError.service_unavailable": { en: "The mastering service is temporarily unavailable. You have not been charged — please try again in a minute.", sq: "Shërbimi i masterizimit është përkohësisht i padisponueshëm. Nuk je tarifuar — provo sërish pas një minute." },
+  "masterError.unsupported_format": { en: "That file type isn't supported. Upload a WAV, AIFF, FLAC, MP3, M4A or another common audio file.", sq: "Ky lloj skedari nuk mbështetet. Ngarko një skedar WAV, AIFF, FLAC, MP3, M4A ose një tjetër format të zakonshëm audio." },
   "masterError.duplicate_job": { en: "This track is already being mastered. Wait for it to finish.", sq: "Kjo këngë po masterizohet tashmë. Prit që të përfundojë." },
   "masterError.billing_unavailable": { en: "We couldn't confirm your plan right now. Nothing was charged — try again in a minute.", sq: "Nuk mundëm ta konfirmojmë planin tënd tani. Nuk u tarifua asgjë — provo sërish pas një minute." },
   "masterError.master_reservation_conflict": { en: "Another of your renders just used your last available master. Buy a single master or upgrade in Settings → Billing.", sq: "Një tjetër render yti sapo përdori masterin e fundit të disponueshëm. Bli një master të vetëm ose kalo në plan më të lartë te Cilësimet → Faturimi." },

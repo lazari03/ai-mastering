@@ -21,6 +21,18 @@ export const settings = {
   // destination events are mirrored to alongside the existing SQLite store
   // (see telemetryDeckService.js). Unset means "not integrated yet": every
   // send becomes a silent no-op rather than breaking analytics ingestion.
+  // Data retention (bounded periodic purge, see server.js). All env-tunable.
+  // First-party analytics rows (sessions/events/visitors) older than this are
+  // deleted. Default 400 days = just over a year, so year-over-year admin
+  // comparisons still work. 0 disables the purge.
+  analyticsRetentionDays: Number(process.env.ANALYTICS_RETENTION_DAYS ?? 400),
+  // How long a *real* (non-preview) job row is kept after its audio files have
+  // expired (files go at expires_at = 48h). The row only feeds "My Masters"
+  // history, so this is a grace window. Preview rows are dropped as soon as
+  // their files expire. 0 disables the jobs purge.
+  jobsHistoryRetentionDays: Number(process.env.JOBS_HISTORY_RETENTION_DAYS ?? 30),
+  // Max rows deleted per table per purge batch (a run does at most 10 batches).
+  retentionBatchSize: Number(process.env.RETENTION_BATCH_SIZE || 2000),
   telemetryDeckAppId: process.env.TELEMETRYDECK_APP_ID || null,
   // Optional extra salt mixed into the SDK's clientUser hash (on top of
   // the SHA-256 it already applies) — unset is fine, the SDK still hashes.

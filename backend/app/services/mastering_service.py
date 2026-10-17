@@ -196,7 +196,11 @@ def resolve_mastering_config(
         raise HTTPException(400, f"Unknown delivery target '{resolved['delivery']}'. Options: {list_delivery_targets()}")
 
     if resolved["output_format"] not in ALLOWED_OUTPUT_FORMATS:
-        raise HTTPException(400, f"output_format must be one of {sorted(ALLOWED_OUTPUT_FORMATS)}")
+        raise HTTPException(
+            400,
+            f"output_format must be one of {sorted(ALLOWED_OUTPUT_FORMATS)}",
+            headers={"X-Error-Code": "invalid_request"},
+        )
 
     return resolved
 
@@ -270,7 +274,16 @@ def _decode_input_if_required(job_id: str, input_path: Path, input_ext: str, lab
         ]
         decode_result = subprocess.run(decode_cmd, capture_output=True, text=True, timeout=180)
         if decode_result.returncode != 0:
-            raise HTTPException(500, f"Input decode failed: {decode_result.stderr[-800:]}")
+            decoded_wav_path.unlink(missing_ok=True)  # ffmpeg may leave a partial file
+            # A file ffmpeg can't decode is the user's input, not a server
+            # fault: 400 + invalid_audio (localized by the frontend). stderr
+            # can carry paths, so it goes to the log only.
+            logging.getLogger(__name__).warning("Input decode failed for %s: %s", input_path.name, decode_result.stderr[-800:])
+            raise HTTPException(
+                400,
+                "We couldn't decode this audio file. Check that it's a complete, undamaged audio file and try again.",
+                headers={"X-Error-Code": "invalid_audio"},
+            )
         processing_input_path = decoded_wav_path
 
     return processing_input_path
@@ -468,6 +481,19 @@ def process_mastering_request(file: UploadFile, config: dict, reference_file: Up
 
 
 def render_staged_job(staged: dict, config: dict) -> dict:
+    """Render, then always delete the decoded float-WAV scratch copies
+    (main input and reference) on success AND failure. The user's original
+    upload and the delivered master are never touched."""
+    upload_dir = Path(staged.get("upload_dir") or settings.upload_dir)
+    job_id = staged["job_id"]
+    try:
+        return _render_staged_job(staged, config)
+    finally:
+        for label in ("input", "reference"):
+            (upload_dir / f"{job_id}_{label}_internal.wav").unlink(missing_ok=True)
+
+
+def _render_staged_job(staged: dict, config: dict) -> dict:
     """The expensive half: decode, render, deliver. Runs inside a worker
     process (app/core/job_runner.py), so everything it needs is in `staged`
     (paths only, no UploadFile)."""

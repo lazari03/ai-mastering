@@ -240,3 +240,6 @@ def analyze_chords(file: UploadFile) -> dict:
         return analyze_chords_from_path(str(decoded_path))
     except Exception as exc:  # pragma: no cover
         raise HTTPException(500, f"Could not decode audio: {exc}") from exc
+    finally:
+        if decoded_path != input_path:
+            Path(decoded_path).unlink(missing_ok=True)

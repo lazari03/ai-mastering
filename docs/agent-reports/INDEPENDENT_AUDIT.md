@@ -229,3 +229,52 @@ The other two tests (resolve gate and id collisions) pass on the old code as wel
 - (b) kb.py:172 is a duplicated, unreachable `sys.exit` line (dead code).
 - (c) `--set validated_commit=...` is accepted but overwritten straight away, so it has no effect.
 - (d) `access-log --clear` deletes the access log. This is not issue history, but it should be noted.
+
+## 8. Batch review 2026-10-16: `7c9c8ad..bae8557` (branch claude/platform-audit-2026-10)
+
+Auditor re-runs: `backend-node: npm ci && npm run lint && npm test` -> lint clean, 100/100 pass.
+`backend: pytest tests/test_temp_file_cleanup.py tests/test_error_codes.py` -> 7 passed.
+New Python test run against pre-fix tree (`git archive 488660e backend` + new test file, scratch dir) -> 4/4 fail, so it is a real regression test.
+Analysis payload size measured (`_analysis_from_audio` on synthetic 30 s and 600 s stereo): ~9.5 KB, independent of duration, so the 256 KB cap leaves ~27x headroom.
+
+| Commit | Verdict |
+|---|---|
+| 8d69d67 Polar merge / attribution / collect uid | **REJECTED** (billing: F-1, F-2) |
+| 81fa4b0 retention purge, range clamps, limiters | APPROVED (notes N-1..N-3) |
+| 3e7f767 route-level /master tests | APPROVED (note N-4) |
+| 8ce3531 funnel events + a11y | APPROVED |
+| 488660e analytics client Bearer + keepalive | APPROVED (note N-5); its value depends on 8d69d67 |
+| bae8557 temp-file cleanup (PERF-002) | APPROVED |
+
+### F-1 (High, billing) Reconcile can no longer recover a paying user when the old subscription id has a newer `modifiedAt`
+- Component: `backend-node/src/services/polarService.js:553-560` (`shouldReplaceSubscription`), used by reconcile at `:733-736`.
+- The `modifiedAt` guard runs before the subscription-id check, so an entitled record for a *different* subscription is dropped whenever the stored, non-entitled record of an old subscription was modified later.
+- Reproduction (scratch test with the repo's fake Firestore): stored = subA `canceled`, ended, modifiedAt 10-12; webhook `subscription.active` for subB (`active`, modifiedAt 10-11, delivered late) -> skipped; `reconcileUserSubscription` with Polar list [subB active, subA canceled] -> "stale or superseded — kept stored record". Final: stored id subA, plan `free`.
+- Expected: subB (paid, active) is stored and the plan is studio. Before this commit the webhook had the same gap, but reconcile wrote the newest subscription unconditionally and healed it. Reconcile is now a no-op for this case until subB is modified again (the next renewal).
+- Required fix: apply the `modifiedAt` ordering only when the ids are the same (or when both records are entitled). Across different ids, an entitled incoming record replaces a non-entitled stored one. Add this case as a test.
+
+### F-2 (High, billing) Reconcile can keep a revoked subscription entitled
+- Component: `polarService.js:724-730` (selection) together with `:558`.
+- When no listed subscription is entitled, the newest-started one is chosen, e.g. a later `incomplete_expired` checkout. Because it has a different id, `shouldReplaceSubscription` refuses to replace the stored entitled record, and the fresh *revoked* state of the stored id, which is in the same list, is never applied.
+- Reproduction: stored = subA `active` (its revoke webhook was missed), Polar list [subB incomplete_expired (newer), subA canceled + endedAt past] -> reconcile keeps subA `active`, plan `studio` with no end date (`ACTIVE_STATUSES`). Before this commit reconcile wrote subB, so the plan became free.
+- Required fix: if the stored `polarSubscriptionId` is present in the list, apply that record (same-id path) unless an entitled subscription is chosen. Add a test. The existing test "never downgrades ... different non-entitled subscription" (`billingAnalyticsFixes.test.js:86`) only passes because its list omits the stored id.
+- Ledger (`reservationLedger.js`) is untouched; invariants 1-10 are unaffected. The defects are confined to entitlement records.
+
+The analytics half of 8d69d67 is sound. `resolveCollectUid` fails closed, the admin response is uniform, and `payment_succeeded` attributes the event to the latest session of that uid. Rows written before deploy carry unverified uids (historical only).
+
+### Notes (non-blocking)
+- N-1 Retention purge: deletes only rows whose `expires_at` has passed (previews) or is 30 d past (masters). `ownsJob`, `getJob`, `resolveShare` and `/shared/*` all fail closed on a missing row (403/404). Python sweeps files by mtime at the same 48 h, and the reservation reconciler (25 min lease) never sees a purged row. Batches are bounded (10 x 2000 per table, synchronous, hourly), with indexes added. Privacy page (`frontend/src/app/privacy/page.js:111`) says history "expires with their audio"; the actual window is 48 h + 30 d. Product should align the copy.
+- N-2 Limiters: `/preview-params` is uid-keyed (behind requireAuth), and the client debounces at 350 ms, so 120 per 5 min will not trip for normal use. The admin-key limiter counts any >=400 response, including a legitimate admin's 400 on a bad slug. Acceptable. The 429/413 `detail` strings are English-only and reach the UI raw via `masteringStore.previewError` (i18n gap; map `code` to i18n). This matches the existing limiters.
+- N-3 `resolveRange` allows 366 d, and the previous-period comparison reaches 732 d, but analytics are kept 400 d, so long-range comparisons are partially empty.
+- N-4 The `/master` route test duplicates server.js's error handler. It will not catch drift (documented in the file).
+- N-5 CORS: `cors()` is mounted before webhooks, the limiter and the auth gate (`server.js:99`). Preflight reflects `Authorization`, and OPTIONS is answered before `generalLimiter`. On pagehide, signed-in flushes use keepalive fetch, which needs a preflight. Browser support for keepalive with preflight varies, so some unload events may arrive anonymously or be lost (analytics only). The anonymous path is unchanged (sendBeacon). No PII: custom preset names are nulled, and the token goes only to the API origin.
+- Test seams `_setDepsForTests` / `_setFirestoreForTests` are module exports with no route or env reachability. Low risk. Prefer gating on `NODE_ENV==='test'`.
+- PERF-002: the scratch names `{job}_{input|reference}_internal.wav` differ from the original (`/original` globs `{job}_input.*`) and from the master (`output_dir/{job}_mastered.*`). The test asserts both survive. The Demucs sweep (2 h) is far above the 18 min worker timeout (`job_runner.py:356`).
+
+### 8.1 Re-review of the F-1/F-2 fix (19839df) -> **APPROVED** (8d69d67 + 19839df together)
+- `npm run lint` clean; `npm test` 102/102. New tests "audit F-1"/"audit F-2" run against `19839df~1` (git archive, scratch): 2 fail, 10 pass; on 19839df all pass. Auditor's own scratch reproduction now gives F-1: subB / studio, F-2: subA canceled / free.
+- `shouldReplaceSubscription` (`polarService.js:558-569`): same id -> modifiedAt order; different ids -> entitlement decides, tie -> newer wins. Reconcile fallback (`:740-750`) matches the on-file id *and* field, so `chordSubscription` and `subscription` cannot cross. The extra non-transactional read only selects; the write is still the transactional guard.
+- Edge probes (scratch `edge.test.mjs`):
+  - E1 upgrade overlap, two entitled ids: a later edit of the old, still-entitled subscription A replaces B; when A is then revoked, the user is `free` until reconcile (6 h) or B's next event restores B. The same behaviour existed before 8d69d67. Unlikely, because `/billing/checkout` switches an already-paid customer's plan in place rather than creating a second subscription. Non-blocking.
+  - E2 same-id event with `modifiedAt` null (e.g. a retried `subscription.created`) after a revoke re-activates the plan (`isOlder` returns false when incoming has no timestamp). This existed before 8d69d67 (unchanged guard semantics). Recommend a follow-up issue: for the same id, refuse an incoming record without `modifiedAt` when the stored one has it. Non-blocking for this fix.
+  - E3 different ids, both non-entitled, incoming older: correctly kept.

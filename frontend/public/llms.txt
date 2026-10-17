@@ -363,6 +363,12 @@ affiliated with it.
   — LUFS, dynamic range and true-peak targets by genre, the mastering-style
   deltas, the limiter spec, and what streaming normalisation does to a
   master that ignores them
+- [Pricing](https://auralithforge.app/pricing) — current plans and
+  pay-as-you-go prices (authoritative if this file disagrees)
+- [Free tools](https://auralithforge.app/tools) — index of the free
+  analysis tools below
+- [LUFS meter](https://auralithforge.app/lufs-meter) — integrated loudness,
+  true peak and loudness range from an upload
 - [Chord detector](https://auralithforge.app/chord-detector) — chords, key
   and BPM from an upload
 - [Song key finder](https://auralithforge.app/song-key-finder) — key

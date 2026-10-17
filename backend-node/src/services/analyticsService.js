@@ -85,6 +85,11 @@ export const ALLOWED_EVENT_NAMES = new Set([
   "free_tool_master_cta_clicked",
   "password_reset_requested",
   "purchase",
+  // Funnel events emitted by the frontend (signup completion, preset use).
+  // "pricing_view" is already allowed above and stays the funnel name.
+  "signup_completed",
+  "preset_applied",
+  "preset_saved",
 ]);
 
 // Backend-only event names — never accepted from the public /collect
@@ -253,13 +258,20 @@ const ADMIN_UID_CACHE_TTL_MS = 30 * 60 * 1000; // roles change ~never; each miss
 const adminUidCache = new Map(); // uid -> { isAdmin, expiresAt }
 const ADMIN_UID_CACHE_MAX = 5000;
 
+// Test seam: lets tests substitute a fake Firestore for the admin-role lookup.
+let firestoreOverride = null;
+export function _setFirestoreForTests(db) {
+  firestoreOverride = db;
+  adminUidCache.clear();
+}
+
 async function isAdminUid(uid) {
   if (!uid) return false;
   const cached = adminUidCache.get(uid);
   if (cached && cached.expiresAt > Date.now()) return cached.isAdmin;
   let isAdmin = false;
   try {
-    const snap = await getFirestore().collection("users").doc(uid).get();
+    const snap = await (firestoreOverride || getFirestore()).collection("users").doc(uid).get();
     isAdmin = snap.data()?.role === "admin";
   } catch (error) {
     console.error("isAdminUid check failed (treating as non-admin):", error.message);
@@ -315,6 +327,21 @@ const insertEventStmt = analyticsDb.prepare(`
 // write partially fails, because analytics must never surface as a
 // user-facing error (spec section 31).
 // ---------------------------------------------------------------------
+// /analytics/collect is unauthenticated, so a body-supplied uid is just a
+// claim. Only honour it when a Bearer token verifies and belongs to that uid;
+// anything else is an anonymous visitor (no spoofing, no admin probing).
+export async function resolveCollectUid({ authHeader, bodyUid, verifyToken }) {
+  if (typeof bodyUid !== "string" || !bodyUid || bodyUid.length > 128) return null;
+  const match = typeof authHeader === "string" ? /^Bearer\s+(\S+)$/i.exec(authHeader) : null;
+  if (!match) return null;
+  try {
+    const decoded = await verifyToken(match[1]);
+    return decoded?.uid && decoded.uid === bodyUid ? bodyUid : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, country: knownCountry = null, isNewSession, context, events }) {
   if (!isUuid(visitorId) || !isUuid(sessionId)) {
     throw Object.assign(new Error("Invalid visitor/session id"), { status: 400 });
@@ -323,15 +350,17 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, country: 
   // usage is written to analytics_visitors/analytics_sessions/
   // analytics_events at all, so it can never leak into a report even if a
   // future query forgets to filter it out.
-  if (uid && (await isAdminUid(uid))) {
-    return { accepted: 0 };
-  }
   if (!Array.isArray(events) || events.length === 0) return { accepted: 0 };
   // Crawlers that execute JavaScript (Googlebot, Lighthouse, uptime
   // checkers) would otherwise count as visitors and dilute every rate.
   if (isBotUserAgent(ua)) return { accepted: 0 };
   const batchEvents = events.slice(0, MAX_EVENTS_PER_REQUEST).filter((e) => e && ALLOWED_EVENT_NAMES.has(e.name));
   if (batchEvents.length === 0) return { accepted: 0 };
+  // Admin traffic is dropped, but the response is identical to a normal
+  // accepted batch — otherwise /collect would reveal which uids are admins.
+  if (uid && (await isAdminUid(uid))) {
+    return { accepted: batchEvents.length };
+  }
 
   const { deviceCategory, browser, os } = parseUserAgent(ua);
   const now = new Date().toISOString();
@@ -505,6 +534,19 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, country: 
 export async function recordServerEvent(name, { uid = null, sessionId = null, visitorId = null, props = {} } = {}) {
   try {
     if (uid && (await isAdminUid(uid))) return;
+    // Webhook-driven events (Polar) only know the uid. Attribute them to the
+    // user's most recent session so funnel/SEO/acquisition "Paid" counts work.
+    // sessions.uid is only ever set from a verified token (see
+    // resolveCollectUid), never from client-asserted input.
+    if (uid && !sessionId && name === "payment_succeeded") {
+      const row = analyticsDb
+        .prepare("SELECT session_id, visitor_id FROM analytics_sessions WHERE uid = ? ORDER BY last_seen_at DESC LIMIT 1")
+        .get(uid);
+      if (row) {
+        sessionId = row.session_id;
+        visitorId = visitorId || row.visitor_id;
+      }
+    }
     insertEventStmt.run({
       sessionId,
       visitorId,

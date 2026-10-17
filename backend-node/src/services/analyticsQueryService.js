@@ -114,6 +114,11 @@ function isOrganicSession(session) {
   return Boolean(session.referrerDomain) && SEARCH_ENGINE_DOMAINS.some((needle) => session.referrerDomain.includes(needle));
 }
 
+export const MAX_RANGE_DAYS = 366;
+const MAX_RANGE_MS = MAX_RANGE_DAYS * 86400000;
+const DEFAULT_RANGE_MS = 7 * 86400000;
+export const LIVE_MAX_ROWS = 2000;
+
 function toDate(value, fallback) {
   const d = value ? new Date(value) : null;
   return d && !Number.isNaN(d.getTime()) ? d : fallback;
@@ -152,6 +157,11 @@ export function resolveRange({ preset, from, to }) {
         break;
     }
   }
+  // Bound the scan: admin reports read the whole range into memory
+  // synchronously (better-sqlite3), which blocks the gateway event loop.
+  if (rangeTo.getTime() > now.getTime()) rangeTo = now;
+  if (rangeFrom.getTime() >= rangeTo.getTime()) rangeFrom = new Date(rangeTo.getTime() - DEFAULT_RANGE_MS);
+  if (rangeTo.getTime() - rangeFrom.getTime() > MAX_RANGE_MS) rangeFrom = new Date(rangeTo.getTime() - MAX_RANGE_MS);
   const spanMs = rangeTo.getTime() - rangeFrom.getTime();
   const prevTo = new Date(rangeFrom.getTime());
   const prevFrom = new Date(rangeFrom.getTime() - spanMs);
@@ -672,7 +682,7 @@ const LIVE_WINDOW_MS = 5 * 60 * 1000;
 // here takes.
 export async function getLive() {
   const since = new Date(Date.now() - LIVE_WINDOW_MS).toISOString();
-  const rows = db().prepare("SELECT * FROM analytics_sessions WHERE last_seen_at >= ?").all(since);
+  const rows = db().prepare("SELECT * FROM analytics_sessions WHERE last_seen_at >= ? ORDER BY last_seen_at DESC LIMIT ?").all(since, LIVE_MAX_ROWS);
   const sessions = rows.map(sessionFromRow);
 
   const countryCounts = new Map();

@@ -19,6 +19,8 @@ import adminNotificationsRoutes from "./routes/adminNotificationsRoutes.js";
 import { reconcileAllSubscriptions } from "./services/polarService.js";
 import { startBot as startTelegramBot } from "./services/telegramService.js";
 import { clientIp } from "./middleware/clientIp.js";
+import { purgeExpiredJobs } from "./services/jobsService.js";
+import { purgeOldAnalytics } from "./config/analyticsDb.js";
 import { startUploadSweep } from "./middleware/cleanupUploads.js";
 
 // <a href download>, <audio src>, and direct browser navigation to a
@@ -177,7 +179,7 @@ app.use((err, req, res, _next) => {
   // 4xx messages are written for users (validation, file-type rejection);
   // an unexpected 5xx message can describe internals, so it stays in the log.
   const detail = status < 500 ? err.message || "Request rejected." : "Something went wrong on our side. Please try again.";
-  res.status(status).json({ detail });
+  res.status(status).json(err.code && status < 500 ? { detail, code: err.code } : { detail });
 });
 
 app.listen(settings.port, () => {
@@ -229,4 +231,33 @@ if (RESERVATION_RECONCILE_MS > 0) {
   };
   setTimeout(runReservationReconcile, 60 * 1000).unref();
   setInterval(runReservationReconcile, RESERVATION_RECONCILE_MS).unref();
+}
+
+// Bounded retention purge (jobs table + first-party analytics). Each run
+// deletes at most RETENTION_MAX_BATCHES batches per table; the SQLite calls
+// are synchronous, so batches stay small. RETENTION_PURGE_INTERVAL_MS=0
+// disables it. Unref'd so it never holds the process open.
+const RETENTION_PURGE_MS = Number(process.env.RETENTION_PURGE_INTERVAL_MS ?? 60 * 60 * 1000);
+const RETENTION_MAX_BATCHES = 10;
+if (RETENTION_PURGE_MS > 0) {
+  const runPurge = () => {
+    try {
+      const batchSize = settings.retentionBatchSize;
+      const total = { jobs: 0, events: 0, sessions: 0, visitors: 0 };
+      for (let i = 0; i < RETENTION_MAX_BATCHES; i += 1) {
+        const jobs = purgeExpiredJobs({ historyRetentionDays: settings.jobsHistoryRetentionDays, batchSize });
+        const a = purgeOldAnalytics({ retentionDays: settings.analyticsRetentionDays, batchSize });
+        total.jobs += jobs;
+        total.events += a.events;
+        total.sessions += a.sessions;
+        total.visitors += a.visitors;
+        if (jobs < batchSize && a.events < batchSize && a.sessions < batchSize && a.visitors < batchSize) break;
+      }
+      if (total.jobs || total.events || total.sessions || total.visitors) console.log("Retention purge:", JSON.stringify(total));
+    } catch (error) {
+      console.error("Retention purge failed:", error.message);
+    }
+  };
+  setTimeout(runPurge, 2 * 60 * 1000).unref();
+  setInterval(runPurge, RETENTION_PURGE_MS).unref();
 }

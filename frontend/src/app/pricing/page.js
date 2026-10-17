@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import PricingViewTracker from "@/components/PricingViewTracker";
 import RelatedTools from "@/components/site/RelatedTools";
 import { Breadcrumbs, Checklist, CtaBand, PageHero, PageShell, Section } from "@/components/site/Page";
 import { PLANS, PLAN_ORDER, PLAN_COMPARISON, PRODUCT, SINGLE_MASTER, STEM_SEPARATION, localized } from "@/lib/product";
@@ -28,6 +29,7 @@ export default function PricingPage() {
   return (
     <PageShell width="wide">
       <JsonLd data={organizationJsonLd()} />
+      <PricingViewTracker />
       <Breadcrumbs items={[{ name: "Home", href: "/" }, { name: "Pricing", href: "/pricing" }]} />
 
       <PageHero

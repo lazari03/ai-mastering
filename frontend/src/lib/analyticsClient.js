@@ -1,6 +1,7 @@
 "use client";
 
 import { sendTelemetrySignal } from "./telemetryDeck";
+import { getFirebaseAuth } from "./firebase";
 
 // ---------------------------------------------------------------------
 // First-party analytics client — the one place that talks to
@@ -65,6 +66,9 @@ const KNOWN_EVENT_NAMES = new Set([
   "login",
   "login_completed",
   "pricing_view",
+  "signup_completed",
+  "preset_applied",
+  "preset_saved",
   "pricing_viewed",
   "plan_selected",
   "checkout_started",
@@ -216,6 +220,21 @@ let heartbeatAccumulatorMs = 0;
 let tickInterval = null;
 let heartbeatInterval = null;
 let uidRef = null;
+// The gateway only links events to `uid` when a matching Firebase ID token
+// comes with them (body uid alone is spoofable). Kept from the last
+// successful getIdToken() so the unload path, which can't await, still has one.
+let tokenRef = null;
+
+async function currentIdToken() {
+  try {
+    const user = getFirebaseAuth()?.currentUser;
+    if (!user || user.isAnonymous || user.uid !== uidRef) return null;
+    tokenRef = await user.getIdToken(); // cached by Firebase; refreshes only near expiry
+    return tokenRef;
+  } catch {
+    return tokenRef;
+  }
+}
 
 function markInteraction() {
   lastInteractionAt = Date.now();
@@ -281,7 +300,19 @@ function flush(useBeacon = false) {
   }
 
   try {
-    if (useBeacon && navigator.sendBeacon) {
+    if (uidRef) {
+      // Signed-in: needs an Authorization header, which sendBeacon can't
+      // carry — fetch with keepalive survives page unload the same way.
+      const send = (token) =>
+        fetch(COLLECT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      if (useBeacon) send(tokenRef);
+      else currentIdToken().then(send, () => send(tokenRef));
+    } else if (useBeacon && navigator.sendBeacon) {
       const blob = new Blob([payload], { type: "application/json" });
       navigator.sendBeacon(COLLECT_URL, blob);
     } else {
@@ -302,6 +333,8 @@ function flush(useBeacon = false) {
 // first time it's known, never exposed further than that one field.
 export function identify(uid) {
   uidRef = uid || null;
+  tokenRef = null;
+  if (uidRef) currentIdToken();
 }
 
 // Called when entering a route that must never be tracked (the admin
