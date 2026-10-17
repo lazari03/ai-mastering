@@ -16,7 +16,7 @@
     "rule": "Before investigating a suspected defect run: python3 .claude/knowledge/kb.py issues --component <id> --grep <word>. Edit only the entry you own; append to history, never rewrite it."
   },
   "next_ids": {
-    "AUDIO": 10,
+    "AUDIO": 11,
     "BACKEND": 16,
     "BILLING": 1,
     "FRONTEND": 3,
@@ -1536,6 +1536,29 @@
       ],
       "source": "docs/audits/METRIC_VALIDATION.md",
       "validated_commit": "17accec",
+      "history": [
+        {
+          "date": "2026-10-17",
+          "agent": "qa-automation-engineer",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-010",
+      "title": "With bias-free benchmark metrics, 2 real-engine fixtures read past existing limits: bass_heavy kick-bass -2.86 dB re mid (limit -2.0; may be planned boom cut, compare not plan-aware) and bright punch loss 0.130 (limit 0.12)",
+      "component": "dsp.evaluation",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": null,
+      "repro": "cd backend && python -m pytest -q tests/test_benchmark_regressions.py -k heard_failures (2 strict xfails; remove marker to see)",
+      "evidence": "docs/audits/METRIC_VALIDATION.md",
+      "tests": [
+        "tests/test_benchmark_regressions.py"
+      ],
+      "source": "docs/audits/METRIC_VALIDATION.md",
+      "validated_commit": "0526e98",
       "history": [
         {
           "date": "2026-10-17",

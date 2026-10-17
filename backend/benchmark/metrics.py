@@ -21,7 +21,7 @@ from scipy.signal import butter, sosfiltfilt
 
 from ai_mastering.audio_utils import _transient_metrics, _true_peak_db
 from ai_mastering.band_levels import loudness_matched_band_deltas
-from ai_mastering.output_validation import HIGH_BANDS, LOW_END_MUSICAL_BANDS, GuardrailConfig
+from ai_mastering.output_validation import HIGH_BANDS, LOW_END_MUSICAL_BANDS, MID_REFERENCE_BAND, GuardrailConfig
 
 LIMITS = GuardrailConfig()
 # HF dip (dB) on kick frames vs. the rest, beyond which a master pumps.
@@ -37,6 +37,25 @@ def _stereo(x: np.ndarray) -> np.ndarray:
 
 def _lufs(x: np.ndarray, sr: int) -> float:
     return float(pyln.Meter(sr).integrated_loudness(x))
+
+
+def _remove_dc(x: np.ndarray) -> np.ndarray:
+    """Per-channel mean removed: DC is not music, but it inflates the envelope
+    baseline the punch score measures against (AURALITH-QA-005)."""
+    return (x - np.mean(x, axis=0, keepdims=True)).astype(np.float32)
+
+
+def midrange_relative(bands: dict) -> tuple[dict, float]:
+    """Band deltas with the loudness-matching midrange shift removed.
+
+    Matching integrated LUFS is not neutral when the change itself moves
+    loudness: cutting 6 dB of bass lowers LUFS, the match then lifts EVERY
+    band by that amount, so the cut reads shallower (-4.5 instead of -6) and
+    the untouched highs read as a boost (+1.5). The untouched midrange
+    (500-2000 Hz) carries exactly that shift, so deltas are reported relative
+    to it (AURALITH-QA-002). Returns (relative deltas, mid shift)."""
+    shift = float(bands.get(MID_REFERENCE_BAND, 0.0))
+    return {k: round(float(v) - shift, 3) for k, v in bands.items()}, shift
 
 
 def _band_env_db(mono: np.ndarray, sr: int, lo: float, hi: float, frame_s: float = 0.01) -> np.ndarray:
@@ -79,11 +98,13 @@ def compare(source: np.ndarray, candidate: np.ndarray, sr: int) -> dict:
     gain_db = float(np.clip(lufs_src - lufs_out, -24.0, 24.0))
     matched = candidate * (10.0 ** (gain_db / 20.0))
 
-    bands = loudness_matched_band_deltas(source, candidate, sr, lufs_src, lufs_out)
+    matched_bands = loudness_matched_band_deltas(source, candidate, sr, lufs_src, lufs_out)
+    bands, mid_shift = midrange_relative(matched_bands)
     low_change = min(bands[b] for b in LOW_END_MUSICAL_BANDS)
     high_change = max(bands[b] for b in HIGH_BANDS)
-    punch_src = float(_transient_metrics(source, sr).get("drum_punch_estimate", 0.0))
-    punch_out = float(_transient_metrics(matched, sr).get("drum_punch_estimate", 0.0))
+    source_nodc, matched_nodc = _remove_dc(source), _remove_dc(matched)
+    punch_src = float(_transient_metrics(source_nodc, sr).get("drum_punch_estimate", 0.0))
+    punch_out = float(_transient_metrics(matched_nodc, sr).get("drum_punch_estimate", 0.0))
     punch_loss = (punch_src - punch_out) / punch_src if punch_src >= MIN_PUNCH_TO_JUDGE else 0.0
     pump = pumping_db(source, matched, sr)
     tp = float(_true_peak_db(candidate))
@@ -104,6 +125,8 @@ def compare(source: np.ndarray, candidate: np.ndarray, sr: int) -> dict:
         "plr_db": round(tp - lufs_out, 2),
         "loudness_change_lu": round(lufs_out - lufs_src, 2),
         "band_deltas_db": bands,
+        "band_deltas_matched_db": matched_bands,
+        "midrange_shift_db": round(mid_shift, 3),
         "low_end_change_db": round(low_change, 2),
         "high_change_db": round(high_change, 2),
         "punch_source": round(punch_src, 3),

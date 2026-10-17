@@ -322,6 +322,30 @@ def score(records: list[dict]) -> dict:
 
 
 # ------------------------------------------------------------------- report
+PHASE2_MD = """## 5. Phase 2 benchmark fixes (benchmark/metrics.py only)
+
+Scorecard before (commit 0526e98) -> after, same 208 pairs. The production gate (ai_mastering/**) is untouched here.
+
+| item | before | after |
+|---|---|---|
+| low-end loss estimate error vs injected (mean / max abs) | +1.19 / 2.40 dB | -0.03 / 0.06 dB |
+| harsh-highs estimate error vs injected (mean abs / max abs) | 0.33 / 0.73 dB | 0.00 / 0.00 dB |
+| hiphop_bassheavy, loudness-matched -6 dB bass cut: low / high reading | -3.55 / +2.45 dB | -6.00 / 0.00 dB |
+| punch_loss with DC 0.005 / 0.02 / 0.1 (pop_mid) | 0.082 / 0.283 / 0.425 | 0.000 / 0.000 / 0.000 |
+| metrics.lost_drums firing on DC-offset pairs | 7/12 | 0/12 |
+| false flags on 16 controls (weaker_bass, harsh_highs, lost_drums, pumping) | 0 | 0 |
+| TPR by dose weaker_bass / harsh_highs (2 / 4 / 6 dB) | 0 / 1 / 1 | 0 / 1 / 1 (a 2 dB cut now reads exactly -2.00, not beyond the -2.0 limit) |
+
+Root cause of the ~1.2 dB low-end underestimate (QA-002): the loudness match is by integrated LUFS, and the change itself moves LUFS (a 6 dB cut below ~170 Hz lowers it ~1.5 dB). The match then lifts every band by that amount, so the cut reads shallower and untouched highs read as a boost. Band edges and weighting are not the cause (the 40-100 Hz independent FFT truth is reproduced to 0.06 dB once the shift is removed). Fix: `metrics.midrange_relative` reports every band delta relative to the 500-2000 Hz band (the same `MID_REFERENCE_BAND` the guardrails use); raw matched deltas stay in `band_deltas_matched_db`, the shift in `midrange_shift_db`.
+QA-005: per-channel DC is removed from source and candidate before the punch score.
+
+Side effects on existing tests (not hidden, thresholds not changed): two real-engine cases in tests/test_benchmark_regressions.py now read past the existing limits and are `xfail(strict)`:
+* bass_heavy (+6.5 dB boomy fixture): kick-bass -2.86 dB re midrange (limit -2.0); the old -0.92 was the LUFS-shift artefact. compare() is not plan-aware, so this may be the engine's planned boom correction; a decision for audio-dsp-engineer.
+* bright: punch loss 0.130 (limit 0.12) once the master's -62 dBFS residual DC is removed (DC-inflated reading 0.119).
+benchmark/baselines/synthetic.json does not contain these metrics, so no baseline was regenerated.
+"""
+
+
 def _fmt(v):
     return "-" if v is None else (f"{v:.2f}" if isinstance(v, float) else str(v))
 
@@ -383,6 +407,8 @@ def render_md(card: dict, records: list[dict], meta: dict) -> str:
         w(f"* {cls}: `{m['estimate']}` Spearman vs injected = {m['spearman']}, estimate range {m['estimate_range']}")
     w("")
     w("Per-case numbers: `test-results/metric_validation.json`.")
+    w("")
+    w(PHASE2_MD)
     w("")
     return "\n".join(L)
 
