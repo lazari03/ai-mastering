@@ -335,7 +335,7 @@ test("/app?tab=<key> deep links use real AppClient tab keys", () => {
 });
 
 test("safeInternalPath only accepts same-origin relative paths", () => {
-  const ok = ["/app", "/app?tab=plans&billing=yearly", "/admin/analytics"];
+  const ok = ["/app?tab=plans#billing", "/app", "/app?tab=plans&billing=yearly", "/admin/analytics"];
   const reject = ["//evil.com", "/\\evil.com", "https://evil.com", "javascript:alert(1)", "evil.com", "", null, undefined, "/a\nb"];
   for (const v of ok) assert.equal(nav.safeInternalPath(v), v);
   for (const v of reject) assert.equal(nav.safeInternalPath(v), "/app", String(v));
@@ -353,6 +353,7 @@ test("mobile menu is inert and focus-trapped when closed/open", () => {
   const header = read(join(SRC, "components/marketing/SiteHeader.jsx"));
   assert.match(header, /inert=\{!menuOpen\}/);
   assert.match(header, /e\.key !== "Tab"/);
+  assert.match(header, /min-width: 1024px/);
 });
 
 test("shared page canonical is its own URL, not the non-route /shared", () => {

@@ -76,6 +76,8 @@ export default function SiteHeader() {
         return;
       }
       if (e.key !== "Tab") return;
+      // The toggle is display:none at lg+; if it isn't rendered there is no menu to trap in.
+      if (!menuButtonRef.current || menuButtonRef.current.offsetParent === null) return;
       // Trap focus: cycle through the toggle button (it precedes the menu in DOM order) and the menu controls.
       const root = document.getElementById(menuId);
       const items = [menuButtonRef.current, ...(root?.querySelectorAll("a[href], button:not([disabled])") || [])].filter(Boolean);
@@ -92,12 +94,19 @@ export default function SiteHeader() {
       }
     };
     document.addEventListener("keydown", onKey);
+    // Rotating a tablet / widening the window past lg hides the menu: close it so
+    // the scroll lock and trap are released.
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onWide = (e) => e.matches && setMenuOpen(false);
+    mq.addEventListener("change", onWide);
+    if (mq.matches) setMenuOpen(false);
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     // Keyboard users land on the first menu link when it opens.
     document.getElementById(menuId)?.querySelector("a")?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
+      mq.removeEventListener("change", onWide);
       document.body.style.overflow = previous;
     };
   }, [menuOpen, menuId]);

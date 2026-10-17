@@ -199,7 +199,7 @@ export default function AppClient() {
   useEffect(() => {
     if (!loading && !registered) {
       // Keep the deep link (?tab=plans, ?job=...) so sign-in lands back here.
-      router.replace(loginWithRedirect(`${window.location.pathname}${window.location.search}`));
+      router.replace(loginWithRedirect(`${window.location.pathname}${window.location.search}${window.location.hash}`));
     }
   }, [loading, registered, router]);
 
