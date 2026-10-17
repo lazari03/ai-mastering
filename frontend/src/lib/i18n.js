@@ -274,8 +274,6 @@ const DICT = {
   "footer.link.chordProgressionFinder": { en: "Chord Progression Finder", sq: "Gjetës Progresioni Akordesh" },
   "footer.link.aiMasteringOnline": { en: "AI Mastering Online", sq: "Masterizim AI Online" },
   "footer.link.loudnessTargets": { en: "Loudness Targets by Genre", sq: "Objektivat e Zërit sipas Zhanrit" },
-  "footer.link.vsLandr": { en: "vs LANDR", sq: "vs LANDR" },
-  "footer.link.vsEmastered": { en: "vs eMastered", sq: "vs eMastered" },
 
   "login.brand": { en: "Auralith Forge", sq: "Auralith Forge" },
   "login.back": { en: "Back to home", sq: "Kthehu te kryefaqja" },
@@ -315,7 +313,15 @@ const DICT = {
   "nav.skipToContent": { en: "Skip to content", sq: "Kalo te përmbajtja" },
   "nav.primaryLabel": { en: "Primary", sq: "Kryesore" },
   "nav.studioLabel": { en: "Studio", sq: "Studio" },
-  "nav.menuLabel": { en: "Main menu", sq: "Menyja kryesore" },
+  "routeError.eyebrow": { en: "Something went wrong", sq: "Diçka shkoi keq" },
+  "routeError.title": { en: "This page failed to load", sq: "Kjo faqe nuk u ngarkua" },
+  "routeError.body": {
+    en: "It's on our side, not yours. Try again — if it keeps happening, your files and masters are safe; head back to the app or the homepage.",
+    sq: "Gabimi është nga ana jonë, jo e jotja. Provo sërish — nëse vazhdon, skedarët dhe masterat e tua janë të sigurt; kthehu te aplikacioni ose kryefaqja.",
+  },
+  "routeError.retry": { en: "Try again", sq: "Provo sërish" },
+  "routeError.openApp": { en: "Open the app", sq: "Hap aplikacionin" },
+  "routeError.reference": { en: "Reference: {digest}", sq: "Referenca: {digest}" },
   "notFound.eyebrow": { en: "404", sq: "404" },
   "notFound.title": { en: "This page doesn't exist", sq: "Kjo faqe nuk ekziston" },
   "notFound.body": {

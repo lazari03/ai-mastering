@@ -4,23 +4,27 @@
 // here resolves to a real App Router route. To add or move a page, change it
 // here once - never hardcode a nav href in a component.
 //
-// Labels are i18n keys (lib/i18n.js, en + sq), except tool and genre/vs names,
-// which are already bilingual objects in lib/studio.js and the content files.
+// Labels are i18n keys (lib/i18n.js, en + sq), except tool names (bilingual
+// objects in lib/studio.js) and genre / competitor names, which are proper
+// nouns from the content files and are not translated.
 // Relative .js imports (not "@/") so the node:test link guard can load this.
 import { GENRE_KEYS, GENRE_PAGES } from "../content/genrePages.js";
 import { COMPARISON_KEYS, COMPARISON_PAGES } from "../content/comparisonPages.js";
-import { STUDIO_GROUPS } from "./studio.js";
+import { STUDIO_GROUPS, SIGNUP_URL, APP_URL } from "./studio.js";
 
 export { STUDIO_GROUPS };
 
 export const HOME = "/";
 export const SIGNIN = "/login";
-export const SIGNUP = "/login?mode=signup";
-export const APP = "/app";
+export const SIGNUP = SIGNUP_URL; // defined once in lib/studio.js
+export const APP = APP_URL;
+export const PRICING = "/pricing";
+export const BLOG = "/blog";
 
 // Header bar links (desktop) and the chip row in the mobile menu.
+// "All tools" lives in the Studio panel on desktop and leads the mobile chip row.
+export const TOOLS_HUB = { href: "/tools", labelKey: "nav.allTools" };
 export const PRIMARY_NAV = [
-  { href: "/tools", labelKey: "nav.allTools" },
   { href: "/pricing", labelKey: "nav.pricing" },
   { href: "/blog", labelKey: "nav.blog" },
   { href: "/#faq", labelKey: "nav.faq" },
@@ -43,9 +47,12 @@ export const GENRE_NAV = GENRE_KEYS.map((key) => ({ key, href: `/master/${key}`,
 // /vs/<competitor>, one per COMPARISON_PAGES entry.
 export const COMPARE_NAV = COMPARISON_KEYS.map((key) => ({ key, href: `/vs/${key}`, label: COMPARISON_PAGES[key].label }));
 
-export const RESOURCES_NAV = [
+// Footer "Resources" column, in order: guides, comparisons (COMPARE_NAV), misc.
+export const RESOURCES_GUIDES_NAV = [
   { href: "/blog", labelKey: "nav.blog" },
   { href: "/mastering-loudness-targets", labelKey: "footer.link.loudnessTargets" },
+];
+export const RESOURCES_MISC_NAV = [
   { href: "/newsletter", labelKey: "footer.link.newsletter" },
   { href: "/#faq", labelKey: "footer.link.faq" },
 ];
@@ -72,6 +79,21 @@ export const ADMIN_NAV = [
   { href: "/admin/analytics/retention", labelKey: "admin.nav.retention" },
   { href: "/admin/users", labelKey: "admin.nav.users" },
 ];
+
+/**
+ * Post-login redirect guard: only a same-origin relative path is accepted
+ * (single leading "/", no "//", no backslash, no scheme, no control chars).
+ */
+export function safeInternalPath(value, fallback = APP) {
+  if (typeof value !== "string" || !value.startsWith("/")) return fallback;
+  if (value.startsWith("//") || value.includes("\\") || /[\u0000-\u001f]/.test(value)) return fallback;
+  return value;
+}
+
+/** /login URL that returns the user to `path` (pathname + search) after sign-in. */
+export function loginWithRedirect(path) {
+  return `${SIGNIN}?redirect=${encodeURIComponent(safeInternalPath(path, APP))}`;
+}
 
 // Not-found page shortcuts.
 export const NOT_FOUND_LINKS = {

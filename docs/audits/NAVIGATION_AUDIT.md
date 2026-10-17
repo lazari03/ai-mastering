@@ -39,6 +39,20 @@ Other defects fixed (not 404s, but needed for one consistent pattern):
 
 `/about` and `/contact`. Contact is the `/#contact` section of the homepage (mailto studio@auralithforge.app), which is what nav and footer link to.
 
-## Not changed
+## Review round (follow-up commit)
 
-`app/error.js` (route error boundary) still has English-only copy; it is outside the link scope.
+An independent review of the first commit required these changes; all are done.
+
+| Item | Change |
+|---|---|
+| Mobile menu `inert` | `inert={!menuOpen}` (React 19 ignores `""`). Verified in Chromium: closed menu has `inert` and 0 tabbable controls. Focus is trapped while open (60 Tabs never left it; Shift+Tab stays inside). |
+| `/tools` in desktop bar | Removed from `PRIMARY_NAV` (sq "Të gjitha mjetet" wrapped to 3 lines at 1024px, header 62 to 93px). It stays in the Studio panel ("All tools") and leads the mobile chip row (`TOOLS_HUB`). Header measured 62px at 1024 and 1280px in en and sq. |
+| Guard test | Anchors are looked up only in the target page's own import graph (removing `id="faq"` from the homepage now fails). `CTA.*`, `planSignupHref()` output, `href={CONST}` and link-table literals in `lib/*` are resolved. `?redirect=`/`?next=` targets are validated. Dead block removed. Each case was proven by temporarily breaking a link. |
+| Single sign-in/up source | `SIGNUP_URL` (studio.js) is re-exported as `SIGNUP`; `CTA` in `lib/internalLinks.js` reads `SIGNIN`/`SIGNUP`/`PRICING`/`BLOG` from `lib/navigation.js`. |
+| Lost destination | Signed-out `/app?...` and the admin gate go to `/login?redirect=<current path>` (`loginWithRedirect`). Verified `/app?tab=plans` lands on `/login?redirect=%2Fapp%3Ftab%3Dplans`. |
+| Open redirect | `LoginClient` uses `safeInternalPath` (rejects `//`, backslash, schemes, control characters). |
+| `/shared/[jobId]` canonical | `generateMetadata` uses `/shared/<jobId>` (noindex kept). |
+| Share URL origin | `settings.frontendOrigin` is `firstOrigin(FRONTEND_ORIGIN)` (first trimmed entry of a comma-separated list). Test: `backend-node/src/config/__tests__/firstOrigin.test.js`. |
+| Cleanup | Unused i18n keys removed; footer Resources uses explicit `RESOURCES_GUIDES_NAV` / `RESOURCES_MISC_NAV`; `app/error.js` localized (en + sq). |
+
+Crawl after this round: desktop and mobile, en and sq, 33 pages each, 0 broken links.

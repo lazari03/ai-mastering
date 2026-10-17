@@ -5,6 +5,7 @@
 // relationship or a CTA destination once, here, and every page that uses
 // it updates together.
 import { GENRE_KEYS } from "@/content/genrePages";
+import { BLOG, PRICING, SIGNIN, SIGNUP } from "@/lib/navigation";
 import { POSTS } from "@/content/posts";
 
 // ---- Conversion CTA targets ------------------------------------------
@@ -15,15 +16,15 @@ export const CTA = {
   // current use of this is a "try it free" conversion moment, not a
   // returning-user login, so defaulting to Sign In there cost every one of
   // them an extra, unnecessary click to find the right tab.
-  signup: "/login?mode=signup",
+  signup: SIGNUP,
   // Explicit "I already have an account" entry point — used only by the
   // header's own "Sign In" links, which should default to that tab.
-  signin: "/login",
+  signin: SIGNIN,
   // Anonymous visitors can't check out directly (Polar checkout requires
   // an authed uid — see PlansPanel.jsx), so "subscribe" from a public
   // page always means "go see the plans," not a direct checkout link.
-  pricing: "/pricing",
-  blog: "/blog",
+  pricing: PRICING,
+  blog: BLOG,
 };
 
 // Signup that lands on the in-app Plans page with the chosen billing

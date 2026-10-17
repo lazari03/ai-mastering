@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import LogoMark from "@/components/brand/LogoMark";
 import NewsletterWidget from "@/components/marketing/NewsletterWidget";
 import { useLanguage } from "@/lib/i18n";
-import { COMPARE_NAV, GENRE_NAV, HOME, isActiveHref, LEGAL_NAV, PRODUCT_NAV, PUBLIC_TOOLS, RESOURCES_NAV } from "@/lib/navigation";
+import { COMPARE_NAV, GENRE_NAV, HOME, isActiveHref, LEGAL_NAV, PRODUCT_NAV, PUBLIC_TOOLS, RESOURCES_GUIDES_NAV, RESOURCES_MISC_NAV } from "@/lib/navigation";
 import { loc } from "@/lib/studio";
 
 // Site-wide footer. Every column renders from lib/navigation.js (tools from
@@ -86,7 +86,7 @@ export default function Footer() {
           </Column>
 
           <Column title={t("footer.col.resources")}>
-            {RESOURCES_NAV.slice(0, 2).map((item) => (
+            {RESOURCES_GUIDES_NAV.map((item) => (
               <FooterLink key={item.href} href={item.href}>
                 {t(item.labelKey)}
               </FooterLink>
@@ -96,7 +96,7 @@ export default function Footer() {
                 {t("footer.link.vsCompetitor", { name: c.label })}
               </FooterLink>
             ))}
-            {RESOURCES_NAV.slice(2).map((item) => (
+            {RESOURCES_MISC_NAV.map((item) => (
               <FooterLink key={item.href} href={item.href}>
                 {t(item.labelKey)}
               </FooterLink>

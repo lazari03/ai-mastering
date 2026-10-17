@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import { useLanguage } from "@/lib/i18n";
-import { isActiveHref, PRIMARY_NAV, SIGNIN, SIGNUP, STUDIO_GROUPS } from "@/lib/navigation";
+import { isActiveHref, PRIMARY_NAV, SIGNIN, SIGNUP, STUDIO_GROUPS, TOOLS_HUB } from "@/lib/navigation";
 import { loc } from "@/lib/studio";
 import { trackEvent } from "@/lib/analytics";
 
@@ -70,9 +70,26 @@ export default function SiteHeader() {
   useEffect(() => {
     if (!menuOpen) return undefined;
     const onKey = (e) => {
-      if (e.key !== "Escape") return;
-      setMenuOpen(false);
-      menuButtonRef.current?.focus();
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      // Trap focus: cycle through the toggle button (it precedes the menu in DOM order) and the menu controls.
+      const root = document.getElementById(menuId);
+      const items = [menuButtonRef.current, ...(root?.querySelectorAll("a[href], button:not([disabled])") || [])].filter(Boolean);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !items.includes(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !items.includes(active))) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     const previous = document.body.style.overflow;
@@ -224,7 +241,7 @@ export default function SiteHeader() {
 
       {/* Full-screen menu (below lg). Always rendered so the closing
           choreography plays; items ride in on staggered delays. */}
-      <div id={menuId} className={`fixed inset-0 z-40 lg:hidden ${menuOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!menuOpen} inert={!menuOpen ? "" : undefined}>
+      <div id={menuId} className={`fixed inset-0 z-40 lg:hidden ${menuOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!menuOpen} inert={!menuOpen}>
         <div
           className={`absolute inset-0 bg-bg/90 backdrop-blur-2xl transition-opacity duration-700 ${EASE} ${menuOpen ? "opacity-100" : "opacity-0"}`}
           onClick={() => setMenuOpen(false)}
@@ -262,7 +279,7 @@ export default function SiteHeader() {
           </nav>
 
           <nav aria-label={t("nav.primaryLabel")} className="mt-8 flex flex-wrap gap-2">
-            {PRIMARY_NAV.map((link) => (
+            {[TOOLS_HUB, ...PRIMARY_NAV].map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
