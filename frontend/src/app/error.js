@@ -3,10 +3,13 @@
 import { useEffect } from "react";
 
 import StatePanel from "@/components/site/StatePanel";
+import { useLanguage } from "@/lib/i18n";
+import { APP } from "@/lib/navigation";
 
 // Route-level error boundary: a server/render failure on any page lands
 // here instead of a blank screen, with a retry and a way out.
 export default function RouteError({ error, reset }) {
+  const { t } = useLanguage();
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -15,16 +18,16 @@ export default function RouteError({ error, reset }) {
     <main id="main" className="mx-auto w-full max-w-[1080px] px-4 py-16 sm:px-6">
       <StatePanel
         tone="error"
-        eyebrow="Something went wrong"
-        title="This page failed to load"
-        body="It's on our side, not yours. Try again — if it keeps happening, your files and masters are safe; head back to the app or the homepage."
+        eyebrow={t("routeError.eyebrow")}
+        title={t("routeError.title")}
+        body={t("routeError.body")}
         headingLevel={1}
         actions={[
-          { label: "Try again", onClick: () => reset() },
-          { href: "/app", label: "Open the app" },
+          { label: t("routeError.retry"), onClick: () => reset() },
+          { href: APP, label: t("routeError.openApp") },
         ]}
       />
-      {error?.digest ? <p className="text-center font-mono text-[11px] text-text-secondary">Reference: {error.digest}</p> : null}
+      {error?.digest ? <p className="text-center font-mono text-[11px] text-text-secondary">{t("routeError.reference", { digest: error.digest })}</p> : null}
     </main>
   );
 }

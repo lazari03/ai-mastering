@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { useAuthStore } from "@/store/authStore";
 import { useLanguage } from "@/lib/i18n";
+import { APP, safeInternalPath } from "@/lib/navigation";
 import { scorePassword } from "@/lib/passwordStrength";
 import { Spinner } from "@/components/ui/Spinner";
 import LogoMark from "@/components/brand/LogoMark";
@@ -52,7 +53,7 @@ export default function LoginClient() {
     // sign in. Signing up from here links the anonymous session instead
     // (authStore.claimWithEmail / claimWithGoogle).
     if (!loading && user && !user.isAnonymous) {
-      router.replace(redirectTo && redirectTo.startsWith("/") ? redirectTo : "/app");
+      router.replace(safeInternalPath(redirectTo, APP));
     }
   }, [loading, user, router, redirectTo]);
 

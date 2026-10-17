@@ -124,7 +124,7 @@ export default function HomeClient() {
   return (
     <>
     <ScrollReveal />
-    <main className="mx-auto w-full max-w-[1280px] px-4 pb-32 pt-4 sm:px-6">
+    <main id="main" className="mx-auto w-full max-w-[1280px] px-4 pb-32 pt-4 sm:px-6">
       <SiteHeader />
 
       {/* Editorial Split: the type block owns the left, the real product

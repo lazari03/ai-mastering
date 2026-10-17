@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
 import LogoMark from "@/components/brand/LogoMark";
 import LanguageSwitch from "@/components/brand/LanguageSwitch";
 import { useLanguage } from "@/lib/i18n";
-import { CTA } from "@/lib/internalLinks";
-import { loc, STUDIO_GROUPS } from "@/lib/studio";
+import { isActiveHref, PRIMARY_NAV, SIGNIN, SIGNUP, STUDIO_GROUPS, TOOLS_HUB } from "@/lib/navigation";
+import { loc } from "@/lib/studio";
 import { trackEvent } from "@/lib/analytics";
 
 function trackOpenAppClick() {
@@ -17,16 +17,9 @@ function trackOpenAppClick() {
 
 const EASE = "ease-[cubic-bezier(0.32,0.72,0,1)]";
 
-// Absolute paths ("/#pricing", not "#pricing") so the same header works on
-// every route: on the homepage the browser treats them as in-page jumps,
-// everywhere else they navigate home and scroll to the section. (Bare
-// "#pricing" links used to do nothing at all outside the homepage.)
-const NAV_LINKS = [
-  { href: "/pricing", key: "nav.pricing" },
-  { href: "/blog", key: "nav.blog" },
-  { href: "/#faq", key: "nav.faq" },
-  { href: "/#contact", key: "nav.contact" },
-];
+// Nav items come from lib/navigation.js (PRIMARY_NAV, STUDIO_GROUPS) - the
+// same lists the footer renders. Hash links are absolute ("/#faq") so they work
+// from every route: in-page jump on home, navigate-and-scroll elsewhere.
 
 /**
  * The site-wide header: a floating island with the Studio menu (every
@@ -43,6 +36,8 @@ export default function SiteHeader() {
   const sentinelRef = useRef(null);
   const studioRef = useRef(null);
   const studioPanelId = useId();
+  const menuId = useId();
+  const menuButtonRef = useRef(null);
 
   useEffect(() => {
     const node = sentinelRef.current;
@@ -74,23 +69,55 @@ export default function SiteHeader() {
   // Full-screen menu: Escape closes it, and the page behind doesn't scroll.
   useEffect(() => {
     if (!menuOpen) return undefined;
-    const onKey = (e) => e.key === "Escape" && setMenuOpen(false);
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      // The toggle is display:none at lg+; if it isn't rendered there is no menu to trap in.
+      if (!menuButtonRef.current || menuButtonRef.current.offsetParent === null) return;
+      // Trap focus: cycle through the toggle button (it precedes the menu in DOM order) and the menu controls.
+      const root = document.getElementById(menuId);
+      const items = [menuButtonRef.current, ...(root?.querySelectorAll("a[href], button:not([disabled])") || [])].filter(Boolean);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !items.includes(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !items.includes(active))) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     document.addEventListener("keydown", onKey);
+    // Rotating a tablet / widening the window past lg hides the menu: close it so
+    // the scroll lock and trap are released.
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onWide = (e) => e.matches && setMenuOpen(false);
+    mq.addEventListener("change", onWide);
+    if (mq.matches) setMenuOpen(false);
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // Keyboard users land on the first menu link when it opens.
+    document.getElementById(menuId)?.querySelector("a")?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
+      mq.removeEventListener("change", onWide);
       document.body.style.overflow = previous;
     };
-  }, [menuOpen]);
+  }, [menuOpen, menuId]);
 
-  const isActive = (href) => href !== "/" && !href.startsWith("/#") && pathname?.startsWith(href.split("?")[0]);
+  const isActive = (href) => isActiveHref(pathname, href);
 
   return (
     <>
       <div ref={sentinelRef} aria-hidden="true" className="h-px w-full" />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-text-primary focus:px-4 focus:py-2 focus:text-sm focus:text-bg">
-        Skip to content
+        {t("nav.skipToContent")}
       </a>
       {/* Floating island: sticky, breaks out to full viewport width via
           margins (not a transform, which would re-anchor the fixed scrim
@@ -118,7 +145,7 @@ export default function SiteHeader() {
             </span>
           </Link>
 
-          <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
+          <nav aria-label={t("nav.primaryLabel")} className="hidden items-center gap-1 lg:flex">
             <button
               type="button"
               aria-expanded={studioOpen}
@@ -133,27 +160,27 @@ export default function SiteHeader() {
                 <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             </button>
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.key}
+            {PRIMARY_NAV.map((link) => (
+              <Link
+                key={link.href}
                 href={link.href}
                 aria-current={isActive(link.href) ? "page" : undefined}
                 className={`rounded-full px-3 py-1.5 text-[13px] transition-all duration-500 ${EASE} hover:bg-black/[0.045] hover:text-text-primary ${
                   isActive(link.href) ? "text-text-primary" : "text-text-secondary"
                 }`}
               >
-                {t(link.key)}
-              </a>
+                {t(link.labelKey)}
+              </Link>
             ))}
           </nav>
 
           <div className="hidden items-center gap-3 md:flex">
             <LanguageSwitch lang={lang} setLang={setLang} />
-            <Link href={CTA.signin} className="text-[13px] text-text-secondary transition hover:text-text-primary">
+            <Link href={SIGNIN} className="text-[13px] text-text-secondary transition hover:text-text-primary">
               {t("nav.signin")}
             </Link>
             <Link
-              href={CTA.signup}
+              href={SIGNUP}
               onClick={trackOpenAppClick}
               className={`group flex items-center gap-2.5 rounded-full bg-text-primary py-1.5 pl-5 pr-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-bg transition-all duration-500 ${EASE} active:scale-[0.98]`}
             >
@@ -169,8 +196,10 @@ export default function SiteHeader() {
 
           <button
             type="button"
+            ref={menuButtonRef}
             onClick={() => setMenuOpen((v) => !v)}
             aria-expanded={menuOpen}
+            aria-controls={menuId}
             aria-label={menuOpen ? t("app.closeMenu") : t("app.menu")}
             className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/[0.045] transition-transform duration-500 ${EASE} active:scale-95 lg:hidden`}
           >
@@ -221,7 +250,7 @@ export default function SiteHeader() {
 
       {/* Full-screen menu (below lg). Always rendered so the closing
           choreography plays; items ride in on staggered delays. */}
-      <div className={`fixed inset-0 z-40 lg:hidden ${menuOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!menuOpen}>
+      <div id={menuId} className={`fixed inset-0 z-40 lg:hidden ${menuOpen ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!menuOpen} inert={!menuOpen}>
         <div
           className={`absolute inset-0 bg-bg/90 backdrop-blur-2xl transition-opacity duration-700 ${EASE} ${menuOpen ? "opacity-100" : "opacity-0"}`}
           onClick={() => setMenuOpen(false)}
@@ -231,7 +260,7 @@ export default function SiteHeader() {
             menuOpen ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
           }`}
         >
-          <nav aria-label="Studio" className="grid gap-7 sm:grid-cols-2">
+          <nav aria-label={t("nav.studioLabel")} className="grid gap-7 sm:grid-cols-2">
             {STUDIO_GROUPS.map((group) => (
               <div key={group.key}>
                 <p className="eyebrow m-0">{loc(group.label, lang)}</p>
@@ -258,14 +287,18 @@ export default function SiteHeader() {
             ))}
           </nav>
 
-          <nav aria-label="Primary" className="mt-8 flex flex-wrap gap-2">
-            <Link href="/tools" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)} className="btn-secondary btn-sm">
-              {t("nav.allTools")}
-            </Link>
-            {NAV_LINKS.map((link) => (
-              <a key={link.key} href={link.href} tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)} className="btn-secondary btn-sm">
-                {t(link.key)}
-              </a>
+          <nav aria-label={t("nav.primaryLabel")} className="mt-8 flex flex-wrap gap-2">
+            {[TOOLS_HUB, ...PRIMARY_NAV].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                tabIndex={menuOpen ? 0 : -1}
+                onClick={() => setMenuOpen(false)}
+                aria-current={isActive(link.href) ? "page" : undefined}
+                className={`btn-secondary btn-sm ${isActive(link.href) ? "!border-text-primary" : ""}`}
+              >
+                {t(link.labelKey)}
+              </Link>
             ))}
           </nav>
 
@@ -273,13 +306,13 @@ export default function SiteHeader() {
 
           <div className="mt-10">
             <div className="mb-4 flex items-center justify-between gap-2">
-              <Link href={CTA.signin} tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)} className="text-sm text-text-secondary">
+              <Link href={SIGNIN} tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)} className="text-sm text-text-secondary">
                 {t("nav.signin")}
               </Link>
               <LanguageSwitch lang={lang} setLang={setLang} />
             </div>
             <Link
-              href={CTA.signup}
+              href={SIGNUP}
               tabIndex={menuOpen ? 0 : -1}
               onClick={() => {
                 trackOpenAppClick();

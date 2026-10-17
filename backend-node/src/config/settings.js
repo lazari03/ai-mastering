@@ -11,6 +11,15 @@ const rootDir = path.resolve(__dirname, "../../");
 
 const toAbs = (value, fallbackRel) => path.resolve(rootDir, value || fallbackRel);
 
+/** First non-empty, trimmed entry of a comma-separated origin list, no trailing slash; null if none. */
+export function firstOrigin(value) {
+  const first = String(value || "")
+    .split(",")
+    .map((v) => v.trim())
+    .find(Boolean);
+  return first ? first.replace(/\/+$/, "") : null;
+}
+
 export const settings = {
   appTitle: "AI Mastering API (Node)",
   appVersion: "1.0.0",
@@ -47,7 +56,9 @@ export const settings = {
   // something to rely on in production (a request can be spoofed/proxied
   // in ways that make req.host unreliable for anything security-sensitive,
   // though a share link's own token is what's actually authoritative here).
-  frontendOrigin: process.env.FRONTEND_ORIGIN || null,
+  // FRONTEND_ORIGIN may list several comma-separated origins (CORS); links
+  // are built from the first one only.
+  frontendOrigin: firstOrigin(process.env.FRONTEND_ORIGIN),
   uploadDir: toAbs(process.env.UPLOAD_DIR, "uploads"),
   outputDir: toAbs(process.env.OUTPUT_DIR, "outputs"),
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB || 200),

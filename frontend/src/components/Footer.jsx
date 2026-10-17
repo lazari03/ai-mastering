@@ -1,20 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import LogoMark from "@/components/brand/LogoMark";
 import NewsletterWidget from "@/components/marketing/NewsletterWidget";
-import { GENRE_KEYS, GENRE_PAGES } from "@/content/genrePages";
 import { useLanguage } from "@/lib/i18n";
-import { loc, STUDIO_GROUPS } from "@/lib/studio";
+import { COMPARE_NAV, GENRE_NAV, HOME, isActiveHref, LEGAL_NAV, PRODUCT_NAV, PUBLIC_TOOLS, RESOURCES_GUIDES_NAV, RESOURCES_MISC_NAV } from "@/lib/navigation";
+import { loc } from "@/lib/studio";
 
-// Site-wide footer. Every link that was here before is still here (the
-// public tools, AI Mastering Online, loudness targets, both comparisons,
-// guides, terms/privacy/refund) — plus the SEO pages the old footer never
-// linked: LUFS Meter, the /tools hub and all eight /master/<genre> pages.
-// Tool lists come from lib/studio.js so the footer can't list a tool the
-// product doesn't have.
-const PUBLIC_ANALYZE = STUDIO_GROUPS.find((g) => g.key === "analyze").tools;
+// Site-wide footer. Every column renders from lib/navigation.js (tools from
+// lib/studio.js via it), so the footer can't list a page or tool that doesn't
+// exist and can't drift from the header.
 
 function Column({ title, children }) {
   return (
@@ -26,9 +23,11 @@ function Column({ title, children }) {
 }
 
 function FooterLink({ href, children }) {
+  const pathname = usePathname();
+  const active = isActiveHref(pathname, href);
   return (
     <li>
-      <Link href={href} className="text-[13px] text-text-secondary transition hover:text-text-primary">
+      <Link href={href} aria-current={active ? "page" : undefined} className={`text-[13px] transition hover:text-text-primary ${active ? "text-text-primary" : "text-text-secondary"}`}>
         {children}
       </Link>
     </li>
@@ -53,7 +52,7 @@ export default function Footer() {
 
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 py-12 md:grid-cols-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)] [&>*]:min-w-0">
           <div className="col-span-2 md:col-span-3 lg:col-span-1">
-            <Link href="/" className="flex items-center gap-2.5 text-text-primary">
+            <Link href={HOME} className="flex items-center gap-2.5 text-text-primary">
               <LogoMark size={20} />
               <span className="text-[12px] font-semibold uppercase tracking-[0.22em]">
                 Auralith <span className="font-normal text-text-secondary">Forge</span>
@@ -63,14 +62,15 @@ export default function Footer() {
           </div>
 
           <Column title={t("footer.col.product")}>
-            <FooterLink href="/ai-mastering-online">{t("footer.link.aiMasteringOnline")}</FooterLink>
-            <FooterLink href="/tools">{t("footer.link.allTools")}</FooterLink>
-            <FooterLink href="/pricing">{t("footer.link.pricing")}</FooterLink>
-            <FooterLink href="/login?mode=signup">{t("footer.link.openApp")}</FooterLink>
+            {PRODUCT_NAV.map((item) => (
+              <FooterLink key={item.href} href={item.href}>
+                {t(item.labelKey)}
+              </FooterLink>
+            ))}
           </Column>
 
           <Column title={t("footer.col.analyze")}>
-            {PUBLIC_ANALYZE.map((tool) => (
+            {PUBLIC_TOOLS.map((tool) => (
               <FooterLink key={tool.key} href={tool.href}>
                 {loc(tool.name, lang)}
               </FooterLink>
@@ -78,26 +78,37 @@ export default function Footer() {
           </Column>
 
           <Column title={t("footer.col.genres")}>
-            {GENRE_KEYS.map((g) => (
-              <FooterLink key={g} href={`/master/${g}`}>
-                {GENRE_PAGES[g].label} mastering
+            {GENRE_NAV.map((g) => (
+              <FooterLink key={g.key} href={g.href}>
+                {t("footer.link.genreMastering", { genre: g.label })}
               </FooterLink>
             ))}
           </Column>
 
           <Column title={t("footer.col.resources")}>
-            <FooterLink href="/blog">{t("nav.blog")}</FooterLink>
-            <FooterLink href="/mastering-loudness-targets">{t("footer.link.loudnessTargets")}</FooterLink>
-            <FooterLink href="/vs/landr">Auralith {t("footer.link.vsLandr")}</FooterLink>
-            <FooterLink href="/vs/emastered">Auralith {t("footer.link.vsEmastered")}</FooterLink>
-            <FooterLink href="/#faq">{t("footer.link.faq")}</FooterLink>
+            {RESOURCES_GUIDES_NAV.map((item) => (
+              <FooterLink key={item.href} href={item.href}>
+                {t(item.labelKey)}
+              </FooterLink>
+            ))}
+            {COMPARE_NAV.map((c) => (
+              <FooterLink key={c.key} href={c.href}>
+                {t("footer.link.vsCompetitor", { name: c.label })}
+              </FooterLink>
+            ))}
+            {RESOURCES_MISC_NAV.map((item) => (
+              <FooterLink key={item.href} href={item.href}>
+                {t(item.labelKey)}
+              </FooterLink>
+            ))}
           </Column>
 
           <Column title={t("footer.col.legal")}>
-            <FooterLink href="/terms">{t("footer.legal.terms")}</FooterLink>
-            <FooterLink href="/privacy">{t("footer.legal.privacy")}</FooterLink>
-            <FooterLink href="/refund">{t("footer.legal.refund")}</FooterLink>
-            <FooterLink href="/#contact">{t("footer.link.contact")}</FooterLink>
+            {LEGAL_NAV.map((item) => (
+              <FooterLink key={item.href} href={item.href}>
+                {t(item.labelKey)}
+              </FooterLink>
+            ))}
           </Column>
         </div>
 

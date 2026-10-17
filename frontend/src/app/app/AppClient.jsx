@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { loginWithRedirect } from "@/lib/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 
@@ -197,7 +198,8 @@ export default function AppClient() {
 
   useEffect(() => {
     if (!loading && !registered) {
-      router.replace("/login");
+      // Keep the deep link (?tab=plans, ?job=...) so sign-in lands back here.
+      router.replace(loginWithRedirect(`${window.location.pathname}${window.location.search}${window.location.hash}`));
     }
   }, [loading, registered, router]);
 
