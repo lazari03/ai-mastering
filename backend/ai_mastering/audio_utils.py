@@ -12,6 +12,7 @@ from scipy.signal import butter, resample_poly, sosfiltfilt
 from .analysis.dynamics import bpm_confidence, clipping_evidence, peak_percentile_db
 from .analysis.loudness import FastMeter, full_loudness_analysis, loudness_series
 from .analysis.spectral import analyze_spectrum, sibilance_evidence
+from .planning import config as C
 
 EPS = 1e-9
 MASTER_SR = 44100
@@ -349,6 +350,12 @@ def _transient_metrics(audio_stereo: np.ndarray, sr: int) -> dict:
         return empty  # too short for a meaningful windowed estimate — neutral/safe, never blocks a render
 
     mono = ((audio_stereo[:, 0] + audio_stereo[:, 1]) * 0.5).astype(np.float64)
+    if C.TRANSIENT_DC_REMOVAL:
+        # A constant offset adds to every 10 ms frame's RMS: it lifts the
+        # sustained baseline, flattens the >6 dB onset rises and caps block
+        # crest, so DC alone read as up to 0.4 of "lost punch" (AURALITH-QA-005,
+        # metric_validation dc_offset). Transients are AC by definition.
+        mono = mono - float(np.mean(mono))
 
     def _onset_strength(signal: np.ndarray, win_s: float = 0.01) -> tuple[float, float]:
         win = max(1, int(sr * win_s))

@@ -166,6 +166,7 @@ _AS_EVAL_KIND = {
     "high_frequency_boost": "hf_growth",
     "excessive_band_change": "band_collateral",
     "phase_correlation": "unsafe_correlation",
+    "mono_compatibility": "unsafe_correlation",
 }
 
 

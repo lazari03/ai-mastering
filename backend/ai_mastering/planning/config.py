@@ -316,6 +316,73 @@ ADDED_DISTORTION_WARN_MARGIN_DB = 2.0
 # Matches the true-peak tolerance QC and the evaluator already use.
 TRUE_PEAK_TOLERANCE_DB = 0.15
 
+# ---------------------------------------------------------------------------
+# Gate detectors added for localized / dynamics / stereo damage
+# (docs/audits/DSP_GATE_ACCURACY.md: evidence, before/after, rollback).
+# Each check has its own switch; setting it False restores the parent
+# behaviour of that check exactly. Thresholds were calibrated on the
+# defect corpus (benchmark/defect_corpus.py) AND on every candidate the
+# engine rendered for the synthetic regression corpus + API-lab inputs
+# (none of which may trip them), then placed at a musically meaningful
+# value between the two, not at the corpus doses.
+# ---------------------------------------------------------------------------
+# DC is removed before transient/punch/short-term-crest measurement
+# (AURALITH-QA-005): a constant offset is not a transient property.
+TRANSIENT_DC_REMOVAL = True
+# With DC no longer faking a punch loss, a DC-contaminated master must
+# fail for the right reason: residual DC above -40 dBFS (1 % of full
+# scale) fails QC. master_track removes DC above -50 dBFS before QC, so
+# only audio that bypassed that correction can reach this line.
+DC_OFFSET_FAIL_CHECK = True
+QC_DC_OFFSET_FAIL_DBFS = -40.0
+# Short distortion bursts (AURALITH-AUDIO-007): residual-to-master dB in
+# the worst 400 ms window of loud frames. -12 dB = residual at a quarter
+# of the signal's amplitude inside that window: plainly audible crunch.
+# Engine renders measured -89..-15.6 dB (worst delivered -17.2).
+WINDOWED_DISTORTION_CHECK = True
+DISTORTION_WINDOW_S = 0.4
+DISTORTION_WINDOW_HOP_S = 0.2
+MAX_WINDOW_DISTORTION_DB = -12.0
+# Pumping (AURALITH-AUDIO-008): the master's 2-8 kHz band dipping, relative
+# to the source's, when the source's 40-120 Hz band hits. Engine renders
+# measured 0.0..1.0 dB (worst delivered 0.73 dB); 1.5 dB of periodic
+# broadband ducking is audible "breathing" on sustained material.
+PUMPING_CHECK = True
+MAX_PUMPING_DB = 1.5
+# Section-local transient loss (AURALITH-AUDIO-007): how much more the
+# master softened the source's attacks (attack-vs-body gain, source-locked
+# onsets) in its worst 3 s window than over the whole song. Uniform
+# limiting scores ~0 by construction; engine renders measured 0..1.7 dB.
+# 2.5 dB more attack loss in one section than in the rest of the song is
+# a section whose drums audibly went soft.
+SECTION_TRANSIENT_CHECK = True
+TRANSIENT_WINDOW_S = 3.0
+TRANSIENT_WINDOW_HOP_S = 1.0
+TRANSIENT_WINDOW_MIN_ONSETS = 3
+MAX_SECTION_ATTACK_LOSS_DB = 2.5
+# Peak reduction that bought no loudness (AURALITH-AUDIO-008): PLR lost
+# beyond what reaching this loudness under this ceiling required, i.e.
+# min(PLR loss, ceiling - master true peak). A master that limits to the
+# ceiling scores ~0 however hard it limits (the limiter budget and
+# crest_collapse judge that); peaks squashed while headroom was left
+# unused score the squash.
+EXCESS_PEAK_REDUCTION_CHECK = True
+MAX_EXCESS_PEAK_REDUCTION_DB = 2.5
+# Loudness-range loss (AURALITH-AUDIO-008): the 50 % LRA_COLLAPSE_FRACTION
+# rule only fired on wide-range sources. Unplanned LRA loss of at least
+# this many LU AND this fraction of the source's LRA also fails.
+LRA_LOSS_CHECK = True
+LRA_LOSS_MIN_LU = 1.5
+LRA_LOSS_MIN_FRACTION = 0.25
+# Excess width / mono fold-down (AURALITH-AUDIO-009), source-relative: the
+# planner widens by at most MAX_WIDEN_DB (+0.7 dB user tweak), so a side-
+# to-mid rise of more than 3 dB is not the plan; a mono fold-down that
+# loses 1.5 dB more than the source's did is audible in mono playback.
+WIDTH_CHECK = True
+MAX_SIDE_RISE_DB = 3.0
+MIN_SIDE_TO_MID_DB_FOR_WIDTH_CHECK = -20.0
+MAX_MONO_FOLD_LOSS_RISE_DB = 1.5
+
 
 
 # ---------------------------------------------------------------------------

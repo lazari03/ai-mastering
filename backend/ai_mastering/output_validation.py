@@ -61,7 +61,15 @@ class GuardrailConfig:
     # How far the render may land from the loudness target the caller
     # chose for THIS track. Not a fixed platform number.
     loudness_tolerance_lu: float = 1.5
-    # Max fraction of transient punch that may be lost, loudness-matched.
+    # Max loss of the drum-punch SCORE (audio_utils._transient_metrics,
+    # 0-1 scale), loudness-matched, as an ABSOLUTE score delta - not a
+    # fraction of the source's punch (AURALITH-AUDIO-001). At the typical
+    # synthetic/API-lab source score of ~0.5 it allows ~24 % of the punch;
+    # the fraction is reported next to it (evaluation transients
+    # "loss_fraction") and is the unit benchmark.metrics' lost_drums uses.
+    # Moving to a 12 % FRACTION would re-render 8 of 48 currently delivered
+    # synthetic-regression/API-lab masters (fractions 0.120-0.206,
+    # DSP_GATE_ACCURACY.md); that is a listening decision, not a unit fix.
     max_transient_loss: float = 0.12
     # Max UNPLANNED spectral tilt change, dB/octave (least-squares slope of
     # the unplanned band deltas over log2 frequency, 35 Hz - 20 kHz).
@@ -286,7 +294,7 @@ def validate_render(
                 limit=-cfg.max_transient_loss,
                 band=None,
                 blame_stage="limiter_and_clipper",
-                detail=f"punch fell {abs(transient_delta):.3f} at matched loudness (limit {cfg.max_transient_loss})",
+                detail=f"punch score fell {abs(transient_delta):.3f} (absolute, 0-1 scale) at matched loudness (limit {cfg.max_transient_loss} absolute)",
             )
         )
 

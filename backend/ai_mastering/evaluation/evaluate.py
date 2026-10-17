@@ -173,8 +173,19 @@ def evaluate_master(
     allowed_crest = float(plan.expected.get("max_crest_loss_db", 6.0)) + 1.5
     if st_crest_loss > allowed_crest:
         flag("crest_collapse", st_crest_loss, allowed_crest, (st_crest_loss - allowed_crest) / 4.0 + 0.3, "bus", f"short-term crest fell {st_crest_loss:.2f} dB (allowed {allowed_crest:.2f})")
+    # Peaks pulled down although the master left headroom unused: PLR lost
+    # beyond what this loudness under this ceiling required (AUDIO-008).
+    ceiling_dbtp = float(plan.limiter.get("ceiling_dbtp", C.LIMITER_CEILING_DBTP))
+    plr_loss = float(source.plr_db) - float(master.plr_db)
+    excess_peak_reduction = max(0.0, min(plr_loss, ceiling_dbtp - float(master.true_peak_db)))
+    if C.EXCESS_PEAK_REDUCTION_CHECK and excess_peak_reduction > C.MAX_EXCESS_PEAK_REDUCTION_DB:
+        flag("crest_collapse", excess_peak_reduction, C.MAX_EXCESS_PEAK_REDUCTION_DB, (excess_peak_reduction - C.MAX_EXCESS_PEAK_REDUCTION_DB) / 4.0 + 0.3, "multiband_compression" if plan.compression.get("enabled") else "bus", f"peaks reduced {excess_peak_reduction:.2f} dB more than the loudness needed (PLR {source.plr_db:.1f} -> {master.plr_db:.1f} dB, true peak {master.true_peak_db:.2f} dBTP under a {ceiling_dbtp:.1f} dBTP ceiling)")
+    lra_lost = float(source.lra_lu) - float(master.lra_lu)
+    lra_blame = "multiband_compression" if plan.compression.get("enabled") else "bus"
     if source.lra_lu > 3.0 and master.lra_lu < source.lra_lu * (1.0 - C.LRA_COLLAPSE_FRACTION):
-        flag("lra_collapse", master.lra_lu, source.lra_lu * (1.0 - C.LRA_COLLAPSE_FRACTION), 0.4, "multiband_compression" if plan.compression.get("enabled") else "bus", f"LRA {source.lra_lu:.1f} -> {master.lra_lu:.1f} LU")
+        flag("lra_collapse", master.lra_lu, source.lra_lu * (1.0 - C.LRA_COLLAPSE_FRACTION), 0.4, lra_blame, f"LRA {source.lra_lu:.1f} -> {master.lra_lu:.1f} LU")
+    elif C.LRA_LOSS_CHECK and lra_lost >= C.LRA_LOSS_MIN_LU and lra_lost >= C.LRA_LOSS_MIN_FRACTION * float(source.lra_lu):
+        flag("lra_collapse", master.lra_lu, float(source.lra_lu) - C.LRA_LOSS_MIN_LU, 0.4, lra_blame, f"LRA {source.lra_lu:.1f} -> {master.lra_lu:.1f} LU (lost {lra_lost:.1f} LU, {lra_lost / max(float(source.lra_lu), 1e-6):.0%})")
 
     # Transient retention at matched loudness (a louder master trips the
     # onset detector more easily, so raw scores would conflate "louder"
@@ -235,8 +246,12 @@ def evaluate_master(
             "lra_after_lu": master.lra_lu,
             "plr_before_db": source.plr_db,
             "plr_after_db": master.plr_db,
+            "excess_peak_reduction_db": round(excess_peak_reduction, 3),
         },
-        transients={"source_transient_score": round(src_score, 4), "master_transient_score": round(mst_score, 4), "delta": round(delta, 4), "allowed_loss": round(allowed_loss, 4), "passed": passed_trans},
+        # delta / allowed_loss are ABSOLUTE punch-score units (0-1 scale);
+        # loss_fraction is the same change as a fraction of the source's
+        # score - the unit benchmark.metrics' lost_drums uses (AUDIO-001).
+        transients={"source_transient_score": round(src_score, 4), "master_transient_score": round(mst_score, 4), "delta": round(delta, 4), "allowed_loss": round(allowed_loss, 4), "loss_fraction": round(-delta / src_score, 4) if src_score > 1e-6 else 0.0, "passed": passed_trans},
         loudness={
             "integrated_lufs": lufs,
             "target_lufs": loud["target_lufs"],

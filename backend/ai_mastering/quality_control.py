@@ -36,6 +36,29 @@ def lr_balance_db(audio: np.ndarray) -> float:
     return float(_db(left) - _db(right))
 
 
+def added_width(analysis_before: dict, analysis_after: dict) -> dict:
+    """How much processing widened the image (AURALITH-AUDIO-009).
+
+    stereo_width_estimate is the side/mid RMS ratio. Side-to-mid rising by
+    more than C.MAX_SIDE_RISE_DB (the planner's own widening is capped at
+    MAX_WIDEN_DB + a 0.7 dB user tweak) while the side is audible, or the
+    mono fold-down (mid only; it loses 10*log10(1 + (side/mid)^2) dB vs the
+    stereo power) losing C.MAX_MONO_FOLD_LOSS_RISE_DB more than the
+    source's, is excess width. An absolute correlation/mono check alone
+    let +12 dB of side boost through."""
+    before = analysis_before.get("stereo_width_estimate")
+    after = analysis_after.get("stereo_width_estimate")
+    out = {"side_rise_db": None, "side_to_mid_before_db": None, "side_to_mid_after_db": None, "mono_fold_loss_rise_db": None, "excess": False}
+    if before is None or after is None:
+        return out
+    b, a = max(float(before), 1e-4), max(float(after), 1e-4)
+    rise = 20.0 * np.log10(a / b)
+    fold_rise = 10.0 * np.log10(1.0 + a * a) - 10.0 * np.log10(1.0 + b * b)
+    after_db = 20.0 * np.log10(a)
+    excess = bool((rise > C.MAX_SIDE_RISE_DB and after_db > C.MIN_SIDE_TO_MID_DB_FOR_WIDTH_CHECK) or fold_rise > C.MAX_MONO_FOLD_LOSS_RISE_DB)
+    return {"side_rise_db": round(float(rise), 2), "side_to_mid_before_db": round(float(20.0 * np.log10(b)), 2), "side_to_mid_after_db": round(float(after_db), 2), "mono_fold_loss_rise_db": round(float(fold_rise), 2), "excess": excess}
+
+
 class InvalidAudioError(ValueError):
     """Raised by validate_input_signal for source audio that can't be
     mastered at all — not a quality issue to report and continue past, a
@@ -261,12 +284,26 @@ def run_quality_control(
         _add(checks, "phase_correlation", "pass", f"Phase correlation {correlation:.2f} is mono-safe.", correlation)
 
     mono_risk = bool(analysis_after.get("mono_compatibility_risk", False))
-    _add(
-        checks,
-        "mono_compatibility",
-        "warn" if mono_risk else "pass",
-        "Mono compatibility risk detected in the final master." if mono_risk else "Master is mono-compatible.",
-    )
+    width = added_width(analysis_before, analysis_after)
+    if C.WIDTH_CHECK and width["excess"]:
+        # Source-relative: a wide or out-of-phase SOURCE is the mix's own
+        # image (reported by phase_correlation), not something mastering did.
+        _add(
+            checks,
+            "mono_compatibility",
+            "fail",
+            f"Processing widened the stereo image beyond any planned move: side-to-mid {width['side_to_mid_before_db']:.1f} -> {width['side_to_mid_after_db']:.1f} dB "
+            f"(+{width['side_rise_db']:.1f} dB), mono fold-down loses {width['mono_fold_loss_rise_db']:.1f} dB more than the source's.",
+            width["side_rise_db"],
+        )
+    else:
+        _add(
+            checks,
+            "mono_compatibility",
+            "warn" if mono_risk else "pass",
+            "Mono compatibility risk detected in the final master." if mono_risk else "Master is mono-compatible.",
+            width["side_rise_db"],
+        )
 
     after_rms_db = float(analysis_after.get("rms_db", -100.0))
     before_rms_db = float(analysis_before.get("rms_db", -100.0))
@@ -307,7 +344,11 @@ def run_quality_control(
         (_db(abs(float(np.mean(mastered_audio[:, ch])))) if abs(float(np.mean(mastered_audio[:, ch]))) > EPS else -240.0)
         for ch in range(mastered_audio.shape[1])
     )
-    if dc_after_db > DC_OFFSET_THRESHOLD_DB:
+    if C.DC_OFFSET_FAIL_CHECK and dc_after_db > C.QC_DC_OFFSET_FAIL_DBFS:
+        # master_track removes residual DC before QC (_integrity_corrections),
+        # so this only fails audio that bypassed that correction.
+        _add(checks, "dc_offset", "fail", f"DC offset of {dc_after_db:.1f}dBFS in the final master wastes headroom and clicks at start/stop.", dc_after_db)
+    elif dc_after_db > DC_OFFSET_THRESHOLD_DB:
         _add(checks, "dc_offset", "warn", f"DC offset of {dc_after_db:.1f}dBFS remains in the final master.", dc_after_db)
     else:
         _add(checks, "dc_offset", "pass", "No meaningful DC offset in the final master.", dc_after_db)

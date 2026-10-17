@@ -51,6 +51,12 @@ _DOMAIN = {
     "channel_balance": "integrity",
     "loudness_target_missed": "loudness",
     "added_distortion": "distortion",
+    # Gate detectors for localized / dynamics / stereo damage
+    # (docs/audits/DSP_GATE_ACCURACY.md).
+    "distortion_burst": "distortion",
+    "pumping": "dynamics",
+    "section_transient_loss": "transients",
+    "mono_compatibility": "stereo",
 }
 DOMAINS = ("tonal", "dynamics", "transients", "distortion", "stereo", "true_peak", "loudness", "integrity")
 
@@ -61,6 +67,8 @@ CORRECTABLE = {
     "low_end_loss", "hf_growth", "high_frequency_boost", "band_collateral", "excessive_band_change", "tilt_drift",
     "limiter_over_budget", "crest_collapse", "lra_collapse", "limiter_gain_reduction", "dynamics_preservation", "plr",
     "transient_loss", "unsafe_correlation", "loudness_target_missed", "added_distortion",
+    # Less drive / less width processing fixes each of these.
+    "distortion_burst", "pumping", "section_transient_loss", "mono_compatibility",
     # A true-peak overshoot or full-scale samples on a RENDER (the source
     # can't cause them: the limiter sets the peak) mean the bus was driven
     # too hard — less drive fixes it, so it gets a re-render, not a failed job.
@@ -132,6 +140,38 @@ def _relief_for(kind: str, measured, limit) -> float:
 # Thresholds at which a QC "value" stops passing — QC reports only the value
 # and a status, the verdict needs the limit to size the correction.
 _QC_FAIL_LIMITS = {"limiter_gain_reduction": 6.0, "dynamics_preservation": 9.0, "plr": 4.0}
+
+
+def _comparison_failures(cmp: dict, failing_globally: bool) -> list:
+    """Source-vs-master checks computed by evaluation/distortion.py on the
+    aligned signals: short distortion bursts, pumping and section-local
+    transient loss (AURALITH-AUDIO-007/-008). Each has its own switch."""
+    out: list[VerdictIssue] = []
+    blamed = cmp.get("blamed_stage")
+    burst = cmp.get("window_worst_db")
+    if C.WINDOWED_DISTORTION_CHECK and burst is not None and not failing_globally and float(burst) > C.MAX_WINDOW_DISTORTION_DB:
+        at = cmp.get("window_worst_at_s")
+        out.append(VerdictIssue(
+            source="distortion", kind="distortion_burst", domain="distortion", measured=round(float(burst), 2), limit=C.MAX_WINDOW_DISTORTION_DB, blamed_stage=blamed,
+            detail=f"a {C.DISTORTION_WINDOW_S * 1000:.0f} ms passage{f' at {at:.1f} s' if at is not None else ''} carries {float(burst):.1f} dB of added distortion (limit {C.MAX_WINDOW_DISTORTION_DB:.0f} dB in any window)",
+            relief_db=C.RECOVERY_NOMINAL_RELIEF_DB,
+        ))
+    pump = cmp.get("pumping_db")
+    if C.PUMPING_CHECK and pump is not None and float(pump) > C.MAX_PUMPING_DB:
+        out.append(VerdictIssue(
+            source="distortion", kind="pumping", domain="dynamics", measured=round(float(pump), 2), limit=C.MAX_PUMPING_DB, blamed_stage="bus",
+            detail=f"the highs duck {float(pump):.1f} dB when the low end hits (limit {C.MAX_PUMPING_DB:.1f} dB): the bus is pumping",
+            relief_db=C.RECOVERY_NOMINAL_RELIEF_DB,
+        ))
+    sect = cmp.get("section_attack_loss_db")
+    if C.SECTION_TRANSIENT_CHECK and sect is not None and float(sect) > C.MAX_SECTION_ATTACK_LOSS_DB:
+        at = cmp.get("section_attack_at_s")
+        out.append(VerdictIssue(
+            source="distortion", kind="section_transient_loss", domain="transients", measured=round(float(sect), 2), limit=C.MAX_SECTION_ATTACK_LOSS_DB, blamed_stage="bus",
+            detail=f"attacks{f' around {at:.0f}-{at + C.TRANSIENT_WINDOW_S:.0f} s' if at is not None else ''} lost {float(sect):.1f} dB more than in the rest of the song (limit {C.MAX_SECTION_ATTACK_LOSS_DB:.1f} dB)",
+            relief_db=C.RECOVERY_NOMINAL_RELIEF_DB,
+        ))
+    return out
 
 
 def build_verdict(evaluation, quality_control: dict, guardrails, requested_target_lufs: float, effective_target_lufs: float, distortion: dict | None = None) -> MasterVerdict:
@@ -213,6 +253,9 @@ def build_verdict(evaluation, quality_control: dict, guardrails, requested_targe
                     detail=f"added distortion {worst:.1f} dB is within {C.ADDED_DISTORTION_WARN_MARGIN_DB:.0f} dB of the limit",
                 )
             )
+
+    if distortion is not None:
+        failures.extend(_comparison_failures(distortion, failing_globally=any(f.kind == "added_distortion" for f in failures)))
 
     lufs = float(evaluation.loudness["integrated_lufs"])
     shortfall = round(float(requested_target_lufs) - lufs, 2)
