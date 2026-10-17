@@ -222,20 +222,82 @@ def _hold(g, name, preview, started, release):
     return t
 
 
-def test_previews_cannot_take_the_slots_reserved_for_full_renders():
-    g = ResourceGovernor(1000, 3, 1, 4, 2.0, preview_reserve=1)
+def test_full_render_takes_the_reserved_slot_while_previews_are_capped():
+    g = ResourceGovernor(1000, 3, 1, 4, 2.0, preview_reserve=1, preview_queue_wait_s=0.3)
     release = threading.Event()
     threads = [_hold(g, f"p{i}", True, threading.Event(), release) for i in range(2)]
     try:
-        with pytest.raises(CapacityError) as err:
-            with g.admit("p3", 100, False, preview=True):
-                pass
-        assert err.value.status == 503 and err.value.code == "at_capacity"
         with g.admit("full", 100, False, preview=False):
             assert g.snapshot()["running"] == 3
     finally:
         release.set()
         [t.join() for t in threads]
+
+
+def test_third_preview_waits_then_is_admitted_when_a_preview_finishes():
+    g = ResourceGovernor(1000, 3, 1, 4, 5.0, preview_reserve=1, preview_queue_wait_s=5.0)
+    release_first = threading.Event()
+    release_rest = threading.Event()
+    t1 = _hold(g, "p1", True, threading.Event(), release_first)
+    t2 = _hold(g, "p2", True, threading.Event(), release_rest)
+    admitted = threading.Event()
+
+    def third():
+        with g.admit("p3", 100, False, preview=True):
+            admitted.set()
+
+    t3 = threading.Thread(target=third)
+    t3.start()
+    try:
+        assert not admitted.wait(0.5), "idle slot is reserved; the preview must wait"
+        release_first.set()
+        assert admitted.wait(2)
+    finally:
+        release_first.set(); release_rest.set()
+        [t.join() for t in (t1, t2, t3)]
+
+
+def test_waiting_preview_times_out_with_at_capacity():
+    g = ResourceGovernor(1000, 3, 1, 4, 5.0, preview_reserve=1, preview_queue_wait_s=0.3)
+    release = threading.Event()
+    threads = [_hold(g, f"p{i}", True, threading.Event(), release) for i in range(2)]
+    try:
+        t0 = time.monotonic()
+        with pytest.raises(CapacityError) as err:
+            with g.admit("p3", 100, False, preview=True):
+                pass
+        assert err.value.status == 503 and err.value.code == "at_capacity"
+        assert time.monotonic() - t0 < 2.0
+    finally:
+        release.set()
+        [t.join() for t in threads]
+
+
+def test_previews_cannot_fill_the_whole_queue():
+    g = ResourceGovernor(1000, 1, 1, 2, 3.0, preview_reserve=0, preview_queue_wait_s=3.0)
+    release = threading.Event()
+    holder = _hold(g, "h", False, threading.Event(), release)
+    results = {}
+
+    def waiter(name, preview):
+        try:
+            with g.admit(name, 100, False, preview=preview):
+                results[name] = "ok"
+        except CapacityError as e:
+            results[name] = e.code
+
+    ts = [threading.Thread(target=waiter, args=("p1", True))]
+    ts[0].start(); time.sleep(0.2)
+    # queue_max=2 -> previews may hold 1 place; a second preview is refused now
+    waiter("p2", True)
+    assert results["p2"] == "at_capacity"
+    # ...and a full render can still enqueue
+    ts.append(threading.Thread(target=waiter, args=("full", False)))
+    ts[1].start(); time.sleep(0.2)
+    assert g.snapshot()["queued"] == 2
+    release.set()
+    [t.join() for t in ts + [holder]]
+    assert results["full"] == "ok" and results["p1"] == "ok"
 
 
 def test_reserve_is_configurable_and_zero_restores_old_behaviour():

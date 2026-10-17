@@ -119,3 +119,25 @@ def test_a_stem_job_that_cannot_finish_in_time_is_refused_before_it_runs(client,
     assert ran == [] and _files("stemlong01", s) == []
     # Without stems the same track is fine (cap only applies to separation).
     assert route.max_stem_duration_s(10.0) == pytest.approx(10.0 / 3.0)
+
+
+def test_preview_flag_reaches_the_governor(client, monkeypatch):
+    c, s = client
+    seen = []
+    real_admit = route.governor.admit
+
+    def spy(job_id, est_mb, stems, wait_s=None, preview=False):
+        seen.append(preview)
+        return real_admit(job_id, est_mb, stems, wait_s=wait_s, preview=preview)
+
+    def boom(rec, *a, **k):
+        raise route.JobTerminated("crashed", "stop")
+
+    monkeypatch.setattr(route.governor, "admit", spy)
+    monkeypatch.setattr(route, "run_in_worker", boom)
+    for flag, jid in (("true", "pvjob01"), (None, "pvjob02")):
+        data = {"genre": "pop", "job_id": jid}
+        if flag:
+            data["preview"] = flag
+        r = c.post("/master", files={"file": ("mix.wav", _wav(3.0), "audio/wav")}, data=data)
+    assert seen == [True, False], r.text

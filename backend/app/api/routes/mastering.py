@@ -52,6 +52,7 @@ COST_MODEL = CostModel(
 governor = ResourceGovernor(
     MEMORY_BUDGET_MB, settings.max_concurrent_masters, settings.max_concurrent_stem_jobs, settings.queue_max, settings.queue_wait_s,
     preview_reserve=settings.preview_reserved_slots,
+    preview_queue_wait_s=settings.preview_queue_timeout_s,
 )
 registry = JobRegistry()
 WORKER_TARGET = ("app.services.mastering_service", "render_staged_job")

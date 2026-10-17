@@ -64,9 +64,10 @@ let settings;
 
 before(async () => {
   python = http.createServer((req, res) => {
-    req.resume();
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
     req.on("end", () => {
-      pythonCalls.push({ method: req.method, url: req.url });
+      pythonCalls.push({ method: req.method, url: req.url, body: Buffer.concat(chunks).toString("latin1") });
       if (req.url === "/master") return pythonBehaviour(req, res);
       res.writeHead(200, { "content-type": "application/json" }); // cancel / file deletes
       res.end("{}");
@@ -271,4 +272,18 @@ test("success -> 200 and exactly one charge", async () => {
   const r = reservations(uid);
   assert.equal(r.length, 1);
   assert.equal(r[0].state, "completed");
+});
+
+test("gateway tells Python a full render is not a preview (preview=false), and a preview is preview=true", async () => {
+  const uid = newUser();
+  pythonBehaviour = json(503, { detail: "busy" }, { "x-error-code": "at_capacity" });
+  await postMaster(uid);
+  assert.match(masterCalls()[0].body, /name="preview"\r\n\r\nfalse\r\n/);
+
+  const { processMastering } = await import("../../services/masteringService.js");
+  pythonCalls = [];
+  const file = { path: path.join(tmp, "p.wav"), originalname: "p.wav", mimetype: "audio/wav", size: 4 };
+  fs.writeFileSync(file.path, Buffer.alloc(4, 1));
+  await processMastering({ file, fields: { genre: "pop" }, uid, jobId: "pvjob1", preview: true }).catch(() => {});
+  assert.match(masterCalls()[0].body, /name="preview"\r\n\r\ntrue\r\n/);
 });

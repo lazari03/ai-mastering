@@ -57,6 +57,8 @@ class Settings:
     queue_wait_s: float
     # Render slots free previews may never occupy (kept for paid masters).
     preview_reserved_slots: int
+    # Longest a free preview waits for a slot before a 503 at_capacity.
+    preview_queue_timeout_s: float
     # Hard limit for one render, enforced by killing the worker. Below the
     # gateway's 19-minute HTTP deadline (backend-node pythonUpstream.js) so
     # this service answers first, with a real reason.
@@ -110,6 +112,7 @@ def load_settings() -> Settings:
         queue_max=int(os.getenv("MASTERING_QUEUE_MAX", "6")),
         queue_wait_s=float(os.getenv("MASTERING_QUEUE_WAIT_SECONDS", "120")),
         preview_reserved_slots=int(os.getenv("MASTERING_PREVIEW_RESERVED_SLOTS", "1")),
+        preview_queue_timeout_s=float(os.getenv("MASTERING_PREVIEW_QUEUE_TIMEOUT_S", "30")),
         job_timeout_s=float(os.getenv("MASTERING_JOB_TIMEOUT_SECONDS", "1080")),
         cost_worker_base_mb=float(os.getenv("MASTERING_COST_BASE_MB", "450")),
         cost_per_audio_minute_mb=float(os.getenv("MASTERING_COST_PER_MINUTE_MB", "310")),

@@ -139,7 +139,7 @@ class _Ticket:
 
 
 class ResourceGovernor:
-    def __init__(self, budget_mb: float, max_jobs: int, max_stem_jobs: int, queue_max: int, queue_wait_s: float, preview_reserve: int = 0):
+    def __init__(self, budget_mb: float, max_jobs: int, max_stem_jobs: int, queue_max: int, queue_wait_s: float, preview_reserve: int = 0, preview_queue_wait_s: float = 30.0):
         self.budget_mb = float(budget_mb)
         self.max_jobs = max(1, int(max_jobs))
         self.max_stem_jobs = max(0, int(max_stem_jobs))
@@ -149,6 +149,8 @@ class ResourceGovernor:
         # most max_jobs - preview_reserve slots (never fewer than 1; a
         # single-slot server cannot reserve anything).
         self.preview_reserve = max(0, int(preview_reserve))
+        # Previews wait less than full renders and may not fill the queue.
+        self.preview_queue_wait_s = float(preview_queue_wait_s)
         self.max_preview_jobs = max(1, self.max_jobs - self.preview_reserve)
         self._cond = threading.Condition()
         self._queue: deque[_Ticket] = deque()
@@ -206,12 +208,14 @@ class ResourceGovernor:
         ticket = _Ticket(job_id, float(est_mb), bool(stems), preview=bool(preview))
         deadline = time.monotonic() + (self.queue_wait_s if wait_s is None else float(wait_s))
         with self._cond:
-            if ticket.preview and self._running_previews() >= self.max_preview_jobs:
-                # The slots left are reserved for full renders: answer now
-                # rather than hold a free preview in the queue.
-                raise CapacityError(503, "at_capacity", "The server is busy with other masters. Please try again in a minute.", retry_after_s=60)
             if not (not self._queue and self._fits(ticket)):
-                if len(self._queue) >= self.queue_max:
+                if ticket.preview:
+                    deadline = min(deadline, time.monotonic() + self.preview_queue_wait_s)
+                    previews_queued = sum(x.preview for x in self._queue)
+                    queue_full = previews_queued >= max(0, self.queue_max - 1)
+                else:
+                    queue_full = len(self._queue) >= self.queue_max
+                if queue_full or len(self._queue) >= self.queue_max:
                     raise CapacityError(503, "at_capacity", "The server is busy with other masters. Please try again in a minute.", retry_after_s=60)
                 self._queue.append(ticket)
                 try:
@@ -222,6 +226,8 @@ class ResourceGovernor:
                             raise CapacityError(499, "cancelled", "The job was cancelled while waiting for capacity.")
                         remaining = deadline - time.monotonic()
                         if remaining <= 0:
+                            if ticket.preview:
+                                raise CapacityError(503, "at_capacity", "The server is busy with other masters. Please try again in a minute.", retry_after_s=60)
                             raise CapacityError(503, "queue_timeout", "The server stayed busy for too long. Please try again in a minute.", retry_after_s=60)
                         self._cond.wait(min(remaining, 1.0))
                 finally:
