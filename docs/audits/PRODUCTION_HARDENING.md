@@ -42,6 +42,8 @@ duration cap). Companion reports:
   | `MASTERING_MAX_CONCURRENT_STEM_JOBS` | 1 |
   | `MASTERING_QUEUE_MAX` | 6 |
   | `MASTERING_QUEUE_WAIT_SECONDS` | 120 |
+  | `MASTERING_PREVIEW_RESERVED_SLOTS` | 1 (render slots free 30 s previews may never use; paid masters are admitted first) |
+  | `MASTERING_PREVIEW_QUEUE_TIMEOUT_S` | 30 (previews wait this long, then 503 at_capacity; previews use at most queue_max-1 queue places) |
   | `MASTERING_JOB_TIMEOUT_SECONDS` | 1080 |
   | `MASTERING_COST_*` | measured values (see above) |
   | `MASTERING_STEM_SECONDS_PER_AUDIO_SECOND` | 2.4 |

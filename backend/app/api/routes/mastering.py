@@ -50,7 +50,9 @@ COST_MODEL = CostModel(
     reference_extra_mb=settings.cost_reference_extra_mb,
 )
 governor = ResourceGovernor(
-    MEMORY_BUDGET_MB, settings.max_concurrent_masters, settings.max_concurrent_stem_jobs, settings.queue_max, settings.queue_wait_s
+    MEMORY_BUDGET_MB, settings.max_concurrent_masters, settings.max_concurrent_stem_jobs, settings.queue_max, settings.queue_wait_s,
+    preview_reserve=settings.preview_reserved_slots,
+    preview_queue_wait_s=settings.preview_queue_timeout_s,
 )
 registry = JobRegistry()
 WORKER_TARGET = ("app.services.mastering_service", "render_staged_job")
@@ -217,6 +219,9 @@ def master_track(
     # epoch ms. Both optional for direct callers.
     job_id: str | None = Form(None),
     deadline_epoch_ms: int | None = Form(None),
+    # Set by the gateway (derived server-side) for free 30 s previews; they
+    # may not take the slots reserved for full renders. Absent = full render.
+    preview: bool = Form(False),
 ) -> dict:
     tag_list = parse_json_array(tags, "tags")
     tweak_values = parse_json_object(tweaks, "tweaks")
@@ -242,7 +247,7 @@ def master_track(
         preset_spec=preset_spec,
     )
 
-    result = _run_master_job(file, resolved_config, reference_file, job_id, deadline_epoch_ms)
+    result = _run_master_job(file, resolved_config, reference_file, job_id, deadline_epoch_ms, preview)
     return {
         "job_id": result["job_id"],
         "download_url": result["download_url"],
@@ -259,7 +264,7 @@ def master_track(
     }
 
 
-def _run_master_job(file, resolved_config: dict, reference_file, job_id: str | None, deadline_epoch_ms: int | None) -> dict:
+def _run_master_job(file, resolved_config: dict, reference_file, job_id: str | None, deadline_epoch_ms: int | None, preview: bool = False) -> dict:
     staged = stage_mastering_request(file=file, config=resolved_config, reference_file=reference_file, job_id=job_id)
     job_id = staged["job_id"]
     try:
@@ -283,7 +288,7 @@ def _run_master_job(file, resolved_config: dict, reference_file, job_id: str | N
                 "stems_too_long",
                 f"Stem separation is available for tracks up to {stem_cap_s / 60:.1f} minutes on this server. Turn off stem separation or upload a shorter track.",
             )
-        with governor.admit(job_id, est_mb, stems, wait_s=min(settings.queue_wait_s, timeout_s)):
+        with governor.admit(job_id, est_mb, stems, wait_s=min(settings.queue_wait_s, timeout_s), preview=preview):
             if rec.cancel_requested:
                 raise JobTerminated("cancelled", "Mastering was cancelled.")
             remaining = timeout_s - (time.monotonic() - started)

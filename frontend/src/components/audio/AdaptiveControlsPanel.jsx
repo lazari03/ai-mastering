@@ -3,6 +3,7 @@
 import DirectionControls from "@/components/audio/DirectionControls";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
+import { masteringErrorText } from "@/lib/masteringErrors";
 
 // The Quick-mode counterpart to ProParamsPanel. Direction controls on top
 // (tone/intensity/loudness, expanding into the adaptive engine's 7 user
@@ -67,6 +68,7 @@ export default function AdaptiveControlsPanel({
   isPreviewLoading,
   previewUnavailable,
   previewError,
+  previewErrorCode,
 }) {
   const { t } = useLanguage();
 
@@ -111,7 +113,7 @@ export default function AdaptiveControlsPanel({
           </div>
         </div>
       ) : (
-        <p className="mt-3 border-t border-border-subtle pt-2.5 text-[10px] text-text-secondary">{previewError || t("adaptive.computing")}</p>
+        <p className="mt-3 border-t border-border-subtle pt-2.5 text-[10px] text-text-secondary">{previewError ? masteringErrorText(t, previewError, previewErrorCode) : t("adaptive.computing")}</p>
       )}
       {footer}
     </div>

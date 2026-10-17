@@ -135,15 +135,23 @@ class _Ticket:
     est_mb: float
     stems: bool
     cancelled: bool = False
+    preview: bool = False
 
 
 class ResourceGovernor:
-    def __init__(self, budget_mb: float, max_jobs: int, max_stem_jobs: int, queue_max: int, queue_wait_s: float):
+    def __init__(self, budget_mb: float, max_jobs: int, max_stem_jobs: int, queue_max: int, queue_wait_s: float, preview_reserve: int = 0, preview_queue_wait_s: float = 30.0):
         self.budget_mb = float(budget_mb)
         self.max_jobs = max(1, int(max_jobs))
         self.max_stem_jobs = max(0, int(max_stem_jobs))
         self.queue_max = max(0, int(queue_max))
         self.queue_wait_s = float(queue_wait_s)
+        # Slots kept for full (paid) renders: free 30 s previews may hold at
+        # most max_jobs - preview_reserve slots (never fewer than 1; a
+        # single-slot server cannot reserve anything).
+        self.preview_reserve = max(0, int(preview_reserve))
+        # Previews wait less than full renders and may not fill the queue.
+        self.preview_queue_wait_s = float(preview_queue_wait_s)
+        self.max_preview_jobs = max(1, self.max_jobs - self.preview_reserve)
         self._cond = threading.Condition()
         self._queue: deque[_Ticket] = deque()
         self._running: dict[str, _Ticket] = {}
@@ -160,13 +168,27 @@ class ResourceGovernor:
                 "max_jobs": self.max_jobs,
                 "max_stem_jobs": self.max_stem_jobs,
                 "queue_max": self.queue_max,
+                "running_previews": self._running_previews(),
+                "max_preview_jobs": self.max_preview_jobs,
             }
 
     def _reserved_mb(self) -> float:
         return sum(t.est_mb for t in self._running.values())
 
+    def _running_previews(self) -> int:
+        return sum(x.preview for x in self._running.values())
+
+    def _next_in_line(self) -> _Ticket | None:
+        # Full renders are served before waiting previews; FIFO within a class.
+        for t in self._queue:
+            if not t.preview:
+                return t
+        return self._queue[0] if self._queue else None
+
     def _fits(self, t: _Ticket) -> bool:
         if len(self._running) >= self.max_jobs:
+            return False
+        if t.preview and self._running_previews() >= self.max_preview_jobs:
             return False
         if t.stems and sum(x.stems for x in self._running.values()) >= self.max_stem_jobs:
             return False
@@ -174,7 +196,7 @@ class ResourceGovernor:
 
     # -- admission --------------------------------------------------------
     @contextmanager
-    def admit(self, job_id: str, est_mb: float, stems: bool, wait_s: float | None = None):
+    def admit(self, job_id: str, est_mb: float, stems: bool, wait_s: float | None = None, preview: bool = False):
         if stems and self.max_stem_jobs == 0:
             raise CapacityError(503, "stems_unavailable", "Stem separation is disabled on this server.")
         if est_mb > self.budget_mb:
@@ -183,21 +205,29 @@ class ResourceGovernor:
                 f"This job needs about {est_mb / 1024:.1f} GB of memory; this server's budget is {self.budget_mb / 1024:.1f} GB. Try a shorter file"
                 + (" or master it without stem separation." if stems else "."),
             )
-        ticket = _Ticket(job_id, float(est_mb), bool(stems))
+        ticket = _Ticket(job_id, float(est_mb), bool(stems), preview=bool(preview))
         deadline = time.monotonic() + (self.queue_wait_s if wait_s is None else float(wait_s))
         with self._cond:
             if not (not self._queue and self._fits(ticket)):
-                if len(self._queue) >= self.queue_max:
+                if ticket.preview:
+                    deadline = min(deadline, time.monotonic() + self.preview_queue_wait_s)
+                    previews_queued = sum(x.preview for x in self._queue)
+                    queue_full = previews_queued >= max(0, self.queue_max - 1)
+                else:
+                    queue_full = len(self._queue) >= self.queue_max
+                if queue_full or len(self._queue) >= self.queue_max:
                     raise CapacityError(503, "at_capacity", "The server is busy with other masters. Please try again in a minute.", retry_after_s=60)
                 self._queue.append(ticket)
                 try:
-                    # FIFO: only the head may start, so a large job isn't
+                    # Only the next in line may start (full renders first, then FIFO), so a large job isn't
                     # starved forever by a stream of small ones.
-                    while not (self._queue[0] is ticket and self._fits(ticket)):
+                    while not (self._next_in_line() is ticket and self._fits(ticket)):
                         if ticket.cancelled:
                             raise CapacityError(499, "cancelled", "The job was cancelled while waiting for capacity.")
                         remaining = deadline - time.monotonic()
                         if remaining <= 0:
+                            if ticket.preview:
+                                raise CapacityError(503, "at_capacity", "The server is busy with other masters. Please try again in a minute.", retry_after_s=60)
                             raise CapacityError(503, "queue_timeout", "The server stayed busy for too long. Please try again in a minute.", retry_after_s=60)
                         self._cond.wait(min(remaining, 1.0))
                 finally:

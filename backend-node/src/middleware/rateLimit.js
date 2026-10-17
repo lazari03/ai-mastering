@@ -23,7 +23,7 @@ export const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: keyByUidOrIp,
-  message: { detail: "Too many requests — slow down and try again shortly." },
+  message: { detail: "Too many requests — slow down and try again shortly.", code: "rate_limited" },
 });
 
 // The real protection: /master, /analyze-chords, /codec-preview all run
@@ -39,7 +39,7 @@ export const expensiveLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: keyByUidOrIp,
-  message: { detail: "Too many render requests — wait a few minutes before trying again." },
+  message: { detail: "Too many render requests — wait a few minutes before trying again.", code: "rate_limited" },
 });
 
 // POST /preview-params fires on knob/chip changes (cheap-ish Python call, but
@@ -81,7 +81,7 @@ export const analyticsCollectLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => ipKeyGenerator(req.clientIp || req.ip),
-  message: { detail: "Too many analytics requests." },
+  message: { detail: "Too many analytics requests.", code: "rate_limited" },
 });
 
 // Anonymous newsletter signup — IP-keyed (no account yet). Each call can hit

@@ -134,6 +134,7 @@ export const useMasteringStore = create((set, get) => ({
   livePreviewParams: null,
   isPreviewLoading: false,
   previewError: "",
+  previewErrorCode: null,
   // Set true on a 501 from the server (ffmpeg-fallback engine, no
   // adaptive parameter model to preview) — sticky for the session so
   // components can just hide the panel instead of retrying a dead feature
@@ -248,7 +249,7 @@ export const useMasteringStore = create((set, get) => ({
     const state = get();
     const analysis = state.analysis;
     if (!analysis) return;
-    set({ isPreviewLoading: true, previewError: "" });
+    set({ isPreviewLoading: true, previewError: "", previewErrorCode: null });
     try {
       const params = await previewParams({
         analysis,
@@ -281,6 +282,7 @@ export const useMasteringStore = create((set, get) => ({
         isPreviewLoading: false,
         previewUnavailable: unavailable,
         previewError: unavailable ? "" : err.message || "Couldn't refresh live preview.",
+        previewErrorCode: unavailable ? null : err.code || null,
       });
     }
   },
