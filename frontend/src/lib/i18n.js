@@ -1035,6 +1035,13 @@ const DICT = {
     sq: "Krijo një llogari falas (ose hyr) për ta masterizuar këngën më pas — pa pagesë, thjesht një llogari.",
   },
 
+  "toolGate.eyebrow": { en: "Free account", sq: "Llogari falas" },
+  "toolGate.title": { en: "Create a free account to analyse your track", sq: "Krijo një llogari falas për të analizuar këngën" },
+  "toolGate.body": {
+    en: "Sign up or log in to run the analysis — no payment, and your file stays selected.",
+    sq: "Regjistrohu ose hyr për të nisur analizën — pa pagesë, dhe skedari yt mbetet i zgjedhur.",
+  },
+
   "lufsMeter.measure": { en: "Measure Loudness", sq: "Mat Zërin" },
   "lufsMeter.analyzing": { en: "Analyzing…", sq: "Duke analizuar…" },
   "lufsMeter.alwaysFree": { en: "Free, always — no trial, no card, no limit.", sq: "Falas, gjithmonë — pa provë, pa kartë, pa limit." },

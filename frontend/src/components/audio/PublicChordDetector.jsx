@@ -1,56 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import ChordDetector from "./ChordDetector";
 import ChordAuthGate from "./ChordAuthGate";
 import FileDropzone from "@/components/ui/FileDropzone";
 import { useAuthStore } from "@/store/authStore";
 import { useEntitlementsStore } from "@/store/entitlementsStore";
-import { stashPendingChordResult, stashPendingChordFile } from "@/lib/chordHandoff";
 import { trackEvent } from "@/lib/analytics";
 import { useLanguage } from "@/lib/i18n";
 
 /**
- * The public, logged-out-friendly chord detector on /chord-detector —
- * upload and analysis both run before any account exists, only the
- * RESULT is gated behind signing up (or logging in). How that works:
- *
- * 1. On mount, silently sign in anonymously (see authStore.ensureAnonymous)
- *    if nobody's signed in yet — a real Firebase user, no form, so
- *    /analyze-chords (which requires a valid token like every other
- *    route) works exactly as it does inside the app, zero backend changes.
- * 2. Drop a file, hit Analyse — ChordDetector.jsx (the same component the
- *    in-app Chords tab uses, unmodified apart from the optional
- *    onAnalysisResult/initialAnalysis props) runs the real request —
- *    unconditionally free, no quota to spend.
- * 3. If the signed-in user is still anonymous once a result exists,
- *    ChordAuthGate covers the ENTIRE page (not just this card) with a
- *    login/signup prompt — a lead-capture moment for a genuinely free
- *    result, not a paywall: "create an account to see it," never "pay to
- *    see it."
- * 4. Signing up links the anonymous session to the new real account IN
- *    PLACE (same uid — see authStore.claimWithEmail/claimWithGoogle).
- *    Either way (new account via linking, or logging into an existing
- *    returning one — a genuinely different uid), the browser then
- *    navigates into the actual app instead of revealing the result on
- *    this marketing page: the result JSON is stashed client-side (see
- *    lib/chordHandoff.js — there's no server-side "job" to fetch by id,
- *    chord analysis has never been persisted) and the in-app Chords tab
- *    picks it up on landing. The raw audio file can't survive a real
- *    page navigation, only the parsed result can — so the destination
- *    shows the key/BPM/chord progression, without the live-playback
- *    highlighting a same-session result gets.
+ * The public chord detector on /chord-detector (also the Key and BPM
+ * finders). Analysis needs a registered account: anonymous sign-in is off,
+ * so a signed-out visitor (or a leftover anonymous session) who hits
+ * Analyse gets ChordAuthGate first. Signing up or logging in closes the
+ * gate and leaves the file selected, so the next Analyse click runs it
+ * here. ChordDetector.jsx is the same component the in-app Chords tab uses.
  */
 export default function PublicChordDetector({ focus = "chords", sourceTool = "chord_detector" }) {
   const { t } = useLanguage();
-  const router = useRouter();
   const { user, loading } = useAuthStore();
   const fetchEntitlements = useEntitlementsStore((s) => s.fetch);
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
-  const [result, setResult] = useState(null);
+  const [, setResult] = useState(null);
+  const [showGate, setShowGate] = useState(false);
+  const registered = Boolean(user) && !user.isAnonymous;
 
   useEffect(() => {
     trackEvent("free_tool_opened", { source_tool: sourceTool });
@@ -58,13 +34,9 @@ export default function PublicChordDetector({ focus = "chords", sourceTool = "ch
   }, []);
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      useAuthStore.getState().ensureAnonymous();
-      return;
-    }
+    if (loading || !registered) return;
     fetchEntitlements();
-  }, [loading, user, fetchEntitlements]);
+  }, [loading, registered, fetchEntitlements]);
 
   useEffect(() => {
     if (!file) {
@@ -76,8 +48,12 @@ export default function PublicChordDetector({ focus = "chords", sourceTool = "ch
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
 
-  const showGate = Boolean(result) && user?.isAnonymous;
-  const ready = !loading && Boolean(user);
+  const ready = !loading;
+  const requireAccount = () => {
+    if (registered) return true;
+    setShowGate(true);
+    return false;
+  };
 
   return (
     <div className="relative">
@@ -96,7 +72,7 @@ export default function PublicChordDetector({ focus = "chords", sourceTool = "ch
 
       <div className="mt-4">
         {ready ? (
-          <ChordDetector file={file} previewUrl={previewUrl} onAnalysisResult={setResult} focus={focus} sourceTool={sourceTool} />
+          <ChordDetector file={file} previewUrl={previewUrl} onAnalysisResult={setResult} focus={focus} sourceTool={sourceTool} beforeDetect={requireAccount} />
         ) : (
           <p className="mt-3 text-xs text-text-secondary">{t("chordDetector.preparingUpload")}</p>
         )}
@@ -104,15 +80,11 @@ export default function PublicChordDetector({ focus = "chords", sourceTool = "ch
 
       {showGate ? (
         <ChordAuthGate
-          onDone={async () => {
-            stashPendingChordResult(result, file?.name);
-            // Awaited before navigating — a real page navigation can
-            // interrupt an in-flight IndexedDB transaction, and losing
-            // the file silently would just be the old "no playback"
-            // behavior again, quietly.
-            await stashPendingChordFile(file);
-            router.push("/app?tab=chords");
-          }}
+          eyebrowKey="toolGate.eyebrow"
+          titleKey="toolGate.title"
+          bodyKey="toolGate.body"
+          onClose={() => setShowGate(false)}
+          onDone={() => setShowGate(false)}
         />
       ) : null}
     </div>
