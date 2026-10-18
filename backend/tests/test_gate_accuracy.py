@@ -194,3 +194,18 @@ def test_transient_report_states_both_units():
     t = ev.transients
     assert t["loss_fraction"] == pytest.approx(-t["delta"] / t["source_transient_score"], abs=1e-3)
     assert t["delta"] == pytest.approx(t["master_transient_score"] - t["source_transient_score"], abs=1e-3)
+
+
+# ------------------------- AUDIO-010: benchmark compare() can be plan-aware
+def test_compare_plan_aware_excuses_planned_eq_only():
+    from benchmark.metrics import compare
+
+    x = ref("hiphop_bassheavy")
+    cut3, _ = dc.d_low_shelf(x, 3.0)
+    assert "weaker_bass" in {f["kind"] for f in compare(x, cut3, dc.SR)["failures"]}  # unaware: flagged
+    assert compare(x, cut3, dc.SR, planned=cut3)["failures"] == []  # the plan asked for exactly this cut
+    cut6, _ = dc.d_low_shelf(x, 6.0)
+    # unplanned damage on top of the plan is still caught...
+    assert any(f["kind"] == "weaker_bass" and f["limit"] == -2.0 for f in compare(x, cut6, dc.SR, planned=cut3)["failures"])
+    # ...and the absolute cap holds even when the plan itself asked for it
+    assert any(f["kind"] == "weaker_bass" and f["limit"] == -4.5 for f in compare(x, cut6, dc.SR, planned=cut6)["failures"])

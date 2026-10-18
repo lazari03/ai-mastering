@@ -51,20 +51,31 @@ def test_detects_lost_drums(drums_mix):
     assert "lost_drums" in kinds(compare(drums_mix, crushed, SR))
 
 
-# Phase 2 (benchmark.metrics made midrange-relative and DC-free) removed two measurement
-# artefacts that were flattering the engine; the corrected readings sit past the existing
-# limits. Not loosened (no invented thresholds): tracked for audio-dsp-engineer, strict so a
-# real fix turns these into XPASS failures that force removing the marker.
-XFAIL_BASS = "corrected metric: kick-bass -2.86 dB re midrange on the +6.5 dB boomy fixture (limit -2.0); old reading -0.92 was hidden by the LUFS-match shift. Planned boom cut? benchmark.compare is not plan-aware - see METRIC_VALIDATION.md Phase 2"
-XFAIL_BRIGHT = "corrected metric: punch loss 0.130 (limit 0.12) once the engine master's -62 dBFS residual DC is removed; DC-inflated reading was 0.119"
+# Judged plan-aware (AURALITH-AUDIO-010): the master is compared with the source
+# rendered through the plan's own static EQ, as the production guardrails do.
+# On the +6.5 dB boomy fixture the plan cuts 2.4 dB at 95 Hz (-2.16 dB of the
+# measured -2.86 dB kick-bass change is that planned boom correction; unplanned
+# -0.70 dB). On the +6.5 dB bright fixture the plan cuts 2.45 dB at 5 kHz, which
+# itself softens hat/snare attacks (punch 0.609 -> 0.597); the bus's own share
+# of the 0.130 punch loss is 0.112. Limits unchanged; absolute caps still apply.
+def _planned_rendering(source, result):
+    from dataclasses import fields
+
+    from ai_mastering.planning.plan import EQDecision
+    from ai_mastering.processing.eq import apply_eq
+
+    names = {f.name for f in fields(EQDecision)}
+    decisions = [EQDecision(**{k: v for k, v in d.items() if k in names}) for d in result["processing_applied"]["eq_decisions"]]
+    active = [d for d in decisions if abs(float(d.gain_db)) > 1e-3]
+    return apply_eq(source, active, SR) if active else source
 
 
 @pytest.mark.parametrize(
     "name,kwargs,genre",
     [
         ("rock_drums", dict(drum_level=1.2, healthy_variation_db=0.5), "rock"),
-        pytest.param("bass_heavy", dict(offsets_db=[(40, 250, 6.5)]), "hiphop", marks=pytest.mark.xfail(strict=True, reason=XFAIL_BASS)),
-        pytest.param("bright", dict(offsets_db=[(2500, 9000, 6.5)]), "pop", marks=pytest.mark.xfail(strict=True, reason=XFAIL_BRIGHT)),
+        ("bass_heavy", dict(offsets_db=[(40, 250, 6.5)]), "hiphop"),
+        ("bright", dict(offsets_db=[(2500, 9000, 6.5)]), "pop"),
         ("already_loud", dict(lufs=-9.0, limit_db=-6.0), "pop"),
     ],
 )
@@ -72,7 +83,7 @@ def test_adaptive_master_has_none_of_the_heard_failures(tmp_path, name, kwargs, 
     source = make_mix(seconds=16.0, seed=11, **kwargs)
     src, out = tmp_path / "in.wav", tmp_path / "out.wav"
     sf.write(str(src), source, SR)
-    master_track(input_path=str(src), output_path=str(out), genre=genre, tags=[], tweaks={}, style="modern")
+    result_track = master_track(input_path=str(src), output_path=str(out), genre=genre, tags=[], tweaks={}, style="modern")
     mastered, _ = sf.read(str(out), dtype="float32")
-    result = compare(source, mastered, SR)
+    result = compare(source, mastered, SR, planned=_planned_rendering(source, result_track))
     assert result["failures"] == [], (name, result["failures"])

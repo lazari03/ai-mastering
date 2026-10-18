@@ -90,7 +90,20 @@ def pumping_db(source: np.ndarray, matched: np.ndarray, sr: int) -> float:
     return round(float(np.median(change[kick]) - np.median(change[calm])), 2)
 
 
-def compare(source: np.ndarray, candidate: np.ndarray, sr: int) -> dict:
+def compare(source: np.ndarray, candidate: np.ndarray, sr: int, planned: np.ndarray | None = None) -> dict:
+    """Loudness-matched comparison of a candidate master with its source.
+
+    planned (optional): the SOURCE with only the master's planned static EQ
+    applied (what the plan intended tonally). When given, the judgement is
+    plan-aware, the same way the production guardrails are
+    (output_validation.validate_render): weaker_bass / harsh_highs judge the
+    UNPLANNED band movement (candidate - planned, both relative to the
+    midrange) with the same limits, plus the guardrails' absolute caps on
+    the TOTAL movement (4.5 dB bass down / 3.5 dB highs up, plan or not);
+    lost_drums judges punch lost relative to the planned rendering, so a
+    deliberate tonal correction (taming a harsh 5 kHz region softens hat
+    and snare attacks) is not charged as damage by the bus. Without it the
+    behaviour is unchanged (AURALITH-AUDIO-010)."""
     source, candidate = _stereo(source), _stereo(candidate)
     n = min(len(source), len(candidate))
     source, candidate = source[:n], candidate[:n]
@@ -109,13 +122,30 @@ def compare(source: np.ndarray, candidate: np.ndarray, sr: int) -> dict:
     pump = pumping_db(source, matched, sr)
     tp = float(_true_peak_db(candidate))
 
+    plan_info: dict = {}
+    judged_low, judged_high, judged_punch, punch_ref = low_change, high_change, punch_loss, punch_src
+    if planned is not None:
+        planned = _stereo(planned)[:n]
+        planned_bands, _ = midrange_relative(loudness_matched_band_deltas(source, planned, sr, lufs_src, _lufs(planned, sr)))
+        unplanned = {b: round(bands[b] - planned_bands.get(b, 0.0), 3) for b in bands}
+        judged_low = min(unplanned[b] for b in LOW_END_MUSICAL_BANDS)
+        judged_high = max(unplanned[b] for b in HIGH_BANDS)
+        punch_ref = float(_transient_metrics(_remove_dc(planned), sr).get("drum_punch_estimate", 0.0))
+        judged_punch = (punch_ref - punch_out) / punch_ref if punch_ref >= MIN_PUNCH_TO_JUDGE else 0.0
+        plan_info = {"planned_band_deltas_db": planned_bands, "unplanned_band_deltas_db": unplanned, "punch_planned": round(punch_ref, 3), "punch_loss_unplanned": round(judged_punch, 3)}
+
     failures = []
-    if punch_loss > LIMITS.max_transient_loss:
-        failures.append({"kind": "lost_drums", "measured": round(punch_loss, 3), "limit": LIMITS.max_transient_loss, "detail": f"drum punch {punch_src:.3f} -> {punch_out:.3f} at matched loudness"})
-    if low_change < -LIMITS.max_low_end_loss_db:
-        failures.append({"kind": "weaker_bass", "measured": round(low_change, 2), "limit": -LIMITS.max_low_end_loss_db, "detail": "a musical low band lost level relative to the mix"})
-    if high_change > LIMITS.max_high_boost_db:
-        failures.append({"kind": "harsh_highs", "measured": round(high_change, 2), "limit": LIMITS.max_high_boost_db, "detail": "upper bands rose relative to the mix"})
+    if judged_punch > LIMITS.max_transient_loss:
+        failures.append({"kind": "lost_drums", "measured": round(judged_punch, 3), "limit": LIMITS.max_transient_loss, "detail": f"drum punch {punch_ref:.3f} -> {punch_out:.3f} at matched loudness" + (" (vs the planned-EQ rendering)" if planned is not None else "")})
+    if judged_low < -LIMITS.max_low_end_loss_db:
+        failures.append({"kind": "weaker_bass", "measured": round(judged_low, 2), "limit": -LIMITS.max_low_end_loss_db, "detail": "a musical low band lost level relative to the mix" + (" beyond the planned EQ" if planned is not None else "")})
+    if judged_high > LIMITS.max_high_boost_db:
+        failures.append({"kind": "harsh_highs", "measured": round(judged_high, 2), "limit": LIMITS.max_high_boost_db, "detail": "upper bands rose relative to the mix" + (" beyond the planned EQ" if planned is not None else "")})
+    if planned is not None:
+        if low_change < -LIMITS.absolute_max_low_end_loss_db:
+            failures.append({"kind": "weaker_bass", "measured": round(low_change, 2), "limit": -LIMITS.absolute_max_low_end_loss_db, "detail": "a musical low band lost level in total (absolute cap, plan or not)"})
+        if high_change > LIMITS.absolute_max_high_boost_db:
+            failures.append({"kind": "harsh_highs", "measured": round(high_change, 2), "limit": LIMITS.absolute_max_high_boost_db, "detail": "upper bands rose in total (absolute cap, plan or not)"})
     if pump < PUMPING_LIMIT_DB:
         failures.append({"kind": "pumping", "measured": pump, "limit": PUMPING_LIMIT_DB, "detail": "highs dip when the kick hits"})
 
@@ -133,6 +163,7 @@ def compare(source: np.ndarray, candidate: np.ndarray, sr: int) -> dict:
         "punch_master": round(punch_out, 3),
         "punch_loss": round(punch_loss, 3),
         "pumping_db": pump,
+        **plan_info,
         "failures": failures,
         "passed": not failures,
     }
