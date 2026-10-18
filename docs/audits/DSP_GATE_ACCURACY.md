@@ -83,7 +83,7 @@ Fix: `benchmark.metrics.compare(..., planned=)` (optional; default unchanged). B
 
 ### 9. Audit follow-ups
 * F2: each detector in `distortion.py` is computed only when its switch is on (switched off = the parent's computation and dict keys; `test_switched_off_detectors_are_not_computed`).
-* F4 (pre-existing on main): a 0.3 s upload crashed analysis with a raw `IndexError` (empty 400 ms short-term/LRA series). `validate_input_signal` now refuses input shorter than 0.5 s with `InvalidAudioError` (-> HTTP 400 `invalid_audio`); `test_too_short_input_is_refused_cleanly`. 0.5 s and longer are unchanged (c16 2 s still masters).
+* F4 (pre-existing on main): a 0.3 s upload crashed analysis with a raw `IndexError` (empty 400 ms short-term/LRA series). `validate_input_signal` now refuses input shorter than 0.5 s with `InvalidAudioError` (-> HTTP 400 `invalid_audio`); `test_too_short_input_is_refused_cleanly`. 0.5 s and longer are unchanged (c16 2 s still masters). **User-visible change:** clips of 0.40–0.50 s that previously mastered (main crashed only below ~0.38 s) are now refused with 400 `invalid_audio` — a deliberate safety margin (independent audit R1); product owner informed via the PR.
 
 ## API lab detail
 

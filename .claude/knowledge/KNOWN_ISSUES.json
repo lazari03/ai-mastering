@@ -16,14 +16,14 @@
     "rule": "Before investigating a suspected defect run: python3 .claude/knowledge/kb.py issues --component <id> --grep <word>. Edit only the entry you own; append to history, never rewrite it."
   },
   "next_ids": {
-    "AUDIO": 11,
+    "AUDIO": 12,
     "BACKEND": 16,
     "BILLING": 1,
     "FRONTEND": 3,
     "SECURITY": 12,
     "DEVOPS": 8,
     "PRODUCT": 5,
-    "QA": 8,
+    "QA": 9,
     "DOCS": 1,
     "ANALYTICS": 3,
     "SEO": 5,
@@ -1600,6 +1600,48 @@
           "agent": "audio-dsp-engineer",
           "status": "READY_FOR_QA",
           "note": "Both readings are planned EQ (bass_heavy: -2.16 of -2.86 dB planned, unplanned -0.70; bright: bus share of punch loss 0.112, planned de-harsh 0.020). compare(planned=) plan-aware with guardrail absolute caps; xfails removed. docs/audits/DSP_GATE_ACCURACY.md"
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-QA-008",
+      "title": "Metric-validation follow-ups: map the 3 new verdict kinds in RELEVANT; add loud-mode, 808/drill and deep-sidechain EDM cases; api_qa should call compare(planned=)",
+      "component": "dsp.evaluation",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "qa-automation-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "mastering_review (H-0025 APPROVED); DSP_GATE_ACCURACY.md",
+      "tests": [],
+      "source": "mastering_review (H-0025 APPROVED); DSP_GATE_ACCURACY.md",
+      "validated_commit": "55a9a1f",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-AUDIO-011",
+      "title": "Trap/808 margins: pumping and section-transient checks pass boomy_extreme_trap by 0.5–0.6 dB; if real trap/drill trips them, use genre-keyed limits (3.0 dB section, 2.0 dB pumping), never a global loosening",
+      "component": "dsp.evaluation",
+      "severity": "P3",
+      "status": "OPEN",
+      "owner": "audio-dsp-engineer",
+      "root_cause": null,
+      "repro": null,
+      "evidence": "mastering_review H-0025; needs real corpus (QA-001)",
+      "tests": [],
+      "source": "mastering_review H-0025; needs real corpus (QA-001)",
+      "validated_commit": "55a9a1f",
+      "history": [
+        {
+          "date": "2026-10-18",
+          "agent": "technical-lead",
+          "note": "Created (OPEN)."
         }
       ]
     }
