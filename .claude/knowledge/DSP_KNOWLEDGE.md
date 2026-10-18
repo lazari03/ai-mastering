@@ -20,12 +20,21 @@ Narrative pipeline: `README.md` §"What the DSP actually does". Prior measured i
 
 ## Guardrails (never weaken; changing one requires evidence + baseline rewrite in the same commit)
 `output_validation.GuardrailConfig` (loudness-matched): low-end loss ≤ 2.0 dB · HF boost ≤ 2.5 dB · any band ≤ 4.0 dB ·
-TP ≤ −0.8 dBTP · loudness within ±1.5 LU of target · transient loss ≤ 12 % · unplanned tilt ≤ 0.3 dB/oct ·
+TP ≤ −0.8 dBTP · loudness within ±1.5 LU of target · transient loss ≤ 0.12 ABSOLUTE punch-score delta (≈24 % at a 0.5 score; NOT a fraction — AUDIO-001; `loss_fraction` is reported alongside) · unplanned tilt ≤ 0.3 dB/oct ·
 absolute low-end loss ≤ 4.5 dB · absolute HF boost ≤ 3.5 dB.
 Planner caps (`planning/config.py`): EQ cut fraction 0.6 / boost fraction 0.4 · max cut 3 dB · max boost low 1.5 / mid 1.0 / high 1.0 dB ·
 ≤ 6 automated nodes · Q 0.5–2.5 · HF boost budget 1 dB above 4 kHz · low-end collateral ≤ 0.35 dB. Reference EQ: boost ≤ 3/2/2.5 dB, cut ≤ 4 dB.
 QC fail lines (`evaluation/verdict.py:_QC_FAIL_LIMITS`): limiter GR > 6 dB · dynamics loss > 9 · PLR < 4 dB.
 Input QC: DC threshold −50 dB · silence RMS < −70 dB · min 4410 samples · channel imbalance warn 6 dB.
+Gate detectors for localized/dynamics/stereo damage (`planning/config.py` switches; evidence + rollback `docs/audits/DSP_GATE_ACCURACY.md`), with the musical reasoning for each line:
+- `distortion_burst`: worst 400 ms window residual > −12 dB — residual at ¼ of the signal amplitude inside a passage is plainly audible crunch; engine renders ≤ −15.6.
+- `section_transient_loss`: worst 3 s window loses > 2.5 dB more attack (attack-vs-body gain, source-locked onsets) than the song median — a section whose drums audibly went soft; uniform limiting scores ~0 (engine ≤ 1.9).
+- `pumping`: master 2–8 kHz dips > 1.5 dB vs source on the source's loud 40–120 Hz frames — periodic broadband ducking of that size is audible breathing (engine ≤ 1.0; benchmark's stricter 1.0 stays a report).
+- `crest_collapse` (added rule): min(PLR loss, ceiling − TP) > 2.5 dB — peaks squashed although headroom was left unused, i.e. dynamics spent for no loudness (engine ≤ 0.04).
+- `lra_collapse` (added rule): LRA loss ≥ 1.5 LU and ≥ 25 % — beyond normal master-to-master LRA variation (engine ≤ 0.32 LU).
+- QC `mono_compatibility` fail: side/mid +3 dB (side > −20 dB re mid) or mono fold-down −1.5 dB vs source — twice the planner's max widening (1.5 dB + 0.7 dB tweak); source-relative.
+- QC `dc_offset` fail > −40 dBFS (production strips DC first); punch/short-term crest measured DC-free (QA-005).
+`benchmark.metrics.compare(planned=...)` judges unplanned movement vs the plan's EQ rendering (AUDIO-010), with the guardrails' absolute caps.
 Benchmark failure kinds (`benchmark/metrics.py`): lost_drums, weaker_bass, harsh_highs, pumping (HF dip on kick < −1 dB).
 
 ## Known failure modes (historical, guarded)
