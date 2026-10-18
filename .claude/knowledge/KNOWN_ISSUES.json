@@ -259,7 +259,7 @@
       "title": "Transient-loss guardrail applies 0.12 'fraction' to absolute punch-score delta (~2x looser than documented)",
       "component": "dsp.evaluation",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "audio-dsp-engineer",
       "root_cause": "output_validation.py:281 / mastering.py:236 compare absolute delta to a fractional limit",
       "repro": "synthetic short_3s_pop: punch 0.4996->0.4219 (15.6%) passes engine; benchmark.metrics flags lost_drums",
@@ -268,7 +268,7 @@
         "regression.synthetic"
       ],
       "source": "docs/agent-reports/AUDIO_DSP_REPORT.md",
-      "validated_commit": "677d56a",
+      "validated_commit": "868959e",
       "history": [
         {
           "date": "2026-10-10",
@@ -286,6 +286,12 @@
           "agent": "technical-lead",
           "status": "OPEN",
           "note": "mastering-engineer: 13 ordinary cases cluster at punch_loss 0.099-0.119, just under 0.12; c03 0.206 is worst. Engine delta vs benchmark fraction must be reconciled before deciding the fix (risk: a correct-units guardrail may reject many currently delivered masters)."
+        },
+        {
+          "date": "2026-10-18",
+          "agent": "audio-dsp-engineer",
+          "status": "READY_FOR_QA",
+          "note": "Units reconciled without moving a threshold: guardrail/eval are ABSOLUTE punch-score deltas (docs fixed), loss_fraction now reported. A true 12% fraction would re-render 8/48 delivered masters (0.120-0.206): listening decision for mastering-engineer. docs/audits/DSP_GATE_ACCURACY.md"
         }
       ]
     },
@@ -822,7 +828,7 @@
       "title": "benchmark punch_loss implausible on DC-contaminated input (c14 = -0.355)",
       "component": "regression.synthetic",
       "severity": "P3",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "qa-automation-engineer",
       "root_cause": null,
       "repro": null,
@@ -831,7 +837,7 @@
         "qa.api_lab c14_dc_offset"
       ],
       "source": "auralith-qa.json c14_dc_offset",
-      "validated_commit": "17accec",
+      "validated_commit": "868959e",
       "history": [
         {
           "date": "2026-10-10",
@@ -843,6 +849,12 @@
           "agent": "qa-automation-engineer",
           "status": "OPEN",
           "note": "Confirmed with injected DC (metric_validation): punch_loss 0.28 at -34 dBFS DC on pop_mid (0.38 at -20 dBFS on edm_dense), trips eval/guardrail transient_loss and benchmark lost_drums with NO punch lost. Pipeline strips DC before measuring so practical exposure is benchmark/input side. docs/audits/METRIC_VALIDATION.md"
+        },
+        {
+          "date": "2026-10-18",
+          "agent": "audio-dsp-engineer",
+          "status": "READY_FOR_QA",
+          "note": "Production side: _transient_metrics DC-free (DC no longer fakes transient_loss: eval 6/12->0/12); QC dc_offset fails > -40 dBFS so DC-contaminated masters fail for the right reason. docs/audits/DSP_GATE_ACCURACY.md"
         }
       ]
     },
@@ -1480,7 +1492,7 @@
       "title": "Gate measurements are whole-file averages: a 300 ms hard-clip burst (distortion) and a 4 s transient-smear section are not detected",
       "component": "dsp.evaluation",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "audio-dsp-engineer",
       "root_cause": null,
       "repro": "cd backend && python -m benchmark.metric_validation (docs/audits/METRIC_VALIDATION.md, test-results/metric_validation.json) ; see clip_burst (TPR 0/12, distortion.added error -23 dB vs injected) and transient_smear_section (gate blocks 1/12; only at 9 dB)",
@@ -1489,12 +1501,18 @@
         "tests/test_metric_validation.py"
       ],
       "source": "docs/audits/METRIC_VALIDATION.md",
-      "validated_commit": "17accec",
+      "validated_commit": "868959e",
       "history": [
         {
           "date": "2026-10-17",
           "agent": "qa-automation-engineer",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-18",
+          "agent": "audio-dsp-engineer",
+          "status": "READY_FOR_QA",
+          "note": "Gate: distortion_burst (worst 400 ms window > -12 dB) clip_burst blocks 0/12->8/12; section_transient_loss (source-locked attack loss, worst 3 s window minus song median > 2.5 dB) section smear 1/12->4/12. 0/16 controls and 0/63 engine candidates trip. docs/audits/DSP_GATE_ACCURACY.md"
         }
       ]
     },
@@ -1503,7 +1521,7 @@
       "title": "Dynamics-crush and pumping blind spots: crest_collapse/dynamics_preservation/plr never fire at 2-8 dB crest crush, lra_collapse 25% at 12x range crush, pumping detector exists only in benchmark.metrics (not in the production verdict)",
       "component": "dsp.evaluation",
       "severity": "P2",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "audio-dsp-engineer",
       "root_cause": null,
       "repro": "cd backend && python -m benchmark.metric_validation (docs/audits/METRIC_VALIDATION.md, test-results/metric_validation.json) ; see crest_crush, range_crush, pumping sections",
@@ -1512,12 +1530,18 @@
         "tests/test_metric_validation.py"
       ],
       "source": "docs/audits/METRIC_VALIDATION.md",
-      "validated_commit": "17accec",
+      "validated_commit": "868959e",
       "history": [
         {
           "date": "2026-10-17",
           "agent": "qa-automation-engineer",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-18",
+          "agent": "audio-dsp-engineer",
+          "status": "READY_FOR_QA",
+          "note": "Production pumping check (>1.5 dB, benchmark construction; pumping blocks 5/12->7/12); crest_collapse adds peak-reduction-without-loudness rule (eval.crest_collapse on crest_crush 0/12->8/12); LRA loss rule (range_crush 2->3/12, limited by design). docs/audits/DSP_GATE_ACCURACY.md"
         }
       ]
     },
@@ -1526,7 +1550,7 @@
       "title": "Stereo width: excessive side boost (+12 dB, side>mid) passes qc.mono_compatibility and phase_correlation; only +18 dB trips them; benchmark loudness-matched low_end/high readings are biased (low-end loss underestimated by mean 1.2 dB; pure -6 dB bass cut reads high_change +2.45 dB on bass-heavy material, next to the 2.5 harsh_highs limit)",
       "component": "dsp.evaluation",
       "severity": "P3",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "audio-dsp-engineer",
       "root_cause": null,
       "repro": "cd backend && python -m benchmark.metric_validation (docs/audits/METRIC_VALIDATION.md, test-results/metric_validation.json) ; see excess_width and magnitude tables; loudness_matched rows of low_end_loss on hiphop_bassheavy",
@@ -1535,12 +1559,18 @@
         "tests/test_metric_validation.py"
       ],
       "source": "docs/audits/METRIC_VALIDATION.md",
-      "validated_commit": "17accec",
+      "validated_commit": "868959e",
       "history": [
         {
           "date": "2026-10-17",
           "agent": "qa-automation-engineer",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-18",
+          "agent": "audio-dsp-engineer",
+          "status": "READY_FOR_QA",
+          "note": "QC mono_compatibility fails on source-relative side rise >3 dB or mono fold-down loss +1.5 dB: excess_width +6 dB 0/4->4/4, phase_cancel 0.25 0/4->4/4. Benchmark-side bias fixed by QA (f2f4188). docs/audits/DSP_GATE_ACCURACY.md"
         }
       ]
     },
@@ -1549,7 +1579,7 @@
       "title": "With bias-free benchmark metrics, 2 real-engine fixtures read past existing limits: bass_heavy kick-bass -2.86 dB re mid (limit -2.0; may be planned boom cut, compare not plan-aware) and bright punch loss 0.130 (limit 0.12)",
       "component": "dsp.evaluation",
       "severity": "P3",
-      "status": "OPEN",
+      "status": "READY_FOR_QA",
       "owner": "audio-dsp-engineer",
       "root_cause": null,
       "repro": "cd backend && python -m pytest -q tests/test_benchmark_regressions.py -k heard_failures (2 strict xfails; remove marker to see)",
@@ -1558,12 +1588,18 @@
         "tests/test_benchmark_regressions.py"
       ],
       "source": "docs/audits/METRIC_VALIDATION.md",
-      "validated_commit": "0526e98",
+      "validated_commit": "868959e",
       "history": [
         {
           "date": "2026-10-17",
           "agent": "qa-automation-engineer",
           "note": "Created (OPEN)."
+        },
+        {
+          "date": "2026-10-18",
+          "agent": "audio-dsp-engineer",
+          "status": "READY_FOR_QA",
+          "note": "Both readings are planned EQ (bass_heavy: -2.16 of -2.86 dB planned, unplanned -0.70; bright: bus share of punch loss 0.112, planned de-harsh 0.020). compare(planned=) plan-aware with guardrail absolute caps; xfails removed. docs/audits/DSP_GATE_ACCURACY.md"
         }
       ]
     }
