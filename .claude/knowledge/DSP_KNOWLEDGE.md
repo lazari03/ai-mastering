@@ -34,7 +34,8 @@ Gate detectors for localized/dynamics/stereo damage (`planning/config.py` switch
 - `lra_collapse` (added rule): LRA loss ≥ 1.5 LU and ≥ 25 % — beyond normal master-to-master LRA variation (engine ≤ 0.32 LU).
 - QC `mono_compatibility` fail: side/mid +3 dB (side > −20 dB re mid) or mono fold-down −1.5 dB vs source — twice the planner's max widening (1.5 dB + 0.7 dB tweak); source-relative.
 - QC `dc_offset` fail > −40 dBFS (production strips DC first); punch/short-term crest measured DC-free (QA-005).
-`benchmark.metrics.compare(planned=...)` judges unplanned movement vs the plan's EQ rendering (AUDIO-010), with the guardrails' absolute caps.
+`benchmark.metrics.compare(planned=...)` judges unplanned movement vs the plan's EQ rendering (AUDIO-010), with the guardrails' absolute caps (bands 4.5/3.5 dB; punch: absolute 0.12 score drop, D-007).
+Input refusal: < 0.5 s (`quality_control.MIN_DURATION_S_FOR_MASTERING`; analysis needs one 400 ms block).
 Benchmark failure kinds (`benchmark/metrics.py`): lost_drums, weaker_bass, harsh_highs, pumping (HF dip on kick < −1 dB).
 
 ## Known failure modes (historical, guarded)

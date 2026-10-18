@@ -28,3 +28,9 @@ Before re-opening a decision, cite new evidence. Owner: technical-lead; auditor 
 ## D-006 · 2026-10-10 · Local Python must be 3.12
 - **Decision:** Use a Python 3.12 venv locally (matches CI and `backend/Dockerfile`).
 - **Rationale:** `pedalboard==0.9.25` raises SIGILL on import under Python 3.13 in this container (exit 132 for the whole pytest run). Under 3.12: 229 passed, synthetic drift 0.
+
+## D-007 · 2026-10-18 · Transient-loss guardrail stays an ABSOLUTE 0.12 punch-score drop
+- **Decision:** `GuardrailConfig.max_transient_loss = 0.12` keeps judging the absolute drop of the 0-1 punch score (not a fraction of the source's punch). Reports carry `loss_fraction` next to it; `benchmark.metrics.compare(planned=)` applies the same absolute cap.
+- **Rationale:** a true 12 % fraction would re-render 8 of 48 delivered synthetic/API-lab masters (fractions 0.120-0.206) with no listening evidence that they are damaged; mastering-engineer reviewed and approved keeping the absolute limit (Phase 2 review). Known consequence: `bright` fixture reads 0.130 as a fraction, 0.079 absolute (passes).
+- **Alternatives:** fraction 0.12 (rejected pending blind listening); fraction 0.24 (rejected: changes behaviour by source punch without evidence).
+- **Components:** dsp.evaluation, benchmark · **Source:** docs/audits/DSP_GATE_ACCURACY.md §7-8, AURALITH-AUDIO-001/-010.
