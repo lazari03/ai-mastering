@@ -205,7 +205,14 @@ def added_distortion_db(source: np.ndarray, master: np.ndarray, sr: int) -> dict
     """
     x, y, lag = _align(_mid(source), _mid(master), sr)
     if x.size < N_FFT * 4:
-        return {"mid_500_4k": -120.0, "hf_4k_16k": -120.0, "worst_db": -120.0, "lag_samples": lag, "window_worst_db": -120.0, "window_worst_at_s": None, "pumping_db": 0.0, **_section_attack_loss_db(x, y, sr)}
+        out = {"mid_500_4k": -120.0, "hf_4k_16k": -120.0, "worst_db": -120.0, "lag_samples": lag}
+        if C.WINDOWED_DISTORTION_CHECK:
+            out.update(window_worst_db=-120.0, window_worst_at_s=None)
+        if C.PUMPING_CHECK:
+            out["pumping_db"] = 0.0
+        if C.SECTION_TRANSIENT_CHECK:
+            out.update(_section_attack_loss_db(x, y, sr))
+        return out
     X = librosa.stft(x, n_fft=N_FFT, hop_length=HOP)
     Y = librosa.stft(y, n_fft=N_FFT, hop_length=HOP)
     f = librosa.fft_frequencies(sr=sr, n_fft=N_FFT)
@@ -227,7 +234,12 @@ def added_distortion_db(source: np.ndarray, master: np.ndarray, sr: int) -> dict
         num, den = float(pr[m][:, loud].sum()), float(py[m][:, loud].sum())
         out[name] = round(10.0 * np.log10(num / den + EPS), 2) if den > EPS else -120.0
     out["worst_db"] = max(out[k] for k in REGIONS_HZ)
-    out.update(_windowed_worst_db(pr, py, f, loud, sr))
-    out["pumping_db"] = _pumping_db(x, y, sr)
-    out.update(_section_attack_loss_db(x, y, sr))
+    # Each detector runs only when its verdict check is switched on: off
+    # means the parent's computation AND payload (no extra keys, no CPU).
+    if C.WINDOWED_DISTORTION_CHECK:
+        out.update(_windowed_worst_db(pr, py, f, loud, sr))
+    if C.PUMPING_CHECK:
+        out["pumping_db"] = _pumping_db(x, y, sr)
+    if C.SECTION_TRANSIENT_CHECK:
+        out.update(_section_attack_loss_db(x, y, sr))
     return out

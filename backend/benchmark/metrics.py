@@ -94,16 +94,21 @@ def compare(source: np.ndarray, candidate: np.ndarray, sr: int, planned: np.ndar
     """Loudness-matched comparison of a candidate master with its source.
 
     planned (optional): the SOURCE with only the master's planned static EQ
-    applied (what the plan intended tonally). When given, the judgement is
-    plan-aware, the same way the production guardrails are
-    (output_validation.validate_render): weaker_bass / harsh_highs judge the
-    UNPLANNED band movement (candidate - planned, both relative to the
-    midrange) with the same limits, plus the guardrails' absolute caps on
-    the TOTAL movement (4.5 dB bass down / 3.5 dB highs up, plan or not);
-    lost_drums judges punch lost relative to the planned rendering, so a
-    deliberate tonal correction (taming a harsh 5 kHz region softens hat
-    and snare attacks) is not charged as damage by the bus. Without it the
-    behaviour is unchanged (AURALITH-AUDIO-010)."""
+    applied (what the plan intended tonally). When given (AURALITH-AUDIO-010):
+    * bands, as the production guardrails (output_validation.validate_render):
+      weaker_bass / harsh_highs judge the UNPLANNED movement (candidate -
+      planned, both relative to the midrange) with the same limits, plus the
+      guardrails' absolute caps on TOTAL movement (4.5 dB bass down / 3.5 dB
+      highs up, plan or not);
+    * punch, two rules: the FRACTION lost relative to the planned rendering
+      (this benchmark's unit, limit 0.12), so a deliberate tonal correction
+      that softens attacks is not charged to the bus; AND the production
+      guardrail's own plan-independent cap - the ABSOLUTE punch-score drop
+      source -> candidate (DC-free, loudness-matched) may not exceed 0.12
+      (GuardrailConfig.max_transient_loss; AUDIO-001 / DECISIONS D-007). No
+      planned EQ can excuse a larger absolute loss.
+    Without `planned` the behaviour is unchanged (total fraction, limit 0.12).
+    """
     source, candidate = _stereo(source), _stereo(candidate)
     n = min(len(source), len(candidate))
     source, candidate = source[:n], candidate[:n]
@@ -132,7 +137,7 @@ def compare(source: np.ndarray, candidate: np.ndarray, sr: int, planned: np.ndar
         judged_high = max(unplanned[b] for b in HIGH_BANDS)
         punch_ref = float(_transient_metrics(_remove_dc(planned), sr).get("drum_punch_estimate", 0.0))
         judged_punch = (punch_ref - punch_out) / punch_ref if punch_ref >= MIN_PUNCH_TO_JUDGE else 0.0
-        plan_info = {"planned_band_deltas_db": planned_bands, "unplanned_band_deltas_db": unplanned, "punch_planned": round(punch_ref, 3), "punch_loss_unplanned": round(judged_punch, 3)}
+        plan_info = {"planned_band_deltas_db": planned_bands, "unplanned_band_deltas_db": unplanned, "punch_planned": round(punch_ref, 3), "punch_loss_unplanned": round(judged_punch, 3), "punch_loss_absolute": round(punch_src - punch_out, 3)}
 
     failures = []
     if judged_punch > LIMITS.max_transient_loss:
@@ -142,6 +147,8 @@ def compare(source: np.ndarray, candidate: np.ndarray, sr: int, planned: np.ndar
     if judged_high > LIMITS.max_high_boost_db:
         failures.append({"kind": "harsh_highs", "measured": round(judged_high, 2), "limit": LIMITS.max_high_boost_db, "detail": "upper bands rose relative to the mix" + (" beyond the planned EQ" if planned is not None else "")})
     if planned is not None:
+        if punch_src - punch_out > LIMITS.max_transient_loss:
+            failures.append({"kind": "lost_drums", "measured": round(punch_src - punch_out, 3), "limit": LIMITS.max_transient_loss, "detail": f"drum punch score {punch_src:.3f} -> {punch_out:.3f} (absolute cap, plan or not, = production guardrail)"})
         if low_change < -LIMITS.absolute_max_low_end_loss_db:
             failures.append({"kind": "weaker_bass", "measured": round(low_change, 2), "limit": -LIMITS.absolute_max_low_end_loss_db, "detail": "a musical low band lost level in total (absolute cap, plan or not)"})
         if high_change > LIMITS.absolute_max_high_boost_db:

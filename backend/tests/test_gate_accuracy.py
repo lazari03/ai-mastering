@@ -209,3 +209,41 @@ def test_compare_plan_aware_excuses_planned_eq_only():
     assert any(f["kind"] == "weaker_bass" and f["limit"] == -2.0 for f in compare(x, cut6, dc.SR, planned=cut3)["failures"])
     # ...and the absolute cap holds even when the plan itself asked for it
     assert any(f["kind"] == "weaker_bass" and f["limit"] == -4.5 for f in compare(x, cut6, dc.SR, planned=cut6)["failures"])
+
+
+def test_compare_plan_aware_cannot_excuse_large_absolute_punch_loss():
+    # F1 (audit): a plan whose own rendering already lost the punch must not
+    # excuse it - the production guardrail's absolute cap applies, plan or not.
+    from ai_mastering.bus_processing import _true_peak_limiter
+    from benchmark.metrics import compare
+
+    x = ref()
+    crushed = _true_peak_limiter(x * 10 ** (18 / 20), dc.SR, ceiling_db=-1.0)
+    r = compare(x, crushed, dc.SR, planned=crushed)
+    assert r["punch_loss_unplanned"] == pytest.approx(0.0, abs=0.01)  # nothing "unplanned"...
+    assert r["punch_loss_absolute"] > 0.12
+    assert any(f["kind"] == "lost_drums" and "absolute cap" in f["detail"] for f in r["failures"])  # ...still fails
+
+
+def test_switched_off_detectors_are_not_computed(monkeypatch):
+    # F2: off = the parent's computation and payload (no extra keys, no CPU)
+    x = ref()
+    for name in ("WINDOWED_DISTORTION_CHECK", "PUMPING_CHECK", "SECTION_TRANSIENT_CHECK"):
+        monkeypatch.setattr(C, name, False)
+    assert set(added_distortion_db(x, x * 0.5, dc.SR)) == {"lag_samples", "mid_500_4k", "hf_4k_16k", "worst_db"}
+
+
+def test_too_short_input_is_refused_cleanly(tmp_path):
+    # F4: 0.3 s used to crash analysis with a raw IndexError (empty LRA series)
+    import soundfile as sf
+
+    from ai_mastering.mastering import master_track
+    from ai_mastering.quality_control import InvalidAudioError, validate_input_signal
+
+    x = ref()[: int(0.3 * dc.SR)]
+    with pytest.raises(InvalidAudioError, match="too short"):
+        validate_input_signal(x, dc.SR)
+    sf.write(str(tmp_path / "s.wav"), x, dc.SR)
+    with pytest.raises(InvalidAudioError, match="too short"):
+        master_track(str(tmp_path / "s.wav"), str(tmp_path / "o.wav"), "pop", [])
+    validate_input_signal(ref()[: int(0.5 * dc.SR)], dc.SR)  # 0.5 s still accepted

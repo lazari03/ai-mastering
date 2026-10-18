@@ -246,7 +246,7 @@ def evaluate_master(
             "lra_after_lu": master.lra_lu,
             "plr_before_db": source.plr_db,
             "plr_after_db": master.plr_db,
-            "excess_peak_reduction_db": round(excess_peak_reduction, 3),
+            **({"excess_peak_reduction_db": round(excess_peak_reduction, 3)} if C.EXCESS_PEAK_REDUCTION_CHECK else {}),
         },
         # delta / allowed_loss are ABSOLUTE punch-score units (0-1 scale);
         # loss_fraction is the same change as a fraction of the source's

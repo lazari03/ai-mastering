@@ -19,6 +19,10 @@ from .planning import config as C
 DC_OFFSET_THRESHOLD_DB = -50.0  # per-channel |mean| vs full scale; below this is measurement noise, not audible DC
 SILENCE_RMS_DB = -70.0
 MIN_SAMPLES_FOR_MASTERING = 4410  # 0.1s at 44.1kHz — below this there's nothing to analyze or master
+# Loudness analysis needs at least one 400 ms momentary block (LRA / short-
+# term series); 0.3 s used to crash analysis with a raw IndexError instead
+# of a clean refusal. 0.5 s keeps a margin over one block at any rate.
+MIN_DURATION_S_FOR_MASTERING = 0.5
 CHANNEL_IMBALANCE_WARN_DB = 6.0
 # A master's L/R balance may differ from the SOURCE's by at most this much
 # before it counts as something processing did. A deliberately lopsided
@@ -82,8 +86,8 @@ def validate_input_signal(audio: np.ndarray, sr: int) -> dict:
     """
     audio = _ensure_stereo(audio).astype(np.float32)
 
-    if audio.shape[0] < MIN_SAMPLES_FOR_MASTERING:
-        raise InvalidAudioError(f"Audio is too short to master ({audio.shape[0]} samples at {sr}Hz).")
+    if audio.shape[0] < max(MIN_SAMPLES_FOR_MASTERING, int(round(MIN_DURATION_S_FOR_MASTERING * sr))):
+        raise InvalidAudioError(f"Audio is too short to master ({audio.shape[0] / float(sr):.2f} s; at least {MIN_DURATION_S_FOR_MASTERING:.1f} s is needed).")
 
     if not np.all(np.isfinite(audio)):
         raise InvalidAudioError("Audio contains invalid (NaN/Inf) samples — the file is likely corrupt.")
@@ -302,7 +306,7 @@ def run_quality_control(
             "mono_compatibility",
             "warn" if mono_risk else "pass",
             "Mono compatibility risk detected in the final master." if mono_risk else "Master is mono-compatible.",
-            width["side_rise_db"],
+            width["side_rise_db"] if C.WIDTH_CHECK else None,
         )
 
     after_rms_db = float(analysis_after.get("rms_db", -100.0))

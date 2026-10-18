@@ -57,7 +57,11 @@ def test_detects_lost_drums(drums_mix):
 # measured -2.86 dB kick-bass change is that planned boom correction; unplanned
 # -0.70 dB). On the +6.5 dB bright fixture the plan cuts 2.45 dB at 5 kHz, which
 # itself softens hat/snare attacks (punch 0.609 -> 0.597); the bus's own share
-# of the 0.130 punch loss is 0.112. Limits unchanged; absolute caps still apply.
+# of the 0.130 punch loss is 0.112. Limits unchanged; absolute caps still apply,
+# including the production guardrail's absolute punch cap (0.12 score drop).
+# "bright" reads 0.130 as a FRACTION but 0.079 as the ABSOLUTE score drop the
+# production gate judges (same audio, same scores): the unit difference of
+# AURALITH-AUDIO-001, kept absolute by recorded decision DECISIONS D-007.
 def _planned_rendering(source, result):
     from dataclasses import fields
 
@@ -87,3 +91,10 @@ def test_adaptive_master_has_none_of_the_heard_failures(tmp_path, name, kwargs, 
     mastered, _ = sf.read(str(out), dtype="float32")
     result = compare(source, mastered, SR, planned=_planned_rendering(source, result_track))
     assert result["failures"] == [], (name, result["failures"])
+    # benchmark and production agree on the same audio: the absolute punch drop
+    # the benchmark caps is the one the engine's guardrail judged
+    engine_delta = result_track["mastering_diagnostics"]["evaluation"]["transients"]["delta"]
+    assert result["punch_loss_absolute"] == pytest.approx(-engine_delta, abs=0.01)
+    if name == "bright":  # D-007: total fraction above 0.12, absolute well under it
+        assert result["punch_loss"] == pytest.approx(0.130, abs=0.015)
+        assert result["punch_loss_absolute"] < 0.12
