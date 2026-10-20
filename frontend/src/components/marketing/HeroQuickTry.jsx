@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
 import { postAnalyzeAudio } from "@/network/http/client";
 import { stashPendingToolFile, takePendingToolFile } from "@/lib/toolHandoff";
+import { measureFileLocally, LocalMeasureUnavailable, SilentAudioError } from "@/lib/localLoudness";
 import { trackEvent } from "@/lib/analytics";
 import { uploadStatusText } from "@/lib/uploadProgress";
 import { CTA } from "@/lib/internalLinks";
@@ -30,8 +31,10 @@ import { DEMO_MASTER } from "@/content/demoMaster";
  *    on hand gets a real result instantly, signed in or not (and the
  *    before/after player next to it is that same track, mastered).
  *
- * Analyzing an uploaded file needs a registered account (anonymous sign-in
- * is off). A signed-out visitor who drops a file gets ChordAuthGate first. Once signed in, HomeClient sends them to /app anyway,
+ * An uploaded file is measured in the browser (lib/localLoudness.js), so it
+ * needs no account either. Only a file the browser can't decode goes to the
+ * server /analyze, which needs a registered account (anonymous sign-in is
+ * off): a signed-out visitor then gets ChordAuthGate first. Once signed in, HomeClient sends them to /app anyway,
  * so an uploaded file is handed to the Master tab (same handoff as "Master
  * this track") instead of the try resuming here.
  */
@@ -46,20 +49,42 @@ export default function HeroQuickTry() {
   const [upload, setUpload] = useState(null);
   const [error, setError] = useState("");
   const [gate, setGate] = useState(null); // null | { kind: "analyze", file, source } | { kind: "master" }
+  const [method, setMethod] = useState(null); // "browser" | "server" — which meter produced `analysis`
   // A file dropped while the sample is still analyzing must win — only the
   // latest try may write results.
   const latestRun = useRef(0);
 
   const run = async (nextFile, source) => {
-    // Bumped before the account check too, so a slow sample fetch can't
-    // replace a track the visitor picked meanwhile.
+    // Bumped first, so an older run can't overwrite a track the visitor
+    // picked meanwhile.
     const runId = ++latestRun.current;
+    setFile(nextFile);
+    setInput(source);
+    setAnalysis(null);
+    setError("");
+    setIsLoading(true);
+
+    // In-browser measurement first: no account, no upload (localLoudness.js).
+    try {
+      const local = await measureFileLocally(nextFile);
+      if (runId !== latestRun.current) return;
+      setAnalysis(local);
+      setMethod("browser");
+      setIsLoading(false);
+      trackEvent("free_tool_analysis_completed", { source_tool: "homepage_hero", input: source, method: "browser" });
+      return;
+    } catch (err) {
+      if (runId !== latestRun.current) return;
+      if (!(err instanceof LocalMeasureUnavailable)) {
+        setError(err instanceof SilentAudioError ? t("lufsMeter.silent") : err?.message || t("lufsMeter.failed"));
+        setIsLoading(false);
+        return;
+      }
+      // The browser can't decode this file: the server can, for an account.
+    }
+
     const { user } = useAuthStore.getState();
     if (!user || user.isAnonymous) {
-      setFile(nextFile);
-      setInput(source);
-      setAnalysis(null);
-      setError("");
       setIsLoading(false);
       setGate({ kind: "analyze", file: nextFile, source });
       // Stashed now, not after sign-in: signing in makes HomeClient redirect
@@ -67,11 +92,6 @@ export default function HeroQuickTry() {
       if (source === "upload") stashPendingToolFile(nextFile);
       return;
     }
-    setFile(nextFile);
-    setInput(source);
-    setAnalysis(null);
-    setError("");
-    setIsLoading(true);
     try {
       const formData = new FormData();
       formData.append("file", nextFile);
@@ -80,7 +100,8 @@ export default function HeroQuickTry() {
       });
       if (runId !== latestRun.current) return;
       setAnalysis(response.analysis);
-      trackEvent("free_tool_analysis_completed", { source_tool: "homepage_hero", input: source });
+      setMethod("server");
+      trackEvent("free_tool_analysis_completed", { source_tool: "homepage_hero", input: source, method: "server" });
     } catch (err) {
       if (runId === latestRun.current) setError(err?.message || t("lufsMeter.failed"));
     } finally {
@@ -104,6 +125,7 @@ export default function HeroQuickTry() {
     setIsLoading(false);
     setUpload(null);
     setAnalysis(DEMO_MASTER.analysis_before);
+    setMethod("server"); // the engine's own stored measurement
     trackEvent("free_tool_analysis_completed", { source_tool: "homepage_hero", input: "sample" });
   };
 
@@ -175,7 +197,7 @@ export default function HeroQuickTry() {
           </div>
         ) : null}
 
-        <LufsMeterResult analysis={analysis} />
+        <LufsMeterResult analysis={analysis} method={method} />
 
         {analysis && input === "sample" ? (
           <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.045] p-4 text-[13px] leading-relaxed text-text-primary">

@@ -24,7 +24,7 @@ function rangeContext(t, lra) {
   return t("lufsMeter.ctx.rangeWide");
 }
 
-export default function LufsMeterResult({ analysis }) {
+export default function LufsMeterResult({ analysis, method = "server" }) {
   const { t } = useLanguage();
   if (!analysis) return null;
   const { integrated_lufs: lufs, true_peak_db: peak, loudness_range_lu: lra } = analysis;
@@ -48,7 +48,7 @@ export default function LufsMeterResult({ analysis }) {
           <p className="mt-2 text-xs leading-relaxed text-text-secondary">{rangeContext(t, lra)}</p>
         </div>
       </div>
-      <p className="text-[11px] text-text-secondary">{t("lufsMeter.measuredNote")}</p>
+      <p className="text-[11px] text-text-secondary">{t(method === "browser" ? "lufsMeter.measuredLocalNote" : "lufsMeter.measuredNote")}</p>
     </div>
   );
 }

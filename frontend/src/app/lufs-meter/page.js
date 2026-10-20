@@ -11,7 +11,7 @@ import { buildMetadata, JsonLd, faqJsonLd, absoluteUrl, SITE_NAME } from "@/lib/
 export const metadata = buildMetadata({
   title: `Free LUFS Meter — Check Integrated Loudness, True Peak & LRA | ${SITE_NAME}`,
   description:
-    "Upload a track and measure its Integrated Loudness (LUFS), True Peak, and Loudness Range — the same analysis engine Studio uses on every upload. Free, no card required.",
+    "Measure any track's Integrated Loudness (LUFS), True Peak, and Loudness Range right in your browser — the same BS.1770 meter Studio's mastering engine uses. Free, no account, no upload.",
   path: "/lufs-meter",
   keywords: [
     "lufs meter",
@@ -54,7 +54,12 @@ const FAQ = [
   },
   {
     question: "Is this the same measurement Studio uses?",
-    answer: "Yes — this calls the same analysis engine Auralith's Studio runs on every upload, not a separate simplified estimate.",
+    answer:
+      "Yes — it runs a port of the mastering engine's own BS.1770 meter (same K-weighting, gating, loudness-range percentiles and 4× oversampled true peak) in your browser, so the file never leaves your device. On our test tracks it agrees with the engine to within 0.001 dB. If your browser can't decode a format, it falls back to the engine itself (that needs a free account).",
+  },
+  {
+    question: "Do I need an account or to upload my file?",
+    answer: "No. The measurement runs on your device. You only need a free account if you want to master the track afterwards.",
   },
 ];
 
@@ -94,7 +99,7 @@ export default function LufsMeterPage() {
       <PageHero
         eyebrow="LUFS Meter · Free"
         title="Free Online LUFS Meter"
-        lead="How loud is your track, actually? Upload it and get its Integrated Loudness (LUFS), True Peak, and Loudness Range back — the same measurement Studio's mastering engine uses on every upload, explained in plain terms."
+        lead="How loud is your track, actually? Drop it in and get its Integrated Loudness (LUFS), True Peak, and Loudness Range in seconds — measured in your browser with the same meter Studio's mastering engine uses, explained in plain terms. No account, no upload."
       >
         <div id="lufs-tool" className="grid scroll-mt-28 gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:items-start">
           <ToolFrame label="LUFS Meter" footer={`Free, no card. Supports ${SUPPORTED_FORMATS}.`}>

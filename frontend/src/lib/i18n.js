@@ -39,7 +39,7 @@ const DICT = {
   },
   "hero.ctaPrimary": { en: "Master a Track Free", sq: "Masterizo Falas" },
   "heroTry.title": { en: "Try it on your track", sq: "Provoje me këngën tënde" },
-  "heroTry.noSignup": { en: "Free account · no card", sq: "Llogari falas · pa kartë" },
+  "heroTry.noSignup": { en: "No account needed", sq: "Pa llogari" },
   "heroTry.sample": { en: "Try it with our sample", sq: "Provoje me shembullin tonë" },
   "heroTry.hint": { en: "Loudness, true peak & range in seconds", sq: "Zëri, kulmi i vërtetë dhe diapazoni në sekonda" },
   "heroTry.sampleAfter": {
@@ -48,8 +48,8 @@ const DICT = {
   },
   "heroTry.sampleListen": { en: "Hear the before / after", sq: "Dëgjo para / pas" },
   "heroTry.sampleNext": {
-    en: "Now drop your own track in — a free account (no card) measures it and gives you 3 full masters.",
-    sq: "Tani lësho këngën tënde — një llogari falas (pa kartë) e mat dhe të jep 3 masterë të plotë.",
+    en: "Now drop your own track in — it's measured right in your browser, no account needed.",
+    sq: "Tani lësho këngën tënde — matet direkt në shfletuesin tënd, pa llogari.",
   },
   "heroTry.masterLead": { en: "Ready for the full master?", sq: "Gati për masterin e plotë?" },
   "hero.ctaReassurance": { en: "3 free masters · No credit card", sq: "3 masterë falas · Pa kartë krediti" },
@@ -1045,6 +1045,11 @@ const DICT = {
   "lufsMeter.analyzing": { en: "Analyzing…", sq: "Duke analizuar…" },
   "lufsMeter.alwaysFree": { en: "Free, always — no trial, no card, no limit.", sq: "Falas, gjithmonë — pa provë, pa kartë, pa limit." },
   "lufsMeter.failed": { en: "Analysis failed", sq: "Analiza dështoi" },
+  "lufsMeter.silent": { en: "This file is silent — there's no loudness to measure.", sq: "Ky skedar është pa zë — nuk ka zë për të matur." },
+  "lufsMeter.measuredLocalNote": {
+    en: "Measured in your browser with the same BS.1770 meter the mastering engine uses — your file wasn't uploaded.",
+    sq: "Matur në shfletuesin tënd me të njëjtin matës BS.1770 që përdor motori i masterizimit — skedari yt nuk u ngarkua.",
+  },
   "lufsMeter.masterThisTrack": { en: "Master This Track", sq: "Masterizo Këtë Këngë" },
   "lufsMeter.sameFileNote": { en: "Same file, no re-upload — straight into Studio.", sq: "E njëjta skedë, pa ringarkim — direkt në Studio." },
   "lufsMeter.integratedLabel": { en: "Integrated Loudness", sq: "Zëri i Integruar" },

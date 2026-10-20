@@ -10,25 +10,25 @@ import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
 import { postAnalyzeAudio } from "@/network/http/client";
 import { stashPendingToolFile } from "@/lib/toolHandoff";
+import { measureFileLocally, LocalMeasureUnavailable, SilentAudioError } from "@/lib/localLoudness";
 import { trackEvent } from "@/lib/analytics";
 import { uploadStatusText } from "@/lib/uploadProgress";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 
 /**
- * The public LUFS Meter on /lufs-meter. Measuring needs a registered
- * account (anonymous sign-in is off): a signed-out visitor who hits Measure
- * gets ChordAuthGate, and the measurement runs as soon as they sign up or
- * log in. Uses the same quota-free /analyze endpoint as the Studio's live
- * preview. Reuses the exact same DSP analysis Studio's adaptive engine
- * runs on every upload — this isn't a separate lightweight approximation,
- * it's the same integrated_lufs/true_peak_db/loudness_range_lu numbers
- * the real mastering engine measures.
+ * The public LUFS Meter on /lufs-meter. Measures in the browser first
+ * (lib/localLoudness.js — a port of the engine's own BS.1770 meter, same
+ * integrated_lufs/true_peak_db/loudness_range_lu), so anyone gets a reading
+ * with no account and no upload. Only when the browser can't decode the
+ * file does it fall back to the server /analyze endpoint, which needs a
+ * registered account (anonymous sign-in is off): a signed-out visitor then
+ * gets ChordAuthGate, and the measurement runs once they sign up or log in.
  */
 export default function PublicLufsMeter() {
   const { t } = useLanguage();
   const router = useRouter();
-  const { user, loading } = useAuthStore();
+  const { user } = useAuthStore();
   const setMasteringFile = useMasteringStore((s) => s.setFile);
   const [file, setFile] = useState(null);
   const [analysis, setAnalysis] = useState(null);
@@ -36,26 +36,53 @@ export default function PublicLufsMeter() {
   const [upload, setUpload] = useState(null);
   const [error, setError] = useState("");
   const [gate, setGate] = useState(null); // null | "analyze" | "master"
+  const [method, setMethod] = useState(null); // "browser" | "server"
   const registered = Boolean(user) && !user.isAnonymous;
 
   useEffect(() => {
     trackEvent("free_tool_opened", { source_tool: "lufs_meter" });
   }, []);
 
-  const analyze = async ({ signedIn = registered } = {}) => {
+  const analyze = async ({ serverOnly = false } = {}) => {
     if (!file) return;
-    if (!signedIn) {
+    setIsLoading(true);
+    setError("");
+    if (!serverOnly) {
+      try {
+        setAnalysis(await measureFileLocally(file));
+        setMethod("browser");
+        trackEvent("free_tool_analysis_completed", { source_tool: "lufs_meter", method: "browser" });
+        setIsLoading(false);
+        return;
+      } catch (err) {
+        if (err instanceof SilentAudioError) {
+          setError(t("lufsMeter.silent"));
+          setIsLoading(false);
+          return;
+        }
+        if (!(err instanceof LocalMeasureUnavailable)) {
+          setError(err?.message || t("lufsMeter.failed"));
+          setIsLoading(false);
+          return;
+        }
+        // Browser can't decode this file: fall through to the server.
+      }
+    }
+    // Read at fallback time, not render time: auth may still have been
+    // loading when Measure was clicked (measuring locally doesn't wait for it).
+    const current = useAuthStore.getState().user;
+    if (!serverOnly && !(current && !current.isAnonymous)) {
+      setIsLoading(false);
       setGate("analyze");
       return;
     }
-    setIsLoading(true);
-    setError("");
     try {
       const formData = new FormData();
       formData.append("file", file);
       const response = await postAnalyzeAudio(formData, { onUploadProgress: setUpload });
       setAnalysis(response.analysis);
-      trackEvent("free_tool_analysis_completed", { source_tool: "lufs_meter" });
+      setMethod("server");
+      trackEvent("free_tool_analysis_completed", { source_tool: "lufs_meter", method: "server" });
     } catch (err) {
       setError(err?.message || t("lufsMeter.failed"));
     } finally {
@@ -73,8 +100,6 @@ export default function PublicLufsMeter() {
     }
     setGate("master");
   };
-
-  const ready = !loading;
 
   return (
     <div className="relative">
@@ -94,7 +119,7 @@ export default function PublicLufsMeter() {
       <button
         type="button"
         onClick={() => analyze()}
-        disabled={!file || isLoading || !ready}
+        disabled={!file || isLoading}
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-4 text-sm font-bold uppercase tracking-[0.16em] text-bg transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isLoading ? (
@@ -118,7 +143,7 @@ export default function PublicLufsMeter() {
         </div>
       ) : null}
 
-      <LufsMeterResult analysis={analysis} />
+      <LufsMeterResult analysis={analysis} method={method} />
 
       {analysis ? (
         <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.045] p-4 text-center">
@@ -141,7 +166,7 @@ export default function PublicLufsMeter() {
           onClose={() => setGate(null)}
           onDone={() => {
             setGate(null);
-            analyze({ signedIn: true });
+            analyze({ serverOnly: true });
           }}
         />
       ) : null}

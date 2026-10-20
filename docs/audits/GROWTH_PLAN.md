@@ -30,7 +30,7 @@ Nothing here may be replaced with estimates. A customer counts only when a Polar
 - OBSERVED (`HeroQuickTry.jsx` before this change): the hero panel says "Try it on your track · **No payment required**". "Try it with our sample" then downloaded the demo MP3 and opened the **sign-up dialog** before showing anything, even though the result is already stored in `DEMO_MASTER`. After the sample, the copy said "Now drop your own track in — **still no account needed**", but dropping a file opens the same dialog.
 - Fix: the sample shows the engine's stored analysis instantly, with no account, no upload and no server compute. The badge now reads "Free account · no card". The follow-up line now says a free account measures your track and includes 3 full masters (en + sq).
 - Verified: `next build` passes. In headless Chromium as a signed-out visitor, clicking the sample shows −15.9 LUFS / −2.9 dBTP / 2.2 LU with **0 dialogs**.
-- Still open (experiment E3): uploading your own file and the free tool pages (`/lufs-meter`, key/BPM/chord finders) still need an account before any result. A client-side LUFS meter would let them deliver value first.
+- E3 (2026-10-20): uploading your own file to the hero panel or `/lufs-meter` is now measured **in the browser**, with no account and no upload (`lib/loudness.js`, a port of the engine's BS.1770 meter). Only files the browser can't decode fall back to the account-gated server path. The key/BPM/chord finders still need an account, because they use server-only essentia/madmom.
 
 ### B2 · The owner can't see the funnel outside the admin panel; Plausible is dead in production — **DOCUMENTED (owner action)**
 - OBSERVED: the shipped JS bundle contains the `"NEXT_PUBLIC_PLAUSIBLE_DOMAIN is not set"` branch, so Plausible never loads in production.
@@ -123,7 +123,7 @@ Record pass/fail per step in §8.
 |---|---|---|---|---|---|
 | E1 | Instant sample result raises hero engagement → signups | B1 fix | `cta_click try_sample` → `free_tool_analysis_completed{input:sample}` → `sign_up` | Shipped in branch, **not deployed** | — |
 | E2 | Founder network converts fastest | M1/M2 + FOUNDING10 | paid orders with code | **Awaiting approval** | — |
-| E3 | Free tool pages without an account increase tool → signup | client-side LUFS (BS.1770) on `/lufs-meter` | tool-page signups | Proposed (≈½ day) | — |
+| E3 | Free tool pages without an account increase tool → signup | in-browser LUFS/true-peak/LRA on `/lufs-meter` + hero upload | `free_tool_analysis_completed{method:browser}` → `free_tool_master_cta_clicked` → `sign_up` | Shipped in branch, **not deployed**. Matches the engine within 0.0005 LU / 0.000002 dB on 6 signals; Chromium MP3 decode reproduces the demo's −15.9 / −2.9 / 2.2 | — |
 | E4 | Value posts drive qualified traffic | P1 in 1–2 venues | UTM sessions → signups → paid | Awaiting rules check + approval | — |
 | E5 | Real quotes lift pricing-page conversion | ask paying users for permission to quote | pricing → checkout | After first payers | — |
 
