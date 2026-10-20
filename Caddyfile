@@ -56,6 +56,14 @@ auralithforge.app {
 	reverse_proxy frontend:3000
 }
 
+# www → apex. Only takes effect once a `www` DNS record exists (as of
+# 2026-10-20 www.auralithforge.app is NXDOMAIN, so anyone typing it gets
+# "site can't be reached"). With Cloudflare proxying, a Redirect Rule there
+# does the same job without this block; keeping both is harmless.
+www.auralithforge.app {
+	redir https://auralithforge.app{uri} permanent
+}
+
 api.auralithforge.app {
 	import security_headers
 	reverse_proxy node-api:8000

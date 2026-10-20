@@ -18,8 +18,6 @@ import { CTA } from "@/lib/internalLinks";
 import { useLanguage } from "@/lib/i18n";
 import { DEMO_MASTER } from "@/content/demoMaster";
 
-const SAMPLE_SRC = `/audio/demos/${DEMO_MASTER.track}`;
-
 /**
  * The homepage hero's "try it now" panel — the first thing a visitor can
  * act on without an account. Same anonymous /analyze flow as
@@ -27,14 +25,13 @@ const SAMPLE_SRC = `/audio/demos/${DEMO_MASTER.track}`;
  * with two differences that exist purely to lower the cost of a first try:
  *
  *  - Choosing a file starts the analysis — no separate "Measure" click.
- *  - "Try it with our sample" runs that same analysis on the homepage's
- *    own demo source, so someone without a bounce on hand still gets a
- *    real result (and the before/after player next to it is that same
- *    track, mastered).
+ *  - "Try it with our sample" shows the engine's stored analysis of the
+ *    homepage's own demo source (DEMO_MASTER), so someone without a bounce
+ *    on hand gets a real result instantly, signed in or not (and the
+ *    before/after player next to it is that same track, mastered).
  *
- * The analysis needs a registered account (anonymous sign-in is off). A
- * signed-out visitor who drops a file or picks the sample gets
- * ChordAuthGate first. Once signed in, HomeClient sends them to /app anyway,
+ * Analyzing an uploaded file needs a registered account (anonymous sign-in
+ * is off). A signed-out visitor who drops a file gets ChordAuthGate first. Once signed in, HomeClient sends them to /app anyway,
  * so an uploaded file is handed to the Master tab (same handoff as "Master
  * this track") instead of the try resuming here.
  */
@@ -94,22 +91,20 @@ export default function HeroQuickTry() {
     }
   };
 
-  const trySample = async () => {
+  // The sample's analysis is the engine's own measurement of this exact
+  // file, already rendered into DEMO_MASTER — shown instantly, with no
+  // upload and no account. Gating it behind sign-up put a wall in front of
+  // the one result that costs nothing to show.
+  const trySample = () => {
     trackEvent("cta_click", { cta_id: "try_sample", location: "homepage_hero" });
-    setIsLoading(true);
+    latestRun.current += 1; // supersede any upload still in flight
+    setFile(null);
+    setInput("sample");
     setError("");
-    const startedAt = latestRun.current;
-    try {
-      const res = await fetch(SAMPLE_SRC);
-      if (!res.ok) throw new Error(t("heroTry.sampleFailed"));
-      const blob = await res.blob();
-      if (startedAt !== latestRun.current) return; // a real upload started meanwhile
-      await run(new File([blob], DEMO_MASTER.track, { type: blob.type || "audio/mpeg" }), "sample");
-    } catch (err) {
-      if (startedAt !== latestRun.current) return;
-      setError(err?.message || t("heroTry.sampleFailed"));
-      setIsLoading(false);
-    }
+    setIsLoading(false);
+    setUpload(null);
+    setAnalysis(DEMO_MASTER.analysis_before);
+    trackEvent("free_tool_analysis_completed", { source_tool: "homepage_hero", input: "sample" });
   };
 
   const masterThisTrack = () => {
