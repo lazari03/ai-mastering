@@ -1,6 +1,6 @@
 # Growth Plan — first 10 paying customers
 
-Date 2026-10-20 · owner: growth-marketer · budget: €0 · base `17accec`
+Date 2026-10-20, updated 2026-10-21 · owner: growth-marketer · budget: €0 · base `17accec` → `52c12b1`
 Labels: **OBSERVED** (checked live or in code, source given), **MISSING** (no access), **HYPOTHESIS**.
 
 ## 0. Scoreboard (verified only)
@@ -43,6 +43,19 @@ Nothing here may be replaced with estimates. A customer counts only when a Polar
 - Fix in repo: a `www → apex` 301 block in `Caddyfile`.
 - Owner action (2 min, free): in Cloudflare DNS, add `CNAME www → auralithforge.app` (proxied). Then either deploy the Caddy block or add a Cloudflare Redirect Rule `www.* → https://auralithforge.app/$1`.
 
+### B4 · Masters run out → no direct way to buy — **FIXED (branch `growth/paywall-and-pay-per-track`, pending merge)** · AURALITH-GROWTH-001
+- OBSERVED (`MasteringConsole.jsx` before): with a track loaded and quota 0, the Master button was disabled and the only path was an 11px link to the Plans tab, a second page with four plan cards and a table. If client entitlements were stale, the server's 402 had no `code`, so it showed as a red alert in English even to sq users.
+- Fix: an inline paywall card with **"Master this track — €2.99"** (direct Polar checkout, the same call the Plans tab makes) plus "See plans". It also appears on a server 402. The gateway now sends stable codes (`trial_exhausted`, `monthly_quota_exhausted`, `professional_requires_plan`, `stems_require_purchase`, `stem_quota_exhausted`), all localized en + sq. Billing logic is unchanged.
+- Verified: gateway 106/106 tests, including 2 new contract tests (a 402 carries `trial_exhausted`; a purchased credit unlocks the render); `next build` passes; 17 new i18n keys present in en + sq. **Not verified:** a live signed-in walkthrough (needs an account with a used-up trial, see §7 step 2b).
+- Measure: `begin_checkout{checkout_source:"console_quota_paywall"}` → Polar `order.paid`.
+
+### B5 · The €2.99 single master had no buy button anywhere public — **FIXED (same branch)** · AURALITH-GROWTH-002
+- OBSERVED: `/pricing` "Pay per track instead" cards showed price + blurb only. The homepage pricing section didn't mention pay-per-track at all (only the FAQ did). For S1, someone releasing one single, this is the lowest-friction first payment.
+- Fix: "Buy one master — €2.99" / "Buy one stem master — €4.99" buttons on `/pricing`, plus a one-track line under the homepage grid. Both go to signup → Plans tab with that add-on highlighted and scrolled into view. Checked in headless Chromium, desktop + mobile.
+
+### B6 · The plan picked on a public page was forgotten after signup — **FIXED (same branch)** · AURALITH-GROWTH-003
+- `planSignupHref` now carries `plan=`. The Plans tab highlights that card ("Your pick") and gives it the primary button style.
+
 Also noted, not fixed (not conversion-critical or not in my permissions): the product has no social proof yet. Do not fabricate any. The first real customers' permission-based quotes are the fix (§5, E5).
 
 ## 3. Not verifiable from this session (blockers)
@@ -53,6 +66,9 @@ Also noted, not fixed (not conversion-critical or not in my permissions): the pr
 | Polar checkout + webhook → plan active | NOT RUN: real money | Owner buys Single Master €2.99 with own card, then refunds; or uses a Polar sandbox |
 | Licensed before/after demos beyond the pop demo | Needs audio with redistribution rights | Owner supplies CC-BY / own tracks per genre, then `backend/scripts/render_homepage_demo.py` |
 | Community rules | Rules change; the secondhand sources I found conflict (e.g. one 2026 guide says r/WeAreTheMusicMakers bans AI content) | Read each sidebar or message the mods before posting |
+
+### Compliance constraint found 2026-10-21
+`/privacy` limits marketing email to newsletter subscribers (Brevo, consent). **Don't send promo emails to signups who used their trial but never subscribed**: B4's in-product paywall is the compliant way to reach them. Also, the admin users list has no trial-usage field, so that cohort can't be listed without new code.
 
 ## 4. Segments and why they buy (HYPOTHESIS until interviews/payments confirm)
 
@@ -75,6 +91,14 @@ Principle: value first, disclosed founder identity, one-to-one, no automation, n
 - List 30 people you already know who release music (studio contacts, bandmates, guitar circles, local producers). Message them personally (template M1). Target: 30 messages → 10 trials → 2–3 paid.
 - Albanian channels: local producer Facebook groups, Instagram producer accounts that post in sq, music schools/studios in Tirana and Prishtina. Template M2. Offer a 20-minute free "master your next single live" session on IG Live or Discord (value + demo).
 
+### Week 1 additions (2026-10-21)
+- **Lead with the €2.99 single master, not a subscription.** A paid single master counts as a verified paying customer (Polar `order.paid`). It's the smallest ask, and B4/B5 make it one click. Keep FOUNDING10 for people who say they release monthly.
+- **Owner prerequisite (5 min):** create `FOUNDING10` in Polar (50% off first month, Indie + Studio, max 10 redemptions). The code doesn't exist until you do this. Confirm the Polar checkout shows the discount-code field.
+- **M1 list sources you already have:** your ~20 years of guitar/rock/Balkan circles (bandmates, rehearsal-room and gear-shop contacts), plus local producers you know. Name 30 people before sending anything.
+- **M4 · DJs and event producers via Unwind's organizer contacts** (Enter Events, GoWild are already partnership targets). One personal message to each organizer, asking for an intro to 2–3 DJs who release edits/originals. The angle is the Club/DJ category and the free LUFS meter for checking their sets.
+- **Demo asset already exists:** `video/out/auralith-reel-9x16.mp4` (16 s, 9:16, built from the real demo render). Before posting it anywhere new, confirm you own or have the rights to `frontend/public/audio/demos/pop-before.mp3`. Its provenance isn't documented in the repo.
+- **Community rules are still unverified.** On 2026-10-21, web search only turned up third-party Reddit mirrors and 2019 pinned posts, nothing current. Read each sidebar logged in before posting; I didn't build a venue plan on secondhand rules.
+
 ### Week 2 — communities (value posts, rules checked first)
 Candidate venues (verify the rules yourself; don't trust secondhand guides): r/mixingmastering (2019 rules capped self-promo at ~once a year, so prefer contributing answers), r/edmproduction / r/makinghiphop feedback threads, r/podcasting (loudness questions), Gearspace "Mastering forum" (no promo, answer questions only), KVR, the Mix Collective Discord (runs mixing contests), producer Discords with a #self-promo channel.
 - Post P1 (education + real data, founder disclosed). It contains no ask beyond a link where the rules allow one.
@@ -85,6 +109,13 @@ Candidate venues (verify the rules yourself; don't trust secondhand guides): r/m
 - Share-link loop: add a "Mastered with Auralith Forge — master your own free" footer on `/shared/*` pages (verify it exists; product change needs approval).
 
 ### Drafts
+
+**M4 — event organizer intro request (sq)**
+> Përshëndetje {emri}! Jam Fonsi, i Unwind. Kam ndërtuar edhe Auralith Forge (auralithforge.app), një mjet për masterizim online në shqip. Analizon këngën, korrigjon vetëm atë që duhet dhe të tregon çfarë ndryshoi. A njeh 2–3 DJ ose producentë që nxjerrin muzikë të tyre dhe do ta provonin? 3 masterë falas pa kartë, dhe unë e dëgjoj vetë rezultatin. Pa asnjë detyrim për ty, vetëm një prezantim nëse të duket me vend.
+
+**F1 — single follow-up, day 4, only if they tried it** (check `/admin/analytics` or ask them; never more than one follow-up)
+> Hey {name}, did the master on {track} hold up on your speakers/phone? If it's ready to release, the next one is €2.99 with no subscription, or use FOUNDING10 if you put out music monthly. If something sounded off, tell me what. That's more useful to me than the sale.
+
 
 **M1 — personal network (en)**
 > Hey {name} — I've been building a mastering tool, Auralith Forge (auralithforge.app). It measures your mix first and then only fixes what needs fixing, and it shows you exactly what it changed. Since you're putting out {their release/project}, would you try it on one track? You get 3 full masters free, no card. If you like it, I'll give you 50% off your first month (code FOUNDING10), and I'll personally listen to the result and send you notes. Brutal feedback welcome.
@@ -112,6 +143,7 @@ Attribution: every outreach link carries UTMs, e.g. `?utm_source=reddit&utm_medi
 ## 7. Owner smoke test (10 min, run once after deploy)
 1. Incognito → `/` → "Try it with our sample": result shows without a sign-up dialog.
 2. Sign up with Google → upload a track → 30 s preview plays → full master → download WAV opens and plays.
+2b. On a test account that has used all 3 free masters: load a track → step 3 shows the paywall card → "Master this track — €2.99" opens Polar checkout (cancel there). Switch to Shqip and check the card is translated. Then `/pricing` → "Buy one master" → after signup, the Single Master card is highlighted.
 3. `/pricing` → Single Master €2.99 → pay → master credit appears → refund in Polar.
 4. `/admin/analytics/funnel` shows the visit, upload, master, checkout **and Paid** for that session (confirms ANALYTICS-001 is fixed live).
 5. `https://www.auralithforge.app` redirects to the apex.
@@ -125,9 +157,15 @@ Record pass/fail per step in §8.
 | E2 | Founder network converts fastest | M1/M2 + FOUNDING10 | paid orders with code | **Awaiting approval** | — |
 | E3 | Free tool pages without an account increase tool → signup | in-browser LUFS/true-peak/LRA on `/lufs-meter` + hero upload | `free_tool_analysis_completed{method:browser}` → `free_tool_master_cta_clicked` → `sign_up` | Shipped in branch, **not deployed**. Matches the engine within 0.0005 LU / 0.000002 dB on 6 signals; Chromium MP3 decode reproduces the demo's −15.9 / −2.9 / 2.2 | — |
 | E4 | Value posts drive qualified traffic | P1 in 1–2 venues | UTM sessions → signups → paid | Awaiting rules check + approval | — |
+| E6 | Direct buy at quota 0 converts better than the Plans-tab detour | B4 inline paywall | `begin_checkout{checkout_source:console_quota_paywall}` → `order.paid`; compare to `app_plans_tab` | Shipped in branch, **awaiting merge** | — |
+| E7 | Visible €2.99 option lifts first payments from one-release visitors | B5 CTAs | signups with `redirect` containing `buy=single_master` → single-master orders | Shipped in branch, **awaiting merge** | — |
 | E5 | Real quotes lift pricing-page conversion | ask paying users for permission to quote | pricing → checkout | After first payers | — |
 
 Failed experiments: none run yet.
 
 ## 9. Next highest-impact action
-**Approve and send M1/M2 to 30 named people you know who release music, with the FOUNDING10 Polar code.** It costs nothing and doesn't depend on SEO or community rules. It is the only channel that can plausibly produce verified payments this week. Run the §7 smoke test and fix the www DNS record first.
+1. **Merge the `growth/paywall-and-pay-per-track` PR** so the €2.99 path is one click before any outreach traffic arrives.
+2. **Create `FOUNDING10` in Polar**, then run the §7 smoke test (with step 2b).
+3. **Approve and send M1/M2 to 30 named people**, plus M4 to the two event organizers. Ask for the €2.99 single master first.
+
+This is still the only channel that can plausibly produce verified payments this week.
