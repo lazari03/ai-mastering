@@ -26,7 +26,7 @@ Nothing here may be replaced with estimates. A customer counts only when a Polar
 
 ## 2. Live audit — three most serious conversion barriers
 
-### B1 · Every "try" path required an account, under copy that said otherwise — **FIXED (frontend, pending deploy)**
+### B1 · Every "try" path required an account, under copy that said otherwise — **VERIFIED LIVE 2026-10-21** (deploy run 39518980268; headless Chromium on production: the sample shows −15.9 LUFS with 0 dialogs)
 - OBSERVED (`HeroQuickTry.jsx` before this change): the hero panel says "Try it on your track · **No payment required**". "Try it with our sample" then downloaded the demo MP3 and opened the **sign-up dialog** before showing anything, even though the result is already stored in `DEMO_MASTER`. After the sample, the copy said "Now drop your own track in — **still no account needed**", but dropping a file opens the same dialog.
 - Fix: the sample shows the engine's stored analysis instantly, with no account, no upload and no server compute. The badge now reads "Free account · no card". The follow-up line now says a free account measures your track and includes 3 full masters (en + sq).
 - Verified: `next build` passes. In headless Chromium as a signed-out visitor, clicking the sample shows −15.9 LUFS / −2.9 dBTP / 2.2 LU with **0 dialogs**.
@@ -38,7 +38,7 @@ Nothing here may be replaced with estimates. A customer counts only when a Polar
 - Risk: AURALITH-ANALYTICS-001 ("Paid" always 0 in the funnel) is READY_FOR_QA. Confirm on the live dashboard that a real payment shows up as Paid before trusting conversion rates.
 - Owner action: open `/admin/analytics` weekly and paste the numbers into the §6 table. Cross-check paid counts against Polar, which is the source of truth for "customer".
 
-### B3 · `www.auralithforge.app` does not resolve — **PARTIALLY FIXED (owner DNS action)**
+### B3 · `www.auralithforge.app` does not resolve — **VERIFIED FIXED LIVE 2026-10-21** (Google DNS returns A records; `https://www.auralithforge.app` → 301 → apex)
 - OBSERVED: Google DNS returns NXDOMAIN (Status 3) for `www.auralithforge.app`, while the apex resolves via Cloudflare. Anyone who types www, or clicks a www link someone wrote by hand in a bio or forum post, gets "site can't be reached".
 - Fix in repo: a `www → apex` 301 block in `Caddyfile`.
 - Owner action (2 min, free): in Cloudflare DNS, add `CNAME www → auralithforge.app` (proxied). Then either deploy the Caddy block or add a Cloudflare Redirect Rule `www.* → https://auralithforge.app/$1`.
@@ -153,9 +153,9 @@ Record pass/fail per step in §8.
 
 | ID | Hypothesis | Change / channel | Metric | Status | Result |
 |---|---|---|---|---|---|
-| E1 | Instant sample result raises hero engagement → signups | B1 fix | `cta_click try_sample` → `free_tool_analysis_completed{input:sample}` → `sign_up` | Shipped in branch, **not deployed** | — |
+| E1 | Instant sample result raises hero engagement → signups | B1 fix | `cta_click try_sample` → `free_tool_analysis_completed{input:sample}` → `sign_up` | **Live since 2026-10-21** (no data yet) | — |
 | E2 | Founder network converts fastest | M1/M2 + FOUNDING10 | paid orders with code | **Awaiting approval** | — |
-| E3 | Free tool pages without an account increase tool → signup | in-browser LUFS/true-peak/LRA on `/lufs-meter` + hero upload | `free_tool_analysis_completed{method:browser}` → `free_tool_master_cta_clicked` → `sign_up` | Shipped in branch, **not deployed**. Matches the engine within 0.0005 LU / 0.000002 dB on 6 signals; Chromium MP3 decode reproduces the demo's −15.9 / −2.9 / 2.2 | — |
+| E3 | Free tool pages without an account increase tool → signup | in-browser LUFS/true-peak/LRA on `/lufs-meter` + hero upload | `free_tool_analysis_completed{method:browser}` → `free_tool_master_cta_clicked` → `sign_up` | **Live since 2026-10-21** (deploy run 39518980268). Matches the engine within 0.0005 LU / 0.000002 dB on 6 signals; Chromium MP3 decode reproduces the demo's −15.9 / −2.9 / 2.2 | — |
 | E4 | Value posts drive qualified traffic | P1 in 1–2 venues | UTM sessions → signups → paid | Awaiting rules check + approval | — |
 | E6 | Direct buy at quota 0 converts better than the Plans-tab detour | B4 inline paywall | `begin_checkout{checkout_source:console_quota_paywall}` → `order.paid`; compare to `app_plans_tab` | Shipped in branch, **awaiting merge** | — |
 | E7 | Visible €2.99 option lifts first payments from one-release visitors | B5 CTAs | signups with `redirect` containing `buy=single_master` → single-master orders | Shipped in branch, **awaiting merge** | — |
