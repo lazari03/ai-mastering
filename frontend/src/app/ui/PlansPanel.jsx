@@ -86,6 +86,24 @@ export default function PlansPanel() {
       setBilling(currentBilling);
     }
   }, [billingTouched, currentBilling]);
+  // Purchase intent carried through signup from a public CTA:
+  // ?plan=studio highlights that card, ?buy=single_master|stem_separation
+  // highlights that add-on and scrolls it into view (it sits below the
+  // comparison table). See internalLinks.js planSignupHref/oneTimeSignupHref.
+  const [intent, setIntent] = useState({ plan: null, buy: null });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const planParam = params.get("plan");
+    const buyParam = params.get("buy");
+    setIntent({
+      plan: PLAN_ORDER.includes(planParam) && planParam !== "free" ? planParam : null,
+      buy: buyParam === "single_master" || buyParam === "stem_separation" ? buyParam : null,
+    });
+  }, []);
+  useEffect(() => {
+    if (!loaded || !intent.buy) return;
+    document.getElementById(`plans-addon-${intent.buy}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [loaded, intent.buy]);
   const [busyItem, setBusyItem] = useState("");
   const [checkoutError, setCheckoutError] = useState("");
   const [changeStatus, setChangeStatus] = useState("");
@@ -229,6 +247,7 @@ export default function PlansPanel() {
               const isPeriodSwitch = onThisPlan && !isCurrent;
               const isUpgrade = PLAN_ORDER.indexOf(key) > PLAN_ORDER.indexOf(currentPlan);
               const isPendingTarget = pendingPlan === key && (pendingBilling || "monthly") === cardBilling;
+              const isIntent = intent.plan === key && !isCurrent;
               const actionLabel = isPeriodSwitch
                 ? t(cardBilling === "annual" ? "billing.switchToAnnual" : "billing.switchToMonthly")
                 : isUpgrade
@@ -237,10 +256,15 @@ export default function PlansPanel() {
               return (
                 <div
                   key={key}
-                  className={`flex flex-col rounded-xl border p-4 ${isCurrent ? "border-text-primary/40 bg-white/70" : "border-border-subtle bg-black/[0.045]"}`}
+                  className={`flex flex-col rounded-xl border p-4 ${
+                    isCurrent ? "border-text-primary/40 bg-white/70" : isIntent ? "border-accent bg-accent/[0.06] ring-2 ring-accent/30" : "border-border-subtle bg-black/[0.045]"
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="m-0 text-sm font-semibold text-text-primary">{plan.label}</p>
+                    {isIntent ? (
+                      <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-accent">{t("plans.selected")}</span>
+                    ) : null}
                     {isCurrent ? (
                       <span className="shrink-0 rounded-full border border-border-subtle px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-accent">
                         {t("billing.current")}
@@ -286,7 +310,7 @@ export default function PlansPanel() {
                         onClick={() => buy(pricing.item, plan.key, pricing.price, billing)}
                         disabled={Boolean(busyItem)}
                         className={`flex w-full items-center justify-center gap-2 rounded-full px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] disabled:opacity-50 ${
-                          isUpgrade || isPeriodSwitch
+                          isUpgrade || isPeriodSwitch || isIntent
                             ? "bg-text-primary text-bg hover:opacity-85"
                             : "border border-border-subtle bg-black/[0.045] text-text-primary hover:border-text-primary/30"
                         }`}
@@ -353,7 +377,12 @@ export default function PlansPanel() {
           ) : null}
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border-subtle bg-black/10 p-3">
+            <div
+              id="plans-addon-single_master"
+              className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 ${
+                intent.buy === "single_master" ? "border-accent bg-accent/[0.06] ring-2 ring-accent/30" : "border-dashed border-border-subtle bg-black/10"
+              }`}
+            >
               <div className="min-w-0">
                 <p className="m-0 text-sm text-text-primary">
                   {SINGLE_MASTER.label} — {SINGLE_MASTER.price}
@@ -378,7 +407,12 @@ export default function PlansPanel() {
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border-subtle bg-black/10 p-3">
+            <div
+              id="plans-addon-stem_separation"
+              className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 ${
+                intent.buy === "stem_separation" ? "border-accent bg-accent/[0.06] ring-2 ring-accent/30" : "border-dashed border-border-subtle bg-black/10"
+              }`}
+            >
               <div className="min-w-0">
                 <p className="m-0 text-sm text-text-primary">
                   {STEM_SEPARATION.label} — {STEM_SEPARATION.price}

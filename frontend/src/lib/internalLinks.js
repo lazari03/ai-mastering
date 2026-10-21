@@ -30,9 +30,18 @@ export const CTA = {
 // period already selected — for a paid plan's CTA, so someone who picked
 // "Studio, yearly" on a public page doesn't have to find it again after
 // creating their account. Free keeps the plain signup.
+// `plan` rides along so the Plans tab can highlight the card that was
+// clicked — without it, "Choose Studio" landed on four identical-looking
+// cards and the visitor had to pick again.
 export function planSignupHref(planKey, billing = "monthly") {
   if (!planKey || planKey === "free") return CTA.signup;
-  return `${CTA.signup}&redirect=${encodeURIComponent(`/app?tab=plans&billing=${billing}`)}`;
+  return `${CTA.signup}&redirect=${encodeURIComponent(`/app?tab=plans&billing=${billing}&plan=${planKey}`)}`;
+}
+
+// Same, for a one-time purchase ("single_master" | "stem_separation"):
+// lands on the Plans tab with that add-on highlighted.
+export function oneTimeSignupHref(buyKey) {
+  return `${CTA.signup}&redirect=${encodeURIComponent(`/app?tab=plans&buy=${buyKey}`)}`;
 }
 
 // ---- Genre <-> blog post graph ----------------------------------------

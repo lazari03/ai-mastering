@@ -871,7 +871,8 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
 
     if (tier === "professional" && !planUnlocked) {
       return res.status(402).json({
-        detail: "Professional mastering needs the Studio plan or higher. See plans in Settings → Billing.",
+        code: "professional_requires_plan",
+        detail: "Professional mastering needs the Studio plan or higher. See the Plans tab.",
       });
     }
 
@@ -890,7 +891,8 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
             mustConsumeStemCredit = true;
           } else {
             return res.status(402).json({
-              detail: `You've used your ${stemQuota.limit} stem separations this month — they reset next month. Buy an extra one if you don't want to wait. Manage in Settings → Billing.`,
+              code: "stem_quota_exhausted",
+              detail: `You've used your ${stemQuota.limit} stem separations this month — they reset next month. Buy an extra one in the Plans tab if you don't want to wait.`,
             });
           }
         }
@@ -903,8 +905,9 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
           mustConsumeStemCredit = true;
         } else {
           return res.status(402).json({
+            code: "stems_require_purchase",
             detail:
-              "Stem separation is included on All-Access (20/month), or buy a single stem-separated master. Manage in Settings → Billing.",
+              "Stem separation is included on All-Access (20/month), or buy a single stem-separated master in the Plans tab.",
           });
         }
       }
@@ -928,13 +931,15 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
         mustConsumeCredit = true;
       } else if (plan === "free") {
         return res.status(402).json({
-          detail: `You've used your ${quotaLimit} free masters — that's a one-time trial, it doesn't renew. Buy a single master for just this track, or subscribe — Indie (15/month), Studio (50/month) or All-Access (250/month) — in Settings → Billing.`,
+          code: "trial_exhausted",
+          detail: `You've used your ${quotaLimit} free masters — that's a one-time trial, it doesn't renew. Buy a single master for just this track, or subscribe — Indie (15/month), Studio (50/month) or All-Access (250/month) — in the Plans tab.`,
         });
       } else {
         const upsellPlan = plan === "indie" ? "Studio for 50/month" : plan === "studio" ? "All-Access for 250/month" : null;
         const upsell = upsellPlan ? ` Upgrade to ${upsellPlan}, or` : " Or";
         return res.status(402).json({
-          detail: `You've used your ${quotaLimit} masters this month — they reset next month.${upsell} buy a single master if you don't want to wait. Manage in Settings → Billing.`,
+          code: "monthly_quota_exhausted",
+          detail: `You've used your ${quotaLimit} masters this month — they reset next month.${upsell} buy a single master in the Plans tab if you don't want to wait.`,
         });
       }
     }

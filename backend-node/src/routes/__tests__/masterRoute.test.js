@@ -272,3 +272,26 @@ test("success -> 200 and exactly one charge", async () => {
   assert.equal(r.length, 1);
   assert.equal(r[0].state, "completed");
 });
+
+// Growth/paywall: the console turns these codes into the inline
+// "master this track for €2.99" paywall, so they are part of the contract.
+test("free trial used up -> 402 trial_exhausted, Python never called, nothing reserved", async () => {
+  const uid = newUser();
+  db.store.set(`users/${uid}`, { freeMasterUsage: { used: 3 } });
+  pythonBehaviour = json(200, {});
+  const res = await postMaster(uid);
+  assert.equal(res.status, 402);
+  assert.equal(res.body.code, "trial_exhausted");
+  assert.match(res.body.detail, /Plans tab/);
+  assert.equal(pythonCalls.length, 0);
+  assert.equal(reservations(uid).length, 0);
+});
+
+test("free trial used up but a purchased credit -> credit is spent, not a 402", async () => {
+  const uid = newUser();
+  db.store.set(`users/${uid}`, { freeMasterUsage: { used: 3 }, extraMasterCredits: 1 });
+  pythonBehaviour = json(200, {});
+  const res = await postMaster(uid);
+  assert.notEqual(res.status, 402);
+  assert.equal(masterCalls().length, 1);
+});

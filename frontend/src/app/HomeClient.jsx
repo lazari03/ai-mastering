@@ -11,9 +11,9 @@ import Footer from "@/components/Footer";
 import { POSTS } from "@/content/posts";
 import { useLanguage } from "@/lib/i18n";
 import { useAuthStore } from "@/store/authStore";
-import { PLANS, PLAN_ORDER, BILLING_PERIODS, planPricing, localized } from "@/lib/pricing";
+import { PLANS, PLAN_ORDER, BILLING_PERIODS, SINGLE_MASTER, planPricing, localized } from "@/lib/pricing";
 import { IconCheck } from "@/components/app/icons";
-import { CTA, planSignupHref } from "@/lib/internalLinks";
+import { CTA, oneTimeSignupHref, planSignupHref } from "@/lib/internalLinks";
 import { BEFORE_AFTER_DEMOS } from "@/lib/beforeAfterDemos";
 import BeforeAfterPlayer from "@/components/marketing/BeforeAfterPlayer";
 import GenreShowcase from "@/components/marketing/GenreShowcase";
@@ -457,9 +457,16 @@ export default function HomeClient() {
           })}
         </div>
 
+        <p className="mt-8 text-sm text-text-secondary">
+          {t("pricing.payPerTrack", { price: SINGLE_MASTER.price })}{" "}
+          <Link href={oneTimeSignupHref("single_master")} className="font-medium text-text-primary underline underline-offset-4 hover:text-accent">
+            {t("pricing.payPerTrackCta")}
+          </Link>
+        </p>
+
         <Link
           href="/ai-mastering-online"
-          className="group mt-8 inline-flex items-center gap-2 text-sm font-medium text-text-primary transition-colors hover:text-accent"
+          className="group mt-4 inline-flex items-center gap-2 text-sm font-medium text-text-primary transition-colors hover:text-accent"
         >
           {t("pricing.compareLink")}
           <span aria-hidden="true" className="transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-1">

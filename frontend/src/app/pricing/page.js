@@ -5,7 +5,7 @@ import RelatedTools from "@/components/site/RelatedTools";
 import { Breadcrumbs, Checklist, CtaBand, PageHero, PageShell, Section } from "@/components/site/Page";
 import { PLANS, PLAN_ORDER, PLAN_COMPARISON, PRODUCT, SINGLE_MASTER, STEM_SEPARATION, localized } from "@/lib/product";
 import { ANNUAL_MONTHS_CHARGED } from "@/lib/pricing";
-import { CTA, planSignupHref } from "@/lib/internalLinks";
+import { CTA, oneTimeSignupHref, planSignupHref } from "@/lib/internalLinks";
 import { buildMetadata, JsonLd, organizationJsonLd, SITE_NAME } from "@/lib/seo";
 
 // A real URL for pricing (the homepage section is /#pricing, which search
@@ -136,6 +136,12 @@ export default function PricingPage() {
                 <span className="font-[var(--font-title)] text-[24px]">{item.price}</span>
               </h3>
               <p className="m-0 mt-2 text-[14px] leading-[1.6] text-text-secondary">{localized(item.blurb)}</p>
+              <Link
+                href={oneTimeSignupHref(item === SINGLE_MASTER ? "single_master" : "stem_separation")}
+                className="btn-secondary mt-4 inline-flex"
+              >
+                {item === SINGLE_MASTER ? `Buy one master — ${item.price}` : `Buy one stem master — ${item.price}`}
+              </Link>
             </li>
           ))}
         </ul>

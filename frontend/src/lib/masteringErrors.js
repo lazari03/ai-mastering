@@ -23,7 +23,16 @@ export const MASTERING_ERROR_CODES = [
   "reservation_expired",
   "no_file",
   "no_genre",
+  "trial_exhausted",
+  "monthly_quota_exhausted",
+  "professional_requires_plan",
+  "stems_require_purchase",
+  "stem_quota_exhausted",
 ];
+
+// 402s that the console answers with the inline paywall (buy this master /
+// see plans) rather than a red error alert.
+export const QUOTA_PAYWALL_CODES = ["trial_exhausted", "monthly_quota_exhausted"];
 
 export function masteringErrorText(t, error, code) {
   if (code && MASTERING_ERROR_CODES.includes(code)) return t(`masterError.${code}`);

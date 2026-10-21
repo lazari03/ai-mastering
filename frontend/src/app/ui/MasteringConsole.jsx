@@ -15,14 +15,14 @@ import { previewCodec } from "@/domain/mastering/masteringDomain";
 import { downloadFileSafely, postCheckout } from "@/network/http/client";
 import { useMasteringStore } from "@/store/masteringStore";
 import { useEntitlementsStore, planUnlocksProfessional } from "@/store/entitlementsStore";
-import { STEM_SEPARATION } from "@/lib/pricing";
+import { SINGLE_MASTER, STEM_SEPARATION } from "@/lib/pricing";
 import { DELIVERY_TARGETS } from "@/lib/deliveryTargets";
 import { trackEvent } from "@/lib/analytics";
 import { useMasteringProgress } from "@/lib/useMasteringProgress";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 import InlineAlert from "@/components/ui/InlineAlert";
-import { masteringErrorText, localizeSourceWarnings } from "@/lib/masteringErrors";
+import { masteringErrorText, localizeSourceWarnings, QUOTA_PAYWALL_CODES } from "@/lib/masteringErrors";
 
 // Codec names are format labels, not language-dependent text — same on
 // every locale, nothing to localize here.
@@ -147,6 +147,8 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
   const [importArtistName, setImportArtistName] = useState("");
   const [importFilePending, setImportFilePending] = useState(null);
   const [stemBuyBusy, setStemBuyBusy] = useState(false);
+  const [singleBuyBusy, setSingleBuyBusy] = useState(false);
+  const [singleBuyError, setSingleBuyError] = useState("");
 
   useEffect(() => {
     bootstrap();
@@ -274,6 +276,39 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
       setStemBuyBusy(false);
     }
   };
+
+  // Quota-exhausted paywall: the moment someone has a track loaded and no
+  // masters left is the highest-intent moment in the funnel. Previously the
+  // only path was an 11px link to the Plans tab (a second page with four
+  // plan cards and a table). This buys the one master they need, in one
+  // click, through the same checkout the Plans tab uses. Billing logic is
+  // untouched: the purchase lands as an extra credit and /master already
+  // spends credits when the quota is empty (masteringRoutes.js).
+  const buySingleMaster = async () => {
+    setSingleBuyBusy(true);
+    setSingleBuyError("");
+    trackEvent("begin_checkout", {
+      currency: "EUR",
+      value: Number(String(SINGLE_MASTER.price).replace(/[^\d.]/g, "")) || 0,
+      items: [{ item_id: SINGLE_MASTER.item, item_name: "single_master" }],
+      checkout_source: "console_quota_paywall",
+    });
+    try {
+      const successUrl = `${window.location.origin}/thank-you?plan=single_master&item=${encodeURIComponent(SINGLE_MASTER.item)}&price=${encodeURIComponent(SINGLE_MASTER.price)}`;
+      const { url } = await postCheckout(SINGLE_MASTER.item, successUrl);
+      window.location.href = url;
+    } catch (err) {
+      setSingleBuyBusy(false);
+      setSingleBuyError(err?.message || t("billing.checkoutFailed"));
+    }
+  };
+
+  // Shown when the client already knows the quota is empty, and also when
+  // the server says so (402 trial_exhausted / monthly_quota_exhausted) —
+  // the cached entitlements can be stale, e.g. a master spent in another tab.
+  const serverPaywall = QUOTA_PAYWALL_CODES.includes(errorCode);
+  const showQuotaPaywall = (masterQuota && masterQuota.remaining <= 0 && !hasCredit) || serverPaywall;
+  const paywallMonthly = errorCode === "monthly_quota_exhausted" || (!serverPaywall && Boolean(masterQuota?.resets));
 
   const canGoNextFromAudio = Boolean(file);
   const canGoNextFromMode = referenceMode || mode === "pro" || Boolean(selectedGenre || selectedPreset);
@@ -787,14 +822,42 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
               </button>
             </div>
             <p className="mt-2 text-[11px] text-text-secondary">{t("console.previewNote")}</p>
-            {masterQuota && masterQuota.remaining <= 0 && !hasCredit && onOpenBilling ? (
-              <p className="mt-2 text-[11px] text-accent">
-                {masterQuota.resets ? t("console.outOfMastersMonth") : t("console.usedFreeMasters")}{" "}
-                <button type="button" onClick={onOpenBilling} className="underline hover:text-accent">
-                  {t("console.buySingleMaster")}
-                </button>{" "}
-                {masterQuota.resets ? t("console.orUpgrade") : t("console.orSubscribe")}
-              </p>
+            {showQuotaPaywall ? (
+              <div className="mt-4 rounded-2xl border border-accent/40 bg-accent/[0.06] p-4" role="region" aria-label={t("paywall.label")}>
+                <p className="m-0 text-sm font-semibold text-text-primary">
+                  {paywallMonthly ? t("paywall.titleMonthly") : t("paywall.titleTrial")}
+                </p>
+                <p className="m-0 mt-1 text-xs leading-[1.55] text-text-secondary">
+                  {paywallMonthly ? t("paywall.bodyMonthly") : t("paywall.bodyTrial")}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={buySingleMaster}
+                    disabled={singleBuyBusy}
+                    className="flex items-center justify-center gap-2 rounded-full bg-text-primary px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-bg hover:opacity-85 disabled:opacity-60"
+                  >
+                    {singleBuyBusy ? (
+                      <>
+                        <Spinner size={12} /> {t("billing.redirecting")}
+                      </>
+                    ) : (
+                      t("paywall.buyThis", { price: SINGLE_MASTER.price })
+                    )}
+                  </button>
+                  {onOpenBilling ? (
+                    <button
+                      type="button"
+                      onClick={onOpenBilling}
+                      className="rounded-full border border-border-subtle bg-black/[0.045] px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-text-primary hover:border-text-primary/30"
+                    >
+                      {paywallMonthly ? t("paywall.seePlansMonthly") : t("paywall.seePlansTrial")}
+                    </button>
+                  ) : null}
+                </div>
+                <p className="m-0 mt-2 text-[11px] text-text-secondary">{t("paywall.note")}</p>
+                {singleBuyError ? <InlineAlert size="sm" className="mt-2">{singleBuyError}</InlineAlert> : null}
+              </div>
             ) : null}
           </motion.div>
         ) : null}
@@ -844,7 +907,7 @@ export default function MasteringConsole({ onOpenHelp, onOpenBilling, onOpenPres
           </p>
         ) : null}
         {status ? <p className="mt-3 text-sm text-accent">{status}</p> : null}
-        {error ? <InlineAlert size="sm" className="mt-3">{masteringErrorText(t, error, errorCode)}</InlineAlert> : null}
+        {error && !(serverPaywall && activeStep === 2) ? <InlineAlert size="sm" className="mt-3">{masteringErrorText(t, error, errorCode)}</InlineAlert> : null}
       </div>
 
       {/* sticky only from lg: up, where this sits beside the wizard in the

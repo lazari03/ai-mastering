@@ -27,7 +27,8 @@
     "DOCS": 1,
     "ANALYTICS": 3,
     "SEO": 5,
-    "PERF": 4
+    "PERF": 4,
+    "GROWTH": 4
   },
   "issues": [
     {
@@ -1460,6 +1461,75 @@
           "date": "2026-10-16",
           "agent": "technical-lead",
           "note": "Created (OPEN)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-GROWTH-001",
+      "title": "Trial-exhausted moment had no direct purchase: Master button disabled + 11px link to Plans tab",
+      "component": "frontend.app",
+      "severity": "P1",
+      "status": "READY_FOR_QA",
+      "owner": "frontend-engineer",
+      "root_cause": "Highest-intent moment (track loaded, quota 0) routed to a second page with 4 plans + table; server 402 had no code so sq users got English",
+      "repro": null,
+      "evidence": "frontend/src/app/ui/MasteringConsole.jsx (quota-exhausted block, before branch growth/paywall-and-pay-per-track)",
+      "tests": [
+        "backend-node masterRoute.test.js: 402 trial_exhausted; credit spent when present"
+      ],
+      "source": "frontend/src/app/ui/MasteringConsole.jsx (quota-exhausted block, before branch growth/paywall-and-pay-per-track)",
+      "validated_commit": "52c12b1",
+      "history": [
+        {
+          "date": "2026-10-21",
+          "agent": "growth-marketer",
+          "note": "Created (READY_FOR_QA)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-GROWTH-002",
+      "title": "Single Master EUR 2.99 had no purchase CTA on /pricing and was absent from the homepage pricing section",
+      "component": "frontend.marketing",
+      "severity": "P2",
+      "status": "READY_FOR_QA",
+      "owner": "frontend-engineer",
+      "root_cause": "Cards rendered price + blurb only",
+      "repro": null,
+      "evidence": "frontend/src/app/pricing/page.js Pay-per-track section; frontend/src/app/HomeClient.jsx #pricing",
+      "tests": [
+        "next build; prerendered pricing.html contains buy%3Dsingle_master links"
+      ],
+      "source": "frontend/src/app/pricing/page.js Pay-per-track section; frontend/src/app/HomeClient.jsx #pricing",
+      "validated_commit": "52c12b1",
+      "history": [
+        {
+          "date": "2026-10-21",
+          "agent": "growth-marketer",
+          "note": "Created (READY_FOR_QA)."
+        }
+      ]
+    },
+    {
+      "id": "AURALITH-GROWTH-003",
+      "title": "Plan chosen on a public page was forgotten after signup (Plans tab showed 4 identical cards)",
+      "component": "frontend.app",
+      "severity": "P3",
+      "status": "READY_FOR_QA",
+      "owner": "frontend-engineer",
+      "root_cause": "redirect carried billing but not plan",
+      "repro": null,
+      "evidence": "frontend/src/lib/internalLinks.js planSignupHref; frontend/src/app/ui/PlansPanel.jsx",
+      "tests": [
+        "prerendered pricing.html contains plan%3Dstudio"
+      ],
+      "source": "frontend/src/lib/internalLinks.js planSignupHref; frontend/src/app/ui/PlansPanel.jsx",
+      "validated_commit": "52c12b1",
+      "history": [
+        {
+          "date": "2026-10-21",
+          "agent": "growth-marketer",
+          "note": "Created (READY_FOR_QA)."
         }
       ]
     }
