@@ -20,13 +20,19 @@ const PRICING_SHAPE = `${planLadderText()}. Chord, key and BPM detection are fre
 const ADAPTIVE =
   "Measures your mix first (loudness, spectrum, dynamics, transients, stereo), fixes only what it finds, and leaves healthy regions alone. Genre and style set the destination — what to protect and where the loudness and tonal targets sit — not a fixed preset chain.";
 
+// seoTitle is the <title>/og:title, written lead-with-the-query: people
+// search "<competitor> alternative", not "Auralith Forge vs <competitor>"
+// (they don't know the brand yet). It already names the brand, so the
+// page template doesn't append "| Auralith Forge" again. headline stays the
+// on-page H1.
 export const COMPARISON_PAGES = {
   landr: {
     label: "LANDR",
     externalUrl: "https://www.landr.com",
     headline: "Auralith Forge vs LANDR",
+    seoTitle: "LANDR Alternative for Online Mastering — Auralith Forge vs LANDR",
     description:
-      "How Auralith Forge's adaptive DSP mastering compares to LANDR — analysis-first processing with genre as context, transparent per-master pricing, and what each is actually built for.",
+      "Looking for a LANDR alternative? Compare Auralith Forge's analysis-first DSP mastering with LANDR: how each processes, codec preview, pricing. 3 masters free.",
     keywords: ["auralith forge vs landr", "landr alternative", "landr alternative for mastering", "ai mastering comparison"],
     intro:
       "LANDR built its name as an all-in-one platform — AI mastering bundled with music distribution, sample packs, and plugins. That's a genuinely different product shape than Auralith Forge, which does one thing: mastering, with a DSP chain you can actually reason about (it measures your mix first, corrects only what needs it, and shows what it changed — not one opaque \"AI master\" button) and pricing that's just about the masters, nothing else bundled in.",
@@ -68,8 +74,9 @@ export const COMPARISON_PAGES = {
     label: "eMastered",
     externalUrl: "https://emastered.com",
     headline: "Auralith Forge vs eMastered",
+    seoTitle: "eMastered Alternative — Auralith Forge vs eMastered Compared",
     description:
-      "How Auralith Forge's adaptive DSP mastering compares to eMastered — analysis-first processing with genre as context, vocal/accompaniment stem mastering, and transparent pricing.",
+      "Looking for an eMastered alternative? Compare Auralith Forge's analysis-first DSP mastering with eMastered: stem-aware mastering, codec preview, pricing. 3 masters free.",
     keywords: ["auralith forge vs emastered", "emastered alternative", "emastered alternative for mastering", "ai mastering comparison"],
     intro:
       "eMastered, like Auralith Forge, is a mastering-focused tool rather than a bundled distribution platform — the closer comparison of the two. Where Auralith Forge differentiates is analysis-first processing (it measures your mix and changes only what needs it, with genre as context rather than a one-size-fits-all master), stem-aware processing that rebalances vocals against the accompaniment, and a codec preview that shows exactly what streaming/social compression does to the finished file before you download it.",
@@ -115,6 +122,7 @@ export const COMPARISON_PAGES = {
     label: "BandLab",
     externalUrl: "https://www.bandlab.com",
     headline: "BandLab Mastering vs Auralith Forge",
+    seoTitle: "BandLab Mastering Alternative — BandLab vs Auralith Forge",
     description:
       "BandLab mastering vs Auralith Forge — a free one-click master inside a DAW, or an adaptive DSP engine that measures your mix first. When each makes sense, and how to compare them on your own track.",
     keywords: ["bandlab mastering", "bandlab mastering alternative", "auralith forge vs bandlab", "bandlab alternative", "free online mastering"],
@@ -158,6 +166,7 @@ export const COMPARISON_PAGES = {
     label: "Waves Online Mastering",
     externalUrl: "https://www.waves.com",
     headline: "Waves Online Mastering vs Auralith Forge",
+    seoTitle: "Waves Online Mastering Alternative — Waves vs Auralith Forge",
     description:
       "Waves Online Mastering vs Auralith Forge — two browser-based mastering services compared on how they process your mix, what you can verify before downloading, and pricing shape.",
     keywords: ["waves online mastering", "waves mastering online", "waves online mastering alternative", "auralith forge vs waves"],

@@ -18,7 +18,7 @@ export async function generateMetadata({ params }) {
   if (!page) return buildMetadata({ title: "Not found", description: "This page doesn't exist.", path: "/", noindex: true });
 
   return buildMetadata({
-    title: `${page.headline} | ${SITE_NAME}`,
+    title: page.seoTitle || `${page.headline} | ${SITE_NAME}`,
     description: page.description,
     path: `/vs/${competitor}`,
     keywords: page.keywords,

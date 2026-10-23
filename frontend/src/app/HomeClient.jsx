@@ -64,10 +64,12 @@ const FEATURE_KEYS = ["f1", "f2", "f3", "f4", "f5", "f6"];
 const STEP_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 const FAQ_KEYS = ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8"];
 
-// Gallery images double as entry points into the blog posts (POSTS[i]) —
+// Gallery images double as entry points into the blog posts —
 // keeps the SEO benefit (real indexable articles) attached to the same
-// visual the user already clicks on.
-const GALLERY = POSTS.map((post) => ({
+// visual the user already clicks on. Only posts with a gallery caption
+// (captionKey in i18n.js) appear here; later posts live on /blog only, so
+// adding a post never breaks the three-image gallery layout.
+const GALLERY = POSTS.filter((post) => post.captionKey).map((post) => ({
   src: post.image.replace("w=1200", "w=800"),
   captionKey: post.captionKey,
   slug: post.slug,

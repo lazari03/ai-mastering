@@ -101,6 +101,106 @@ export const POSTS = [
       "This is the same principle any experienced mastering engineer already applies by keeping a session template or a recall sheet per artist — the difference is that a saved digital preset reproduces the chain exactly, every time, with zero drift between the tenth and the first.",
     ],
   },
+  {
+    slug: "lufs-for-spotify-apple-music-youtube",
+    title: "LUFS for Spotify, Apple Music & YouTube: What to Master To",
+    description:
+      "What LUFS to master to for Spotify (-14), Apple Music (about -16) and YouTube (-14), how each one normalizes, and the true-peak ceiling that matters more.",
+    keywords: [
+      "lufs for spotify",
+      "spotify lufs",
+      "what lufs for spotify",
+      "apple music lufs",
+      "youtube lufs",
+      "streaming loudness targets",
+      "mastering for spotify",
+      "loudness normalization",
+    ],
+    image: "https://images.pexels.com/photos/4162581/pexels-photo-4162581.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    datePublished: "2026-10-23",
+    readingTime: "8 min read",
+    sections: [
+      { at: 0, id: "short-answer", title: "The short answer" },
+      { at: 2, id: "how-normalization-works", title: "How loudness normalization actually works" },
+      { at: 5, id: "spotify", title: "Spotify: -14 LUFS, with documented rules" },
+      { at: 9, id: "apple-music", title: "Apple Music: around -16 LUFS via Sound Check" },
+      { at: 11, id: "youtube", title: "YouTube: turned down, never up" },
+      { at: 13, id: "other-platforms", title: "Amazon Music, Tidal, Deezer and SoundCloud" },
+      { at: 15, id: "what-to-master-to", title: "So what should you actually master to?" },
+      { at: 19, id: "true-peak", title: "True peak: the number that actually breaks masters" },
+      { at: 22, id: "check-your-master", title: "How to check and hit your target" },
+      { at: 25, id: "mistakes", title: "Four mistakes that cost you on streaming" },
+    ],
+    takeaway:
+      "Spotify, YouTube, Tidal and Amazon play back around -14 LUFS; Apple Music around -16. Master for your genre, keep true peak at -1 dBTP (or -2 dBTP if you're louder than -14 LUFS), and measure the finished file instead of trusting a meter in your session.",
+    paragraphs: [
+      // 0 — short answer
+      "If you want one number: Spotify, YouTube, Tidal and Amazon Music all play music back at roughly -14 LUFS integrated, and Apple Music at roughly -16 LUFS. Spotify's own artist guidance is to target -14 LUFS integrated with a true peak below -1 dBTP — and below -2 dBTP if your master is louder than -14 LUFS.",
+      [
+        "But \"master to -14 LUFS\" is a misreading of how those numbers work. They are playback reference levels, not delivery requirements. Nothing rejects a -9 LUFS pop master or a -18 LUFS classical recording; the platform simply turns the track up or down when it plays. What you actually control is how your master sounds after that adjustment — and that depends far more on dynamics and true-peak headroom than on hitting a specific integrated figure. This guide covers what each platform really does, and then what to aim for. If you want genre-by-genre numbers alongside it, our ",
+        { href: "/mastering-loudness-targets", text: "mastering loudness targets reference table" },
+        " lists them.",
+      ],
+      // 2 — how normalization works
+      "LUFS (Loudness Units relative to Full Scale) measures perceived loudness over time. It's defined by the ITU-R BS.1770 standard, which applies a frequency weighting that roughly matches how human hearing responds, then gates out silence so a quiet intro doesn't drag the average down. \"Integrated\" LUFS is that measurement across the whole track.",
+      "When you upload a song, the platform measures its integrated loudness once and stores a gain value. At playback, it applies that gain so every track lands near the same reference level. A master at -8 LUFS on a -14 LUFS platform is played 6 dB quieter. A master at -17 LUFS may be played 3 dB louder — or not at all, depending on the platform and on how much peak headroom the track has.",
+      "The practical consequence is the most important idea in streaming mastering: once normalization is on, a louder master no longer sounds louder. It sounds the same volume as everything else, just with less dynamic range — the transients and punch you squeezed out with the limiter are gone, and the turn-down doesn't give them back. That's why the loudness war has quietly lost its payoff on streaming, and why a dynamic master often sounds bigger in a playlist than a crushed one.",
+      // 5 — Spotify
+      "Spotify documents its loudness normalization more clearly than any other service, so it's the best reference. By default it plays tracks at -14 LUFS integrated, measured according to ITU 1770. Premium listeners can change this: \"Loud\" plays at -11 LUFS, \"Normal\" at -14 and \"Quiet\" at -19. In the Loud setting Spotify applies a limiter to avoid clipping quieter, dynamic tracks that get raised.",
+      "Spotify does turn quiet masters up, but only as far as their peaks allow. It considers each track's headroom and leaves 1 dB of headroom for lossy encoding. Its own example: a track at -20 LUFS with a true peak of -5 dBFS gets raised to -16 LUFS, not -14 — the peaks would hit the ceiling first. So a quiet master with spiky, uncontrolled peaks can end up sounding quieter than everything around it.",
+      "Two more details matter for releases. First, Spotify normalizes albums as a whole when they're played as an album, so a deliberately quiet interlude stays quieter than the single next to it — your track-to-track balance survives. In shuffle or playlists, each track is adjusted individually. Second, normalization isn't applied on Spotify's web player or on some third-party devices like TVs and speakers. Some listeners will hear your master at its raw level, which is one more reason not to leave it too quiet either.",
+      "Spotify's recommendation for masters is explicit: target -14 LUFS integrated, keep true peak below -1 dBTP, and if you master louder than -14 LUFS, keep true peak below -2 dBTP, because louder masters pick up more distortion when encoded to Ogg Vorbis and AAC.",
+      // 9 — Apple
+      "Apple Music normalizes with Sound Check, and the reference level is commonly measured at around -16 LUFS — about 2 dB quieter than Spotify. Sound Check is a listener setting rather than something you control, so plan for both: with it on, your track is matched to that reference; with it off, it plays at its raw level. Like Spotify, Apple can raise quiet tracks, but only until their peaks run out of room.",
+      "Practically, the -16 reference means a master that is fine on Spotify is fine on Apple Music, just turned down a little further. You don't need a separate Apple master. Because Apple delivers AAC, the true-peak advice is the same: leave about 1 dB of headroom so encoding overshoots don't clip.",
+      // 11 — YouTube
+      "YouTube normalizes music to a reference of around -14 LUFS, but with an important difference: it only turns loud videos down. It doesn't turn quiet ones up. If you right-click a video and open \"Stats for nerds\", the \"content loudness\" value tells you how far above the reference the audio sits; a negative value means it's quieter than the reference and plays as-is.",
+      "That asymmetry makes YouTube the one platform where mastering well below -14 LUFS really does cost you perceived volume. If your release lives mainly on YouTube — lyric videos, visualizers, live sessions — landing near -14 LUFS or a little louder is the safe choice.",
+      // 13 — others
+      "The other big services publish less detail, so treat these as widely reported working figures rather than specifications. Amazon Music is generally measured around -14 LUFS. Tidal normalizes to around -14 LUFS and, like Spotify, applies album normalization. Deezer is reported at around -15 LUFS. SoundCloud has historically not applied normalization to most playback, so loudness there behaves more like a download: what you upload is what people hear.",
+      "The spread across services is only about 2 dB. You can't master to every platform's exact number at once, and you don't need to — the reasons above (dynamics and headroom) matter more than chasing any single platform's reference.",
+      // 15 — what to master to
+      "Here's the practical rule: master to what suits your genre and your music, inside a sensible window, with clean true-peak headroom. For most streaming-first releases that window is about -14 to -9 LUFS integrated, and where you land in it should be a musical decision.",
+      [
+        "Acoustic, jazz, singer-songwriter and orchestral music usually sound best at -14 LUFS or quieter, because their impact comes from dynamics that normalization rewards. Pop, rock and hip-hop commonly land between -11 and -8 LUFS, because a denser, more compressed sound is part of the style — a ",
+        { href: "/master/hiphop", text: "hip-hop master" },
+        " that sounds wrong at -14 isn't fixed by matching Spotify's number. Electronic music aimed at clubs as well as streaming often goes louder still, which is fine as long as you accept the turn-down and protect the low end and transients. The ",
+        { href: "/master/edm", text: "EDM mastering guide" },
+        " covers that trade-off.",
+      ],
+      "What you should not do is take a quiet, dynamic mix and smash it to -7 LUFS because a forum said streaming masters need to be loud — or take a dense club track and pull it down to -14 just because it's Spotify's number. In both cases you're changing the music to suit a playback setting that would have handled it anyway.",
+      "If you only release to Apple Music, or your audience is mostly on Apple devices, aiming toward the quieter end of your genre's range costs you nothing. If YouTube is your main channel, avoid going much below -14 LUFS, because it won't turn you up.",
+      // 19 — true peak
+      "True peak is the number that most often turns a good master into a bad stream. Sample-peak meters only read the digital samples. When audio is converted back to analog, or encoded to a lossy format like AAC, Opus or Ogg Vorbis, the reconstructed waveform can overshoot between samples. These inter-sample peaks, measured in dBTP, are what cause encoding distortion — the crunchy, smeared highs you hear on a loud master after upload.",
+      "The rules are simple. Keep true peak at or below -1 dBTP for any streaming master. If your integrated loudness is above -14 LUFS, follow Spotify's guidance and keep it at or below -2 dBTP, because louder, denser material overshoots more when encoded. Use a true-peak-aware limiter, not a plain sample-peak brickwall at -0.1 dBFS.",
+      "Then verify the encoded result, not just the WAV. A file that reads -1.0 dBTP before encoding can still overshoot after an AAC or Opus round trip, especially if it's heavily limited. Checking what the codec actually does to your master is the only way to be sure.",
+      // 22 — check
+      [
+        "Start by measuring what you already have. Our free ",
+        { href: "/lufs-meter", text: "LUFS meter" },
+        " reads integrated loudness, true peak and loudness range from any file, right in your browser, with no account and no upload. Measure your bounced master, not the meter in your DAW session, so plugins, dither and export settings are all included.",
+      ],
+      [
+        "If you're mastering with Auralith Forge, the engine measures loudness with ITU-R BS.1770 — the same standard the platforms use — before it changes anything, then sets its limiter and true-peak ceiling from your choice of Delivery target: Genre best practice, Streaming (-14 LUFS), Apple Music (-16 LUFS) or Loud (club/DJ). It applies the -2 dBTP rule automatically when a master ends up louder than -14 LUFS. It also includes a codec preview: a real MP3, AAC and Opus encode-decode round trip, with the change in true peak and loudness reported, so you hear what Spotify or Instagram will do to it before you download. If you want to know what happens between those two steps, ",
+        { href: "/blog/what-happens-inside-an-ai-mastering-engine", text: "here's the full processing chain" },
+        ", stage by stage.",
+      ],
+      [
+        "Because it's adaptive DSP rather than a one-click AI preset, it adjusts compression, EQ and limiting to your actual mix and genre instead of forcing every track to the same number. You can ",
+        { href: "/login?mode=signup", text: "master three full tracks free" },
+        ", no card required, and compare the result against your own master at matched loudness.",
+      ],
+      // 25 — mistakes
+      "Mistake one: treating -14 LUFS as a rule. It's a playback reference. Master to the genre and the music, then check that headroom and dynamics hold up after normalization.",
+      "Mistake two: ignoring true peak. A -0.1 dBFS sample-peak ceiling is the most common cause of distorted streams. Use -1 dBTP, or -2 dBTP for loud masters.",
+      "Mistake three: comparing your master to a reference at different loudness. Louder always sounds better at first listen. Level-match before you judge, the same way Spotify will when it plays both.",
+      [
+        "Mistake four: mastering every track on an album to the same integrated LUFS. Albums are normalized as a whole on Spotify and Tidal, so a ballad that sits 3 dB below the single should stay there. Match the feel across the record, not the number. For a broader look at which online mastering tools handle this well, see our ",
+        { href: "/ai-mastering-online", text: "guide to AI and online mastering" },
+        ".",
+      ],
+    ],
+  },
 ];
 
 export function getPostBySlug(slug) {

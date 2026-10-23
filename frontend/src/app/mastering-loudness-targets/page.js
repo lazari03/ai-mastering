@@ -160,7 +160,8 @@ export default function LoudnessTargetsPage() {
             </table>
           </TableWrap>
           <p className="text-[14px] text-text-secondary">
-            True peak is held at -2.0 dBTP when the master is louder than -14 LUFS (Spotify&apos;s guidance for loud masters in lossy transcoding) and -1.0 dBTP otherwise. Choose the Streaming delivery target to land at -14 LUFS for Spotify, YouTube, Tidal and Amazon, or Apple Music for -16. Each genre name links to how the rest of the chain shifts for that material.
+            True peak is held at -2.0 dBTP when the master is louder than -14 LUFS (Spotify&apos;s guidance for loud masters in lossy transcoding) and -1.0 dBTP otherwise. Choose the Streaming delivery target to land at -14 LUFS for Spotify, YouTube, Tidal and Amazon, or Apple Music for -16 — the{" "}
+            <Link href="/blog/lufs-for-spotify-apple-music-youtube">platform-by-platform LUFS guide for Spotify, Apple Music and YouTube</Link> explains how each service normalizes. Each genre name links to how the rest of the chain shifts for that material.
           </p>
         </div>
       </Section>
@@ -286,6 +287,7 @@ export default function LoudnessTargetsPage() {
             title="Also useful"
             links={[
               { href: "/lufs-meter", label: "Measure your own track's LUFS, True Peak and Loudness Range — free LUFS Meter" },
+              { href: "/blog/lufs-for-spotify-apple-music-youtube", label: "What LUFS for Spotify, Apple Music and YouTube" },
               { href: CHORD_DETECTOR_URL, label: "Know the chords, key and BPM before you master — Chord Detector" },
               { href: "/ai-mastering-online", label: "How online mastering works" },
             ]}
