@@ -1,0 +1,135 @@
+// Small inline stroke icons, one per app tab plus the sidebar toggle — no
+// icon library pulled in for a handful of glyphs; these are hand-drawn to match
+// (24x24 viewBox, 1.6 stroke, round caps/joins, currentColor).
+const base = { width: 17, height: 17, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" };
+
+export function IconMaster(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 12h2l2-6 3 14 2-9 2 5h5" />
+    </svg>
+  );
+}
+
+export function IconChords(props) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="7" cy="17" r="2.6" />
+      <circle cx="16.5" cy="15" r="2.6" />
+      <path d="M9.6 17V5.5L19.1 4v11" />
+    </svg>
+  );
+}
+
+export function IconMyMasters(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M3 8V6a1 1 0 0 1 1-1h4l2 2h9a1 1 0 0 1 1 1v2" />
+      <path d="M3 8h18l-1.4 10.2a1 1 0 0 1-1 .8H5.4a1 1 0 0 1-1-.8L3 8Z" />
+    </svg>
+  );
+}
+
+export function IconPresets(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M5 4v16M12 4v16M19 4v16" />
+      <circle cx="5" cy="14" r="2" fill="var(--bg, #fff)" />
+      <circle cx="12" cy="8" r="2" fill="var(--bg, #fff)" />
+      <circle cx="19" cy="12" r="2" fill="var(--bg, #fff)" />
+    </svg>
+  );
+}
+
+export function IconHelp(props) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.3a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.1 1-1.1 1.9" />
+      <path d="M12 17.2h.01" />
+    </svg>
+  );
+}
+
+export function IconSettings(props) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.9-1.5-2-3.4-2.3.7a7.6 7.6 0 0 0-2.6-1.5L14 2.2h-4l-.4 2.6a7.6 7.6 0 0 0-2.6 1.5l-2.3-.7-2 3.4L4.6 10.5a7.6 7.6 0 0 0 0 3L2.7 15l2 3.4 2.3-.7c.75.66 1.63 1.17 2.6 1.5l.4 2.6h4l.4-2.6a7.6 7.6 0 0 0 2.6-1.5l2.3.7 2-3.4-1.9-1.5Z" />
+    </svg>
+  );
+}
+
+export function IconBilling(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="2.5" y="5.5" width="19" height="13" rx="2" />
+      <path d="M2.5 9.5h19" />
+      <path d="M6 14.5h4" />
+    </svg>
+  );
+}
+
+
+export function IconHome(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 11.5 12 4l8 7.5" />
+      <path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" />
+      <path d="M10 20v-6h4v6" />
+    </svg>
+  );
+}
+
+export function IconBell(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5Z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
+export function IconExplore(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
+      <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" />
+      <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
+      <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5" />
+    </svg>
+  );
+}
+
+export function IconSearch(props) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="m20 20-4.35-4.35" />
+    </svg>
+  );
+}
+
+export function IconCheck(props) {
+  return (
+    <svg {...base} width={14} height={14} {...props}>
+      <path d="M5 12.5 9.5 17 19 6.5" />
+    </svg>
+  );
+}
+
+export function IconChevronLeft(props) {
+  return (
+    <svg {...base} width={15} height={15} {...props}>
+      <path d="M14.5 5.5 8 12l6.5 6.5" />
+    </svg>
+  );
+}
+
+export function IconChevronRight(props) {
+  return (
+    <svg {...base} width={15} height={15} {...props}>
+      <path d="M9.5 5.5 16 12l-6.5 6.5" />
+    </svg>
+  );
+}

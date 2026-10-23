@@ -1,0 +1,1468 @@
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { Readable } from "node:stream";
+
+import express from "express";
+import multer from "multer";
+
+import { GENRES, STYLES, TAGS, CATEGORIES, FLAVOURS_BY_CATEGORY, AUDIO_DECODE_EXTS, DELIVERY_TARGETS } from "../config/constants.js";
+import { settings } from "../config/settings.js";
+import { invalidateCachedSession, requiresEmailVerification } from "../middleware/auth.js";
+import { processMastering, execFileAsync, deleteJobFiles, postMultipartToPython, cancelPythonJob } from "../services/masteringService.js";
+import { analyzeChords, previewCodec } from "../services/chordCleanService.js";
+import { getMixPresetByName, isIntentPreset, listMixPresets } from "../services/presetsService.js";
+import { importCustomPreset, deleteCustomPreset, createUserPreset, updateUserPreset } from "../services/customPresetsService.js";
+import { upsertBuiltInPreset, deleteBuiltInPreset } from "../services/builtinPresetsService.js";
+import { saveProfile, getProfile, deleteAllUserData } from "../services/profileService.js";
+import { recordJob, listJobs, ownsJob, getJob, getJobDetail, deleteJob, countRealJobs } from "../services/jobsService.js";
+import { claimFirstMaster } from "../services/metaConversionsService.js";
+import {
+  createCheckoutUrl,
+  createPortalUrl,
+  getSubscriptionStatus,
+  planFromUserData,
+  subscriptionStatusFromUserData,
+  getPlan,
+  changeSubscriptionPlan,
+} from "../services/polarService.js";
+import { PLAN_MASTER_LIMITS, STEM_MONTHLY_LIMIT, readUserData, entitlementsFromUserData } from "../services/entitlementsService.js";
+import { createLedger, partsFor } from "../services/reservationLedger.js";
+import { UPSTREAM_TIMEOUT_MS } from "../services/pythonUpstream.js";
+import { isEmailDeliverable } from "../services/emailValidationService.js";
+import { subscribeToNewsletter } from "../services/newsletterService.js";
+import { getAuth } from "../config/firebase.js";
+import { expensiveLimiter, shareAccessLimiter, newsletterLimiter, previewParamsLimiter, adminKeyFailureLimiter } from "../middleware/rateLimit.js";
+import { recordServerEvent, normalizeMasteringFailure } from "../services/analyticsService.js";
+import { mintDownloadToken, verifyShareToken, isShareJobExpired } from "../services/downloadTokenService.js";
+import { shareLinks, ShareLinkError } from "../services/shareLinkService.js";
+import { cleanupUploadsOnFinish } from "../middleware/cleanupUploads.js";
+import { toClientError } from "../services/clientError.js";
+import { masteringDspProps } from "../services/masteringTelemetry.js";
+import { cutPreviewExcerpt } from "../services/previewExcerpt.js";
+import { guardRouteParams, isValidJobId, isValidCodec, isValidExt, safeJoin, upstreamPath } from "../services/pathParams.js";
+
+const router = express.Router();
+
+// Every :jobId / :codec / :ext route parameter is validated once, here, before
+// any handler looks anything up or builds a path or upstream URL from it.
+guardRouteParams(router);
+
+const ledger = createLedger();
+
+async function refundWithRetry(reservationId, reason, attempts = 3) {
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await ledger.refund(reservationId, reason);
+    } catch (error) {
+      console.error(`Refund of reservation ${reservationId} failed (attempt ${i + 1}/${attempts}):`, error.message);
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250 * 4 ** i));
+    }
+  }
+  // Left open on purpose: the lease expires and reconcileReservations()
+  // refunds it (the job never got a record, so it reads as undelivered).
+  return null;
+}
+
+// Settles reservations whose owning request died (restart, crash, a refund
+// Firestore never accepted). Run periodically from server.js; safe to run
+// from several instances at once (each settle is a conditioned transition).
+export function reconcileReservations() {
+  return ledger.reconcileAbandoned({
+    jobDelivered: (uid, jobId) => ownsJob(uid, jobId),
+    onAbandoned: async (jobId) => {
+      await cancelPythonJob(jobId);
+      await deleteJobFiles(jobId).catch(() => {});
+    },
+  });
+}
+
+// Defense in depth, not the real protection — ffmpeg/soundfile already
+// reject anything that isn't actually decodable audio, so a mislabeled
+// file fails harmlessly downstream either way. This just avoids handing
+// something obviously wrong (an executable, an HTML file, an image) into
+// that pipeline at all, rejecting by extension/mimetype before it's even
+// written to disk.
+const ALLOWED_UPLOAD_EXTS = new Set([".wav", ".aiff", ".aif", ".flac", ...AUDIO_DECODE_EXTS]);
+function audioFileFilter(_req, file, cb) {
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  const looksLikeAudio = file.mimetype?.startsWith("audio/") || file.mimetype?.startsWith("video/");
+  if (ALLOWED_UPLOAD_EXTS.has(ext) || looksLikeAudio) return cb(null, true);
+  // 415 + code (not a bare Error → generic 500): it's the user's file, not
+  // a server fault, and the frontend localizes "unsupported_format".
+  cb(Object.assign(new Error(`Unsupported file type "${ext || file.mimetype || "unknown"}" — upload an audio file.`), { status: 415, code: "unsupported_format" }));
+}
+
+const upload = multer({
+  dest: settings.uploadDir,
+  limits: {
+    fileSize: settings.maxUploadMb * 1024 * 1024,
+  },
+  fileFilter: audioFileFilter,
+});
+
+// Preset imports are JSON, not audio — reusing `upload` here would reject
+// every real preset file through the same filter meant for /master and
+// /analyze-chords. Same size cap, no audio-only filter.
+function presetFileFilter(_req, file, cb) {
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  if (ext === ".json" || file.mimetype === "application/json") return cb(null, true);
+  cb(new Error(`Unsupported file type "${ext || file.mimetype || "unknown"}" — upload a preset .json file.`));
+}
+const uploadPresetJson = multer({
+  dest: settings.uploadDir,
+  limits: {
+    fileSize: 1 * 1024 * 1024, // presets are tiny; 1MB is generous
+  },
+  fileFilter: presetFileFilter,
+});
+
+// Every route below this point already requires a signed-in Firebase user
+// (see server.js) — that's "not anonymous", not "is an admin". Managing
+// the built-in preset catalog is a separate, higher privilege: gate it
+// behind a shared secret rather than building out real per-user roles for
+// what's currently a single-operator catalog. 501s (not 403s) when unset
+// so it reads as "not configured" rather than "you're not allowed".
+// Post-checkout redirect target: only our own frontend origin(s); anything
+// else falls back to Polar's configured default (undefined).
+function safeReturnUrl(candidate) {
+  if (typeof candidate !== "string" || !candidate) return undefined;
+  if (settings.corsOrigins.includes("*")) return candidate; // dev: no fixed origin to compare against
+  try {
+    return settings.corsOrigins.includes(new URL(candidate).origin) ? candidate : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Preset names/slugs are used as Firestore document ids: "/" would address a
+// nested path and "."/".." are reserved, both surfacing as 500s.
+function isSafeDocId(value) {
+  return typeof value === "string" && value.length > 0 && value.length <= 100 && !value.includes("/") && value !== "." && value !== "..";
+}
+
+function requireAdminKey(req, res, next) {
+  if (!settings.adminApiKey) {
+    return res.status(501).json({ detail: "Admin preset management isn't configured — set ADMIN_API_KEY." });
+  }
+  const provided = Buffer.from(String(req.headers["x-admin-key"] || ""));
+  const expected = Buffer.from(settings.adminApiKey);
+  // Constant-time compare, same discipline as the download/share tokens
+  // (downloadTokenService.js) — a plain !== leaks timing information about
+  // how many leading characters matched, which matters more here than it
+  // sounds given this key never rotates on its own.
+  if (provided.length !== expected.length || !crypto.timingSafeEqual(provided, expected)) {
+    return res.status(403).json({ detail: "Invalid admin key" });
+  }
+  return next();
+}
+
+router.get("/health", (_req, res) => {
+  res.json({ status: "ok", version: "1.0.0", runtime: "node" });
+});
+
+// Public, no auth — checked *during* signup, before a Firebase account
+// exists yet (see server.js's auth gate). Catches an undeliverable email
+// (fake domain, typo'd TLD) before an account is even created, rather
+// than only surfacing the problem later at Polar checkout.
+router.post("/validate-email", async (req, res) => {
+  const deliverable = await isEmailDeliverable(req.body?.email);
+  return res.json({ deliverable });
+});
+
+// Public, no auth — the newsletter widget/page (frontend) is meant to
+// work for an anonymous visitor, not just a signed-in user. Same
+// deliverability check as signup so the subscriber list doesn't fill up
+// with typo'd/fake addresses. `source` is just a free-text tag (e.g.
+// "footer", "newsletter-page") for telling signup channels apart later,
+// never trusted for anything security-sensitive.
+router.post("/newsletter/subscribe", newsletterLimiter, async (req, res) => {
+  const email = req.body?.email;
+  // The normalized email becomes a Firestore document id: a string of sane
+  // length with no "/" (which would address a nested path).
+  if (typeof email !== "string" || email.length > 254 || email.includes("/")) {
+    return res.status(400).json({ detail: "That email address doesn't look deliverable — double check it." });
+  }
+  const source = typeof req.body?.source === "string" ? req.body.source.replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || undefined : undefined;
+  const deliverable = await isEmailDeliverable(email).catch(() => false);
+  if (!deliverable) {
+    return res.status(400).json({ detail: "That email address doesn't look deliverable — double check it." });
+  }
+  try {
+    // Same response whether or not the address was already on the list, so
+    // this endpoint can't be used to test someone else's membership.
+    const { discountCode } = await subscribeToNewsletter(email, source);
+    return res.json({ discountCode });
+  } catch (error) {
+    console.error("Newsletter subscribe failed:", error.message);
+    return res.status(500).json({ detail: "Couldn't save your subscription — try again in a moment." });
+  }
+});
+
+// Mints the short-lived ?dl= token that download/original/codec-preview
+// links need (see downloadTokenService.js / server.js's auth gate) — this
+// route itself is still behind normal Bearer-header auth, it's the one
+// place that trades a header for a URL-embeddable token.
+router.get("/download-token", (req, res) => {
+  res.json({ token: mintDownloadToken(req.user.uid) });
+});
+
+router.get("/genres", (_req, res) => {
+  res.json({ genres: GENRES });
+});
+
+router.get("/tags", (_req, res) => {
+  res.json({ tags: TAGS });
+});
+
+router.get("/styles", (_req, res) => {
+  res.json({ styles: STYLES });
+});
+
+router.get("/delivery-targets", (_req, res) => {
+  res.json({ delivery_targets: DELIVERY_TARGETS });
+});
+
+router.get("/categories", (_req, res) => {
+  res.json({ categories: CATEGORIES, flavours: FLAVOURS_BY_CATEGORY });
+});
+
+router.post("/profile", async (req, res) => {
+  try {
+    const saved = await saveProfile(req.user.uid, req.body || {}, req.user.email, req.user.signInProvider);
+    return res.json(saved);
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to save profile" });
+  }
+});
+
+router.get("/profile", async (req, res) => {
+  try {
+    const profile = await getProfile(req.user.uid);
+    return res.json(profile);
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to load profile" });
+  }
+});
+
+router.get("/jobs", async (req, res) => {
+  try {
+    const jobs = await listJobs(req.user.uid);
+    return res.json(jobs);
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to load job history" });
+  }
+});
+
+// Backs the dedicated result page (/app?job=:jobId) — lets a finished
+// master be reloaded on refresh, or opened from My Masters, instead of
+// only ever existing in the in-memory result the moment a render
+// finishes. requireAuth (server.js's global gate) has already confirmed
+// who's asking by the time this runs; getJob() itself is scoped to
+// req.user.uid's own jobs subcollection, so it structurally cannot return
+// another user's job no matter what jobId is guessed — same ownership
+// guarantee ownsJob() gives the download/original/delete routes, just
+// via the lookup path itself rather than a separate check. 404 either
+// way (missing vs. someone else's) so existence isn't leaked.
+router.get("/jobs/:jobId", async (req, res) => {
+  try {
+    const job = await getJobDetail(req.user.uid, req.params.jobId);
+    if (!job) {
+      return res.status(404).json({ detail: "Job not found" });
+    }
+    // Files (not the Firestore record) are swept 48h after creation — a
+    // record can briefly outlive its files (see jobsService.js), so this
+    // tells the frontend not to try building a player/download link for
+    // one that's already past its window, rather than surfacing a raw
+    // download 404 mid-page.
+    const expired = job.expires_at ? new Date(job.expires_at).getTime() <= Date.now() : false;
+    return res.json({ ...job, expired });
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to load job" });
+  }
+});
+
+// Deletes a job's actual files (not just the Firestore record) right now,
+// rather than waiting on the automatic 48h sweep — the "Delete" button in
+// My Masters. Also invalidates any share link for this job implicitly:
+// the link's token still verifies fine, but the file it points to is gone,
+// so /shared/:jobId 404s the moment this finishes — no separate
+// revocation list needed.
+router.delete("/jobs/:jobId", async (req, res) => {
+  if (!(await ownsJob(req.user.uid, req.params.jobId))) {
+    return res.status(404).json({ detail: "Job not found" });
+  }
+  await deleteJobFiles(req.params.jobId);
+  shareLinks.revokeAllForJob(req.user.uid, req.params.jobId);
+  await deleteJob(req.user.uid, req.params.jobId);
+  return res.json({ ok: true });
+});
+
+// --- Share links -------------------------------------------------------
+//
+// Owner side (signed in): create, list, revoke. Recipient side (public,
+// no account): /shared/link/info and /shared/link/download, authenticated
+// only by the X-Share-Token header. See shareLinkService.js for the token
+// model. All-Access only — a real plan feature.
+
+function shareUrlFor(req, token) {
+  // The token goes in the URL FRAGMENT: browsers never send it to any
+  // server, so it never lands in access logs, analytics or Referer.
+  const base = settings.frontendOrigin || `${req.protocol}://${req.get("host")}`;
+  return `${base.replace(/\/+$/, "")}/share#${token}`;
+}
+
+function parseOptionalInt(value) {
+  if (value === undefined || value === null || value === "") return null;
+  return Number(value);
+}
+
+async function createShareLinkHandler(req, res) {
+  const plan = await getPlan(req.user.uid).catch(() => "free");
+  if (plan !== "pro") {
+    return res.status(402).json({ detail: "Share links are an All-Access feature. See plans in Settings → Billing." });
+  }
+  const job = await getJob(req.user.uid, req.params.jobId);
+  if (!job || job.preview) {
+    return res.status(404).json({ detail: "Job not found" });
+  }
+  try {
+    const { token, link } = shareLinks.create({
+      uid: req.user.uid,
+      jobId: req.params.jobId,
+      jobExpiresAt: job.expires_at?.toDate ? job.expires_at.toDate().toISOString() : job.expires_at,
+      expiresInSeconds: parseOptionalInt(req.body?.expires_in_seconds),
+      maxDownloads: parseOptionalInt(req.body?.max_downloads),
+    });
+    recordServerEvent("share_created", {
+      uid: req.user.uid,
+      props: { jobId: req.params.jobId, limited: link.max_downloads != null },
+    });
+    res.setHeader("Cache-Control", "no-store");
+    // `url` is the only time the raw token is ever returned.
+    return res.status(201).json({ ...link, url: shareUrlFor(req, token) });
+  } catch (error) {
+    if (error instanceof ShareLinkError) {
+      return res.status(error.status).json({ detail: error.message });
+    }
+    throw error;
+  }
+}
+
+router.post("/jobs/:jobId/share-links", createShareLinkHandler);
+// Original endpoint, kept so already-deployed clients keep working; same
+// behaviour (no body = link valid until the master expires).
+router.post("/jobs/:jobId/share", createShareLinkHandler);
+
+router.get("/jobs/:jobId/share-links", async (req, res) => {
+  if (!(await ownsJob(req.user.uid, req.params.jobId))) {
+    return res.status(404).json({ detail: "Job not found" });
+  }
+  res.setHeader("Cache-Control", "no-store");
+  return res.json({ links: shareLinks.list(req.user.uid, req.params.jobId) });
+});
+
+router.delete("/share-links/:linkId", (req, res) => {
+  if (!shareLinks.revoke(req.user.uid, req.params.linkId)) {
+    return res.status(404).json({ detail: "Share link not found or already revoked." });
+  }
+  recordServerEvent("share_revoked", { uid: req.user.uid, props: {} });
+  return res.status(204).end();
+});
+
+const SHARE_UNAVAILABLE = {
+  not_found: [404, "This link is invalid."],
+  expired: [410, "This link has expired."],
+  revoked: [410, "This link was turned off by the person who shared it."],
+  exhausted: [410, "This link has reached its download limit."],
+  master_gone: [410, "This master is no longer available."],
+};
+
+function shareHeaders(res) {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+}
+
+function sendShareError(res, code) {
+  const [status, detail] = SHARE_UNAVAILABLE[code];
+  return res.status(status).json({ detail, code });
+}
+
+// Resolves X-Share-Token to { link, job } or sends the error response.
+async function resolveShare(req, res) {
+  shareHeaders(res);
+  const resolved = shareLinks.resolve(req.get("X-Share-Token"));
+  if (resolved.status !== "active") {
+    sendShareError(res, resolved.status);
+    return null;
+  }
+  const job = await getJob(resolved.row.uid, resolved.row.job_id);
+  if (!job || isShareJobExpired(job)) {
+    sendShareError(res, "master_gone");
+    return null;
+  }
+  return { link: resolved.link, row: resolved.row, job };
+}
+
+function sharedFilename(job, jobId) {
+  const ext = isValidExt(job.output_format) ? job.output_format : "wav";
+  const base = (job.original_filename || `master_${jobId}`).replace(/\.[^./\\]+$/, "").replace(/[^\w .-]+/g, "_").trim(); // literal space, not \s: U+3000 / newlines are invalid in a header
+  return `${base || "master"}_mastered.${ext}`;
+}
+
+router.get("/shared/link/info", shareAccessLimiter, async (req, res) => {
+  const share = await resolveShare(req, res);
+  if (!share) return undefined;
+  shareLinks.touch(share.row.id);
+  const { job, link } = share;
+  return res.json({
+    filename: sharedFilename(job, share.row.job_id),
+    genre: job.genre || null,
+    before_lufs: job.before_lufs ?? null,
+    after_lufs: job.after_lufs ?? null,
+    expires_at: link.expires_at,
+    downloads_remaining: link.max_downloads == null ? null : Math.max(0, link.max_downloads - link.download_count),
+  });
+});
+
+router.get("/shared/link/download", shareAccessLimiter, async (req, res) => {
+  const share = await resolveShare(req, res);
+  if (!share) return undefined;
+  // Counted before streaming, atomically: a 1-download link can't be
+  // raced by two parallel requests.
+  if (!shareLinks.consumeDownload(share.row.id)) {
+    return sendShareError(res, "exhausted");
+  }
+  const jobId = share.row.job_id;
+  const ext = isValidExt(share.job.output_format) ? share.job.output_format : "wav";
+  const filename = sharedFilename(share.job, jobId);
+  recordServerEvent("share_downloaded", { uid: share.row.uid, props: {} });
+  const localPath = safeJoin(settings.outputDir, `${jobId}_mastered.${ext}`);
+  if (fs.existsSync(localPath)) {
+    return res.download(localPath, filename);
+  }
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  return proxyFromPython(`${upstreamPath("download", jobId)}.${ext}`, res, SHARE_UNAVAILABLE.master_gone[1]);
+});
+
+// Wipes everything this app stored in Firestore for the caller (profile,
+// Saved Artists, job history) — NOT the Firebase Auth account itself, see
+// deleteAllUserData's comment. The frontend calls this first, then deletes
+// the Auth account client-side (the only place that can re-authenticate
+// and delete a user's own account), then signs out.
+router.delete("/account", async (req, res) => {
+  try {
+    await deleteAllUserData(req.user.uid);
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to delete account data" });
+  }
+});
+
+// Invalidates every refresh token Firebase has issued for this account —
+// every other signed-in browser/device (and the calling one, once its
+// current ID token expires or the frontend force-signs-out right after
+// calling this) stops being accepted. requireAuth's checkRevoked:true is
+// what actually enforces this at request time; this route just triggers it.
+router.post("/account/sign-out-everywhere", async (req, res) => {
+  try {
+    await getAuth().revokeRefreshTokens(req.user.uid);
+    invalidateCachedSession(req.user.uid);
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to revoke sessions" });
+  }
+});
+
+router.get("/billing/status", async (req, res) => {
+  try {
+    const status = await getSubscriptionStatus(req.user.uid);
+    return res.json(status);
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to load billing status" });
+  }
+});
+
+// { plan, subscription, masterQuota } in one call — the single source of
+// truth every button/paywall in the frontend reads from (see
+// frontend/src/store/entitlementsStore.js) instead of each component
+// fetching and caching its own copy, which is what used to let one button
+// show "unlocked" while another still thought the user was on Free.
+router.get("/billing/entitlements", async (req, res) => {
+  try {
+    // One read of users/{uid}, not six (see entitlementsFromUserData).
+    const userData = await readUserData(req.user.uid);
+    const plan = planFromUserData(userData);
+    const subscription = subscriptionStatusFromUserData(userData);
+    const { masterQuota, extraCredits, stemQuota, extraStemCredits } = entitlementsFromUserData(userData, plan);
+    return res.json({
+      plan,
+      subscription,
+      masterQuota,
+      extraCredits,
+      stemQuota,
+      extraStemCredits,
+    });
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to load entitlements" });
+  }
+});
+
+// body.item is one of: plan_indie | plan_studio | plan_pro (each also
+// with an _annual suffix) | single_master | stem_separation. chords_monthly/chord_detection are deliberately absent —
+// chord detection is unconditionally free now (see /analyze-chords above),
+// so there's nothing left to sell there; anyone with an existing
+// chordSubscription keeps being honored by polarService.js's webhook
+// handling, this just stops new purchases of a product with no gate behind
+// it anymore.
+const CHECKOUT_ITEM_TO_PRODUCT_KEY = {
+  plan_indie: "planIndie",
+  plan_studio: "planStudio",
+  plan_pro: "planPro",
+  plan_indie_annual: "planIndieAnnual",
+  plan_studio_annual: "planStudioAnnual",
+  plan_pro_annual: "planProAnnual",
+  single_master: "singleMaster",
+  stem_separation: "stemSeparation",
+};
+
+router.post("/billing/checkout", async (req, res) => {
+  if (requiresEmailVerification(req.user)) {
+    return res.status(403).json({
+      detail: "Please verify your email address before purchasing — check your inbox for the verification link, or resend it from Settings.",
+      code: "EMAIL_NOT_VERIFIED",
+    });
+  }
+  const productKey = CHECKOUT_ITEM_TO_PRODUCT_KEY[req.body?.item];
+  if (!productKey) {
+    return res.status(400).json({ detail: `Unknown item "${req.body?.item}"` });
+  }
+  try {
+    // A stale client-side plan cache (PlansPanel.jsx's buy() only calls
+    // /billing/change-plan when its OWN cached currentPlan says "already
+    // paid" — see entitlementsStore) can land here for someone who
+    // already has an active mastering subscription. checkouts.create()
+    // has no concept of "this customer already has one," so Polar's own
+    // hosted checkout page rejects it with a dead-end "You already have
+    // an active subscription" screen instead of switching them — the
+    // exact failure mode changeSubscriptionPlan (see polarService.js) was
+    // built to avoid, just reached through the other endpoint. The
+    // backend is the real source of truth for subscription state, not
+    // whatever the frontend happened to cache — check it here too and
+    // perform the same in-place change /billing/change-plan does,
+    // transparently, instead of ever reaching Polar's checkout for a
+    // plan product on an already-subscribed customer.
+    // Every plan product — Indie/Studio/All-Access, monthly or annual.
+    // This used to list only planStudio/planPro, so a subscriber picking
+    // Indie or any yearly plan still reached Polar's checkout and hit its
+    // "already subscribed" dead end.
+    if (productKey.startsWith("plan") && (await getPlan(req.user.uid)) !== "free") {
+      const result = await changeSubscriptionPlan(req.user.uid, productKey);
+      recordServerEvent("checkout_started", { uid: req.user.uid, props: { plan: productKey, via: "auto_switched_from_checkout" } });
+      return res.json({ changedPlan: true, ...result });
+    }
+    const meta = req.body?.meta || {};
+    const url = await createCheckoutUrl(req.user.uid, req.user.email, productKey, safeReturnUrl(req.body?.success_url), {
+      consent: meta.consent,
+      fbp: meta.fbp,
+      fbc: meta.fbc,
+      ip: req.clientIp || req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    recordServerEvent("checkout_started", { uid: req.user.uid, props: { plan: productKey } });
+    return res.json({ url });
+  } catch (error) {
+    recordServerEvent("checkout_failed", { uid: req.user.uid, props: { plan: productKey, reason: "provider_error" } });
+    return res.status(400).json({ detail: error?.message || "Failed to start checkout" });
+  }
+});
+
+// Switching plan while already subscribed (Studio <-> All-Access) — the
+// frontend calls this instead of /billing/checkout once someone's already
+// on a paid plan, so a plan change modifies the existing Polar
+// subscription (see changeSubscriptionPlan) instead of starting a second,
+// independent one that could leave the old subscription still billing in
+// parallel. No redirect URL in the response — this takes effect
+// immediately, there's no checkout page to send the user to.
+router.post("/billing/change-plan", async (req, res) => {
+  const productKey = CHECKOUT_ITEM_TO_PRODUCT_KEY[req.body?.item];
+  if (!productKey) {
+    return res.status(400).json({ detail: `Unknown item "${req.body?.item}"` });
+  }
+  // Only subscription plans can be switched to; one-time items (single
+  // master, stem separation) are bought through /billing/checkout.
+  if (!productKey.startsWith("plan")) {
+    return res.status(400).json({ detail: `"${req.body?.item}" is a one-time purchase, not a plan — buy it from Billing instead.` });
+  }
+  try {
+    const result = await changeSubscriptionPlan(req.user.uid, productKey);
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to change plan" });
+  }
+});
+
+router.post("/billing/portal", async (req, res) => {
+  try {
+    const url = await createPortalUrl(req.user.uid);
+    return res.json({ url });
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to open billing portal" });
+  }
+});
+
+router.get("/mix-presets", async (req, res) => {
+  res.json(await listMixPresets(req.user?.uid));
+});
+
+router.post("/import-preset", uploadPresetJson.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ detail: "file is required" });
+  }
+  try {
+    const jsonText = fs.readFileSync(req.file.path, "utf-8");
+    const preset = await importCustomPreset(jsonText, req.body.display_name || null, req.user.uid);
+    return res.json(preset);
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Preset import failed" });
+  } finally {
+    fs.unlink(req.file.path, () => {});
+  }
+});
+
+// User-built presets from the Direction controls (JSON body, not a file).
+router.post("/custom-presets", async (req, res) => {
+  try {
+    return res.status(201).json(await createUserPreset(req.body || {}, req.user.uid));
+  } catch (error) {
+    return res.status(error.status || 400).json({ detail: error?.message || "Couldn't save the preset" });
+  }
+});
+
+router.put("/custom-presets/:name", async (req, res) => {
+  if (!isSafeDocId(req.params.name)) return res.status(404).json({ detail: "Custom preset not found" });
+  try {
+    return res.json(await updateUserPreset(req.params.name, req.body || {}, req.user.uid));
+  } catch (error) {
+    return res.status(error.status || 400).json({ detail: error?.message || "Couldn't update the preset" });
+  }
+});
+
+router.delete("/custom-presets/:name", async (req, res) => {
+  if (!isSafeDocId(req.params.name)) return res.status(404).json({ detail: "Custom preset not found" });
+  const removed = await deleteCustomPreset(req.params.name, req.user.uid);
+  if (!removed) {
+    return res.status(404).json({ detail: "Custom preset not found" });
+  }
+  return res.json({ ok: true });
+});
+
+// Manage the built-in/curated preset catalog (the ones every user sees) —
+// admin-only, see requireAdminKey above. Body shape matches an entry of
+// mixing_presets.json: { display_name, genre, style, tags, tweaks,
+// use_stem_separation, output_format, processing?, quality_control?, output? }.
+router.put("/admin/presets/:slug", adminKeyFailureLimiter, requireAdminKey, async (req, res) => {
+  if (!isSafeDocId(req.params.slug)) return res.status(400).json({ detail: "Invalid preset slug" });
+  try {
+    const saved = await upsertBuiltInPreset(req.params.slug, req.body || {});
+    return res.json(saved);
+  } catch (error) {
+    return res.status(400).json({ detail: error?.message || "Failed to save preset" });
+  }
+});
+
+router.delete("/admin/presets/:slug", adminKeyFailureLimiter, requireAdminKey, async (req, res) => {
+  if (!isSafeDocId(req.params.slug)) return res.status(400).json({ detail: "Invalid preset slug" });
+  const removed = await deleteBuiltInPreset(req.params.slug);
+  if (!removed) {
+    return res.status(404).json({ detail: "Preset not found" });
+  }
+  return res.json({ ok: true });
+});
+
+// Live "professional controls" preview — lets the Master tab show real,
+// per-track adaptive-engine values (EQ band gains, compression, target
+// loudness) as the user browses genre/style/category/flavour/tweaks,
+// instead of a manual panel that never reflected those choices. Only
+// meaningful with the adaptive Python engine (see /master below for the
+// same guard) — the ffmpeg fallback has no per-genre parameter model to
+// preview at all.
+function requireAdaptiveEngine(req, res, next) {
+  if (settings.masteringEngine !== "adaptive_python") {
+    return res.status(501).json({ detail: "Live parameter preview needs the adaptive mastering engine, which isn't configured on this server." });
+  }
+  return next();
+}
+
+router.post("/analyze", expensiveLimiter, requireAdaptiveEngine, upload.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ detail: "file is required" });
+  }
+  try {
+    const result = await postMultipartToPython("/analyze", {
+      files: { file: { path: req.file.path, filename: req.file.originalname || "input.wav" } },
+    });
+    return res.json(result);
+  } catch (error) {
+    if (!error?.status || error.status >= 500) console.error("analyze failed:", error?.message || error);
+    const { status, body } = toClientError(error, { fallbackDetail: "Analysis failed on our side. Please try again." });
+    return res.status(status).json(body);
+  } finally {
+    fs.unlink(req.file.path, () => {});
+  }
+});
+
+// upload.none(): the frontend sends this as multipart/form-data (see
+// masteringDomain.js's previewParams(), which builds a FormData — same as
+// every other call in that file), but this route had no multipart-parsing
+// middleware at all. express.json()/urlencoded() (server.js's global body
+// parsers) only understand application/json and
+// application/x-www-form-urlencoded — neither parses multipart bodies, so
+// req.body was always {} here and every single call 400'd with "analysis
+// and genre are required", regardless of what was actually selected. This
+// is why Pro Master's knobs never updated from genre/style/objective/tag
+// chips: refreshPreviewParams() always failed silently upstream in the
+// store. upload.none() parses the multipart fields into req.body without
+// expecting any file part (there isn't one here).
+const MAX_PREVIEW_ANALYSIS_BYTES = 256 * 1024;
+router.post("/preview-params", previewParamsLimiter, requireAdaptiveEngine, upload.none(), async (req, res) => {
+  const { analysis, genre, style, tags, tweaks, category, flavour, delivery, mix_preset } = req.body || {};
+  if (!analysis || !genre) {
+    return res.status(400).json({ detail: "analysis and genre are required" });
+  }
+  if (Buffer.byteLength(typeof analysis === "string" ? analysis : JSON.stringify(analysis)) > MAX_PREVIEW_ANALYSIS_BYTES) {
+    return res.status(413).json({ detail: "analysis payload is too large", code: "payload_too_large" });
+  }
+  try {
+    // A selected intent preset steers the preview exactly as it steers the
+    // master, so the live numbers match what will render.
+    let presetJson = null;
+    if (mix_preset) {
+      const preset = await getMixPresetByName(mix_preset, req.user?.uid);
+      if (preset && isIntentPreset(preset)) {
+        presetJson = JSON.stringify({ name: preset.display_name || preset.name, genre: preset.genre, style: preset.style, processing: preset.processing, adaptive: preset.adaptive || null });
+      }
+    }
+    const result = await postMultipartToPython("/preview-params", {
+      fields: {
+        analysis,
+        genre,
+        style: style || "modern",
+        tags: tags || "[]",
+        tweaks: tweaks || "{}",
+        category: category || null,
+        flavour: flavour || null,
+        delivery: delivery || null,
+        preset_json: presetJson,
+      },
+    });
+    return res.json(result);
+  } catch (error) {
+    return res.status(502).json({ detail: error?.message || "Preview computation failed" });
+  }
+});
+
+const masterUpload = upload.fields([
+  { name: "file", maxCount: 1 },
+  { name: "reference_file", maxCount: 1 },
+]);
+
+// 30s is enough to hear what the engine does to a track without it being a
+// usable file — Standard engine only, never Professional, never stems (the
+// input truncation happens before the file ever reaches the DSP pipeline,
+// so a preview also costs a fraction of the compute a full render would).
+// Free preview excerpt: the loudest 30 s, as float WAV — see
+// services/previewExcerpt.js for why it is not the first 30 s any more.
+
+router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, async (req, res) => {
+  const file = req.files?.file?.[0];
+  if (!file) {
+    return res.status(400).json({ detail: "file is required" });
+  }
+  const referenceFile = req.files?.reference_file?.[0] || null;
+  const preview = req.body.preview === "true";
+  const tier = !preview && req.body.tier === "professional" ? "professional" : "standard";
+  const useStemSeparation = !preview && req.body.use_stem_separation === "true";
+
+  // Only a real, final render is gated — previews are free to try even on
+  // an unverified account, same "browsing stays frictionless" principle
+  // requiresEmailVerification's own comment describes.
+  if (!preview && requiresEmailVerification(req.user)) {
+    return res.status(403).json({
+      detail: "Please verify your email address before mastering a track — check your inbox for the verification link, or resend it from Settings.",
+      code: "EMAIL_NOT_VERIFIED",
+    });
+  }
+  // Anonymous sessions exist for the public try-before-signup tools. A
+  // final master spends the 3-master Free trial, and anonymous uids are
+  // free to mint by script — every one would get a fresh trial.
+  if (!preview && req.user?.isAnonymous) {
+    return res.status(403).json({
+      detail: "Create a free account to master a full track — previews stay free without one.",
+      code: "ACCOUNT_REQUIRED",
+    });
+  }
+
+  // Request validation happens BEFORE any quota/credit is reserved: a
+  // request rejected here must never cost the user a master. (It used to
+  // run inside the render's try block, after the reservation, and its
+  // early return skipped the refund in the catch.)
+  let processing = null;
+  if (!preview && req.body.processing) {
+    try {
+      processing = JSON.parse(req.body.processing);
+    } catch {
+      return res.status(400).json({ detail: "processing must be valid JSON" });
+    }
+    const MAX_BANDS = 24;
+    const tooMany =
+      (processing?.eq?.length || 0) > MAX_BANDS ||
+      (processing?.dynamic_eq?.length || 0) > MAX_BANDS ||
+      (processing?.stereo?.bands?.length || 0) > MAX_BANDS;
+    if (tooMany) {
+      return res.status(400).json({ detail: `Too many bands in one processing spec — ${MAX_BANDS} max per list.` });
+    }
+  }
+
+  // Backend-authoritative mastering outcome (spec section 1/9) — the
+  // frontend's own master_started/completed/failed (masteringStore.js)
+  // measure UX timing and drive the funnel's session flags; these are the
+  // ground truth for "did the job actually succeed" and "why did it fail",
+  // recorded from the one place that actually knows.
+  const masteringStartedAt = Date.now();
+  if (!preview) {
+    recordServerEvent("master_started", { uid: req.user.uid, props: { tier, mastering_mode: useStemSeparation ? "stems" : "standard" } });
+  }
+
+  // Plans (see config/settings.js for the full list): Free = 3 Standard
+  // masters one-time; Indie 15/month Standard only; Studio 50/month and
+  // All-Access 250/month with Professional. Professional stays strictly
+  // plan-gated (Studio+, no credit bypass). Stem separation has its own
+  // gate below (real, disproportionate compute): All-Access gets a monthly
+  // sub-limit, every plan can buy single stem-separated masters. The
+  // one-time "single master" purchase only covers the master-count limit —
+  // the standard path for Free past the trial, or a top-up for paid plans
+  // that don't want to wait for the monthly reset. Chord detection is free
+  // and ungated (see /analyze-chords).
+  // Decided here and RESERVED before the render (see the reservation
+  // block below); a render that fails gives the slot back in the catch.
+  // It used to be consumed only after a successful render, which left the
+  // gate as a plain read that concurrent requests could all pass.
+  // Previews never reach any of this — the whole block is !preview.
+  let mustConsumeQuota = false;
+  let mustConsumeCredit = false;
+  let mustConsumeStemQuota = false;
+  let mustConsumeStemCredit = false;
+  let quotaLimit = PLAN_MASTER_LIMITS.free;
+  let plan = "free";
+  // One id for the render end to end: the durable reservation
+  // (renderReservations/{jobId}), the Python job (so it can be cancelled)
+  // and the job record. Python accepts [A-Za-z0-9_-]{6,64}.
+  const jobId = crypto.randomUUID().replace(/-/g, "");
+  // Set once the reservation document exists; every exit path settles it
+  // (complete or refund) — and if this process dies first, the ledger's
+  // reconciler settles it from the lease (see server.js).
+  let reservationId = null;
+
+  if (!preview) {
+    // One snapshot for every pre-render check below. Fails CLOSED like
+    // before: an unreadable doc means no quota, no credits.
+    const userData = await readUserData(req.user.uid).catch((error) => {
+      console.error("readUserData failed, failing closed:", error.message);
+      return null;
+    });
+    plan = userData ? planFromUserData(userData) : "free";
+    const snapshot = userData ? entitlementsFromUserData(userData, plan) : null;
+    const planUnlocked = plan === "studio" || plan === "pro";
+    quotaLimit = PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free;
+
+    if (tier === "professional" && !planUnlocked) {
+      return res.status(402).json({
+        detail: "Professional mastering needs the Studio plan or higher. See plans in Settings → Billing.",
+      });
+    }
+
+    if (useStemSeparation) {
+      if (plan === "pro") {
+        // Bounded monthly sub-limit, not "unlimited within your 250
+        // masters" — see entitlementsService.js's STEM_MONTHLY_LIMIT
+        // comment for why this stays separately metered even on the top
+        // plan. Fails CLOSED, same discipline as the master quota below.
+        const stemQuota = snapshot ? snapshot.stemQuota : { remaining: 0, limit: STEM_MONTHLY_LIMIT };
+        if (stemQuota.remaining > 0) {
+          mustConsumeStemQuota = true;
+        } else {
+          const stemCredits = snapshot ? snapshot.extraStemCredits : 0;
+          if (stemCredits > 0) {
+            mustConsumeStemCredit = true;
+          } else {
+            return res.status(402).json({
+              detail: `You've used your ${stemQuota.limit} stem separations this month — they reset next month. Buy an extra one if you don't want to wait. Manage in Settings → Billing.`,
+            });
+          }
+        }
+      } else {
+        // Free/Studio get no bundled stem access at all, not even a
+        // trial — this is the single most expensive operation in the
+        // app. A purchased credit is the only way in.
+        const stemCredits = snapshot ? snapshot.extraStemCredits : 0;
+        if (stemCredits > 0) {
+          mustConsumeStemCredit = true;
+        } else {
+          return res.status(402).json({
+            detail:
+              "Stem separation is included on All-Access (20/month), or buy a single stem-separated master. Manage in Settings → Billing.",
+          });
+        }
+      }
+    }
+
+    // Fails CLOSED — a Firestore hiccup here must never read as "quota
+    // available." Forces the same path as a genuinely exhausted quota,
+    // which correctly falls through to checking credits and then a clear
+    // error, rather than a raw 500 or silently letting the render through
+    // unverified.
+    const quota = snapshot ? snapshot.masterQuota : { remaining: 0, limit: quotaLimit };
+    if (quota.remaining > 0) {
+      mustConsumeQuota = true;
+    } else {
+      // Quota exhausted — fall back to a purchased single-master credit
+      // before refusing outright. For Free this is the ONLY way forward
+      // besides upgrading (no reset coming); for Studio/All-Access it's
+      // an alternative to waiting for next month.
+      const credits = snapshot ? snapshot.extraCredits : 0;
+      if (credits > 0) {
+        mustConsumeCredit = true;
+      } else if (plan === "free") {
+        return res.status(402).json({
+          detail: `You've used your ${quotaLimit} free masters — that's a one-time trial, it doesn't renew. Buy a single master for just this track, or subscribe — Indie (15/month), Studio (50/month) or All-Access (250/month) — in Settings → Billing.`,
+        });
+      } else {
+        const upsellPlan = plan === "indie" ? "Studio for 50/month" : plan === "studio" ? "All-Access for 250/month" : null;
+        const upsell = upsellPlan ? ` Upgrade to ${upsellPlan}, or` : " Or";
+        return res.status(402).json({
+          detail: `You've used your ${quotaLimit} masters this month — they reset next month.${upsell} buy a single master if you don't want to wait. Manage in Settings → Billing.`,
+        });
+      }
+    }
+
+    // ---- RESERVE THE SLOT NOW, BEFORE RENDERING -----------------------
+    //
+    // The snapshot check above is a read, and a read cannot gate a
+    // resource: N concurrent requests from a user with 1 remaining would
+    // all pass it. The reservation is the gate — it takes the counters and
+    // writes renderReservations/{jobId} in one transaction, so concurrent
+    // callers serialise and all but the allowed ones are refused here,
+    // before any render starts. Every later step (processing, completed,
+    // refunded) is a state-conditioned transition on that document, so a
+    // retry, a duplicate settle or a crash can never charge or refund
+    // twice (see reservationLedger.js).
+    const parts = partsFor({
+      plan,
+      quotaLimit,
+      stemLimit: STEM_MONTHLY_LIMIT,
+      needs: {
+        master: mustConsumeQuota ? "quota" : mustConsumeCredit ? "credit" : null,
+        stem: mustConsumeStemQuota ? "quota" : mustConsumeStemCredit ? "credit" : null,
+      },
+    });
+    let reservation;
+    try {
+      reservation = await ledger.reserve({ reservationId: jobId, uid: req.user.uid, plan, jobId, parts });
+    } catch (error) {
+      // Fails CLOSED: no reservation, no render.
+      console.error("Render reservation failed, refusing the render:", error.message);
+      return res.status(503).json({ code: "billing_unavailable", detail: "Couldn't confirm your plan right now. Nothing was charged — try again in a minute." });
+    }
+
+    if (!reservation.ok) {
+      // Lost a race against the user's own concurrent request. Not an
+      // error state — their allowance genuinely just ran out.
+      return res.status(402).json({
+        code: reservation.failed === "stem" ? "stem_reservation_conflict" : "master_reservation_conflict",
+        detail:
+          reservation.failed === "stem"
+            ? "That used your last available stem separation — another render of yours claimed it first. Buy an extra one in Settings → Billing."
+            : "That used your last available master — another render of yours claimed it first. Buy a single master or upgrade in Settings → Billing.",
+      });
+    }
+    reservationId = jobId;
+    // Best-effort: "processing" is informational (the lease, not this
+    // state, is what the reconciler acts on).
+    await ledger.markProcessing(reservationId).catch((error) => console.error(`markProcessing ${reservationId} failed:`, error.message));
+  }
+
+  try {
+    const tags = JSON.parse(req.body.tags || "[]");
+    const tweaks = JSON.parse(req.body.tweaks || "{}");
+    // Pro Mastering's manual parameter panel — never on preview, which is
+    // always the cheap Standard/adaptive path (see services/previewExcerpt.js).
+    // Band-array lengths are capped here: the UI never generates more than
+    // a handful, but nothing stops a direct API call from sending
+    // thousands — each one is a real filter construction in
+    // preset_dsp_engine.py, so an uncapped array is a cheap way to make
+    // one request tie up a lot of DSP compute regardless of the rate limit
+    // on request *count*.
+
+    let masterFile = file;
+    let previewStartSeconds = null;
+    if (preview) {
+      const excerpt = await cutPreviewExcerpt(file.path, settings.uploadDir);
+      masterFile = { ...file, path: excerpt.path };
+      previewStartSeconds = excerpt.startSeconds;
+    }
+
+    const result = await processMastering({
+      jobId,
+      // Python stops the render before this gateway would give up on it,
+      // so a timed-out job never finishes into a result nobody receives.
+      deadlineEpochMs: Date.now() + UPSTREAM_TIMEOUT_MS,
+      file: masterFile,
+      // The preview matches its master here too: only the mix is cut to
+      // 30 s; the reference's full spectrum still steers the tone.
+      referenceFile,
+      uid: req.user.uid,
+      fields: {
+        genre: req.body.genre || null,
+        style: req.body.style || "modern",
+        tags,
+        tweaks,
+        use_stem_separation: useStemSeparation,
+        output_format: req.body.output_format || "wav",
+        // The free preview runs the same preset, objective and delivery
+        // target as the full master (they cost nothing extra) — it only
+        // differs in length and engine tier. It used to drop all three, so
+        // a preview didn't sound like the master it was previewing.
+        mix_preset: req.body.mix_preset || null,
+        tier,
+        processing,
+        category: req.body.category || null,
+        flavour: req.body.flavour || null,
+        delivery: req.body.delivery || "auto",
+      },
+    });
+
+    if (preview) fs.unlink(masterFile.path, () => {});
+
+    // Only spent now that the render actually succeeded. Awaited (not
+    // fire-and-forget) — the frontend re-checks remaining quota the
+    // instant this response lands (see AppClient.jsx's refreshEntitlements
+    // after a real master), so the Firestore write has to have actually
+    // landed by then or that re-check shows the stale, pre-deduction count.
+    // Still doesn't fail the response on error — the user already has
+    // their file; a Firestore hiccup here is one unbilled render, logged,
+    // not a broken master.
+    // The master slot was already reserved before the render (see the
+    // reservation block above) — nothing to consume here. A failed render
+    // gives it back in the catch below.
+
+    // Independent of the master quota/credit consumption above — a
+    // stem-separated render spends from BOTH counters when applicable
+    // (its master-count slot AND its stem sub-limit slot), not one or the
+    // other, since they're two separately-metered resources.
+    // Only bill for stem separation if it ACTUALLY RAN.
+    //
+    // The Python engine treats a Demucs failure as non-fatal: it catches
+    // the exception, sets stem_separation.status = "unavailable" and
+    // finishes an ordinary non-stem master (see mastering.py's
+    // `except Exception` around the stem block). That is the right call
+    // for the audio — the user still gets a usable file instead of a
+    // failed job — but it means "the render succeeded" is NOT the same
+    // question as "did they get the thing they paid for".
+    //
+    // Billing on render success alone charged a 4.99 EUR stem credit for
+    // a plain master, with nothing in the UI saying separation had been
+    // skipped. Taking money and silently delivering less is a refund, not
+    // a complaint.
+    // "applied" is the ONLY success value the engine emits
+    // (stem_separation.py). The others are "unavailable" (Demucs threw)
+    // and "skipped" (not requested). Matching the success value
+    // explicitly, rather than excluding known failures, means an
+    // unrecognised future status errs toward NOT charging — the safe
+    // direction, and loud in the logs rather than silent.
+    const STEM_APPLIED = "applied";
+    const stemStatus = result?.stem_separation?.status || null;
+    const stemSeparationRan = stemStatus === STEM_APPLIED;
+
+    if (!stemSeparationRan && useStemSeparation) {
+      console.warn(`Stem separation did not run for job ${result?.job_id} (status=${stemStatus ?? "missing"}) — the reserved stem is refunded on completion.`);
+    }
+
+    // Recorded regardless of preview — ownsJob() needs this to exist for
+    // the download routes to work at all, even for a preview. listJobs()
+    // filters preview:true back out, so "My Masters" stays uncluttered.
+    // Code + text, like the engine's own warnings (source_warning_codes),
+    // so the result view can localize it.
+    const stemWarning =
+      useStemSeparation && !stemSeparationRan
+        ? {
+            code: "stems_not_run",
+            params: {},
+            text:
+              "Stem separation didn't run on this track, so it was mastered as a single mix — you have not been charged for it." +
+              (result?.stem_separation?.reason ? ` (${result.stem_separation.reason})` : ""),
+          }
+        : null;
+    const recordJobPromise = recordJob(req.user.uid, {
+      job_id: result.job_id,
+      genre: req.body.genre || null,
+      style: req.body.style || "modern",
+      tier,
+      output_format: req.body.output_format || "wav",
+      original_filename: file.originalname,
+      before_lufs: result.before_lufs,
+      after_lufs: result.after_lufs,
+      preview,
+      analysis_before: result.analysis_before,
+      analysis_after: result.analysis_after,
+      ab_gain_match: result.ab_gain_match,
+      processing_applied: stemWarning
+        ? { ...result.processing_applied, source_warning_codes: [...(result.processing_applied?.source_warning_codes || []), stemWarning] }
+        : result.processing_applied,
+      target_profile_used: result.target_profile_used,
+      // Separation silently not happening is exactly the case that made
+      // the billing bug invisible: the file came back fine, just without
+      // stems. Surfaced through the warnings channel the result view
+      // already renders, so the user learns it from the product rather
+      // than by comparing waveforms.
+      source_warnings: [...(result.source_warnings || []), ...(stemWarning ? [stemWarning.text] : [])],
+      quality_control: result.quality_control,
+    });
+    if (preview) {
+      // Best-effort — a Firestore hiccup here shouldn't fail a preview
+      // response that already succeeded and already has a real file
+      // waiting for the user.
+      recordJobPromise.catch((error) => console.error("Failed to record job history:", error.message));
+    } else {
+      // Awaited for a real master — the frontend auto-navigates straight
+      // to /app?job=:jobId on this response (see AppClient.jsx),
+      // which immediately does a GET /jobs/:jobId, so the Firestore write
+      // needs to have actually landed by the time that happens, not still
+      // be in flight. Still best-effort in the sense
+      // that a failure here doesn't fail the response — the render
+      // already succeeded and the file already exists — just logged.
+      try {
+        await recordJobPromise;
+      } catch (error) {
+        console.error("Failed to record job history:", error.message);
+      }
+    }
+
+    if (reservationId) {
+      // Settle AFTER the job record exists: if this process dies between
+      // the two, the reconciler sees a delivered job and completes the
+      // reservation instead of refunding a master the user has.
+      let settled = null;
+      try {
+        settled = await ledger.complete(reservationId, { refundStem: !stemSeparationRan });
+      } catch (error) {
+        // Firestore unreachable: the charge stays held and the reconciler
+        // completes it once the lease expires (the job record exists).
+        // The user already has their master, so deliver it.
+        console.error(`Completing reservation ${reservationId} failed (reconciler will settle it):`, error.message);
+      }
+      if (settled && !settled.ok && settled.state === "refunded") {
+        // Already refunded (the reconciler gave up on this render). Never
+        // deliver a master that wasn't paid for: withdraw it.
+        console.error(`Reservation ${reservationId} was already refunded; withdrawing job ${result.job_id}.`);
+        await deleteJob(req.user.uid, result.job_id).catch(() => {});
+        await deleteJobFiles(result.job_id).catch(() => {});
+        return res.status(409).json({ code: "reservation_expired", detail: "This render took too long and was cancelled. You have not been charged — please try again." });
+      }
+    }
+
+    if (!preview) {
+      recordServerEvent("master_completed", {
+        uid: req.user.uid,
+        props: {
+          tier,
+          mastering_mode: useStemSeparation ? "stems" : "standard",
+          processing_duration_ms: Date.now() - masteringStartedAt,
+          ...masteringDspProps(result),
+        },
+      });
+    }
+    // Server-side "is this the user's first real master?" — drives the
+    // FirstMasterCompleted ad event (metaConversionsService.js). Never
+    // allowed to fail or delay the delivered master beyond one transaction.
+    let firstMaster = false;
+    if (!preview) {
+      try {
+        firstMaster = await claimFirstMaster(req.user.uid, result.job_id, { priorMasters: Math.max(0, (await countRealJobs(req.user.uid)) - 1) });
+      } catch (error) {
+        console.error("First-master check failed (non-fatal):", error.message);
+      }
+    }
+    return res.json({ ...result, preview, ...(firstMaster ? { first_master: true } : {}), ...(preview ? { preview_excerpt_start_s: previewStartSeconds } : {}) });
+  } catch (error) {
+    // Give the reserved slot back. The slot is taken BEFORE the render
+    // (that is what makes concurrency safe), so a render that throws has
+    // already spent it. Retried briefly; if Firestore stays down the
+    // reservation keeps its lease and the reconciler refunds it later —
+    // never allowed to mask the real failure.
+    if (reservationId) await refundWithRetry(reservationId, normalizeMasteringFailure(error));
+    // The gateway gave up waiting: make sure Python stops too and nothing
+    // it might still write is ever served (Python also stops itself at the
+    // propagated deadline; this covers a clock skew or a lost response).
+    if (error?.code === "processing_timeout" || error?.name === "UpstreamTimeoutError") {
+      await cancelPythonJob(jobId);
+      await deleteJobFiles(jobId).catch(() => {});
+    }
+
+    if (!preview) {
+      recordServerEvent("master_failed", {
+        uid: req.user.uid,
+        props: {
+          tier,
+          mastering_mode: useStemSeparation ? "stems" : "standard",
+          processing_duration_ms: Date.now() - masteringStartedAt,
+          reason: normalizeMasteringFailure(error),
+        },
+      });
+    }
+    // error.status carries through a real upstream status (e.g. the
+    // Python service's 503 when its concurrency cap is full — see
+    // postMultipartToPython) rather than always flattening to 400,
+    // otherwise "server's busy, try again" reads to the frontend as the
+    // same permanent-looking failure as a bad upload.
+    // Upstream 4xx (bad/unsupported upload) stays a 4xx; an engine crash
+    // (Python 5xx) is reported as a server error, not "bad request".
+    // `code` is the stable machine-readable reason (X-Error-Code from the
+    // Python service) the frontend localizes; `detail` stays as a fallback
+    // and is generic for server-side failures (see clientError.js).
+    if (!error?.status || error.status >= 500) console.error(`master failed (job ${jobId}):`, error?.message || error);
+    const { status, body } = toClientError(error, { fallbackDetail: "Mastering failed on our side. You have not been charged — please try again." });
+    return res.status(status).json(body);
+  }
+});
+
+// Chord detection is BOTH an All-Access plan perk (unlimited, unchanged)
+// Chord detection is unconditionally free — no trial counter, no credits,
+// no subscription check. It's a top-of-funnel lead-gen tool (see
+// PublicChordDetector.jsx), not a product on its own, so gating it ever
+// cost more in funnel drop-off than the €1.49/€2.99 it used to bring in.
+router.post("/analyze-chords", expensiveLimiter, upload.single("file"), cleanupUploadsOnFinish, async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ detail: "file is required" });
+  }
+
+  try {
+    const result = await analyzeChords(req.file);
+    recordServerEvent("analysis_completed", { uid: req.user.uid, props: { source_tool: "chord_detector" } });
+    return res.json(result);
+  } catch (error) {
+    // stderr/internal messages stay in the server log — they can carry
+    // file paths and stack traces. The client gets a useful, safe reason.
+    console.error("analyze-chords failed:", error?.stderr || error?.message || error);
+    const reason = normalizeMasteringFailure(error);
+    recordServerEvent("analysis_failed", { uid: req.user.uid, props: { source_tool: "chord_detector", reason } });
+    const detail =
+      reason === "invalid_audio" || reason === "unsupported_format"
+        ? "We couldn't read that file as audio. Try a WAV, FLAC, MP3 or M4A export of the track."
+        : reason === "file_too_large"
+          ? "That file is too large to analyze. Try a shorter or compressed version."
+          : reason === "processing_timeout"
+            ? "The analysis took too long. Try again, or upload a shorter clip."
+            : "Chord detection failed on our side. Please try again in a moment.";
+    return res.status(500).json({ detail, code: reason });
+  }
+});
+
+router.post("/codec-preview", expensiveLimiter, async (req, res) => {
+  const { job_id: jobId, codec } = req.body || {};
+  if (!jobId) {
+    return res.status(400).json({ detail: "job_id is required" });
+  }
+  if (!isValidJobId(jobId)) {
+    return res.status(404).json({ detail: "Job not found" });
+  }
+  if (codec !== undefined && codec !== "" && !isValidCodec(codec)) {
+    return res.status(400).json({ detail: "Unknown codec" });
+  }
+  if (!(await ownsJob(req.user.uid, jobId))) {
+    return res.status(404).json({ detail: "Job not found" });
+  }
+  try {
+    const result = await previewCodec(jobId, codec || "mp3_128");
+    return res.json(result);
+  } catch (error) {
+    if (!error?.status || error.status >= 500) console.error("codec-preview failed:", error?.message || error);
+    const { status, body } = toClientError(error, { fallbackDetail: "Codec preview failed on our side. Please try again." });
+    return res.status(status).json(body);
+  }
+});
+
+// Streams a file response from the Python service through to the client.
+// Codec previews and (usually) mastered/original files live in the Python
+// service's own storage now, not Node's — see masteringService.js's
+// pythonApiBaseUrl comment for why.
+async function proxyFromPython(pythonPath, res, notFoundMessage, req = null) {
+  // Byte ranges pass straight through (Starlette's FileResponse serves
+  // them). Safari refuses to play an <audio> source that can't answer a
+  // Range request with 206 — without this the in-app A/B was silent there.
+  const range = req?.headers.range;
+  let upstream;
+  try {
+    upstream = await fetch(`${settings.pythonApiBaseUrl}${pythonPath}`, range ? { headers: { Range: range } } : undefined);
+  } catch (error) {
+    console.error(`Cannot reach Python service for ${pythonPath}:`, error.message);
+    return res.status(503).json({ code: "service_unavailable", detail: "The mastering service is temporarily unavailable. Please try again in a minute." });
+  }
+  if (upstream.status === 416) {
+    const contentRange = upstream.headers.get("content-range");
+    if (contentRange) res.setHeader("Content-Range", contentRange);
+    return res.status(416).end();
+  }
+  if (!upstream.ok) {
+    return res.status(upstream.status === 404 ? 404 : 502).json({ detail: notFoundMessage });
+  }
+  res.status(upstream.status);
+  res.setHeader("Content-Type", upstream.headers.get("content-type") || "application/octet-stream");
+  for (const header of ["content-length", "content-range", "accept-ranges"]) {
+    const value = upstream.headers.get(header);
+    if (value) res.setHeader(header, value);
+  }
+
+  // Streamed straight through, not buffered — a mastered WAV can be tens
+  // of MB, and the previous Buffer.from(await upstream.arrayBuffer())
+  // waited for the ENTIRE file from Python before sending a single byte
+  // to the browser, then held the whole thing in memory on top of that.
+  // This pipes bytes to the client as they arrive from Python instead,
+  // so the two transfers overlap instead of running fully sequentially —
+  // the actual cause of "the download takes forever."
+  const nodeStream = Readable.fromWeb(upstream.body);
+  nodeStream.on("error", (error) => {
+    console.error("Error streaming file from Python service:", error.message);
+    if (!res.headersSent) res.status(502).end();
+    else res.end();
+  });
+  return nodeStream.pipe(res);
+}
+
+// All three below serve a specific user's audio — job_id alone isn't
+// enough to authorize access (a signed-in user, but any signed-in user,
+// could otherwise download anyone else's file by guessing/reusing a
+// job_id). ownsJob() scopes the lookup to the requester's own Firestore
+// subcollection, so this also covers previews (recorded with preview:true,
+// see recordJob) not just full purchased renders.
+router.get("/download-codec-preview/:jobId/:codec", async (req, res) => {
+  const { jobId, codec } = req.params;
+  if (!(await ownsJob(req.user.uid, jobId))) {
+    return res.status(404).json({ detail: "Codec preview not found — run /codec-preview first" });
+  }
+  return proxyFromPython(upstreamPath("download-codec-preview", jobId, codec), res, "Codec preview not found — run /codec-preview first", req);
+});
+
+router.get("/download/:jobId.:ext", async (req, res) => {
+  const { jobId, ext } = req.params;
+  if (!(await ownsJob(req.user.uid, jobId))) {
+    return res.status(404).json({ detail: "File not found" });
+  }
+  // Local file first — covers the legacy node_ffmpeg engine path, which
+  // still writes directly to Node's own outputDir (see
+  // masteringService.js:processMasteringViaFfmpegFallback). Everything
+  // else (the default path) is mastered by the Python service and lives
+  // in its storage instead.
+  const localPath = safeJoin(settings.outputDir, `${jobId}_mastered.${ext}`);
+  if (fs.existsSync(localPath)) {
+    return res.download(localPath);
+  }
+  return proxyFromPython(`${upstreamPath("download", jobId)}.${ext}`, res, "File not found", req);
+});
+
+router.get("/original/:jobId", async (req, res) => {
+  if (!(await ownsJob(req.user.uid, req.params.jobId))) {
+    return res.status(404).json({ detail: "Original not found" });
+  }
+  // "Before" must be the file the user actually uploaded. A bare
+  // startsWith("<job>_input") matches BOTH `<job>_input.mp3` (the real
+  // upload) and `<job>_input_internal.wav` (the decoded working copy the
+  // engine writes alongside it), and readdirSync order is not guaranteed —
+  // so which one got served was luck. Both are unprocessed source, so it
+  // never sounded wrong, but the A/B could silently compare against a
+  // transcode instead of the original.
+  //
+  // Prefer the genuine upload: `<job>_input.<ext>` with no further
+  // underscore-suffixed name. Fall back to the internal copy only if the
+  // original is already gone (retention sweep removes the upload first).
+  const prefix = `${req.params.jobId}_input`;
+  const localMatches = fs.readdirSync(settings.uploadDir).filter((name) => name.startsWith(prefix));
+  const isOriginalUpload = (name) => /^[^_]+_input\.[^.]+$/.test(name);
+  const chosen = localMatches.find(isOriginalUpload) || localMatches[0];
+  if (chosen) {
+    return res.sendFile(path.join(settings.uploadDir, chosen));
+  }
+  return proxyFromPython(upstreamPath("original", req.params.jobId), res, "Original not found", req);
+});
+
+// Always 16-bit PCM WAV (see mastering_service.py:_make_browser_preview) —
+// a separate, browser-safe copy for <audio src> playback (SignalVisualizer,
+// WebGLMasterPreview) distinct from /download's actual deliverable, which
+// stays at its real bit depth. This is what fixed "mastered signal shows a
+// player error while the original plays fine" — the mastered file is
+// always written 24-bit, a real (if narrower) native-<audio> compat gap
+// that 16-bit doesn't have.
+router.get("/preview/:jobId", async (req, res) => {
+  if (!(await ownsJob(req.user.uid, req.params.jobId))) {
+    return res.status(404).json({ detail: "Preview not found" });
+  }
+  return proxyFromPython(upstreamPath("preview", req.params.jobId), res, "Preview not found", req);
+});
+
+// LEGACY share links (HMAC-signed ?token=, minted before opaque share
+// links existed). No new ones are issued; these two routes only keep
+// already-sent links working until they expire (at most 48h after the
+// deploy that introduced shareLinkService.js), after which they can be
+// deleted along with verifyShareToken/mintShareToken.
+//
+// Public metadata for the frontend's simple /shared/:jobId page — just
+// enough to render "here's the file, want it?" without exposing anything
+// else about the account that shared it. Same public/token-only auth as
+// the file route right below.
+router.get("/shared/:jobId/info", shareAccessLimiter, async (req, res) => {
+  const claim = verifyShareToken(req.query.token);
+  if (!claim || claim.jobId !== req.params.jobId) {
+    return res.status(404).json({ detail: "This link is invalid or has expired." });
+  }
+  const job = await getJob(claim.uid, req.params.jobId);
+  if (!job || isShareJobExpired(job)) {
+    return res.status(404).json({ detail: "This link is invalid or has expired." });
+  }
+  const ext = isValidExt(job.output_format) ? job.output_format : "wav";
+  return res.json({
+    filename: job.original_filename || `mastered_${req.params.jobId}.${ext}`,
+    genre: job.genre || null,
+    tier: job.tier || null,
+    before_lufs: job.before_lufs ?? null,
+    after_lufs: job.after_lufs ?? null,
+    expires_at: job.expires_at?.toDate ? job.expires_at.toDate().toISOString() : job.expires_at || null,
+    download_url: `${req.protocol}://${req.get("host")}/shared/${req.params.jobId}?token=${encodeURIComponent(req.query.token)}`,
+  });
+});
+
+// Public — deliberately NOT behind requireAuth (see server.js's auth gate,
+// which exempts /shared/ the same way it exempts /health and /webhooks/).
+// Authorization here is the ?token= itself, not a signed-in session: this
+// is the link a user hands to someone with no account at all. verifyShareToken
+// both checks the signature/expiry AND that the token's embedded jobId
+// matches this URL's :jobId — a token can't be replayed against a
+// different job's share link.
+router.get("/shared/:jobId", shareAccessLimiter, async (req, res) => {
+  const claim = verifyShareToken(req.query.token);
+  if (!claim || claim.jobId !== req.params.jobId) {
+    return res.status(404).json({ detail: "This link is invalid or has expired." });
+  }
+  const job = await getJob(claim.uid, req.params.jobId);
+  if (!job || isShareJobExpired(job)) {
+    return res.status(404).json({ detail: "This link is invalid or has expired." });
+  }
+  const ext = isValidExt(job.output_format) ? job.output_format : "wav";
+  const localPath = safeJoin(settings.outputDir, `${req.params.jobId}_mastered.${ext}`);
+  if (fs.existsSync(localPath)) {
+    return res.download(localPath, `mastered_${req.params.jobId}.${ext}`);
+  }
+  return proxyFromPython(`${upstreamPath("download", req.params.jobId)}.${ext}`, res, "This link is invalid or has expired.");
+});
+
+export default router;

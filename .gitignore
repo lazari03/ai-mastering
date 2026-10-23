@@ -1,0 +1,76 @@
+# --- OS junk ---
+.DS_Store
+
+# --- Local Claude Code session/tooling state, not project source ---
+.claude/*
+# ...except the engineering-organization definitions, which ARE project
+# source: subagents, the shared knowledge base, and coordination workflows.
+!.claude/agents/
+!.claude/knowledge/
+!.claude/workflows/
+
+# --- Secrets / local env --- (.env.example files are templates, kept)
+.env
+.env.local
+# Timestamped backups taken before editing .env — same secrets, same rules.
+.env.bak*
+*.env.bak*
+.env.*.local
+
+# --- Python ---
+__pycache__/
+*.pyc
+backend/venv312/
+backend/venv/
+
+# --- Node ---
+# Local npm download cache (never commit generated package cache)
+.npm-cache/
+
+node_modules/
+frontend/.next/
+
+# --- Generated audio: uploads, renders, analysis reports ---
+# These are user input files and mastering output — large, per-run, and
+# not something anyone else needs from git history. Applies at every level
+# since both backend-node/ and the repo root have their own uploads/outputs.
+uploads/
+outputs/
+backend/validation_report.json
+
+# Graphify generated analysis artifacts
+graphify-out/
+
+# Local progress notes
+progress.md
+
+# --- Docs & Firestore rules, kept local-only ---
+# *.md was already tracking 7 files (ARCHITECTURE.md, DEPLOYMENT.md,
+# FIREBASE_SETUP.md, MASTERING_ENGINE.md, POLAR_SETUP.md, PRICING.md,
+# README.md) before this — this pattern only stops NEW changes to those
+# and any new .md file from being staged going forward; it does not
+# retroactively untrack them. Run `git rm --cached <file>` per file (see
+# below) if you actually want them removed from git's index too.
+*.md
+# Audit reports are deliverables, not local notes.
+!docs/audits/*.md
+!docs/agent-reports/*.md
+# Public repository: the detailed security report can contain working
+# reproductions for unfixed issues. It stays local; the committed issue
+# memory carries only an embargoed summary until the fix is deployed.
+docs/agent-reports/SECURITY_REPORT.md
+!.claude/agents/*.md
+!.claude/knowledge/*.md
+!.claude/workflows/*.md
+
+# --- Agent QA runs: the JSON summary is committed, rendered audio is not ---
+test-results/audio/
+test-results/runs/
+firestore.rules
+
+# --- Marketing assets, not app source ---
+social-media/
+
+# --- Reference audio, not app source ---
+masters-example/
+backend-node/data/

@@ -1,0 +1,196 @@
+import { PLANS, PLAN_ORDER } from "@/lib/pricing";
+// Central SEO constants — every page's metadata pulls from here so title
+// format, domain, and default keywords stay consistent instead of each
+// page inventing its own.
+//
+// The "https://auralithforge.app" fallback below is for LOCAL DEV ONLY —
+// it happens to also be the real production domain, which is exactly what
+// made a missing NEXT_PUBLIC_SITE_URL in production invisible: sitemap.xml,
+// robots.txt, and every page's canonical/OG URLs would silently render
+// correct-looking URLs against a hardcoded string instead of the real env
+// var, with nothing to notice it by. Fails the build instead, server-side
+// only (this module has no client-side importers today, but a throw at
+// import time would crash every page load in the browser rather than fail
+// a build if that ever changed — restricting to the server keeps this a
+// build-time check, not a runtime landmine). Set NEXT_PUBLIC_SITE_URL in
+// the environment the build reads from (frontend/.env.example) — note
+// docker-compose.yml's own `${NEXT_PUBLIC_SITE_URL:-https://auralithforge.app}`
+// default on the frontend build args means this won't fire via that
+// deploy path unless that default is also removed; it's the backstop for
+// building directly with `next build` outside docker-compose (Vercel, a
+// different CI pipeline, etc).
+if (typeof window === "undefined" && process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_SITE_URL) {
+  throw new Error(
+    "NEXT_PUBLIC_SITE_URL is not set in a production build. Set it in the environment this build reads from " +
+      "(see frontend/.env.example) — sitemap.xml, robots.txt, and every page's canonical/OG URLs depend on it " +
+      "being the real domain, not a hardcoded fallback that only happens to match today."
+  );
+}
+
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://auralithforge.app";
+export const SITE_NAME = "Auralith Forge";
+
+export const DEFAULT_DESCRIPTION =
+  "Online audio mastering with an adaptive DSP engine that analyzes your mix before changing anything — EQ, multiband compression, saturation and true-peak limiting only where your track needs them. Master a track in minutes.";
+
+export const DEFAULT_KEYWORDS = [
+  "free online mastering",
+  "AI audio mastering",
+  "online audio mastering",
+  "automated mastering software",
+  "adaptive DSP mastering engine",
+  "true peak limiter online",
+  "mastering presets",
+  "stem separation mastering",
+  "master a song online",
+  "AI mastering studio",
+  "digital signal processing mastering",
+];
+
+export function absoluteUrl(path = "/") {
+  return new URL(path, SITE_URL).toString();
+}
+
+// The site-wide generated card (app/opengraph-image.jsx). Named explicitly
+// because Next only falls back to that file when a page's openGraph object
+// has no own `images` key — and buildMetadata always sets one, so before this
+// every marketing page shipped with no og:image / twitter:image at all.
+const DEFAULT_OG_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: `${SITE_NAME} — Free Online Audio Mastering` };
+
+export function buildMetadata({ title, description, path = "/", keywords = [], noindex = false, image }) {
+  const url = absoluteUrl(path);
+  return {
+    title,
+    description,
+    keywords: [...new Set([...keywords, ...DEFAULT_KEYWORDS])],
+    alternates: { canonical: url },
+    robots: noindex
+      ? { index: false, follow: false }
+      : { index: true, follow: true },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: SITE_NAME,
+      type: "website",
+      images: image ? [{ url: image }] : [DEFAULT_OG_IMAGE],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: image ? [image] : [DEFAULT_OG_IMAGE.url],
+    },
+  };
+}
+
+// Organization + WebSite JSON-LD, rendered once in the root layout — tells
+// search engines and LLM crawlers what the site is in a machine-readable
+// way, independent of the visual page content.
+//
+// offers is a real AggregateOffer across all 3 plans (Free/Studio/
+// All-Access), not just the free tier — matches lib/pricing.js exactly.
+// Previously said priceCurrency: "USD" while every actual price on the
+// site is in EUR — mismatched structured data is exactly the kind of
+// thing that erodes trust signals (and can trigger a manual review),
+// worth catching regardless of how minor it looks.
+export function organizationJsonLd() {
+  const prices = PLAN_ORDER.map((k) => Number.parseFloat(String(PLANS[k].price).replace(/[^0-9.]/g, "")) || 0);
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: SITE_NAME,
+    applicationCategory: "MultimediaApplication",
+    operatingSystem: "Web",
+    url: SITE_URL,
+    description: DEFAULT_DESCRIPTION,
+    offers: {
+      "@type": "AggregateOffer",
+      lowPrice: String(Math.min(...prices)),
+      highPrice: String(Math.max(...prices)),
+      priceCurrency: "EUR",
+      offerCount: String(PLAN_ORDER.length),
+    },
+  };
+}
+
+// Site identity for search engines: WebSite carries the site name (what
+// Google shows as the result's site name) and Organization ties the brand to
+// the domain. Homepage only — one declaration of each for the whole site.
+export function websiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    alternateName: ["Auralith", "auralithforge.app"],
+    url: `${SITE_URL}/`,
+  };
+}
+
+export function brandJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: `${SITE_URL}/`,
+    logo: `${SITE_URL}/icon.svg`,
+  };
+}
+
+// BreadcrumbList from the same items the visible <Breadcrumbs> renders —
+// emitted by that component, so the schema can't disagree with the trail.
+export function breadcrumbJsonLd(items) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      item: absoluteUrl(item.href || "/"),
+    })),
+  };
+}
+
+// FAQPage JSON-LD — real Q&A content (see frontend/src/lib/i18n.js
+// "faq.*" keys, the exact same text rendered on the homepage FAQ
+// section), not written separately/fabricated for SEO. This is what
+// makes the homepage eligible for a rich FAQ snippet in search results —
+// free, no ads, no backlinks required, just structured markup of content
+// that's already there.
+export function faqJsonLd(items) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map(({ question, answer }) => ({
+      "@type": "Question",
+      name: question,
+      acceptedAnswer: { "@type": "Answer", text: answer },
+    })),
+  };
+}
+
+export function articleJsonLd({ title, description, path, datePublished, image }) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: title,
+    description,
+    url: absoluteUrl(path),
+    datePublished,
+    dateModified: datePublished,
+    author: { "@type": "Organization", name: SITE_NAME },
+    publisher: { "@type": "Organization", name: SITE_NAME },
+    image: image ? [image] : undefined,
+    mainEntityOfPage: absoluteUrl(path),
+  };
+}
+
+export function JsonLd({ data }) {
+  // JSON.stringify doesn't escape "</script>" — a value containing that
+  // sequence would break out of the tag. Nothing here is user-controlled
+  // today (site config + hardcoded blog post text), but escaping "<" is
+  // free insurance against that ever changing later.
+  const json = JSON.stringify(data).replace(/</g, "\\u003c");
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: json }} />;
+}

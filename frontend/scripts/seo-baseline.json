@@ -1,0 +1,4166 @@
+{
+ "base": "http://localhost:4100",
+ "pages": {
+  "/": {
+   "path": "/",
+   "status": 200,
+   "title": "Master Your Music Online \u2014 AI Audio Mastering with a Real DSP Engine | Auralith Forge",
+   "description": "Master your tracks online with an adaptive DSP engine \u2014 analysis-first EQ, compression, saturation, stereo imaging, and true-peak limiting. Free Standard tier, genre-aware presets, and saved artist mastering chains.",
+   "canonical": "https://auralithforge.app",
+   "robots": "index, follow",
+   "og_title": "Master Your Music Online \u2014 AI Audio Mastering with a Real DSP Engine | Auralith Forge",
+   "h1": [
+    "Master your music. Keep what makes it yours."
+   ],
+   "h2": [
+    "Everything a real release needs",
+    "Real desks, real signal chains",
+    "Four plans. No confusing add-ons.",
+    "From raw mix to final master",
+    "Chord Detector",
+    "Mastering tuned per genre",
+    "Frequently asked questions",
+    "Questions or studio inquiries"
+   ],
+   "h3": [
+    "Adaptive DSP",
+    "Pro Presets",
+    "Instant A/B",
+    "Saved Artist Masters",
+    "Codec Preview",
+    "Stem-Aware Mastering",
+    "Create an account",
+    "Upload your track",
+    "Choose a profile",
+    "Let the engine process",
+    "Compare, preview, download"
+   ],
+   "jsonld_types": [
+    "FAQPage",
+    "SoftwareApplication"
+   ],
+   "faq_questions": [
+    "What file formats are supported?",
+    "What's the difference between Standard and Professional?",
+    "Can I save an artist's exact mastering chain?",
+    "Why does my mono source sound mono after mastering?",
+    "Is stem separation available?",
+    "Can I hear how it'll sound on Spotify or Instagram before downloading?",
+    "Is my music private?",
+    "What's actually free?"
+   ],
+   "main_word_count": 1109,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "Auralith Forge"
+    },
+    {
+     "href": "/",
+     "text": "Features"
+    },
+    {
+     "href": "/",
+     "text": "Pricing"
+    },
+    {
+     "href": "/",
+     "text": "How It Works"
+    },
+    {
+     "href": "/",
+     "text": "FAQ"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/",
+     "text": "Contact"
+    },
+    {
+     "href": "/login",
+     "text": "Sign in"
+    },
+    {
+     "href": "/login",
+     "text": "Open App \u2197"
+    },
+    {
+     "href": "/",
+     "text": "Features"
+    },
+    {
+     "href": "/",
+     "text": "Pricing"
+    },
+    {
+     "href": "/",
+     "text": "How It Works"
+    },
+    {
+     "href": "/",
+     "text": "FAQ"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/",
+     "text": "Contact"
+    },
+    {
+     "href": "/login",
+     "text": "Sign in"
+    },
+    {
+     "href": "/login",
+     "text": "Open App \u2197"
+    },
+    {
+     "href": "/login",
+     "text": "Master a Track Free \u2197"
+    },
+    {
+     "href": "/",
+     "text": "Hear a Before / After \u2192"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "Every render runs through a real DSP chain Read the guide \u2192"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Fader-level control, automated Read the guide \u2192"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "Built for people who mix for a living Read the guide \u2192"
+    },
+    {
+     "href": "/login",
+     "text": "Start Free \u2197"
+    },
+    {
+     "href": "/login",
+     "text": "Get Started \u2197"
+    },
+    {
+     "href": "/login",
+     "text": "Get Started \u2197"
+    },
+    {
+     "href": "/login",
+     "text": "Get Started \u2197"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "Comparing tools? See how this stacks up against LANDR & eMastered \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "See how it works \u2192 \u2197"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Master Pop tracks \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/ai-mastering-online",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/newsletter",
+    "/privacy",
+    "/refund",
+    "/share",
+    "/song-key-finder",
+    "/terms",
+    "/this-route-does-not-exist",
+    "/tools",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/ai-mastering-online": {
+   "path": "/ai-mastering-online",
+   "status": 200,
+   "title": "AI Mastering Online \u2014 Master Your Music in Minutes | Auralith Forge",
+   "description": "Master your music online with a real adaptive DSP engine \u2014 no software install, no plugins. 21 genre-aware presets, instant A/B, codec preview, stem-aware processing. 3 free masters, no card required.",
+   "canonical": "https://auralithforge.app/ai-mastering-online",
+   "robots": "index, follow",
+   "og_title": "AI Mastering Online \u2014 Master Your Music in Minutes | Auralith Forge",
+   "h1": [
+    "Master your music online with a real DSP engine \u2014 not a black box."
+   ],
+   "h2": [
+    "What you actually get",
+    "Master by genre",
+    "Pricing",
+    "Questions"
+   ],
+   "h3": [],
+   "jsonld_types": [
+    "FAQPage",
+    "SoftwareApplication"
+   ],
+   "faq_questions": [
+    "Do I need to install anything to master online with Auralith Forge?",
+    "What file formats can I upload?",
+    "Is it actually free, or a time-limited trial?",
+    "How is this different from a generic 'AI mastering' button?"
+   ],
+   "main_word_count": 472,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/login",
+     "text": "Master a track free"
+    },
+    {
+     "href": "/",
+     "text": "See all plans \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock"
+    },
+    {
+     "href": "/master/edm",
+     "text": "EDM"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic"
+    },
+    {
+     "href": "/master/lofi",
+     "text": "Lo-Fi"
+    },
+    {
+     "href": "/master/podcast",
+     "text": "Podcast"
+    },
+    {
+     "href": "/master/classical",
+     "text": "Classical"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "See every genre's LUFS and dynamic range target in one table \u2192"
+    },
+    {
+     "href": "/login",
+     "text": "Try it free"
+    },
+    {
+     "href": "/",
+     "text": "Full pricing breakdown \u2192"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "Auralith Forge vs LANDR \u2192"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "Auralith Forge vs eMastered \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Free chord & key detector \u2192"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder \u2192"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder \u2192"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/privacy",
+    "/refund",
+    "/song-key-finder",
+    "/terms",
+    "/tools",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/chord-detector": {
+   "path": "/chord-detector",
+   "status": 200,
+   "title": "Chord Detector \u2014 Find Key, BPM & Chords Online | Auralith Forge",
+   "description": "Upload a song and get its key, BPM, and full chord progression back \u2014 for guitar, piano, or any instrument. Completely free, no limit, no card required.",
+   "canonical": "https://auralithforge.app/chord-detector",
+   "robots": "index, follow",
+   "og_title": "Chord Detector \u2014 Find Key, BPM & Chords Online | Auralith Forge",
+   "h1": [
+    "Know every chord in any song, in seconds."
+   ],
+   "h2": [
+    "How it works",
+    "Completely free",
+    "Questions"
+   ],
+   "h3": [],
+   "jsonld_types": [
+    "BreadcrumbList",
+    "Service"
+   ],
+   "faq_questions": [],
+   "main_word_count": 339,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "Home"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Analyze a track \u2014 it's free \u2191"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder \u2192"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder \u2192"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder \u2192"
+    },
+    {
+     "href": "/lufs-meter",
+     "text": "LUFS Meter \u2192"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering \u2192"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering \u2192"
+    },
+    {
+     "href": "/blog",
+     "text": "Mastering guides \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-progression-finder",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/privacy",
+    "/refund",
+    "/song-key-finder",
+    "/terms",
+    "/tools",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/lufs-meter": {
+   "path": "/lufs-meter",
+   "status": 200,
+   "title": "Free LUFS Meter \u2014 Check Integrated Loudness, True Peak & LRA | Auralith Forge",
+   "description": "Upload a track and measure its Integrated Loudness (LUFS), True Peak, and Loudness Range \u2014 the same analysis engine Studio uses on every upload. Free, no card required.",
+   "canonical": "https://auralithforge.app/lufs-meter",
+   "robots": "index, follow",
+   "og_title": "Free LUFS Meter \u2014 Check Integrated Loudness, True Peak & LRA | Auralith Forge",
+   "h1": [
+    "How loud is your track, actually?"
+   ],
+   "h2": [
+    "What is LUFS?",
+    "What counts as loud?",
+    "Why True Peak matters",
+    "Completely free",
+    "Questions"
+   ],
+   "h3": [],
+   "jsonld_types": [
+    "BreadcrumbList",
+    "FAQPage",
+    "SoftwareApplication"
+   ],
+   "faq_questions": [
+    "What is LUFS?",
+    "What LUFS should my track be?",
+    "Why does True Peak matter, not just LUFS?",
+    "Is this the same measurement Studio uses?"
+   ],
+   "main_word_count": 472,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "Home"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "loudness targets by genre"
+    },
+    {
+     "href": "/lufs-meter",
+     "text": "Measure a track \u2014 it's free \u2191"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector \u2192"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder \u2192"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder \u2192"
+    },
+    {
+     "href": "/tools",
+     "text": "All free tools \u2192"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness targets by genre \u2192"
+    },
+    {
+     "href": "/blog",
+     "text": "Mastering guides \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/mastering-loudness-targets",
+    "/song-key-finder",
+    "/tools"
+   ]
+  },
+  "/tools": {
+   "path": "/tools",
+   "status": 200,
+   "title": "Free Music Tools \u2014 LUFS Meter, BPM, Key & Chord Detector | Auralith Forge",
+   "description": "Free, no-signup tools for musicians and producers: measure loudness, find the tempo, detect the key, or get the full chord progression of any track.",
+   "canonical": "https://auralithforge.app/tools",
+   "robots": "index, follow",
+   "og_title": "Free Music Tools \u2014 LUFS Meter, BPM, Key & Chord Detector | Auralith Forge",
+   "h1": [
+    "Free Music Tools"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "BreadcrumbList"
+   ],
+   "faq_questions": [],
+   "main_word_count": 133,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "Home"
+    },
+    {
+     "href": "/lufs-meter",
+     "text": "LUFS Meter Measure Integrated Loudness, True Peak, and Loudness Range \u2014 the same"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector Get the key, BPM, and full chord progression of any recording, sy"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder Detect a track's exact tempo for beatmatching, syncing samples, or se"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Key Finder Find the musical key of any track \u2014 for transposing, DJ set planning,"
+    },
+    {
+     "href": "/lufs-meter",
+     "text": "Start with the LUFS Meter \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/lufs-meter"
+   ]
+  },
+  "/mastering-loudness-targets": {
+   "path": "/mastering-loudness-targets",
+   "status": 200,
+   "title": "Mastering Loudness Targets \u2014 LUFS by Genre (Reference Table)",
+   "description": "How loud to master, by genre: integrated LUFS targets, dynamic range and true-peak ceilings for pop, hip-hop, rock, EDM, acoustic, lo-fi, podcast and classical \u2014 with what streaming loudness normalisation does to a master that ignores them.",
+   "canonical": "https://auralithforge.app/mastering-loudness-targets",
+   "robots": "index, follow",
+   "og_title": "Mastering Loudness Targets \u2014 LUFS by Genre (Reference Table)",
+   "h1": [
+    "Mastering Loudness Targets \u2014 LUFS by Genre"
+   ],
+   "h2": [
+    "Why each genre sits where it does",
+    "What streaming normalisation does to all of this",
+    "Mastering style shifts the target",
+    "The engine will not chase a target off a cliff",
+    "Limiter settings",
+    "Common questions"
+   ],
+   "h3": [],
+   "jsonld_types": [
+    "Article",
+    "FAQPage"
+   ],
+   "faq_questions": [
+    "How loud should I master my track?",
+    "What LUFS should I master to for Spotify and other streaming services?",
+    "What is LUFS and how is it different from dB?",
+    "What is true peak, and why is -1 dBTP the standard ceiling?",
+    "Is a louder master a better master?",
+    "How much headroom should I leave in a mix before mastering?"
+   ],
+   "main_word_count": 1324,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/master/edm",
+     "text": "EDM"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock"
+    },
+    {
+     "href": "/master/lofi",
+     "text": "Lo-Fi"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic"
+    },
+    {
+     "href": "/master/podcast",
+     "text": "Podcast"
+    },
+    {
+     "href": "/master/classical",
+     "text": "Classical"
+    },
+    {
+     "href": "/login",
+     "text": "Start free"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "How online mastering works \u2192"
+    },
+    {
+     "href": "/lufs-meter",
+     "text": "Measure your own track's LUFS, True Peak and Loudness Range \u2014 try the free LUFS "
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords, key and BPM before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/master/edm",
+     "text": "EDM mastering"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop mastering"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering"
+    },
+    {
+     "href": "/master/lofi",
+     "text": "Lo-Fi mastering"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering"
+    },
+    {
+     "href": "/master/podcast",
+     "text": "Podcast mastering"
+    },
+    {
+     "href": "/master/classical",
+     "text": "Classical mastering"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/privacy",
+    "/refund",
+    "/song-key-finder",
+    "/terms",
+    "/tools",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/blog": {
+   "path": "/blog",
+   "status": 200,
+   "title": "Mastering Guides & Notes \u2014 Auralith Forge",
+   "description": "Plain-language writing on how AI mastering actually works, what it automates, and how studios build repeatable mastering chains.",
+   "canonical": "https://auralithforge.app/blog",
+   "robots": "index, follow",
+   "og_title": "Mastering Guides & Notes \u2014 Auralith Forge",
+   "h1": [],
+   "h2": [
+    "Mastering guides & notes",
+    "What Really Happens Inside an AI Mastering Engine",
+    "Automated Fader Rides vs. Manual Mixing: What AI Mastering Actually Automates",
+    "Building a Repeatable Mastering Chain for Your Studio's Artists"
+   ],
+   "h3": [],
+   "jsonld_types": [],
+   "faq_questions": [],
+   "main_word_count": 182,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "Auralith Forge"
+    },
+    {
+     "href": "/blog",
+     "text": "Features"
+    },
+    {
+     "href": "/blog",
+     "text": "Pricing"
+    },
+    {
+     "href": "/blog",
+     "text": "How It Works"
+    },
+    {
+     "href": "/blog",
+     "text": "FAQ"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/blog",
+     "text": "Contact"
+    },
+    {
+     "href": "/login",
+     "text": "Sign in"
+    },
+    {
+     "href": "/login",
+     "text": "Open App \u2197"
+    },
+    {
+     "href": "/blog",
+     "text": "Features"
+    },
+    {
+     "href": "/blog",
+     "text": "Pricing"
+    },
+    {
+     "href": "/blog",
+     "text": "How It Works"
+    },
+    {
+     "href": "/blog",
+     "text": "FAQ"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/blog",
+     "text": "Contact"
+    },
+    {
+     "href": "/login",
+     "text": "Sign in"
+    },
+    {
+     "href": "/login",
+     "text": "Open App \u2197"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "5 min read What Really Happens Inside an AI Mastering Engine A plain-language wa"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "4 min read Automated Fader Rides vs. Manual Mixing: What AI Mastering Actually A"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "4 min read Building a Repeatable Mastering Chain for Your Studio's Artists If yo"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/privacy",
+    "/refund",
+    "/song-key-finder",
+    "/terms",
+    "/tools",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/terms": {
+   "path": "/terms",
+   "status": 200,
+   "title": "Terms & Conditions \u2014 Auralith Forge",
+   "description": "The terms that govern use of Auralith Forge's AI mastering service.",
+   "canonical": "https://auralithforge.app/terms",
+   "robots": "index, follow",
+   "og_title": "Terms & Conditions \u2014 Auralith Forge",
+   "h1": [
+    "Terms & Conditions"
+   ],
+   "h2": [
+    "1. Acceptance of these Terms",
+    "2. What the Service does",
+    "3. Eligibility and your account",
+    "4. Your content",
+    "5. Copyright claims and takedown requests",
+    "6. Acceptable use",
+    "7. Saved Artist presets",
+    "8. Fees and paid plans",
+    "9. Third-party services",
+    "10. Disclaimer of warranties",
+    "11. Limitation of liability",
+    "12. Termination",
+    "13. Changes to these Terms",
+    "14. Governing law",
+    "15. Contact"
+   ],
+   "h3": [],
+   "jsonld_types": [],
+   "faq_questions": [],
+   "main_word_count": 1139,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/privacy",
+    "/refund",
+    "/song-key-finder",
+    "/tools",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/privacy": {
+   "path": "/privacy",
+   "status": 200,
+   "title": "Privacy Policy \u2014 Auralith Forge",
+   "description": "How Auralith Forge collects, uses, and protects your data.",
+   "canonical": "https://auralithforge.app/privacy",
+   "robots": "index, follow",
+   "og_title": "Privacy Policy \u2014 Auralith Forge",
+   "h1": [
+    "Privacy Policy"
+   ],
+   "h2": [
+    "1. What this covers",
+    "2. Data we collect",
+    "3. How we use your data",
+    "4. Who we share data with",
+    "5. Data retention",
+    "6. Your rights",
+    "7. Cookies and local storage",
+    "8. Children's privacy",
+    "9. International data transfers",
+    "10. Security",
+    "11. Changes to this policy",
+    "12. Contact"
+   ],
+   "h3": [],
+   "jsonld_types": [],
+   "faq_questions": [],
+   "main_word_count": 623,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/app",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/login",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/newsletter",
+    "/refund",
+    "/share",
+    "/song-key-finder",
+    "/terms",
+    "/thank-you",
+    "/this-route-does-not-exist",
+    "/tools",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/refund": {
+   "path": "/refund",
+   "status": 200,
+   "title": "Refund Policy \u2014 Auralith Forge",
+   "description": "Refund terms for Auralith Forge purchases and subscriptions.",
+   "canonical": "https://auralithforge.app/refund",
+   "robots": "index, follow",
+   "og_title": "Refund Policy \u2014 Auralith Forge",
+   "h1": [
+    "Refund Policy"
+   ],
+   "h2": [
+    "1. What's paid",
+    "2. Studio / All-Access subscriptions",
+    "3. What isn't refundable",
+    "4. How to request a refund",
+    "5. Changes to this policy"
+   ],
+   "h3": [],
+   "jsonld_types": [],
+   "faq_questions": [],
+   "main_word_count": 275,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/privacy",
+    "/song-key-finder",
+    "/terms",
+    "/tools",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/blog/what-happens-inside-an-ai-mastering-engine": {
+   "path": "/blog/what-happens-inside-an-ai-mastering-engine",
+   "status": 200,
+   "title": "What Really Happens Inside an AI Mastering Engine \u2014 Auralith Forge",
+   "description": "A plain-language walkthrough of the actual DSP chain \u2014 EQ, compression, saturation, stereo imaging, and true-peak limiting \u2014 behind AI audio mastering, not marketing hand-waving.",
+   "canonical": "https://auralithforge.app/blog/what-happens-inside-an-ai-mastering-engine",
+   "robots": "index, follow",
+   "og_title": "What Really Happens Inside an AI Mastering Engine \u2014 Auralith Forge",
+   "h1": [
+    "What Really Happens Inside an AI Mastering Engine"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "Article"
+   ],
+   "faq_questions": [],
+   "main_word_count": 406,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "Auralith Forge"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "Features"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "Pricing"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "How It Works"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "FAQ"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "Contact"
+    },
+    {
+     "href": "/login",
+     "text": "Sign in"
+    },
+    {
+     "href": "/login",
+     "text": "Open App \u2197"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "Features"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "Pricing"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "How It Works"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "FAQ"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "Contact"
+    },
+    {
+     "href": "/login",
+     "text": "Sign in"
+    },
+    {
+     "href": "/login",
+     "text": "Open App \u2197"
+    },
+    {
+     "href": "/blog",
+     "text": "\u2190 All guides"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "a target loudness appropriate to the genre"
+    },
+    {
+     "href": "/login",
+     "text": "Master a track free"
+    },
+    {
+     "href": "/",
+     "text": "Studio & All-Access plans \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering \u2192"
+    },
+    {
+     "href": "/master/edm",
+     "text": "EDM mastering \u2192"
+    },
+    {
+     "href": "/master/lofi",
+     "text": "Lo-Fi mastering \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Automated Fader Rides vs. Manual Mixing: What AI Mastering Actually Automates"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "Building a Repeatable Mastering Chain for Your Studio's Artists"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/master/edm",
+    "/master/lofi",
+    "/master/pop"
+   ]
+  },
+  "/blog/what-ai-mastering-actually-automates": {
+   "path": "/blog/what-ai-mastering-actually-automates",
+   "status": 200,
+   "title": "Automated Fader Rides vs. Manual Mixing: What AI Mastering Actually Automates \u2014 Auralith Forge",
+   "description": "AI mastering doesn't replace a mixing engineer's fader rides \u2014 it automates a different, narrower job. Here's exactly where the line is.",
+   "canonical": "https://auralithforge.app/blog/what-ai-mastering-actually-automates",
+   "robots": "index, follow",
+   "og_title": "Automated Fader Rides vs. Manual Mixing: What AI Mastering Actually Automates \u2014 Auralith Forge",
+   "h1": [
+    "Automated Fader Rides vs. Manual Mixing: What AI Mastering Actually Automates"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "Article"
+   ],
+   "faq_questions": [],
+   "main_word_count": 353,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "Auralith Forge"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Features"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Pricing"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "How It Works"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "FAQ"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Contact"
+    },
+    {
+     "href": "/login",
+     "text": "Sign in"
+    },
+    {
+     "href": "/login",
+     "text": "Open App \u2197"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Features"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Pricing"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "How It Works"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "FAQ"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Contact"
+    },
+    {
+     "href": "/login",
+     "text": "Sign in"
+    },
+    {
+     "href": "/login",
+     "text": "Open App \u2197"
+    },
+    {
+     "href": "/blog",
+     "text": "\u2190 All guides"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "loudness targets"
+    },
+    {
+     "href": "/login",
+     "text": "Master a track free"
+    },
+    {
+     "href": "/",
+     "text": "Studio & All-Access plans \u2192"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering \u2192"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering \u2192"
+    },
+    {
+     "href": "/master/classical",
+     "text": "Classical mastering \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "What Really Happens Inside an AI Mastering Engine"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "Building a Repeatable Mastering Chain for Your Studio's Artists"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/rock"
+   ]
+  },
+  "/blog/building-a-repeatable-mastering-chain-for-your-studio": {
+   "path": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+   "status": 200,
+   "title": "Building a Repeatable Mastering Chain for Your Studio's Artists \u2014 Auralith Forge",
+   "description": "If your studio masters the same artist's releases over and over, a saved, reusable mastering chain matters more than any single preset. Here's how to think about building one.",
+   "canonical": "https://auralithforge.app/blog/building-a-repeatable-mastering-chain-for-your-studio",
+   "robots": "index, follow",
+   "og_title": "Building a Repeatable Mastering Chain for Your Studio's Artists \u2014 Auralith Forge",
+   "h1": [
+    "Building a Repeatable Mastering Chain for Your Studio's Artists"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "Article"
+   ],
+   "faq_questions": [],
+   "main_word_count": 369,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "Auralith Forge"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "Features"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "Pricing"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "How It Works"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "FAQ"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "Contact"
+    },
+    {
+     "href": "/login",
+     "text": "Sign in"
+    },
+    {
+     "href": "/login",
+     "text": "Open App \u2197"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "Features"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "Pricing"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "How It Works"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "FAQ"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "Contact"
+    },
+    {
+     "href": "/login",
+     "text": "Sign in"
+    },
+    {
+     "href": "/login",
+     "text": "Open App \u2197"
+    },
+    {
+     "href": "/blog",
+     "text": "\u2190 All guides"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "the loudness and limiter targets it lands on"
+    },
+    {
+     "href": "/login",
+     "text": "Master a track free"
+    },
+    {
+     "href": "/",
+     "text": "Studio & All-Access plans \u2192"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop mastering \u2192"
+    },
+    {
+     "href": "/master/podcast",
+     "text": "Podcast mastering \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "What Really Happens Inside an AI Mastering Engine"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Automated Fader Rides vs. Manual Mixing: What AI Mastering Actually Automates"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/blog",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/master/hiphop",
+    "/master/podcast"
+   ]
+  },
+  "/master/pop": {
+   "path": "/master/pop",
+   "status": 200,
+   "title": "AI Pop Mastering \u2014 Bright, Loud, and Radio-Ready | Auralith Forge",
+   "description": "Master pop tracks online with an adaptive DSP engine tuned for vocal presence, controlled low end, and competitive loudness \u2014 free Standard tier, no software install.",
+   "canonical": "https://auralithforge.app/master/pop",
+   "robots": "index, follow",
+   "og_title": "AI Pop Mastering \u2014 Bright, Loud, and Radio-Ready | Auralith Forge",
+   "h1": [
+    "AI Pop Mastering \u2014 Bright, Loud, and Radio-Ready"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "Service"
+   ],
+   "faq_questions": [],
+   "main_word_count": 209,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/login",
+     "text": "Start free"
+    },
+    {
+     "href": "/",
+     "text": "Studio & All-Access plans \u2192"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "What Really Happens Inside an AI Mastering Engine \u2192"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "How loud should a pop master be? See the LUFS targets by genre \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop mastering"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering"
+    },
+    {
+     "href": "/master/edm",
+     "text": "EDM mastering"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering"
+    },
+    {
+     "href": "/master/lofi",
+     "text": "Lo-Fi mastering"
+    },
+    {
+     "href": "/master/podcast",
+     "text": "Podcast mastering"
+    },
+    {
+     "href": "/master/classical",
+     "text": "Classical mastering"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/song-key-finder",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/master/hiphop": {
+   "path": "/master/hiphop",
+   "status": 200,
+   "title": "AI Hip-Hop Mastering \u2014 Punchy Low End, Clear Vocals | Auralith Forge",
+   "description": "Master hip-hop and rap tracks with a DSP chain that protects 808 weight and kick punch while keeping vocals cutting through \u2014 free Standard tier.",
+   "canonical": "https://auralithforge.app/master/hiphop",
+   "robots": "index, follow",
+   "og_title": "AI Hip-Hop Mastering \u2014 Punchy Low End, Clear Vocals | Auralith Forge",
+   "h1": [
+    "AI Hip-Hop Mastering \u2014 Punchy Low End, Clear Vocals"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "Service"
+   ],
+   "faq_questions": [],
+   "main_word_count": 202,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/login",
+     "text": "Start free"
+    },
+    {
+     "href": "/",
+     "text": "Studio & All-Access plans \u2192"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "Building a Repeatable Mastering Chain for Your Studio's Artists \u2192"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "How loud should a hip-hop master be? See the LUFS targets by genre \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering"
+    },
+    {
+     "href": "/master/edm",
+     "text": "EDM mastering"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering"
+    },
+    {
+     "href": "/master/lofi",
+     "text": "Lo-Fi mastering"
+    },
+    {
+     "href": "/master/podcast",
+     "text": "Podcast mastering"
+    },
+    {
+     "href": "/master/classical",
+     "text": "Classical mastering"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/ai-mastering-online",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/master/rock": {
+   "path": "/master/rock",
+   "status": 200,
+   "title": "AI Rock Mastering \u2014 Guitars, Drums, and Real Dynamics | Auralith Forge",
+   "description": "Master rock tracks with an engine that keeps guitar midrange present and drum transients intact, with dedicated 90s/2000s/modern rock style targets.",
+   "canonical": "https://auralithforge.app/master/rock",
+   "robots": "index, follow",
+   "og_title": "AI Rock Mastering \u2014 Guitars, Drums, and Real Dynamics | Auralith Forge",
+   "h1": [
+    "AI Rock Mastering \u2014 Guitars, Drums, and Real Dynamics"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "Service"
+   ],
+   "faq_questions": [],
+   "main_word_count": 216,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/login",
+     "text": "Start free"
+    },
+    {
+     "href": "/",
+     "text": "Studio & All-Access plans \u2192"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Automated Fader Rides vs. Manual Mixing: What AI Mastering Actually Automates \u2192"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "How loud should a rock master be? See the LUFS targets by genre \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop mastering"
+    },
+    {
+     "href": "/master/edm",
+     "text": "EDM mastering"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering"
+    },
+    {
+     "href": "/master/lofi",
+     "text": "Lo-Fi mastering"
+    },
+    {
+     "href": "/master/podcast",
+     "text": "Podcast mastering"
+    },
+    {
+     "href": "/master/classical",
+     "text": "Classical mastering"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/ai-mastering-online",
+    "/blog/what-ai-mastering-actually-automates",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/mastering-loudness-targets",
+    "/song-key-finder",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/master/edm": {
+   "path": "/master/edm",
+   "status": 200,
+   "title": "AI EDM Mastering \u2014 Wide, Loud, Club-Ready | Auralith Forge",
+   "description": "Master EDM and electronic tracks with true-peak-safe limiting built for club and streaming loudness, plus stereo width control for wide, modern electronic mixes.",
+   "canonical": "https://auralithforge.app/master/edm",
+   "robots": "index, follow",
+   "og_title": "AI EDM Mastering \u2014 Wide, Loud, Club-Ready | Auralith Forge",
+   "h1": [
+    "AI EDM Mastering \u2014 Wide, Loud, Club-Ready"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "Service"
+   ],
+   "faq_questions": [],
+   "main_word_count": 201,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/login",
+     "text": "Start free"
+    },
+    {
+     "href": "/",
+     "text": "Studio & All-Access plans \u2192"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "What Really Happens Inside an AI Mastering Engine \u2192"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "How loud should a edm master be? See the LUFS targets by genre \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop mastering"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering"
+    },
+    {
+     "href": "/master/lofi",
+     "text": "Lo-Fi mastering"
+    },
+    {
+     "href": "/master/podcast",
+     "text": "Podcast mastering"
+    },
+    {
+     "href": "/master/classical",
+     "text": "Classical mastering"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/ai-mastering-online",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets"
+   ]
+  },
+  "/master/acoustic": {
+   "path": "/master/acoustic",
+   "status": 200,
+   "title": "AI Acoustic Mastering \u2014 Natural Dynamics, Honest Tone | Auralith Forge",
+   "description": "Master acoustic and singer-songwriter tracks with a gentler DSP chain that preserves natural dynamics instead of flattening them for loudness.",
+   "canonical": "https://auralithforge.app/master/acoustic",
+   "robots": "index, follow",
+   "og_title": "AI Acoustic Mastering \u2014 Natural Dynamics, Honest Tone | Auralith Forge",
+   "h1": [
+    "AI Acoustic Mastering \u2014 Natural Dynamics, Honest Tone"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "Service"
+   ],
+   "faq_questions": [],
+   "main_word_count": 190,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/login",
+     "text": "Start free"
+    },
+    {
+     "href": "/",
+     "text": "Studio & All-Access plans \u2192"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Automated Fader Rides vs. Manual Mixing: What AI Mastering Actually Automates \u2192"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "How loud should a acoustic master be? See the LUFS targets by genre \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop mastering"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering"
+    },
+    {
+     "href": "/master/edm",
+     "text": "EDM mastering"
+    },
+    {
+     "href": "/master/lofi",
+     "text": "Lo-Fi mastering"
+    },
+    {
+     "href": "/master/podcast",
+     "text": "Podcast mastering"
+    },
+    {
+     "href": "/master/classical",
+     "text": "Classical mastering"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/ai-mastering-online",
+    "/blog/what-ai-mastering-actually-automates",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/song-key-finder"
+   ]
+  },
+  "/master/lofi": {
+   "path": "/master/lofi",
+   "status": 200,
+   "title": "AI Lo-Fi Mastering \u2014 Warm, Textured, Intentionally Soft | Auralith Forge",
+   "description": "Master lo-fi tracks with a DSP chain that leans into warmth and texture instead of fighting it \u2014 tuned for lo-fi's intentionally softer, warmer tonal target.",
+   "canonical": "https://auralithforge.app/master/lofi",
+   "robots": "index, follow",
+   "og_title": "AI Lo-Fi Mastering \u2014 Warm, Textured, Intentionally Soft | Auralith Forge",
+   "h1": [
+    "AI Lo-Fi Mastering \u2014 Warm, Textured, Intentionally Soft"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "Service"
+   ],
+   "faq_questions": [],
+   "main_word_count": 191,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/login",
+     "text": "Start free"
+    },
+    {
+     "href": "/",
+     "text": "Studio & All-Access plans \u2192"
+    },
+    {
+     "href": "/blog/what-happens-inside-an-ai-mastering-engine",
+     "text": "What Really Happens Inside an AI Mastering Engine \u2192"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "How loud should a lo-fi master be? See the LUFS targets by genre \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop mastering"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering"
+    },
+    {
+     "href": "/master/edm",
+     "text": "EDM mastering"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering"
+    },
+    {
+     "href": "/master/podcast",
+     "text": "Podcast mastering"
+    },
+    {
+     "href": "/master/classical",
+     "text": "Classical mastering"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/ai-mastering-online",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets"
+   ]
+  },
+  "/master/podcast": {
+   "path": "/master/podcast",
+   "status": 200,
+   "title": "AI Podcast Mastering \u2014 Clear, Consistent Voice, Every Episode | Auralith Forge",
+   "description": "Master podcast and voice content with loudness normalization tuned for spoken word, plus optional noise-aware processing for consistent episode-to-episode volume.",
+   "canonical": "https://auralithforge.app/master/podcast",
+   "robots": "index, follow",
+   "og_title": "AI Podcast Mastering \u2014 Clear, Consistent Voice, Every Episode | Auralith Forge",
+   "h1": [
+    "AI Podcast Mastering \u2014 Clear, Consistent Voice, Every Episode"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "Service"
+   ],
+   "faq_questions": [],
+   "main_word_count": 194,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/login",
+     "text": "Start free"
+    },
+    {
+     "href": "/",
+     "text": "Studio & All-Access plans \u2192"
+    },
+    {
+     "href": "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+     "text": "Building a Repeatable Mastering Chain for Your Studio's Artists \u2192"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "How loud should a podcast master be? See the LUFS targets by genre \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop mastering"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering"
+    },
+    {
+     "href": "/master/edm",
+     "text": "EDM mastering"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering"
+    },
+    {
+     "href": "/master/lofi",
+     "text": "Lo-Fi mastering"
+    },
+    {
+     "href": "/master/classical",
+     "text": "Classical mastering"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/ai-mastering-online",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets"
+   ]
+  },
+  "/master/classical": {
+   "path": "/master/classical",
+   "status": 200,
+   "title": "AI Classical Mastering \u2014 Full Dynamic Range, Preserved | Auralith Forge",
+   "description": "Master classical and orchestral recordings with minimal, transparent processing that respects the recording's natural dynamic range instead of compressing it away.",
+   "canonical": "https://auralithforge.app/master/classical",
+   "robots": "index, follow",
+   "og_title": "AI Classical Mastering \u2014 Full Dynamic Range, Preserved | Auralith Forge",
+   "h1": [
+    "AI Classical Mastering \u2014 Full Dynamic Range, Preserved"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [
+    "Service"
+   ],
+   "faq_questions": [],
+   "main_word_count": 197,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/login",
+     "text": "Start free"
+    },
+    {
+     "href": "/",
+     "text": "Studio & All-Access plans \u2192"
+    },
+    {
+     "href": "/blog/what-ai-mastering-actually-automates",
+     "text": "Automated Fader Rides vs. Manual Mixing: What AI Mastering Actually Automates \u2192"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "How loud should a classical master be? See the LUFS targets by genre \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Know the chords before you master \u2014 try Chord Detector \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop mastering"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering"
+    },
+    {
+     "href": "/master/edm",
+     "text": "EDM mastering"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering"
+    },
+    {
+     "href": "/master/lofi",
+     "text": "Lo-Fi mastering"
+    },
+    {
+     "href": "/master/podcast",
+     "text": "Podcast mastering"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/ai-mastering-online",
+    "/blog/what-ai-mastering-actually-automates",
+    "/master/acoustic",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets"
+   ]
+  },
+  "/vs/landr": {
+   "path": "/vs/landr",
+   "status": 200,
+   "title": "Auralith Forge vs LANDR | Auralith Forge",
+   "description": "How Auralith Forge's adaptive DSP mastering compares to LANDR \u2014 genre-specific processing, transparent per-master pricing, and what each is actually built for.",
+   "canonical": "https://auralithforge.app/vs/landr",
+   "robots": "index, follow",
+   "og_title": "Auralith Forge vs LANDR | Auralith Forge",
+   "h1": [
+    "Auralith Forge vs LANDR"
+   ],
+   "h2": [
+    "Hear it on your own track",
+    "Questions"
+   ],
+   "h3": [],
+   "jsonld_types": [
+    "FAQPage"
+   ],
+   "faq_questions": [
+    "Is Auralith Forge cheaper than LANDR?",
+    "Can I try Auralith Forge before switching?"
+   ],
+   "main_word_count": 422,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/login",
+     "text": "Master a track free"
+    },
+    {
+     "href": "/",
+     "text": "See all plans \u2192"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering \u2192"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop mastering \u2192"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering \u2192"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI mastering online \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/privacy",
+    "/refund",
+    "/song-key-finder",
+    "/terms",
+    "/tools",
+    "/vs/emastered"
+   ]
+  },
+  "/vs/emastered": {
+   "path": "/vs/emastered",
+   "status": 200,
+   "title": "Auralith Forge vs eMastered | Auralith Forge",
+   "description": "How Auralith Forge's adaptive DSP mastering compares to eMastered \u2014 genre-specific processing, stem-aware mastering, and transparent pricing.",
+   "canonical": "https://auralithforge.app/vs/emastered",
+   "robots": "index, follow",
+   "og_title": "Auralith Forge vs eMastered | Auralith Forge",
+   "h1": [
+    "Auralith Forge vs eMastered"
+   ],
+   "h2": [
+    "Hear it on your own track",
+    "Questions"
+   ],
+   "h3": [],
+   "jsonld_types": [
+    "FAQPage"
+   ],
+   "faq_questions": [
+    "Is Auralith Forge better than eMastered?",
+    "Does Auralith Forge offer a free trial like eMastered?"
+   ],
+   "main_word_count": 387,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/login",
+     "text": "Master a track free"
+    },
+    {
+     "href": "/",
+     "text": "See all plans \u2192"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering \u2192"
+    },
+    {
+     "href": "/master/hiphop",
+     "text": "Hip-Hop mastering \u2192"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering \u2192"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI mastering online \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/privacy",
+    "/refund",
+    "/song-key-finder",
+    "/terms",
+    "/tools",
+    "/vs/landr"
+   ]
+  },
+  "/song-key-finder": {
+   "path": "/song-key-finder",
+   "status": 200,
+   "title": "Song Key Finder \u2014 Find the Key of Any Track Instantly | Auralith Forge",
+   "description": "Upload a song and get its musical key detected automatically \u2014 for transposing, singing along, DJ set planning, or matching a cover to your vocal range. Completely free, no card required.",
+   "canonical": "https://auralithforge.app/song-key-finder",
+   "robots": "index, follow",
+   "og_title": "Song Key Finder \u2014 Find the Key of Any Track Instantly | Auralith Forge",
+   "h1": [
+    "What key is this song actually in?"
+   ],
+   "h2": [
+    "How it works",
+    "Completely free",
+    "Questions"
+   ],
+   "h3": [],
+   "jsonld_types": [
+    "FAQPage",
+    "Service"
+   ],
+   "faq_questions": [
+    "How accurate is the key detection?",
+    "Does it work on a rough recording, not just a finished master?",
+    "Can I also get the chords, not just the key?"
+   ],
+   "main_word_count": 302,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Try it free \u2192"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering \u2192"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Full Chord Detector \u2192"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder \u2192"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder \u2192"
+    },
+    {
+     "href": "/lufs-meter",
+     "text": "LUFS Meter \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/privacy",
+    "/refund",
+    "/terms",
+    "/tools",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/bpm-finder": {
+   "path": "/bpm-finder",
+   "status": 200,
+   "title": "BPM Finder \u2014 Detect the Tempo of Any Song | Auralith Forge",
+   "description": "Upload a track and get its exact BPM detected automatically \u2014 for beatmatching, syncing samples, or setting a click track tempo. Completely free, no card required.",
+   "canonical": "https://auralithforge.app/bpm-finder",
+   "robots": "index, follow",
+   "og_title": "BPM Finder \u2014 Detect the Tempo of Any Song | Auralith Forge",
+   "h1": [
+    "What's this track's actual tempo?"
+   ],
+   "h2": [
+    "How it works",
+    "Completely free",
+    "Questions"
+   ],
+   "h3": [],
+   "jsonld_types": [
+    "FAQPage",
+    "Service"
+   ],
+   "faq_questions": [
+    "Does it handle tracks with tempo changes?",
+    "Will it work on a drum loop or sample, not just a full song?",
+    "Is this free?"
+   ],
+   "main_word_count": 271,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Try it free \u2192"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering \u2192"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Full Chord Detector \u2192"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder \u2192"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder \u2192"
+    },
+    {
+     "href": "/lufs-meter",
+     "text": "LUFS Meter \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/chord-detector",
+    "/chord-progression-finder",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/privacy",
+    "/refund",
+    "/song-key-finder",
+    "/terms",
+    "/tools",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/chord-progression-finder": {
+   "path": "/chord-progression-finder",
+   "status": 200,
+   "title": "Chord Progression Finder \u2014 Get the Full Chord Chart | Auralith Forge",
+   "description": "Upload a song and get its complete chord progression detected automatically, section by section \u2014 for learning a song by ear, charting a cover, or transcribing a reference. Completely free, no card required.",
+   "canonical": "https://auralithforge.app/chord-progression-finder",
+   "robots": "index, follow",
+   "og_title": "Chord Progression Finder \u2014 Get the Full Chord Chart | Auralith Forge",
+   "h1": [
+    "What are the actual chords in this song?"
+   ],
+   "h2": [
+    "How it works",
+    "Completely free",
+    "Questions"
+   ],
+   "h3": [],
+   "jsonld_types": [
+    "FAQPage",
+    "Service"
+   ],
+   "faq_questions": [
+    "Does it handle complex chords, or just basic major/minor?",
+    "Do I need to know music theory to use this?",
+    "Can I get the key and BPM too, or just the chords?"
+   ],
+   "main_word_count": 298,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "\u2190 Back to home"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Try it free \u2192"
+    },
+    {
+     "href": "/master/rock",
+     "text": "Rock mastering \u2192"
+    },
+    {
+     "href": "/master/acoustic",
+     "text": "Acoustic mastering \u2192"
+    },
+    {
+     "href": "/master/pop",
+     "text": "Pop mastering \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Full Chord Detector \u2192"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder \u2192"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder \u2192"
+    },
+    {
+     "href": "/lufs-meter",
+     "text": "LUFS Meter \u2192"
+    },
+    {
+     "href": "/chord-detector",
+     "text": "Chord Detector"
+    },
+    {
+     "href": "/song-key-finder",
+     "text": "Song Key Finder"
+    },
+    {
+     "href": "/bpm-finder",
+     "text": "BPM Finder"
+    },
+    {
+     "href": "/chord-progression-finder",
+     "text": "Chord Progression Finder"
+    },
+    {
+     "href": "/ai-mastering-online",
+     "text": "AI Mastering Online"
+    },
+    {
+     "href": "/mastering-loudness-targets",
+     "text": "Loudness Targets by Genre"
+    },
+    {
+     "href": "/vs/landr",
+     "text": "vs LANDR"
+    },
+    {
+     "href": "/vs/emastered",
+     "text": "vs eMastered"
+    },
+    {
+     "href": "/blog",
+     "text": "Guides"
+    },
+    {
+     "href": "/terms",
+     "text": "Terms & Conditions"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    },
+    {
+     "href": "/refund",
+     "text": "Refund Policy"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": true,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/bpm-finder",
+    "/chord-detector",
+    "/lufs-meter",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/privacy",
+    "/refund",
+    "/song-key-finder",
+    "/terms",
+    "/tools",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/login": {
+   "path": "/login",
+   "status": 200,
+   "title": "Sign In \u2014 Auralith Forge AI Mastering",
+   "description": "Sign in or create a free account to start mastering tracks with Auralith Forge's adaptive DSP engine.",
+   "canonical": "https://auralithforge.app/login",
+   "robots": "index, follow",
+   "og_title": "Sign In \u2014 Auralith Forge AI Mastering",
+   "h1": [],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [],
+   "faq_questions": [],
+   "main_word_count": 27,
+   "internal_links": [
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": false,
+   "inbound_from": [
+    "/",
+    "/ai-mastering-online",
+    "/blog",
+    "/blog/building-a-repeatable-mastering-chain-for-your-studio",
+    "/blog/what-ai-mastering-actually-automates",
+    "/blog/what-happens-inside-an-ai-mastering-engine",
+    "/master/acoustic",
+    "/master/classical",
+    "/master/edm",
+    "/master/hiphop",
+    "/master/lofi",
+    "/master/podcast",
+    "/master/pop",
+    "/master/rock",
+    "/mastering-loudness-targets",
+    "/vs/emastered",
+    "/vs/landr"
+   ]
+  },
+  "/app": {
+   "path": "/app",
+   "status": 200,
+   "title": "Studio \u2014 Auralith Forge",
+   "description": "Your Auralith Forge mastering workspace.",
+   "canonical": "https://auralithforge.app/app",
+   "robots": "noindex, nofollow",
+   "og_title": "Studio \u2014 Auralith Forge",
+   "h1": [],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [],
+   "faq_questions": [],
+   "main_word_count": 1,
+   "internal_links": [
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": false,
+   "inbound_from": [
+    "/thank-you",
+    "/this-route-does-not-exist"
+   ]
+  },
+  "/thank-you": {
+   "path": "/thank-you",
+   "status": 200,
+   "title": "Thank you",
+   "description": "Your purchase is confirmed.",
+   "canonical": "https://auralithforge.app/thank-you",
+   "robots": "noindex, nofollow",
+   "og_title": "Thank you",
+   "h1": [
+    "Thanks \u2014 you're all set"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [],
+   "faq_questions": [],
+   "main_word_count": 30,
+   "internal_links": [
+    {
+     "href": "/app",
+     "text": "Back to the app"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": false,
+   "inbound_from": []
+  },
+  "/share": {
+   "path": "/share",
+   "status": 200,
+   "title": "Shared master",
+   "description": "Download a mastered track shared with you.",
+   "canonical": "https://auralithforge.app/share",
+   "robots": "noindex, nofollow",
+   "og_title": "Shared master",
+   "h1": [],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [],
+   "faq_questions": [],
+   "main_word_count": 11,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "Auralith Forge"
+    },
+    {
+     "href": "/",
+     "text": "Master your own audio at Auralith Forge \u2192"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": false,
+   "inbound_from": []
+  },
+  "/newsletter": {
+   "path": "/newsletter",
+   "status": 200,
+   "title": "Get 10% Off",
+   "description": "Join the newsletter and get a 10% discount code.",
+   "canonical": "https://auralithforge.app/newsletter",
+   "robots": "noindex, nofollow",
+   "og_title": "Get 10% Off",
+   "h1": [
+    "Get 10% off your first master"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [],
+   "faq_questions": [],
+   "main_word_count": 37,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "Auralith Forge"
+    },
+    {
+     "href": "/",
+     "text": "\u2190 Back to the app"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": false,
+   "inbound_from": []
+  },
+  "/this-route-does-not-exist": {
+   "path": "/this-route-does-not-exist",
+   "status": 404,
+   "title": "Page not found",
+   "description": "AI-powered online audio mastering with a real adaptive DSP engine \u2014 EQ, multiband compression, saturation, true-peak limiting, and genre-aware presets. Master a track in minutes, not days.",
+   "canonical": null,
+   "robots": "noindex",
+   "og_title": "Page not found",
+   "h1": [
+    "This page doesn't exist"
+   ],
+   "h2": [],
+   "h3": [],
+   "jsonld_types": [],
+   "faq_questions": [],
+   "main_word_count": 27,
+   "internal_links": [
+    {
+     "href": "/",
+     "text": "Go home"
+    },
+    {
+     "href": "/app",
+     "text": "Open the app"
+    },
+    {
+     "href": "/privacy",
+     "text": "Privacy Policy"
+    }
+   ],
+   "in_sitemap": false,
+   "inbound_from": []
+  }
+ }
+}

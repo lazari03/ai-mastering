@@ -1,0 +1,274 @@
+"use client";
+
+import { useId, useState } from "react";
+
+import { useLanguage } from "@/lib/i18n";
+import { summarizeDecisions, summarizeManualChain, detailedMetrics, formatHz, humanizeProblem } from "@/lib/masteringDecisions";
+import { trackEvent } from "@/lib/analytics";
+
+// "What Auralith changed" — built only from the engine's recorded decisions
+// (lib/masteringDecisions.js). Renders nothing for jobs that predate
+// diagnostics; the caller keeps showing ProcessingSummary for those.
+//
+// Status is always a text label plus a glyph, never colour alone.
+const GLYPH = { corrected: "●", light: "◐", heavy: "●", preserved: "○", noted: "◌" };
+
+function Status({ status, t }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${
+        status === "corrected" ? "border-text-primary/25 bg-text-primary text-bg" : "border-border-subtle text-text-secondary"
+      }`}
+    >
+      <span aria-hidden="true">{GLYPH[status]}</span>
+      {t(`decisions.status.${status}`)}
+    </span>
+  );
+}
+
+function Row({ label, status, t, children }) {
+  return (
+    <li className="decision-row border-b border-border-subtle py-3.5 last:border-0">
+      <span className="decision-label text-[13px] font-semibold text-text-primary">{label}</span>
+      <div className="decision-body text-[14px] leading-relaxed text-text-secondary">{children}</div>
+      {status ? (
+        <div className="decision-status">
+          <Status status={status} t={t} />
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+// Both limiter numbers, always together: the deepest single reduction
+// alone overstates what you hear, the loud-hits figure alone hides one
+// hard-hit moment.
+function LimiterLine({ dynamics, t }) {
+  if (dynamics.limiterMaxDb == null && dynamics.limiterLoudHitsDb == null) return null;
+  return (
+    <span className="block">
+      {t("decisions.dyn.limiter", { max: fmtNum(dynamics.limiterMaxDb), hits: fmtNum(dynamics.limiterLoudHitsDb) })}
+      {dynamics.limiterBudgetDb != null ? <span className="text-[12px]"> {t("decisions.dyn.budget", { b: fmtNum(dynamics.limiterBudgetDb) })}</span> : null}
+    </span>
+  );
+}
+
+function Verification({ verification, t }) {
+  const { status, warnings, failures, delivery } = verification;
+  return (
+    <>
+      <span className="block">
+        {status === "failed"
+          ? t("decisions.verify.failed")
+          : status === "warned"
+            ? t(warnings.length === 1 ? "decisions.verify.warnedOne" : "decisions.verify.warnedMany", { n: warnings.length })
+            : t("decisions.verify.passed")}
+      </span>
+      {[...failures, ...warnings].map((message) => (
+        <span key={message} className="mt-0.5 block text-[12px]">
+          <span aria-hidden="true">{failures.includes(message) ? "✕ " : "! "}</span>
+          {message}
+        </span>
+      ))}
+      {delivery ? (
+        <span className="mt-0.5 block text-[12px]">
+          {t(delivery.format === "mp3" ? "decisions.verify.deliveryMp3" : "decisions.verify.deliveryWav", {
+            tp: fmtNum(delivery.truePeak),
+            clipped: delivery.clipped,
+          })}
+          {delivery.trimDb ? ` ${t("decisions.verify.deliveryTrim", { db: fmtNum(delivery.trimDb) })}` : ""}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+// Full preset / Pro manual parameters: the literal chain, labelled as such.
+function ManualChainReport({ manual, t }) {
+  return (
+    <section className="decisions-card rounded-[20px] border border-border-subtle bg-white/60 p-4 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="m-0 text-[18px] font-semibold text-text-primary">{t("manual.title")}</h2>
+        <span className="rounded-full border border-border-subtle px-2.5 py-0.5 text-[11px] font-semibold text-text-secondary">{t("manual.badge")}</span>
+      </div>
+      <p className="m-0 mt-1 text-[12px] text-text-secondary">{t("manual.intro")}</p>
+      <ul className="m-0 mt-3 list-none p-0">
+        <Row label={t("manual.chain")} t={t}>
+          {manual.stages.length ? manual.stages.map((s) => s.replace(/_/g, " ")).join(" → ") : "—"}
+        </Row>
+        <Row label={t("manual.safety")} t={t}>
+          {manual.adjustments.length ? (
+            <>
+              <span className="block">{t("manual.safety.adjusted", { n: manual.adjustments.length })}</span>
+              {manual.adjustments.map((a) => (
+                <span key={a} className="mt-0.5 block font-mono text-[11px]">{a}</span>
+              ))}
+            </>
+          ) : (
+            t("manual.safety.none")
+          )}
+        </Row>
+        <Row label={t("decisions.dynamics")} t={t}>
+          <LimiterLine dynamics={manual} t={t} />
+        </Row>
+        {manual.beforeLufs != null && manual.afterLufs != null ? (
+          <Row label={t("decisions.loudness")} t={t}>
+            <span className="font-mono text-text-primary">{t("decisions.loud.change", { b: fmtNum(manual.beforeLufs), a: fmtNum(manual.afterLufs) })}</span>
+          </Row>
+        ) : null}
+        <Row label={t("decisions.verify")} t={t}>
+          <Verification verification={manual.verification} t={t} />
+        </Row>
+      </ul>
+    </section>
+  );
+}
+
+const fmtDb = (n) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toFixed(1)}`;
+const fmtNum = (n, digits = 1) => (Number.isFinite(n) ? n.toFixed(digits) : "—");
+
+export default function MasteringDecisions({ result, source = "result_view" }) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const detailsId = useId();
+  const summary = summarizeDecisions(result);
+  if (!summary) {
+    const manual = summarizeManualChain(result);
+    return manual ? <ManualChainReport manual={manual} t={t} /> : null;
+  }
+  const { regions, dynamics, stereo, loudness, verification, counts } = summary;
+  const metrics = detailedMetrics(result);
+
+  return (
+    <section aria-labelledby={`${detailsId}-title`} className="decisions-card rounded-[20px] border border-border-subtle bg-white/60 p-4 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id={`${detailsId}-title`} className="m-0 text-[18px] font-semibold text-text-primary">
+          {t("decisions.title")}
+        </h2>
+        <p className="m-0 text-[13px] text-text-secondary">{t("decisions.summary", { c: counts.corrections, u: counts.untouched })}</p>
+      </div>
+      <p className="m-0 mt-1 text-[12px] text-text-secondary">{t("decisions.intro")}</p>
+
+      <ul className="m-0 mt-3 list-none p-0">
+        {regions.map((r) => (
+          <Row key={r.key} label={t(`decisions.region.${r.key}`)} status={r.status} t={t}>
+            {r.moves.length
+              ? r.moves.map((m) => (
+                  <span key={`${m.hz}-${m.problem}`} className="block">
+                    {t(m.dynamic ? "decisions.moveDynamic" : "decisions.move", { problem: humanizeProblem(m.problem), hz: formatHz(m.hz) })}{" "}
+                    <span className="whitespace-nowrap font-mono text-text-primary">{fmtDb(m.gainDb)} dB</span>
+                    {m.fromReference ? <span className="ml-1.5 text-[12px] text-accent">· {t("decisions.fromReference")}</span> : null}
+                  </span>
+                ))
+              : r.noted.length
+                ? r.noted.map((n) => (
+                    <span key={n.problem} className="block">
+                      {t("decisions.noted", { problem: humanizeProblem(n.problem), hz: formatHz(n.hz) })}
+                    </span>
+                  ))
+                : t("decisions.preservedBody")}
+          </Row>
+        ))}
+
+        <Row label={t("decisions.dynamics")} status={dynamics.status} t={t}>
+          <span className="block">
+            {dynamics.status === "corrected"
+              ? [dynamics.multiband ? t("decisions.dyn.multiband") : null, dynamics.glue ? t("decisions.dyn.glue") : null].filter(Boolean).join(" · ")
+              : dynamics.status === "light" || dynamics.status === "heavy"
+                ? dynamics.clipperGrDb >= 0.1
+                  ? t("decisions.dyn.clipper", { clipper: fmtNum(dynamics.clipperGrDb) })
+                  : null
+                : dynamics.limiterOnly
+                  ? t("decisions.dyn.limiterOnly")
+                  : t("decisions.dyn.preserved")}
+          </span>
+          <LimiterLine dynamics={dynamics} t={t} />
+          {dynamics.crestBefore != null && dynamics.crestAfter != null ? (
+            <span className="block text-[12px]">{t("decisions.dyn.crest", { b: fmtNum(dynamics.crestBefore), a: fmtNum(dynamics.crestAfter) })}</span>
+          ) : null}
+        </Row>
+
+        <Row label={t("decisions.stereo")} status={stereo.status} t={t}>
+          {stereo.status === "preserved"
+            ? t("decisions.stereo.preserved")
+            : [
+                stereo.lowEndMonoHz ? t("decisions.stereo.mono", { hz: formatHz(stereo.lowEndMonoHz) }) : null,
+                stereo.sideGainDb != null ? t("decisions.stereo.side", { db: fmtDb(stereo.sideGainDb) }) : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+        </Row>
+
+        <Row label={t("decisions.loudness")} t={t}>
+          {loudness.beforeLufs != null && loudness.afterLufs != null ? (
+            <span className="block">
+              <span className="font-mono text-text-primary">{t("decisions.loud.change", { b: fmtNum(loudness.beforeLufs), a: fmtNum(loudness.afterLufs) })}</span>
+              {loudness.changeLu != null ? <span className="ml-2 whitespace-nowrap font-mono">({fmtDb(loudness.changeLu)} LU)</span> : null}
+            </span>
+          ) : null}
+          {loudness.truePeakBefore != null && loudness.truePeakAfter != null ? (
+            <span className="block text-[12px]">{t("decisions.loud.peak", { b: fmtNum(loudness.truePeakBefore), a: fmtNum(loudness.truePeakAfter) })}</span>
+          ) : null}
+          {loudness.heldBackForTransients && loudness.preferredLufs != null ? (
+            <span className="block text-[12px]">{t("decisions.loud.heldBack", { p: fmtNum(loudness.preferredLufs) })}</span>
+          ) : null}
+        </Row>
+
+        <Row label={t("decisions.verify")} t={t}>
+          <Verification verification={verification} t={t} />
+          {verification.checked ? <span className="block text-[12px]">{t("decisions.verify.improved", { i: verification.improved, n: verification.checked })}</span> : null}
+          {verification.transparentFallback ? (
+            <span className="block text-[12px]">
+              <span aria-hidden="true">! </span>
+              {t("decisions.verify.fallback")}
+            </span>
+          ) : verification.backoffApplied ? (
+            <span className="block text-[12px]">{t("decisions.verify.backoff")}</span>
+          ) : null}
+        </Row>
+      </ul>
+
+      {metrics.length ? (
+        <div className="mt-4">
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={`${detailsId}-details`}
+            onClick={() => {
+              if (!open) trackEvent("advanced_analysis_opened", { source });
+              setOpen((v) => !v);
+            }}
+            className="btn-secondary btn-sm"
+          >
+            {t(open ? "decisions.details.hide" : "decisions.details.show")}
+          </button>
+          {open ? (
+            <div id={`${detailsId}-details`} className="mt-4 overflow-x-auto">
+              <table className="w-full border-collapse text-[12px] sm:text-[13px]">
+                <thead>
+                  <tr className="border-b border-border-subtle text-left text-[11px] uppercase tracking-[0.1em] text-text-secondary">
+                    <th scope="col" className="py-2 pr-3 font-medium">{t("decisions.col.metric")}</th>
+                    <th scope="col" className="py-2 pr-3 text-right font-medium">{t("result.before")}</th>
+                    <th scope="col" className="py-2 text-right font-medium">{t("result.after")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.map((m) => (
+                    <tr key={m.key} className="border-b border-border-subtle last:border-0">
+                      <th scope="row" className="py-2 pr-3 text-left font-normal text-text-primary">
+                        {t(`decisions.metric.${m.key}`)}
+                        {m.unit ? <span className="ml-1 text-text-secondary">({m.unit})</span> : null}
+                      </th>
+                      <td className="whitespace-nowrap py-2 pr-3 text-right font-mono text-text-secondary">{Number.isFinite(m.before) ? fmtNum(m.before, m.key === "correlation" ? 2 : 1) : "—"}</td>
+                      <td className="whitespace-nowrap py-2 text-right font-mono text-text-primary">{Number.isFinite(m.after) ? fmtNum(m.after, m.key === "correlation" ? 2 : 1) : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}

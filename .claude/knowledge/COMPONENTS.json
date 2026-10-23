@@ -1,0 +1,145 @@
+{
+  "_schema": "Component graph. Edges: uses / validated_by / documented_in / owned_by. Query: python3 .claude/knowledge/kb.py component <id>. Paths are repo-relative; globs allowed. validated_commit = last commit this entry was checked against.",
+  "validated_commit": "c88bc69",
+  "components": {
+    "dsp.mastering_engine": {
+      "paths": ["backend/ai_mastering/mastering.py", "backend/ai_mastering/engines.py", "backend/adaptive_mastering.py"],
+      "owner": "audio-dsp-engineer", "reviewer": "mastering-engineer",
+      "uses": ["dsp.analysis", "dsp.planning", "dsp.eq", "dsp.bus", "dsp.evaluation", "dsp.qc", "dsp.stems"],
+      "validated_by": ["backend/tests/test_adaptive_engine.py", "backend/tests/test_engines.py", "regression.synthetic", "qa.api_lab"],
+      "documented_in": ["DSP_KNOWLEDGE.md", "docs/audits/DSP_IMPROVEMENTS.md"]
+    },
+    "dsp.analysis": {
+      "paths": ["backend/ai_mastering/analysis/*.py", "backend/ai_mastering/band_levels.py", "backend/ai_mastering/section_detection.py", "backend/ai_mastering/diagnostics/problems.py"],
+      "owner": "audio-dsp-engineer", "reviewer": "mastering-engineer",
+      "validated_by": ["backend/tests/test_band_levels.py"]
+    },
+    "dsp.planning": {
+      "paths": ["backend/ai_mastering/planning/*.py", "backend/params.py", "backend/ai_mastering/mastering_params.py", "backend/mixing_presets.json"],
+      "owner": "audio-dsp-engineer", "reviewer": "mastering-engineer",
+      "validated_by": ["backend/tests/test_preset_routing.py", "backend/tests/test_preset_safety.py", "regression.synthetic"]
+    },
+    "dsp.eq": {
+      "paths": ["backend/ai_mastering/processing/eq.py", "backend/ai_mastering/dsp_filters.py"],
+      "owner": "audio-dsp-engineer", "reviewer": "mastering-engineer",
+      "validated_by": ["regression.synthetic", "backend/tests/test_adaptive_engine.py"]
+    },
+    "dsp.bus": {
+      "paths": ["backend/ai_mastering/bus_processing.py", "backend/ai_mastering/processing/render.py", "backend/ai_mastering/audio_utils.py"],
+      "owner": "audio-dsp-engineer", "reviewer": "mastering-engineer",
+      "validated_by": ["backend/tests/test_mastering_peak_safety.py", "regression.synthetic"]
+    },
+    "dsp.evaluation": {
+      "paths": ["backend/ai_mastering/evaluation/*.py", "backend/ai_mastering/output_validation.py", "backend/ai_mastering/ab_analysis.py"],
+      "owner": "audio-dsp-engineer", "reviewer": "independent-auditor",
+      "validated_by": ["backend/tests/test_master_verdict.py", "backend/tests/test_distortion_and_reference.py"]
+    },
+    "dsp.qc": {
+      "paths": ["backend/ai_mastering/quality_control.py"],
+      "owner": "audio-dsp-engineer", "reviewer": "qa-automation-engineer",
+      "validated_by": ["backend/tests/test_input_limits.py", "backend/tests/test_low_priority_fixes.py"]
+    },
+    "dsp.reference": {
+      "paths": ["backend/ai_mastering/planning/target_model.py"],
+      "owner": "audio-dsp-engineer", "reviewer": "mastering-engineer",
+      "validated_by": ["backend/tests/test_reference_matching.py"]
+    },
+    "dsp.stems": {
+      "paths": ["backend/ai_mastering/stem_separation.py", "backend/ai_mastering/stem_decisions.py"],
+      "owner": "audio-dsp-engineer", "reviewer": "mastering-engineer",
+      "validated_by": ["backend/tests/test_stem_pipeline.py", "backend/tests/test_stem_decisions.py"],
+      "notes": "Demucs not in requirements-test.txt; local tests mock separation."
+    },
+    "dsp.chords": {
+      "paths": ["backend/app/services/chord_service.py", "backend/app/api/routes/chords.py", "backend/chord_detect_cli.py"],
+      "owner": "audio-dsp-engineer", "reviewer": "qa-automation-engineer",
+      "validated_by": [], "notes": "No automated tests. Needs essentia/madmom."
+    },
+    "python.api": {
+      "paths": ["backend/app/api/routes/mastering.py", "backend/app/services/mastering_service.py", "backend/app/schemas/*.py", "backend/app/main.py"],
+      "owner": "backend-engineer", "reviewer": "security-engineer",
+      "validated_by": ["backend/tests/test_master_route_jobs.py", "qa.api_lab"]
+    },
+    "python.job_runner": {
+      "paths": ["backend/app/core/job_runner.py", "backend/app/core/*.py"],
+      "owner": "backend-engineer", "reviewer": "devops-engineer",
+      "validated_by": ["backend/tests/test_job_runner.py", "backend/tests/test_deploy_storage_paths.py"],
+      "documented_in": ["docs/audits/JOB_LIFECYCLE_AND_BILLING.md", "docs/audits/RESOURCE_BENCHMARKS.md"]
+    },
+    "node.gateway": {
+      "paths": ["backend-node/src/server.js", "backend-node/src/routes/masteringRoutes.js", "backend-node/src/services/masteringService.js", "backend-node/src/services/pythonUpstream.js", "backend-node/src/services/jobsService.js"],
+      "owner": "backend-engineer", "reviewer": "security-engineer",
+      "validated_by": ["backend-node/src/services/__tests__/pythonUpstream.test.js"]
+    },
+    "billing.ledger": {
+      "paths": ["backend-node/src/services/reservationLedger.js", "backend-node/src/services/entitlementsService.js"],
+      "owner": "backend-engineer", "reviewer": "security-engineer",
+      "uses": ["firestore"],
+      "validated_by": ["backend-node/src/services/__tests__/reservationLedger.test.js", "backend-node/src/services/__tests__/entitlementLifecycle.test.js"],
+      "documented_in": ["BILLING_RULES.md", "docs/audits/JOB_LIFECYCLE_AND_BILLING.md"]
+    },
+    "billing.polar": {
+      "paths": ["backend-node/src/services/polarService.js", "backend-node/src/routes/webhookRoutes.js"],
+      "owner": "backend-engineer", "reviewer": "security-engineer",
+      "validated_by": ["backend-node/src/services/__tests__/polarBilling.test.js"]
+    },
+    "node.share_links": {
+      "paths": ["backend-node/src/services/shareLinkService.js", "backend-node/src/services/downloadTokenService.js"],
+      "owner": "backend-engineer", "reviewer": "security-engineer",
+      "validated_by": ["backend-node/src/services/__tests__/shareLinkService.test.js", "backend-node/src/services/__tests__/shareLinks.test.js"]
+    },
+    "node.auth": {
+      "paths": ["backend-node/src/middleware/auth.js", "backend-node/src/middleware/requireAdmin.js", "backend-node/src/middleware/rateLimit.js", "backend-node/src/middleware/clientIp.js"],
+      "owner": "security-engineer", "reviewer": "backend-engineer",
+      "validated_by": ["backend-node/src/middleware/__tests__/clientIp.test.js"]
+    },
+    "node.analytics": {
+      "paths": ["backend-node/src/services/analytics*.js", "backend-node/src/routes/analyticsRoutes.js", "backend-node/src/config/analyticsDb.js"],
+      "owner": "backend-engineer", "reviewer": "security-engineer",
+      "validated_by": ["backend-node/src/services/__tests__/analyticsService.test.js"]
+    },
+    "frontend.app": {
+      "paths": ["frontend/src/app/app/**", "frontend/src/components/app/**", "frontend/src/components/audio/**", "frontend/src/store/**", "frontend/src/network/**", "frontend/src/domain/**"],
+      "owner": "frontend-engineer", "reviewer": "qa-automation-engineer",
+      "validated_by": [], "notes": "No frontend unit or e2e tests exist; CI only builds."
+    },
+    "frontend.i18n": {
+      "paths": ["frontend/src/lib/i18n.js", "frontend/src/lib/masteringErrors.js"],
+      "owner": "frontend-engineer", "reviewer": "product-specialist", "validated_by": []
+    },
+    "frontend.pricing": {
+      "paths": ["frontend/src/lib/pricing.js", "frontend/src/app/pricing/**"],
+      "owner": "product-specialist", "reviewer": "frontend-engineer",
+      "documented_in": ["PRODUCT_RULES.md", "docs/audits/PRICING_AND_CLAIMS.md"]
+    },
+    "frontend.marketing": {
+      "paths": ["frontend/src/app/(blog|vs|master|tools|*-finder|lufs-meter)/**", "frontend/src/content/**", "frontend/src/components/marketing/**"],
+      "owner": "frontend-engineer", "reviewer": "product-specialist"
+    },
+    "frontend.admin": {
+      "paths": ["frontend/src/app/admin/**", "frontend/src/components/admin/**"],
+      "owner": "frontend-engineer", "reviewer": "security-engineer"
+    },
+    "devops.deploy": {
+      "paths": ["docker-compose.yml", "backend/Dockerfile", "backend-node/Dockerfile", "frontend/Dockerfile", "Caddyfile", "Makefile", ".github/workflows/*.yml"],
+      "owner": "devops-engineer", "reviewer": "security-engineer",
+      "documented_in": ["docs/audits/PRODUCTION_HARDENING.md"]
+    },
+    "regression.synthetic": {
+      "paths": ["backend/benchmark/regression.py", "backend/benchmark/synthetic_corpus.py", "backend/benchmark/metrics.py", "backend/benchmark/baselines/synthetic.json", "backend/tests/synthetic.py"],
+      "owner": "qa-automation-engineer", "reviewer": "audio-dsp-engineer",
+      "documented_in": ["TEST_BASELINES.json", "docs/audits/REGRESSION_REPORT.md"]
+    },
+    "qa.api_lab": {
+      "paths": ["backend/benchmark/api_qa.py", "backend/benchmark/qa_corpus.py", "test-results/auralith-qa.json"],
+      "owner": "qa-automation-engineer", "reviewer": "independent-auditor",
+      "documented_in": ["TEST_BASELINES.json", "docs/agent-reports/QA_REPORT.md"]
+    },
+    "listening.blind_ab": {
+      "paths": ["backend/benchmark/blind_ab.py", "backend/benchmark/calibration_ab.py", "backend/benchmark/run_benchmark.py"],
+      "owner": "mastering-engineer", "reviewer": "independent-auditor",
+      "documented_in": ["docs/audits/AUDIO_VALIDATION.md"]
+    },
+    "firestore": { "paths": [], "owner": "backend-engineer", "notes": "External. firestore.rules is git-ignored (local-only) — security cannot audit it from the repo." }
+  }
+}

@@ -1,0 +1,288 @@
+"use client";
+
+// Real before/after DSP values pulled straight from the mastering engine's
+// analysis (pyloudnorm/librosa/numpy — never an ffmpeg filter string, that
+// field only exists on the disabled ffmpeg fallback engine and is never
+// read here on purpose).
+
+const BAND_LABELS = {
+  sub_bass_20_60hz: "Sub Bass (20-60Hz)",
+  bass_60_250hz: "Bass (60-250Hz)",
+  low_mid_250_500hz: "Low Mid (250-500Hz)",
+  mid_500_2000hz: "Mid (500-2000Hz)",
+  high_mid_2000_4000hz: "High Mid (2-4kHz)",
+  presence_4000_6000hz: "Presence (4-6kHz)",
+  brilliance_6000_20000hz: "Brilliance (6-20kHz)",
+};
+
+const TRACK_METRICS = [
+  { key: "integrated_lufs", label: "Integrated Loudness", unit: "LUFS", digits: 2 },
+  { key: "momentary_lufs_max", label: "Momentary Loudness (Max)", unit: "LUFS", digits: 2 },
+  { key: "true_peak_db", label: "True Peak", unit: "dBTP", digits: 2 },
+  { key: "dynamic_range_db", label: "Dynamic Range (Crest Factor)", unit: "dB", digits: 2 },
+  { key: "loudness_range_lu", label: "Loudness Range", unit: "LU", digits: 2 },
+  { key: "spectral_tilt_db_per_octave", label: "Spectral Tilt", unit: "dB/oct", digits: 2 },
+  { key: "stereo_width_estimate", label: "Stereo Width", unit: "", digits: 3 },
+  { key: "stereo_correlation", label: "Phase Correlation", unit: "", digits: 3 },
+];
+
+function fmt(value, digits) {
+  if (value == null || Number.isNaN(value)) return "—";
+  return Number(value).toFixed(digits);
+}
+
+function DeltaRow({ label, before, after, unit, digits }) {
+  const delta = before != null && after != null ? after - before : null;
+  const deltaLabel = delta == null ? "" : `${delta >= 0 ? "+" : ""}${delta.toFixed(digits)}`;
+  return (
+    <tr className="border-b border-border-subtle last:border-0">
+      <td className="py-1.5 pr-3 text-text-secondary">{label}</td>
+      <td className="py-1.5 pr-3 text-right text-text-secondary">{fmt(before, digits)}{unit}</td>
+      <td className="py-1.5 pr-3 text-right text-text-primary">{fmt(after, digits)}{unit}</td>
+      <td className={`py-1.5 text-right ${delta > 0 ? "text-accent" : delta < 0 ? "text-accent" : "text-text-secondary"}`}>
+        {deltaLabel}
+      </td>
+    </tr>
+  );
+}
+
+function Table({ title, rows }) {
+  if (!rows.length) return null;
+  return (
+    <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+      <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">{title}</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs [&_td+td]:whitespace-nowrap [&_td+td]:pl-2 [&_th+th]:pl-2">
+          <thead>
+            <tr className="border-b border-border-subtle text-[10px] uppercase tracking-[0.1em] text-text-secondary">
+              <th className="pb-1.5 text-left font-medium">Parameter</th>
+              <th className="pb-1.5 text-right font-medium">Before</th>
+              <th className="pb-1.5 text-right font-medium">After</th>
+              <th className="pb-1.5 text-right font-medium">Change</th>
+            </tr>
+          </thead>
+          <tbody>{rows}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export default function ProcessingSummary({ result }) {
+  if (!result) return null;
+
+  const before = result.analysis_before || {};
+  const after = result.analysis_after || {};
+  const applied = result.processing_applied || {};
+
+  const trackRows = TRACK_METRICS.filter((m) => before[m.key] != null || after[m.key] != null).map((m) => (
+    <DeltaRow key={m.key} label={m.label} before={before[m.key]} after={after[m.key]} unit={m.unit ? ` ${m.unit}` : ""} digits={m.digits} />
+  ));
+
+  const beforeBands = before.spectral_balance || {};
+  const afterBands = after.spectral_balance || {};
+  const bandRows = Object.keys(BAND_LABELS)
+    .filter((key) => beforeBands[key] != null || afterBands[key] != null)
+    .map((key) => (
+      <DeltaRow
+        key={key}
+        label={BAND_LABELS[key]}
+        before={beforeBands[key] != null ? beforeBands[key] * 100 : null}
+        after={afterBands[key] != null ? afterBands[key] * 100 : null}
+        unit="%"
+        digits={1}
+      />
+    ));
+
+  // per_band_gain_changes_db is keyed by the spectral-analysis bands
+  // (sub_bass_20_60hz, ...); compression_per_band is keyed by the DSP's
+  // processing bands (low/low_mid/high_mid/high, or sub/punch/... on
+  // professional tier). They're two different taxonomies — the low
+  // processing band's gain is a blend of two analysis bands, not a 1:1 key
+  // match — so they're shown as separate tables rather than guessed-merged.
+  const eqGains = applied.per_band_gain_changes_db || null;
+  const compPerBand = applied.compression_per_band || null;
+
+  const eqRows =
+    eqGains &&
+    Object.keys(eqGains).map((bandKey) => (
+      <tr key={bandKey} className="border-b border-border-subtle text-xs last:border-0">
+        <td className="py-1.5 pr-3 text-text-secondary">{BAND_LABELS[bandKey] || bandKey}</td>
+        <td className="py-1.5 text-right text-text-primary">
+          {eqGains[bandKey] >= 0 ? "+" : ""}
+          {eqGains[bandKey].toFixed(2)} dB
+        </td>
+      </tr>
+    ));
+
+  const compRows =
+    compPerBand &&
+    Object.keys(compPerBand).map((bandName) => (
+      <tr key={bandName} className="border-b border-border-subtle text-xs last:border-0">
+        <td className="py-1.5 pr-3 capitalize text-text-secondary">{bandName.replace("_", " ")}</td>
+        <td className="py-1.5 pr-3 text-right text-text-primary">{compPerBand[bandName].ratio.toFixed(2)}:1</td>
+        <td className="py-1.5 text-right text-text-primary">{compPerBand[bandName].threshold_db.toFixed(1)} dB</td>
+      </tr>
+    ));
+
+  const limiter = applied.limiter;
+  const qc = result.quality_control;
+  const ab = result.ab_analysis;
+  const decisions = ab?.processing_decisions;
+
+  return (
+    <div className="space-y-3 text-xs text-text-secondary">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-border-subtle px-2.5 py-1 uppercase tracking-[0.1em] text-text-primary">
+          Engine: {applied.engine === "preset_dsp_engine" ? "Manual chain (not adaptive)" : "Adaptive DSP"}
+        </span>
+        {applied.tier ? (
+          <span className="rounded-full border border-border-subtle bg-accent/10 px-2.5 py-1 uppercase tracking-[0.1em] text-accent">
+            Tier: {applied.tier}
+          </span>
+        ) : null}
+        {applied.category ? (
+          <span className="rounded-full border border-border-subtle bg-accent/10 px-2.5 py-1 uppercase tracking-[0.1em] text-accent">
+            Objective: {applied.category.replaceAll("_", " ")}
+            {applied.flavour ? ` · ${applied.flavour}` : ""}
+          </span>
+        ) : null}
+        {applied.stages ? (
+          <span className="rounded-full border border-border-subtle px-2.5 py-1 text-[10px] text-text-secondary">
+            Stages: {applied.stages.join(", ")}
+          </span>
+        ) : null}
+        {qc ? (
+          <span
+            className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${
+              qc.passed ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700" : "border-accent/50 bg-accent/10 text-accent"
+            }`}
+          >
+            QC: {qc.passed ? "Passed" : `${qc.fail_count} failing`}
+          </span>
+        ) : null}
+      </div>
+
+      {decisions ? (
+        <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">What the engine actually did</p>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3">
+            {[
+              ["EQ correction", decisions.eq_correction],
+              ["Compression", decisions.compression],
+              ["Saturation", decisions.saturation],
+              ["Stereo width", decisions.stereo_width],
+              ["Limiting", decisions.limiting],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.03] px-2 py-1.5">
+                <span className="text-text-secondary">{label}</span>
+                <span className="capitalize text-text-primary">{String(value).replaceAll("_", " ")}</span>
+              </div>
+            ))}
+          </div>
+          {ab ? (
+            <p className={`mt-2.5 text-[11px] ${ab.improved ? "text-emerald-700" : "text-accent"}`}>
+              {ab.improved ? "✓ This master measurably improved on the source." : "⚠ "}
+              {!ab.improved && ab.verdict_reasons?.length ? ab.verdict_reasons.join(" ") : null}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {qc && qc.issues?.length ? (
+        <div className="rounded-xl border border-accent/30 bg-accent/[0.06] p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-accent">Quality Control Notes</p>
+          <ul className="ml-4 list-disc space-y-1 text-text-secondary">
+            {qc.issues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+          {qc.corrections_applied?.length ? (
+            <p className="mt-2 text-[10px] text-text-secondary">Auto-corrected: {qc.corrections_applied.join("; ")}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <Table title="Track Analysis" rows={trackRows} />
+      <Table title="Frequency Balance (share of total energy)" rows={bandRows} />
+
+      {eqRows && eqRows.length ? (
+        <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">EQ Gain Applied (by frequency band)</p>
+          <p className="mb-2 text-[10px] text-text-secondary">
+            Target: {applied.spectral_match_source === "reference_track" ? "matched to your uploaded reference track" : "genre default profile"}
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs [&_td+td]:whitespace-nowrap [&_td+td]:pl-2 [&_th+th]:pl-2">
+              <thead>
+                <tr className="border-b border-border-subtle text-[10px] uppercase tracking-[0.1em] text-text-secondary">
+                  <th className="pb-1.5 text-left font-medium">Band</th>
+                  <th className="pb-1.5 text-right font-medium">Gain Change</th>
+                </tr>
+              </thead>
+              <tbody>{eqRows}</tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
+      {compRows && compRows.length ? (
+        <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">Compression Per Band</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs [&_td+td]:whitespace-nowrap [&_td+td]:pl-2 [&_th+th]:pl-2">
+              <thead>
+                <tr className="border-b border-border-subtle text-[10px] uppercase tracking-[0.1em] text-text-secondary">
+                  <th className="pb-1.5 text-left font-medium">Band</th>
+                  <th className="pb-1.5 text-right font-medium">Ratio</th>
+                  <th className="pb-1.5 text-right font-medium">Threshold</th>
+                </tr>
+              </thead>
+              <tbody>{compRows}</tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
+      {limiter ? (
+        <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-text-secondary">Limiter</p>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-text-secondary">Pre-Limiter Peak</p>
+              <p className="text-text-primary">{fmt(limiter.pre_limiter_peak_db, 2)} dB</p>
+            </div>
+            <div>
+              <p className="text-text-secondary">Post-Limiter Peak</p>
+              <p className="text-text-primary">{fmt(limiter.post_limiter_peak_db, 2)} dB</p>
+            </div>
+            <div>
+              <p className="text-text-secondary">Gain Reduction</p>
+              <p className="text-accent">{fmt(limiter.limiter_gain_reduction_db, 2)} dB</p>
+            </div>
+          </div>
+          {limiter.true_peak_aware ? (
+            <p className="mt-2 text-[10px] text-text-secondary">Oversampled true-peak limiting (professional tier).</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {applied.saturation_amount != null || applied.width_adjustment != null ? (
+        <div className="grid grid-cols-2 gap-2">
+          {applied.saturation_amount != null ? (
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3 text-center">
+              <p className="text-text-secondary">Saturation Amount</p>
+              <p className="text-text-primary">{fmt(applied.saturation_amount, 4)}</p>
+            </div>
+          ) : null}
+          {applied.width_adjustment != null ? (
+            <div className="rounded-xl border border-border-subtle bg-black/[0.045] p-3 text-center">
+              <p className="text-text-secondary">Width Adjustment</p>
+              <p className="text-text-primary">{fmt(applied.width_adjustment, 4)}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}

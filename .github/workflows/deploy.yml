@@ -1,0 +1,223 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Manual "Run workflow" button. GitHub only renders that button when a
+  # workflow declares workflow_dispatch, and only reads the declaration
+  # from the file as it exists on the DEFAULT branch — so the button
+  # appears once this is on main, not while it sits on a feature branch.
+  #
+  # The reason to want it: a deploy can fail for reasons that have nothing
+  # to do with the commit — the VPS refusing to recreate a container whose
+  # name a previous run left orphaned, say. Without a manual trigger the
+  # only way to retry is to push another commit, which in practice means
+  # an empty commit on main purely to kick CI. This is the honest version
+  # of that.
+  workflow_dispatch:
+
+jobs:
+  # Independent checks, run in parallel — the slowest one, not their sum,
+  # sets how long a deploy waits. Deploy needs every one of them: until
+  # now none of them ran a single test, so a broken engine or billing path
+  # deployed as long as it compiled.
+  frontend-check:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 22, matching backend-node's Dockerfile — better-sqlite3
+          # (analytics storage) declares engines.node >=22.
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend — install + lint + build
+        working-directory: frontend
+        # This build's output is never deployed (the real production build
+        # happens separately, on the VPS via docker-compose.yml, with its
+        # own env) — this job exists purely to catch a compile error before
+        # merge. NEXT_PUBLIC_SITE_URL has to be set here regardless: since
+        # lib/seo.js now throws in a production build when it's unset (to
+        # catch exactly that misconfiguration on the real deploy), this
+        # sanity build would otherwise fail here for a reason that has
+        # nothing to do with whether the code actually compiles.
+        env:
+          NEXT_PUBLIC_SITE_URL: https://auralithforge.app
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
+  node-check:
+    name: Node API check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend-node/package-lock.json
+
+      - name: Node API — install + syntax check
+        working-directory: backend-node
+        run: |
+          npm ci
+          find src -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      # no-undef only (eslint.config.js). node --check proves syntax, not
+      # that every identifier exists: an undefined `jobId` in /master's
+      # stem-failure branch passed it and returned an error instead of a
+      # finished master in production.
+      - name: Node API — lint (undefined identifiers)
+        working-directory: backend-node
+        run: npm run lint
+
+      # Billing/entitlement reservation (concurrency, refunds), webhook
+      # plan mapping, share links, upstream timeout, analytics.
+      - name: Node API — tests
+        working-directory: backend-node
+        run: npm test
+
+  python-check:
+    name: Python DSP check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Two commits, so a push can be diffed against its parent below.
+          fetch-depth: 2
+
+      - uses: actions/setup-python@v5
+        with:
+          # Matches backend/Dockerfile (python:3.12-slim).
+          python-version: "3.12"
+          # No `cache: pip` — the install below is skipped on most pushes,
+          # so the pip cache dir never exists and setup-python's post step
+          # fails the job ("cache folder path ... doesn't exist on disk").
+
+      - name: Python DSP service — syntax check
+        working-directory: backend
+        run: python -m compileall -q app ai_mastering
+
+      # The full dependency install (torch via demucs, essentia, ...) took
+      # ~1m40s of every deploy while the check after it never imported any
+      # of it. It only proves requirements.txt still resolves, so it runs
+      # when that can have changed: a push touching requirements.txt, or a
+      # manual / pull-request run. Everything else deploys without it.
+      - name: Did Python dependencies change?
+        id: deps
+        run: |
+          if [ "${{ github.event_name }}" != "push" ] || ! git diff --quiet HEAD~1 HEAD -- backend/requirements.txt 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Python DSP service — dependency install
+        if: steps.deps.outputs.changed == 'true'
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+  # The DSP engine's own tests. Installs requirements-test.txt (pinned, no
+  # torch/essentia): nothing the tests import needs the heavy set above.
+  python-tests:
+    name: Python DSP tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-test.txt
+      - name: Install ffmpeg (decode/encode paths are tested)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Install test dependencies
+        working-directory: backend
+        run: pip install -r requirements-test.txt
+      - name: pytest
+        working-directory: backend
+        run: python -m pytest -q -p no:warnings
+
+  # Synthetic mastering regression: every delivered master's objective
+  # numbers (loudness, true peak, PLR, LRA, transient retention, low/high
+  # end change, tilt, correlation, limiter GR, distortion, which candidate
+  # shipped, renders) against the committed baseline. Exits non-zero on
+  # drift beyond benchmark/regression.py's TOLERANCES. A drift is not
+  # automatically a defect, but it must be reviewed: rewrite the baseline
+  # in the same commit as the change that explains it.
+  synthetic-regression:
+    name: Synthetic mastering regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-test.txt
+      - name: Install test dependencies
+        working-directory: backend
+        run: pip install -r requirements-test.txt
+      - name: Compare against benchmark/baselines/synthetic.json
+        working-directory: backend
+        run: python -m benchmark.regression --synthetic --baseline benchmark/baselines/synthetic.json --out regression-report
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-regression-report
+          path: backend/regression-report/
+
+  deploy:
+    name: Deploy to VPS
+    needs: [frontend-check, node-check, python-check, python-tests, synthetic-regression]
+    # Still main-only: workflow_dispatch lets the person triggering it pick
+    # a ref, and this github.ref check is what stops someone dispatching
+    # against a feature branch and deploying it to production. Only the
+    # event list widens — a manual run from main deploys exactly as a push
+    # to main does, which is the point: retry a failed deploy without
+    # inventing a commit.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            # Disk-space guard BEFORE make deploy, here in the workflow (not
+            # only in the Makefile): this script is delivered fresh from
+            # GitHub on every run, while the Makefile on the VPS is whatever
+            # the last successful `git pull` left there. When the disk fills
+            # up completely (accumulated dangling images + BuildKit cache
+            # from frequent deploys — happened 2026-08-26), even `git pull`
+            # itself fails with "unable to write loose object file", so a
+            # cleanup that lives only in the repo can never arrive to run.
+            # Pruning here breaks that deadlock. Dangling images are never
+            # in use by any container, and --keep-storage retains the most
+            # recent 5GB of build cache so rebuilds stay warm.
+            echo "--- disk before cleanup ---" && df -h / || true
+            docker image prune -f || true
+            docker builder prune -f --keep-storage 5GB || true
+            echo "--- disk after cleanup ---" && df -h / || true
+            # Salvage before the Python container is recreated: until the
+            # storage-path fix, it wrote uploads/masters to /uploads and
+            # /outputs INSIDE the container (not the mounted volumes), so a
+            # recreate destroyed them. Copy anything there into the volumes
+            # first. -n never overwrites; once every container runs the fix
+            # those directories don't exist and this is a no-op.
+            docker compose exec -T python-service sh -c 'for d in uploads outputs; do if [ -d /$d ] && [ "$(ls -A /$d 2>/dev/null)" ]; then cp -an /$d/. /app/$d/ && echo "salvaged /$d -> /app/$d"; fi; done' || true
+            make deploy

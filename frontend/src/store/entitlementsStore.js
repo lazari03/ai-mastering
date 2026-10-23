@@ -1,0 +1,69 @@
+import { create } from "zustand";
+
+import { getEntitlements } from "@/network/http/client";
+
+// The single source of truth for "what is this user allowed to do" —
+// every button that needs to know (Master Track, Professional engine,
+// stem separation, chord detection, Share) reads from here instead of
+// each component fetching and caching its own copy. That duplication is
+// exactly what used to cause "I paid, but this other button still asks me
+// for money" — one component's local fetch would go stale while another's
+// had already refreshed, and there was no single moment where "the user
+// just paid" invalidated all of them at once. refresh() is that moment now.
+export const useEntitlementsStore = create((set, get) => ({
+  plan: "free",
+  subscription: null,
+  masterQuota: null,
+  extraCredits: 0,
+  stemQuota: null,
+  extraStemCredits: 0,
+  loading: true,
+  loaded: false,
+
+  async fetch() {
+    try {
+      const data = await getEntitlements();
+      set({
+        plan: data.plan || "free",
+        subscription: data.subscription || null,
+        masterQuota: data.masterQuota || null,
+        extraCredits: Number(data.extraCredits || 0),
+        stemQuota: data.stemQuota || null,
+        extraStemCredits: Number(data.extraStemCredits || 0),
+        loading: false,
+        loaded: true,
+      });
+    } catch {
+      // Not signed in yet, or a transient network error — stay on the
+      // safe default (Free, nothing unlocked) rather than crash. The next
+      // refresh() (tab switch, post-checkout return, etc.) tries again.
+      set({ loading: false, loaded: true });
+    }
+  },
+
+  // Call after anything that could change entitlements: a completed
+  // checkout, returning to the app tab, a successful master (quota moved).
+  async refresh() {
+    return get().fetch();
+  },
+}));
+
+// Derived, not stored — always computed fresh from plan so there's no way
+// for these to drift out of sync with the plan value itself.
+//
+// Professional tier only — stems used to be bundled into this same check
+// but split off once stem separation got its own tiered gate (All-Access
+// gets a bounded monthly sub-limit, not "unlimited within your plan";
+// Free/Studio get no bundled access at all, credits only). See
+// MasteringConsole.jsx, which computes stem availability from
+// plan + stemQuota + extraStemCredits, not from plan alone.
+export function planUnlocksProfessional(plan) {
+  return plan === "studio" || plan === "pro";
+}
+
+// Share links stay a pure All-Access plan perk — no standalone purchase
+// path (unlike chord detection used to be — it's unconditionally free now,
+// see ChordDetector.jsx, nothing left to unlock there).
+export function planUnlocksShare(plan) {
+  return plan === "pro";
+}

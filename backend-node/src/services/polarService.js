@@ -1,0 +1,848 @@
+import { Polar } from "@polar-sh/sdk";
+import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks";
+
+import { settings } from "../config/settings.js";
+import { getFirestore as getRealFirestore } from "../config/firebase.js";
+import { notifyPurchase, notifyPaymentFailure } from "./telegramService.js";
+import { writeNotification } from "./adminNotificationService.js";
+import { recordServerEvent } from "./analyticsService.js";
+import { persistMetaAttribution, sendPurchaseToMeta } from "./metaConversionsService.js";
+
+// Polar is a Merchant of Record — it handles global VAT/sales tax, so we
+// never register in any jurisdiction ourselves. Subscription state is
+// mirrored into Firestore (users/{uid}.subscription / .chordSubscription)
+// so gating a render is a cheap local read, not a Polar API call on every
+// /master request. Three subscription products (Studio/All-Access for
+// mastering, Chords Monthly standalone) plus two one-time products
+// (single-master, single chord detection) for whoever's actual need is
+// one track, not a recurring plan (see entitlementsService.js's
+// extra-credit functions). order.paid is how those one-time purchases
+// actually grant anything.
+//
+// Customers are matched to our own users purely via externalCustomerId
+// (= Firebase uid) on checkout creation — Polar creates/reuses a Customer
+// with that external ID automatically, and every subsequent webhook event
+// carries it back at event.data.customer.externalId. No separate mapping
+// table needed.
+const ACTIVE_STATUSES = new Set(["active", "trialing"]);
+
+// A subscription counts as entitled if Polar reports it active/trialing,
+// OR its already-paid-for period hasn't ended yet — the latter matters
+// for "canceled" (self-service cancellation keeps access through the
+// period already paid for, standard SaaS behavior) and "past_due" (a
+// failed renewal charge that Polar is still retrying keeps the *previous*
+// period's access intact rather than cutting it off the instant the new
+// charge fails). Once currentPeriodEnd actually passes with nothing
+// having renewed it, access lapses on its own — no separate expiry timer
+// or cron job needed for that half of it.
+// Firestore returns Timestamp objects (have .toDate()); a freshly-built
+// record in this same process is a plain JS Date. Handle both.
+function toDate(raw) {
+  if (!raw) return null;
+  const date = typeof raw.toDate === "function" ? raw.toDate() : new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function subscriptionPeriodEndDate(sub) {
+  return toDate(sub?.currentPeriodEnd);
+}
+
+// Exported so adminUsersService.js can derive a plan for a whole page of
+// users (up to 1000 at once) from Firestore docs it already batch-fetched,
+// rather than calling getPlan(uid) per user — which does its own fresh
+// Firestore read internally and would mean up to 1000 extra round trips
+// for one admin page load. Same entitlement logic either way.
+export function isEntitled(sub) {
+  if (!sub) return false;
+  if (ACTIVE_STATUSES.has(sub.status)) return true;
+  // An ended subscription (revoke, refund, failed dunning) or an unpaid one
+  // is not entitled, even with a period end still in the future — that used
+  // to keep a revoked annual plan active for up to a year. A cancellation
+  // scheduled for the period end (no endedAt yet) and past_due (Polar still
+  // retrying payment) keep access until the period end, as before.
+  if (ENDED_STATUSES.has(sub.status)) return false;
+  const endedAt = toDate(sub.endedAt);
+  if (endedAt && endedAt.getTime() <= Date.now()) return false;
+  const periodEnd = subscriptionPeriodEndDate(sub);
+  return Boolean(periodEnd && periodEnd.getTime() > Date.now());
+}
+
+const ENDED_STATUSES = new Set(["unpaid", "incomplete_expired"]);
+
+// Test seam: lets tests inject a fake Firestore and a fake Polar client.
+let firestoreOverride = null;
+let clientOverride = null;
+export function _setDepsForTests({ db = null, polar = null } = {}) {
+  firestoreOverride = db;
+  clientOverride = polar;
+}
+function getFirestore() {
+  return firestoreOverride || getRealFirestore();
+}
+
+let _client = null;
+function client() {
+  if (clientOverride) return clientOverride;
+  if (!settings.polarAccessToken) {
+    throw new Error("Billing isn't configured — set POLAR_ACCESS_TOKEN.");
+  }
+  if (!_client) {
+    _client = new Polar({ accessToken: settings.polarAccessToken, server: settings.polarServer });
+  }
+  return _client;
+}
+
+function userDoc(uid) {
+  return getFirestore().collection("users").doc(uid);
+}
+
+// Reverse-lookup from a Polar product ID back to a human label — the
+// Telegram purchase notification (see announcePurchase below) should read
+// "Studio plan", not a raw Polar product UUID.
+const PRODUCT_LABELS = {
+  planIndie: "Indie plan",
+  planStudio: "Studio plan",
+  planPro: "All-Access plan",
+  planIndieAnnual: "Indie plan (annual)",
+  planStudioAnnual: "Studio plan (annual)",
+  planProAnnual: "All-Access plan (annual)",
+  singleMaster: "Single Master (one-time)",
+  chordDetection: "Chord Detection (one-time)",
+  chordsMonthly: "Chords Monthly",
+  stemSeparation: "Stem Separation add-on",
+};
+
+function productLabel(productId) {
+  const key = Object.entries(settings.polarProducts).find(([, id]) => id === productId)?.[0];
+  return (key && PRODUCT_LABELS[key]) || productId || "Unknown product";
+}
+
+// Meta CAPI Purchase (metaConversionsService.js) — not awaited, so a slow
+// or failing Graph API call can never hold up or fail a webhook ack. Tracked
+// only so tests can wait for it.
+const metaPurchasesInFlight = new Set();
+function queueMetaPurchase(args) {
+  const pending = sendPurchaseToMeta(args).finally(() => metaPurchasesInFlight.delete(pending));
+  metaPurchasesInFlight.add(pending);
+}
+export function _settleMetaForTests() {
+  return Promise.all([...metaPurchasesInFlight]);
+}
+
+// Fires the Telegram notification and appends to the purchaseEvents log
+// the bot's /stats command reads (see telegramService.js) — one shared
+// place so both the subscription and one-time-order paths below record a
+// purchase identically. (Used to also fire a server-side GA4 "purchase"
+// conversion here — removed along with the rest of Google Analytics.)
+// Best-effort end to end: none of these may ever throw back into a
+// webhook handler, since a notification failing is not a reason to make
+// Polar retry an already-applied event.
+async function announcePurchase({ kind, product, email, amountCents, currency }) {
+  try {
+    await getFirestore()
+      .collection("purchaseEvents")
+      .add({ kind, product, email: email || null, amountCents: amountCents ?? null, currency: currency || null, at: new Date() });
+  } catch (error) {
+    console.error("Failed to record purchase event (non-fatal):", error);
+  }
+  await notifyPurchase({ kind, product, email, amountCents, currency });
+  // Same event, a second destination — the admin dashboard's own
+  // notification bell (writeNotification is already internally
+  // best-effort, no .catch() needed here).
+  writeNotification({ type: "payment", email, amountCents, currency, message: `Payment: ${product} — ${email || "unknown"}` });
+}
+
+// Mirror of announcePurchase above, for the revenue-at-risk/revenue-lost
+// side — a renewal charge failing (past_due) or a subscription actually
+// getting revoked after Polar's own dunning retries are exhausted.
+// Previously this only ever fed into recordServerEvent, an analytics
+// number nobody actively watches — this is what actually reaches the
+// founder in real time, same as a new sale does. Best-effort end to end
+// for the same reason announcePurchase is: never allowed to throw back
+// into the webhook handler.
+async function announcePaymentFailure({ kind, product, email }) {
+  await notifyPaymentFailure({ kind, product, email });
+  writeNotification({ type: "payment_failed", email, message: `${kind}: ${product} — ${email || "unknown"}` });
+}
+
+// Polar's own validation errors (HTTPValidationError) carry a `detail`
+// array of {loc, msg} pairs — the raw msg is Polar's internal phrasing
+// ("testt@test.com is not a valid email address: The domain name
+// test.com does not accept email.") and the loc is a deeply-nested
+// Pydantic union path, neither fit for showing a user. This maps the one
+// case actually worth distinguishing (email undeliverable) to plain
+// language and falls back to a generic message for everything else,
+// rather than ever surfacing Polar's raw validation JSON.
+function friendlyCheckoutError(error) {
+  const detail = error?.detail;
+  if (Array.isArray(detail) && detail.some((d) => d.loc?.includes("customer_email"))) {
+    return "That email address looks invalid or can't receive mail — double check it and try again.";
+  }
+  // A single flat string detail (as opposed to the validation-error array
+  // shape above) is Polar's own plain-language error message — e.g.
+  // "Subscription already has a pending update to this product" — worth
+  // showing directly rather than masking it behind the generic fallback,
+  // since it's specific enough to be actionable and never leaks anything
+  // sensitive (Polar's own user-facing copy).
+  if (typeof detail === "string" && detail.trim()) {
+    return detail;
+  }
+  return "Couldn't start checkout right now — please try again in a moment.";
+}
+
+// productKey is one of settings.polarProducts' keys ("planStudio",
+// "planPro", "chords") — the route layer resolves the human-facing item
+// name to this, this resolves it to an actual Polar product ID.
+// metaAttribution ({consent, fbp, fbc, ip, userAgent}) is saved on the
+// user doc for the server-only Meta Purchase the webhook sends later —
+// best-effort, never blocks or fails the checkout.
+export async function createCheckoutUrl(uid, email, productKey, successUrl, metaAttribution = null) {
+  const productId = settings.polarProducts[productKey];
+  if (!productId) {
+    throw new Error(`Billing isn't configured for "${productKey}" — set its Polar product ID.`);
+  }
+  if (metaAttribution) await persistMetaAttribution(uid, metaAttribution);
+  try {
+    const checkout = await client().checkouts.create({
+      products: [productId],
+      externalCustomerId: uid,
+      customerEmail: email || undefined,
+      successUrl,
+    });
+    return checkout.url;
+  } catch (error) {
+    console.error("Polar checkout creation failed:", error);
+    throw new Error(friendlyCheckoutError(error));
+  }
+}
+
+// Changing plan while already subscribed (Studio -> All-Access, or the
+// reverse) — modifies the *existing* Polar subscription in place via
+// subscriptions.update() rather than running a second checkouts.create().
+// That distinction matters: checkouts.create() has no concept of "this
+// customer already has a subscription," so it was creating a second,
+// fully independent subscription every time someone hit "Switch" — the
+// old one was never canceled, meaning a user switching plans could end
+// up billed for both at once until they noticed and canceled the old one
+// themselves via the portal. subscriptions.update() instead changes the
+// one real subscription's product, letting Polar apply its own
+// proration rules (organization-level setting — invoice the difference
+// immediately, prorate, apply at next period, etc.) exactly the way a
+// real subscription upgrade/downgrade is supposed to work.
+// Rank by monthly price, not just enum order — this is what decides
+// upgrade vs downgrade below. Free isn't in here; changeSubscriptionPlan
+// is only ever called for an already-paid user switching between paid
+// tiers (see the "no active subscription" guard above).
+// Ranked by entitlement level, NOT by amount billed: an annual plan
+// charges more up front than a monthly one but grants the same access,
+// so they share a rank. Without that, switching Studio-monthly ->
+// Studio-annual would be scored as an "upgrade" and Studio-annual ->
+// Studio-monthly as a "downgrade", when neither changes what the user
+// can do — only how often they're billed.
+const PLAN_RANK = { planIndie: 1, planIndieAnnual: 1, planStudio: 2, planStudioAnnual: 2, planPro: 3, planProAnnual: 3 };
+
+// Every plan product (monthly and annual alike) mapped back to its
+// settings key, so the rank lookup and the change-plan flow both work
+// regardless of which billing period the user currently holds.
+const PLAN_PRODUCT_KEYS = ["planIndie", "planStudio", "planPro", "planIndieAnnual", "planStudioAnnual", "planProAnnual"];
+
+function currentProductKey(sub) {
+  if (!sub?.productId) return null;
+  return PLAN_PRODUCT_KEYS.find((key) => settings.polarProducts[key] === sub.productId) || null;
+}
+
+// "monthly" | "annual" for a plan product key — the other half of what a
+// subscription is, next to its plan (entitlement) level.
+function billingForProductKey(productKey) {
+  if (!productKey) return null;
+  return productKey.endsWith("Annual") ? "annual" : "monthly";
+}
+
+function billingForProductId(productId) {
+  if (!productId) return null;
+  return billingForProductKey(PLAN_PRODUCT_KEYS.find((key) => settings.polarProducts[key] === productId) || null);
+}
+
+// "invoice" (charge the prorated difference now, switch now) or
+// "next_period" (keep what's paid for, switch at renewal). Higher tier ->
+// invoice. Monthly -> yearly on the same tier -> invoice too: the customer
+// is choosing to pay for the year up front, access doesn't change, and
+// deferring it would leave them billed monthly until a renewal they
+// weren't expecting. Everything else (lower tier, yearly -> monthly) keeps
+// the period already paid for and switches at renewal.
+export function prorationForChange(fromKey, toKey) {
+  const fromRank = PLAN_RANK[fromKey] || 0;
+  const toRank = PLAN_RANK[toKey] || 0;
+  if (toRank > fromRank) return "invoice";
+  if (toRank === fromRank && billingForProductKey(fromKey) === "monthly" && billingForProductKey(toKey) === "annual") return "invoice";
+  return "next_period";
+}
+
+export async function changeSubscriptionPlan(uid, productKey) {
+  const productId = settings.polarProducts[productKey];
+  if (!productId) {
+    throw new Error(`Billing isn't configured for "${productKey}" — set its Polar product ID.`);
+  }
+  const doc = await userDoc(uid).get();
+  const sub = doc.data()?.subscription;
+  if (!sub?.polarSubscriptionId || !isEntitled(sub)) {
+    throw new Error("No active subscription to change — start a new checkout instead.");
+  }
+
+  // Deliberately explicit, not left to "whatever the Polar dashboard's
+  // default happens to be" — this is the one line standing between a
+  // normal upgrade and a real exploit: switch to All-Access, switch back
+  // to Studio before the deferred charge ever lands, switch to
+  // All-Access again — repeat forever, never actually pay the
+  // All-Access price. Two rules close it completely:
+  //   - Upgrading (Studio -> All-Access): "invoice" — charge the
+  //     prorated difference RIGHT NOW, atomically with the access grant.
+  //     There is no window where access exists without payment for it.
+  //   - Downgrading (All-Access -> Studio): "next_period" — keeps the
+  //     higher tier's access through the period already paid for (same
+  //     principle as isEntitled()'s grace period), and the actual
+  //     product/price change only takes effect at the real renewal.
+  //     Nothing about this grants extra access for free — it's exactly
+  //     what was already paid for, and switching back to All-Access
+  //     again before that renewal is a no-op: they're still ON
+  //     All-Access (the downgrade hasn't applied yet), so there's
+  //     nothing to re-upgrade into and no new charge to dodge.
+  const fromKey = currentProductKey(sub);
+  if (fromKey === productKey) {
+    throw new Error("You're already on this plan.");
+  }
+  const prorationBehavior = prorationForChange(fromKey, productKey);
+
+  // A downgrade already scheduled to this exact product (sub.productId
+  // itself never changes under "next_period" — see the comment below and
+  // subscriptionRecord's pendingProductId) — re-issuing the identical
+  // subscriptions.update() call gains nothing and some billing providers
+  // reject a second pending change outright. Without this, clicking
+  // "Switch to Studio" a second time (easy to do: the plan card still
+  // reads "All-Access" until the real renewal, so it looks like the first
+  // click failed) surfaces a raw provider error instead of just
+  // confirming what's already scheduled.
+  if (prorationBehavior === "next_period" && sub.pendingProductId === productId) {
+    return { productKey, immediate: false, alreadyScheduled: true };
+  }
+
+  try {
+    const updated = await client().subscriptions.update({
+      id: sub.polarSubscriptionId,
+      subscriptionUpdate: { productId, prorationBehavior },
+    });
+    // Written immediately, not left to wait for the async webhook — the
+    // update call itself already returns the new subscription state, so
+    // there's no reason to make the user's UI lag behind an event that
+    // will arrive a moment later and just confirm the same thing. Under
+    // "next_period", Polar's own response correctly leaves productId
+    // unchanged (the real change lives in pendingUpdate, applied by
+    // Polar itself at the real renewal) — so this never writes an
+    // early/incorrect plan into Firestore either way.
+    await userDoc(uid).set({ subscription: subscriptionRecord(updated) }, { merge: true });
+    return { productKey, immediate: prorationBehavior === "invoice" };
+  } catch (error) {
+    console.error("Polar subscription update failed:", error);
+    throw new Error(friendlyCheckoutError(error));
+  }
+}
+
+// Customer portal — lets a subscriber manage/cancel their own
+// subscription without us building that UI ourselves. Session tokens are
+// short-lived by design (Polar's own guidance): generate one fresh each
+// time the user clicks "Manage billing", never cache the URL.
+// Account deletion: stop future billing for every live subscription the
+// user holds (main plan and the legacy chord subscription). Cancel at
+// period end rather than revoke — no further charges, and no forfeiting
+// time already paid for. Deleting the account used to leave Polar
+// charging a user who no longer exists. Throws if Polar refuses, so the
+// deletion stops instead of silently leaving a paying subscription.
+export async function cancelSubscriptionsForDeletedAccount(uid) {
+  const data = (await userDoc(uid).get()).data() || {};
+  for (const field of ["subscription", "chordSubscription"]) {
+    const sub = data[field];
+    if (!sub?.polarSubscriptionId || !isEntitled(sub) || sub.endedAt) continue;
+    await client().subscriptions.update({
+      id: sub.polarSubscriptionId,
+      subscriptionUpdate: { cancelAtPeriodEnd: true },
+    });
+  }
+}
+
+export async function createPortalUrl(uid) {
+  const session = await client().customerSessions.create({ externalCustomerId: uid });
+  return session.customerPortalUrl;
+}
+
+export async function getSubscriptionStatus(uid) {
+  const doc = await userDoc(uid).get();
+  return subscriptionStatusFromUserData(doc.data());
+}
+
+// Pure versions of getSubscriptionStatus/getPlan over an already-read user
+// doc — the entitlements and /master routes read users/{uid} ONCE and
+// derive everything from that snapshot instead of re-reading the same
+// document for each field (each .get() is a billed Firestore read).
+export function subscriptionStatusFromUserData(data) {
+  const sub = data?.subscription;
+  return {
+    active: isEntitled(sub),
+    status: sub?.status || null,
+    currentPeriodEnd: sub?.currentPeriodEnd || null,
+    // Lets the UI say "Switching to Studio on {date}" instead of showing
+    // a bare "Switch" button that looks identical to a downgrade that
+    // never happened (see changeSubscriptionPlan's "next_period" path —
+    // productId itself doesn't change until the real renewal).
+    pendingPlan: planKeyForProductId(sub?.pendingProductId),
+    // Billing period of the current and any scheduled product, so the
+    // Plans panel can tell "Studio monthly" from "Studio yearly" (same
+    // plan key, different product) and show a scheduled monthly/yearly
+    // switch.
+    billing: isEntitled(sub) ? billingForProductId(sub?.productId) : null,
+    pendingBilling: billingForProductId(sub?.pendingProductId),
+    pendingAppliesAt: sub?.pendingAppliesAt || null,
+  };
+}
+
+// "free" | "studio" | "pro" — the single source of truth every gating
+// check (masteringRoutes.js) reads instead of juggling credit balances.
+// Derived from which Polar product the active subscription is actually
+// for, not just whether one exists — an active subscription against an
+// unrecognized product ID (shouldn't happen outside manual Polar dashboard
+// fiddling) falls back to "free" rather than granting access by accident.
+// Both billing periods of a plan collapse to the same internal key —
+// "studio" is one entitlement level whether it was bought monthly or
+// annually. entitlementsService.js's PLAN_MASTER_LIMITS is keyed on
+// exactly these values.
+const PRODUCT_KEY_TO_PLAN = {
+  planIndie: "indie",
+  planIndieAnnual: "indie",
+  planStudio: "studio",
+  planStudioAnnual: "studio",
+  planPro: "pro",
+  planProAnnual: "pro",
+};
+
+function planKeyForProductId(productId) {
+  if (!productId) return null;
+  const productKey = PLAN_PRODUCT_KEYS.find((key) => settings.polarProducts[key] === productId);
+  return productKey ? PRODUCT_KEY_TO_PLAN[productKey] : null;
+}
+
+export async function getPlan(uid) {
+  const doc = await userDoc(uid).get();
+  return planFromUserData(doc.data());
+}
+
+export function planFromUserData(data) {
+  const sub = data?.subscription;
+  if (!isEntitled(sub)) return "free";
+  return planKeyForProductId(sub.productId) || "free";
+}
+
+// Independent of the main plan — a Free or Studio user can subscribe to
+// this on its own for unlimited chord detection without touching their
+// mastering plan at all (and All-Access users don't need it, they
+// already have unlimited chords bundled). Lives in its own Firestore
+// field (chordSubscription, not subscription) so the two can never
+// overwrite each other — see subscriptionFieldForProduct below.
+export async function getChordSubscriptionActive(uid) {
+  const doc = await userDoc(uid).get();
+  return isEntitled(doc.data()?.chordSubscription);
+}
+
+// Verifies the signature (throws WebhookVerificationError on failure —
+// the route catches this and returns 403, never processes an
+// unverified body).
+export function verifyWebhook(rawBody, headers) {
+  return validateEvent(rawBody, headers, settings.polarWebhookSecret || "");
+}
+
+// subscription.* is naturally idempotent — a replayed event just
+// overwrites Firestore with the same data again, harmless. order.paid is
+// NOT naturally idempotent — granting a credit is an increment, and
+// Polar doesn't guarantee exactly-once delivery, so a redelivered event
+// without a guard would double- (or triple-) grant the same purchase.
+// applyOrderPaidEvent below guards against that explicitly.
+export async function applyWebhookEvent(event) {
+  if (event.type.startsWith("subscription.")) {
+    return applySubscriptionEvent(event);
+  }
+  if (event.type === "order.paid") {
+    return applyOrderPaidEvent(event);
+  }
+  // Not verified against Polar's live event taxonomy from this codebase
+  // (no refund flow was wired up before this) — "order.refunded" is
+  // Polar's documented name as of this writing, but if their dashboard
+  // shows a different literal event.type for a refund, this is the one
+  // line to fix, not a structural change.
+  if (event.type === "order.refunded") {
+    const order = event.data;
+    const uid = order.customer?.externalId;
+    if (uid) {
+      recordServerEvent("refund_created", { uid, props: { amountCents: order.refundedAmount || order.totalAmount, currency: order.currency } });
+    }
+    return applyOrderRefundedEvent(event);
+  }
+}
+
+// A fully refunded one-time purchase takes its credit back (it used to stay
+// in the account). Same idempotency record as order.paid: the credit is
+// removed at most once per order, and only for an order whose credit was
+// actually granted. Clamped at zero — a credit already spent stays spent.
+async function applyOrderRefundedEvent(event) {
+  const order = event.data;
+  const creditField = creditFieldForProduct(order.productId);
+  const fullyRefunded = order.status === "refunded" || Number(order.refundedAmount || 0) >= Number(order.totalAmount || 0);
+  if (!creditField || !fullyRefunded) return;
+  const db = getFirestore();
+  const orderRef = db.collection("processedPolarOrders").doc(order.id);
+  await db.runTransaction(async (tx) => {
+    const processed = await tx.get(orderRef);
+    if (!processed.exists || processed.data()?.refundedAt) return;
+    const userRef = userDoc(processed.data().uid);
+    const userSnap = await tx.get(userRef);
+    const credits = Number(userSnap.data()?.[creditField] || 0);
+    tx.set(orderRef, { refundedAt: new Date() }, { merge: true });
+    tx.set(userRef, { [creditField]: Math.max(0, credits - 1) }, { merge: true });
+  });
+}
+
+// Shared by the webhook handler and reconciliation below — one place that
+// knows how a Polar subscription object maps onto the Firestore record,
+// so the two paths can never silently drift into writing different shapes.
+function subscriptionRecord(sub) {
+  return {
+    status: sub.status,
+    productId: sub.productId,
+    currentPeriodEnd: sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : null,
+    // Set by Polar when the subscription has actually ENDED (revoked,
+    // refunded, dunning gave up) — as opposed to a cancellation scheduled
+    // for the period end, which leaves it unset until then.
+    endedAt: sub.endedAt ? new Date(sub.endedAt) : null,
+    // Polar's own last-modified time — orders webhook deliveries (see
+    // applySubscriptionEvent) so a late retry can't overwrite newer state.
+    modifiedAt: sub.modifiedAt ? new Date(sub.modifiedAt) : null,
+    polarCustomerId: sub.customerId,
+    polarSubscriptionId: sub.id,
+    // A "next_period" change (see changeSubscriptionPlan's downgrade path)
+    // doesn't touch productId at all — Polar deliberately leaves the
+    // current product active through the paid period and stashes the real
+    // change here instead, applying it automatically at renewal. Without
+    // capturing this, Firestore (and therefore the UI) looks completely
+    // unchanged after a successful downgrade — the user sees the same
+    // plan, assumes the click did nothing, and tries again.
+    pendingProductId: sub.pendingUpdate?.productId || null,
+    pendingAppliesAt: sub.pendingUpdate?.appliesAt ? new Date(sub.pendingUpdate.appliesAt) : null,
+    updatedAt: new Date(),
+  };
+}
+
+// Maps a recurring product ID to which Firestore field its subscription
+// record belongs in. The main plan (Studio/All-Access) and the standalone
+// Chords Monthly subscription are two independent things a user can hold
+// at the same time — writing them to different fields means subscribing
+// to one can never silently overwrite/clobber the other, unlike the
+// single-field design that worked fine back when there was only ever one
+// possible subscription per customer.
+function subscriptionFieldForProduct(productId) {
+  // Any plan product — Indie/Studio/All-Access, monthly or annual — is
+  // the user's one main mastering subscription. Derived from the product
+  // key list rather than an explicit OR chain so adding a plan or a
+  // billing period can't silently miss this function and leave a real
+  // paid subscription unrecorded.
+  if (PLAN_PRODUCT_KEYS.some((key) => settings.polarProducts[key] === productId)) {
+    return "subscription";
+  }
+  if (productId === settings.polarProducts.chordsMonthly) {
+    return "chordSubscription";
+  }
+  return null;
+}
+
+// Single id- and entitlement-aware merge used by the webhook and the
+// reconciler. A user holds ONE record per field but can have several Polar
+// subscriptions over time. modifiedAt only orders states of the SAME
+// subscription; across different subscriptions entitlement decides:
+//   - same subscription: an older state never replaces a newer one;
+//   - different subscription: an entitled one replaces a non-entitled one
+//     whatever the timestamps (a new paid plan must not lose to an ended
+//     one edited later), and a non-entitled one never replaces an entitled
+//     one (a late revoke/expire of an old subscription must not wipe the
+//     current plan); otherwise the newer state wins.
+function isOlder(stored, incoming) {
+  const storedAt = toDate(stored.modifiedAt);
+  return Boolean(storedAt && incoming.modifiedAt && incoming.modifiedAt.getTime() < storedAt.getTime());
+}
+
+function shouldReplaceSubscription(stored, incoming) {
+  if (!stored) return true;
+  const differentSubscription = stored.polarSubscriptionId && incoming.polarSubscriptionId && stored.polarSubscriptionId !== incoming.polarSubscriptionId;
+  if (!differentSubscription) return !isOlder(stored, incoming);
+  const storedEntitled = isEntitled(stored);
+  const incomingEntitled = isEntitled(incoming);
+  if (incomingEntitled !== storedEntitled) return incomingEntitled;
+  return !isOlder(stored, incoming);
+}
+
+async function applySubscriptionRecord(uid, field, incoming) {
+  const ref = userDoc(uid);
+  return getFirestore().runTransaction(async (tx) => {
+    const stored = (await tx.get(ref)).data()?.[field];
+    if (!shouldReplaceSubscription(stored, incoming)) return false;
+    tx.set(ref, { [field]: incoming }, { merge: true });
+    return true;
+  });
+}
+
+async function applySubscriptionEvent(event) {
+  const sub = event.data;
+  const uid = sub.customer?.externalId;
+  if (!uid) {
+    // A subscription whose customer was never linked to a Firebase uid —
+    // shouldn't happen via our own checkout flow, but don't let an
+    // unrelated/malformed event crash the webhook handler.
+    console.warn(`Polar ${event.type}: no externalId on customer, skipping`, sub.customerId);
+    return;
+  }
+  const field = subscriptionFieldForProduct(sub.productId);
+  if (!field) {
+    console.warn(`Polar ${event.type}: unrecognized product ${sub.productId}, skipping`);
+    return;
+  }
+  // Polar retries failed deliveries, so events can arrive out of order: a
+  // retried subscription.updated(active) landing after subscription.revoked
+  // used to restore the revoked plan. An event older than the stored
+  // record (by Polar's modifiedAt) is skipped.
+  const applied = await applySubscriptionRecord(uid, field, subscriptionRecord(sub));
+  if (!applied) {
+    console.warn(`Polar ${event.type}: stale or superseded by the stored subscription state for ${uid}, skipped`);
+    return;
+  }
+
+  // subscription.* also fires for renewals, cancellations, and plan
+  // changes — "created" is the one event that actually means "someone
+  // just subscribed," so that's the only one that announces as a
+  // purchase. Fired after the write, best-effort (announcePurchase itself
+  // never throws either).
+  if (event.type === "subscription.created") {
+    await announcePurchase({
+      kind: "New subscription",
+      product: productLabel(sub.productId),
+      email: sub.customer?.email,
+      amountCents: sub.amount,
+      currency: sub.currency,
+    });
+    recordServerEvent("subscription_created", { uid, props: { plan: field, amountCents: sub.amount, currency: sub.currency } });
+    recordServerEvent("payment_succeeded", { uid, props: { plan: field, amountCents: sub.amount, currency: sub.currency, kind: "subscription" } });
+    // Replays of subscription.created pass the check above too (same state
+    // re-applied), so the Meta send carries its own once-per-id marker.
+    queueMetaPurchase({ uid, polarId: sub.id, amountCents: sub.amount, currency: sub.currency, email: sub.customer?.email, contentName: productLabel(sub.productId) });
+  } else if (event.type === "subscription.past_due") {
+    // A renewal charge just failed and Polar is now retrying it (its own
+    // dunning process) — access isn't cut off yet (see isEntitled's grace
+    // period against currentPeriodEnd), but this is exactly the moment a
+    // founder wants to know revenue is at risk, not after it's already
+    // lost. Previously this only ever produced an analytics number nobody
+    // actively watches; now it's a real-time alert, same as a new sale.
+    await announcePaymentFailure({ kind: "Payment failed (retrying)", product: productLabel(sub.productId), email: sub.customer?.email });
+    recordServerEvent("payment_failed", { uid, props: { plan: field } });
+  } else if (event.type === "subscription.revoked") {
+    // Polar's own dunning retries are exhausted — access is actually gone
+    // now, not just at risk. Distinct alert wording from past_due above so
+    // "still trying to save this" and "already lost" don't read the same.
+    await announcePaymentFailure({ kind: "Subscription revoked (payment retries exhausted)", product: productLabel(sub.productId), email: sub.customer?.email });
+    recordServerEvent("subscription_expired", { uid, props: { plan: field } });
+  } else {
+    // Polar's event taxonomy beyond the cases above isn't fully enumerated
+    // in this codebase — best-effort mapping from the resulting status
+    // rather than the specific event.type, since that's what's actually
+    // known to be reliable here. If Polar's dashboard shows event types
+    // this doesn't distinguish well (e.g. a genuine renewal vs. a plan
+    // change both landing as "active"), that's a documented limitation,
+    // not a silent guess passed off as certain.
+    const statusEventMap = { active: "subscription_renewed", canceled: "subscription_cancelled", expired: "subscription_expired" };
+    const mapped = statusEventMap[sub.status];
+    if (mapped) recordServerEvent(mapped, { uid, props: { plan: field } });
+  }
+}
+
+// Maps a one-time product ID to which Firestore credit field it tops up.
+// Anything else (a future one-time product this function doesn't know
+// about yet, or — shouldn't happen — a subscription product somehow
+// producing an order.paid) is silently ignored rather than assumed to
+// mean "grant a master credit," which is what a single hardcoded check
+// used to do before there were two different one-time products.
+function creditFieldForProduct(productId) {
+  if (productId === settings.polarProducts.singleMaster) return "extraMasterCredits";
+  if (productId === settings.polarProducts.chordDetection) return "extraChordCredits";
+  if (productId === settings.polarProducts.stemSeparation) return "extraStemCredits";
+  return null;
+}
+
+// Idempotency guard: processedPolarOrders/{orderId} + the credit
+// increment happen in the SAME transaction, spanning both documents —
+// either both happen or neither does. A redelivered order.paid for an
+// order already recorded here is a no-op, not a second free credit.
+async function applyOrderPaidEvent(event) {
+  const order = event.data;
+  const creditField = creditFieldForProduct(order.productId);
+  if (!creditField) return;
+  const uid = order.customer?.externalId;
+  if (!uid) {
+    console.warn(`Polar order.paid: no externalId on customer, skipping`, order.customerId);
+    return;
+  }
+
+  const db = getFirestore();
+  const orderRef = db.collection("processedPolarOrders").doc(order.id);
+  const userRef = userDoc(uid);
+  // Reports back whether this call actually applied the credit, not just
+  // whether the transaction ran — a redelivered event must never trigger
+  // a second "you got paid" notification for the same order.
+  const alreadyProcessed = await db.runTransaction(async (tx) => {
+    const existing = await tx.get(orderRef);
+    if (existing.exists) return true; // already processed — Polar redelivered this event
+    const userSnap = await tx.get(userRef);
+    const credits = Number(userSnap.data()?.[creditField] || 0);
+    tx.set(orderRef, { uid, processedAt: new Date() });
+    tx.set(userRef, { [creditField]: credits + 1 }, { merge: true });
+    return false;
+  });
+
+  if (!alreadyProcessed) {
+    await announcePurchase({
+      kind: "New purchase",
+      product: productLabel(order.productId),
+      email: order.customer?.email,
+      amountCents: order.totalAmount,
+      currency: order.currency,
+    });
+    recordServerEvent("payment_succeeded", { uid, props: { plan: creditField, amountCents: order.totalAmount, currency: order.currency, kind: "one_time" } });
+    queueMetaPurchase({ uid, polarId: order.id, amountCents: order.totalAmount, currency: order.currency, email: order.customer?.email, contentName: productLabel(order.productId) });
+  }
+}
+
+// Reconciliation backstop — webhooks are the fast path, this is what
+// catches the case a webhook never arrives at all (endpoint down during a
+// deploy, wrong URL registered, etc.), which the retry-on-500 fix in
+// webhookRoutes.js can't help with since there's no webhook delivery to
+// retry in the first place. Asks Polar directly for the ground truth on
+// one user's subscriptions and overwrites Firestore to match — same
+// subscriptionRecord() shape the webhook path writes, so a reconciled
+// record is indistinguishable from a webhook-updated one.
+//
+// Deliberately conservative: only overwrites a field when Polar actually
+// returns a subscription that maps to it. Nothing returned at all logs a
+// warning instead of clearing existing records — a transient Polar API
+// hiccup shouldn't be able to falsely downgrade a real subscriber to
+// Free. limit:10 (not 1) because a customer can now hold two concurrent
+// subscriptions (main plan + chords) — sorted newest-first, so the first
+// item seen per field is that field's most current subscription; a
+// second/older item for the same field (e.g. a canceled-then-resubscribed
+// history) is intentionally skipped.
+export async function reconcileUserSubscription(uid) {
+  const page = await client().subscriptions.list({ externalCustomerId: uid, limit: 10, sorting: ["-started_at"] });
+  const items = page.result?.items || [];
+  if (!items.length) {
+    console.warn(`Reconciliation: Polar returned no subscriptions for uid ${uid} — leaving existing records untouched`);
+    return false;
+  }
+  // Per field, prefer an entitled subscription (newest-started first, since
+  // the list is sorted) over a newer one that is not entitled — a failed or
+  // expired checkout must not displace the user's live plan.
+  const chosen = new Map();
+  for (const sub of items) {
+    const field = subscriptionFieldForProduct(sub.productId);
+    if (!field) continue;
+    const current = chosen.get(field);
+    if (!current || (!isEntitled(subscriptionRecord(current)) && isEntitled(subscriptionRecord(sub)))) chosen.set(field, sub);
+  }
+  // Nothing entitled for a field: if the subscription we have on file is in
+  // the list, apply ITS current state (e.g. revoked) rather than a newer,
+  // unrelated non-entitled one that the merge would rightly refuse —
+  // otherwise a revocation could never land through reconciliation.
+  const storedData = (await userDoc(uid).get()).data() || {};
+  for (const [field, sub] of chosen) {
+    if (isEntitled(subscriptionRecord(sub))) continue;
+    const storedId = storedData[field]?.polarSubscriptionId;
+    const onFile = storedId && items.find((item) => item.id === storedId && subscriptionFieldForProduct(item.productId) === field);
+    if (onFile) chosen.set(field, onFile);
+  }
+  let changed = false;
+  for (const [field, sub] of chosen) {
+    // Same id/entitlement/modifiedAt guard as the webhook: a list snapshot
+    // older than an already-applied event must not re-activate a revoked plan.
+    if (await applySubscriptionRecord(uid, field, subscriptionRecord(sub))) changed = true;
+    else console.warn(`Reconciliation: Polar data for uid ${uid} "${field}" is stale or superseded — kept stored record`);
+  }
+  return changed;
+}
+
+// Batch pass over every user with EITHER kind of subscription on file —
+// run periodically (see server.js) rather than on a request path, since
+// it's one Polar API call per user and isn't something a page load
+// should wait on. Two separate field queries, unioned into one uid set —
+// Firestore can't OR across different field existence checks in a single
+// query. Per-user failures are caught and logged individually so one bad
+// record can't stop the rest of the batch from reconciling.
+export async function reconcileAllSubscriptions() {
+  const db = getFirestore();
+  const [planSnapshot, chordSnapshot] = await Promise.all([
+    db.collection("users").where("subscription", "!=", null).get(),
+    db.collection("users").where("chordSubscription", "!=", null).get(),
+  ]);
+  const uids = new Set([...planSnapshot.docs.map((d) => d.id), ...chordSnapshot.docs.map((d) => d.id)]);
+  let reconciled = 0;
+  for (const uid of uids) {
+    try {
+      const changed = await reconcileUserSubscription(uid);
+      if (changed) reconciled += 1;
+    } catch (error) {
+      console.error(`Reconciliation failed for uid ${uid}:`, error);
+    }
+  }
+  console.log(`Reconciliation pass complete: ${reconciled}/${uids.size} accounts synced from Polar`);
+
+  const backfilled = await backfillOrphanedSubscriptions();
+  return { checked: uids.size, reconciled, backfilled: backfilled.backfilled };
+}
+
+// Closes the one gap reconcileAllSubscriptions() above can't reach on its
+// own: it only re-checks uids that ALREADY have a subscription/
+// chordSubscription field in Firestore, so a user whose very first
+// subscription.created webhook never arrived (endpoint down, delivery
+// failure that outlived Polar's own retry window) is invisible to it
+// forever — there's no existing field to reconcile FROM. This instead
+// asks Polar directly for every currently-active subscription across the
+// whole account and backfills any uid that's missing the matching
+// Firestore field entirely. Deliberately narrow: only ever fills in a
+// MISSING field, never overwrites one that already exists (that's what
+// reconcileUserSubscription/reconcileAllSubscriptions above are for) — so
+// this can't step on a legitimately different, already-synced record.
+async function backfillOrphanedSubscriptions() {
+  let checked = 0;
+  let backfilled = 0;
+  try {
+    const firstPage = await client().subscriptions.list({ status: "active", limit: 100 });
+    for await (const page of firstPage) {
+      const items = page.result?.items || [];
+      for (const sub of items) {
+        checked += 1;
+        const uid = sub.customer?.externalId;
+        const field = subscriptionFieldForProduct(sub.productId);
+        if (!uid || !field) continue;
+        const doc = await userDoc(uid).get();
+        if (doc.exists && doc.data()?.[field]) continue; // already on file — nothing orphaned here
+        await userDoc(uid).set({ [field]: subscriptionRecord(sub) }, { merge: true });
+        backfilled += 1;
+        console.log(`Backfilled a missing "${field}" subscription for uid ${uid} from Polar — likely a missed webhook.`);
+      }
+    }
+  } catch (error) {
+    console.error("Orphaned-subscription backfill pass failed (non-fatal):", error);
+  }
+  return { checked, backfilled };
+}
+
+export { WebhookVerificationError };

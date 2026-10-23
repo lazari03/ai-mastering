@@ -1,0 +1,162 @@
+import { getFirestore } from "../config/firebase.js";
+import { notifyNewRegistration } from "./telegramService.js";
+import { sendWelcomeEmail } from "./brevoService.js";
+import { recordServerEvent, unlinkUserAnalytics } from "./analyticsService.js";
+import { writeNotification } from "./adminNotificationService.js";
+import { deleteAllJobsForUser } from "./jobsService.js";
+import { deleteJobFiles } from "./masteringService.js";
+import { cancelSubscriptionsForDeletedAccount } from "./polarService.js";
+import { shareLinks } from "./shareLinkService.js";
+
+// User profile lives in Firestore at users/{uid} — the same document whose
+// "artists" subcollection holds Saved Artists (see customPresetsService.js).
+// Mastering job history used to live in a "jobs" subcollection here too,
+// but moved to its own SQLite table (see jobsService.js/jobsDb.js) — high
+// write volume (a write per render, previews included), same reasoning as
+// the earlier analytics migration.
+// Firebase Auth itself only ever holds email/password + optional
+// displayName; the extra registration fields the signup form collects
+// (first/last name, phone, studio name, terms acceptance) have nowhere
+// else to live.
+function userDoc(uid) {
+  return getFirestore().collection("users").doc(uid);
+}
+
+export async function saveProfile(uid, profile, email, signInProvider = null) {
+  if (!uid) {
+    throw new Error("Profile requires a signed-in user");
+  }
+  // Always written, every call, regardless of what's in `profile` —
+  // unlike the fields below this isn't user-supplied body data, it's the
+  // verified email off the caller's own Firebase ID token (see
+  // masteringRoutes.js's requireAuth), so there's no spoofing risk and no
+  // reason to gate it behind a "was this field actually sent" check. Was
+  // previously received here and silently never written at all — every
+  // users/{uid} doc had firstName/lastName/phone but no email on it.
+  const record = { email: email || null };
+  // Only ever set fields that were actually passed — this is called both
+  // at signup (termsAcceptedAt/termsVersion, no studioName yet) and later
+  // from Settings (firstName/lastName/phone/studioName, never terms
+  // fields again). Unconditionally including termsAcceptedAt here with a
+  // "now" fallback would silently overwrite the original consent
+  // timestamp every time a user edits their profile.
+  if (profile.firstName !== undefined) record.firstName = profile.firstName || "";
+  if (profile.lastName !== undefined) record.lastName = profile.lastName || "";
+  if (profile.phone !== undefined) record.phone = profile.phone || "";
+  if (profile.studioName !== undefined) record.studioName = profile.studioName || "";
+  if (profile.termsAcceptedAt !== undefined) record.termsAcceptedAt = new Date(profile.termsAcceptedAt);
+  if (profile.termsVersion !== undefined) record.termsVersion = profile.termsVersion;
+  // Set once, right after the first-time onboarding tour finishes (or is
+  // skipped) — never unset, so the tour never comes back for that account.
+  if (profile.tutorialShown !== undefined) record.tutorialShown = Boolean(profile.tutorialShown);
+
+  // termsAcceptedAt is only ever sent on the one call that happens right
+  // after account creation (authStore.js's signUp/signInWithGoogle) — every
+  // later save from Settings omits it. That makes it the one reliable
+  // signal, from inside this function, that this is a brand-new account:
+  // stamp createdAt (read by the Telegram bot's /stats signup count, see
+  // telegramService.js) and fire the admin notification, both exactly once
+  // per account.
+  // ...and only if the account has no createdAt yet: anyone could repeat the
+  // call with termsAcceptedAt and re-fire the alerts, the welcome email and
+  // the sign_up event (and reset createdAt) as often as they liked.
+  const isNewSignup = profile.termsAcceptedAt !== undefined && !(await userDoc(uid).get()).data()?.createdAt;
+  if (isNewSignup) {
+    record.createdAt = new Date();
+  }
+
+  await userDoc(uid).set(record, { merge: true });
+
+  if (isNewSignup) {
+    // Best-effort, fired after the write succeeds — a Telegram hiccup must
+    // never fail signup itself (notifyNewRegistration already swallows its
+    // own errors internally, this catch is just an extra guard).
+    notifyNewRegistration({ uid, email }).catch((error) =>
+      console.error("Signup notification failed (non-fatal):", error)
+    );
+    // Same event, a second destination — the admin dashboard's own
+    // notification bell, not just Telegram (writeNotification is already
+    // internally best-effort, no .catch() needed here).
+    writeNotification({ type: "new_registration", uid, email, message: `New signup: ${email || uid}` });
+    // Same best-effort shape — sendWelcomeEmail already swallows its own
+    // errors (see brevoService.js), an unset BREVO_API_KEY just means no
+    // email goes out, signup itself is never blocked either way.
+    if (email) sendWelcomeEmail(email, profile.firstName);
+    // Backend-authoritative — previously the "sign_up" analytics event
+    // fired unconditionally from the client the moment the Firebase Auth
+    // call resolved, regardless of whether this Firestore write (the one
+    // above, right here) actually succeeded. That let analytics report a
+    // signup with no matching users/{uid} doc, no Telegram notification,
+    // and no welcome email — the exact same trust gap the payment/
+    // mastering events were made server-authoritative to close (see
+    // analyticsService.js). Recording it here instead means "sign_up" in
+    // analytics can only ever mean this write actually landed.
+    recordServerEvent("sign_up", { uid, props: { method: signInProvider === "google.com" ? "google" : "password" } });
+  }
+
+  return record;
+}
+
+export async function getProfile(uid) {
+  if (!uid) {
+    throw new Error("Profile requires a signed-in user");
+  }
+  const doc = await userDoc(uid).get();
+  const data = doc.data() || {};
+  return {
+    firstName: data.firstName || "",
+    lastName: data.lastName || "",
+    phone: data.phone || "",
+    studioName: data.studioName || "",
+    tutorialShown: Boolean(data.tutorialShown),
+  };
+}
+
+async function deleteSubcollection(docRef, name) {
+  const snapshot = await docRef.collection(name).get();
+  if (snapshot.empty) return;
+  const batch = getFirestore().batch();
+  snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+  await batch.commit();
+}
+
+// Deletes everything this app stored for a user: the Firestore profile doc
+// itself plus its "artists" (Saved Artists) subcollection — Firestore
+// doesn't cascade-delete subcollections when you delete a parent doc, so
+// that needs an explicit pass — and their mastering job history, now in
+// SQLite rather than a Firestore subcollection. Does NOT touch the Firebase
+// Auth account itself — the caller (DELETE /account) deletes that
+// separately, client-side, after this succeeds, since only the signed-in
+// user's own client can re-authenticate and delete their own Auth record.
+export async function deleteAllUserData(uid) {
+  if (!uid) {
+    throw new Error("Account deletion requires a signed-in user");
+  }
+  const doc = userDoc(uid);
+  // Stop billing first: if Polar refuses, nothing has been deleted yet and
+  // the user can retry, instead of an orphaned subscription that keeps
+  // charging a deleted account.
+  await cancelSubscriptionsForDeletedAccount(uid);
+  await deleteSubcollection(doc, "artists");
+  // Their audio too, not only the history rows — it used to stay on disk
+  // until the 48 h sweep after they asked for erasure.
+  const jobIds = await deleteAllJobsForUser(uid);
+  await Promise.all(jobIds.map((jobId) => deleteJobFiles(jobId)));
+  shareLinks.deleteAllForUser(uid);
+  unlinkUserAnalytics(uid);
+  // Usage counters and purchases are NOT personal data and must survive:
+  // deleting them reset the Free trial (the same ID token keeps working
+  // until the client deletes the Auth account, so DELETE /account could be
+  // called repeatedly for unlimited free masters) and wiped paid credits.
+  // Everything else on the doc (profile, email, settings) is removed.
+  const snap = await doc.get();
+  const data = snap.data() || {};
+  const retained = Object.fromEntries(RETAINED_BILLING_FIELDS.filter((key) => data[key] !== undefined).map((key) => [key, data[key]]));
+  if (Object.keys(retained).length) {
+    await doc.set({ ...retained, accountDeletedAt: new Date() });
+  } else {
+    await doc.delete();
+  }
+}
+
+const RETAINED_BILLING_FIELDS = ["freeMasterUsage", "masterQuota", "stemQuota", "extraMasterCredits", "extraStemCredits", "subscription"];

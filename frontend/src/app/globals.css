@@ -1,0 +1,508 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Auralith Forge — minimal premium palette. Light, editorial, one
+     accent used sparingly (see color-system spec: waveforms, playback
+     progress, active nav state, small status indicators — never large
+     gradients). Old dark/glassmorphic brand tokens (--ink/--coal/--ember/
+     --brass/--mist/--void/--copper/--cream) are kept below, unchanged in
+     value, ONLY so any file not yet migrated to this palette still
+     renders instead of breaking — new and updated work reaches for the
+     tokens in this block, not those. */
+  --bg: #f6f5f1;
+  --text-primary: #111111;
+  /* Darkened from the original spec's #6b6b68 (~4.9:1 on --bg) to ~6.9:1 —
+     labels, hints, and secondary copy were reading as too faint/washed
+     out, especially at the small uppercase tracking-heavy sizes used
+     throughout the in-app product. */
+  --text-secondary: #55534f;
+  --dark-bg: #0c0c0d;
+  --dark-surface: #151516;
+  --dark-text-primary: #f5f5f3;
+  --dark-text-secondary: #969696;
+  /* Was 0.1 — too close to --bg's own luminance to actually read as a
+     boundary, which is what made form fields/cards hard to place at a
+     glance ("not giving visibility to fields"). */
+  --border-subtle: rgba(0, 0, 0, 0.16);
+  --dark-border-subtle: rgba(255, 255, 255, 0.1);
+  --accent: #8275ff;
+
+  /* ── Motion ────────────────────────────────────────────────────────
+     One easing curve for the whole site. Deliberately NOT ease-in-out
+     or linear: this curve decelerates hard and late, which is what
+     makes motion read as having physical mass rather than as a CSS
+     default. Every transition/animation below references it. */
+  --ease-premium: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ── Elevation ─────────────────────────────────────────────────────
+     Layered, warm-tinted ambient shadow instead of one hard black
+     drop. Three stacked layers (contact / mid / ambient spread) is
+     what reads as a physically lit object; the rgb is the cream bg's
+     own hue darkened, not pure black, so nothing looks like a sticker
+     pasted on the page. */
+  --shadow-ambient:
+    0 1px 2px rgba(36, 32, 26, 0.035),
+    0 8px 20px -6px rgba(36, 32, 26, 0.055),
+    0 32px 64px -24px rgba(36, 32, 26, 0.14);
+  --shadow-ambient-lifted:
+    0 2px 4px rgba(36, 32, 26, 0.04),
+    0 14px 32px -8px rgba(36, 32, 26, 0.08),
+    0 48px 96px -28px rgba(36, 32, 26, 0.2);
+
+  /* ── Z-index scale ─────────────────────────────────────────────────
+     Two rungs, and nothing else in the codebase should add a third
+     without a reason that can be written down here:
+       40  full-screen menu overlay
+       50  sticky site header, cookie banner, promo
+     Everything else layers by DOM order and stacking context instead.
+     The grain overlay is last in <body>, so it paints above content
+     without needing a z-index; the header scrim lives inside <header>
+     and inherits its context, painting under the nav pill for the same
+     reason. The header outranks its own menu overlay on purpose: the
+     hamburger morphs into the X that dismisses the menu, so it has to
+     stay above it or the control vanishes exactly when it's needed. */
+
+  /* Legacy dark-theme tokens — superseded by the light palette above.
+     Left in place (same values as before) purely so components not yet
+     migrated off them still render correctly; do not use these in new
+     work, and remove once every consumer (see the styling audit) is
+     migrated. */
+  --ink: #0f1113;
+  --coal: #1b1e22;
+  --ember: #e85d2a;
+  --brass: #dfc95a;
+  --mist: #e8ecef;
+  --surface: var(--coal);
+  --surface-elevated: rgba(27, 30, 34, 0.78);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --void: #0a0908;
+  --void-elevated: #14120f;
+  --copper: #b96a43;
+  --cream: #f3eee7;
+  --cream-muted: #9b958e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body), sans-serif;
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: clip;
+  background: var(--bg);
+}
+
+main {
+  min-height: 100vh;
+}
+
+/* ── Scroll-entry choreography ────────────────────────────────────────
+   Progressive enhancement, deliberately: the default state of .reveal is
+   fully VISIBLE. Only once ScrollReveal.jsx has mounted and set
+   data-reveal="on" on <html> does the hidden-then-animate state apply.
+   Getting this backwards (hidden by default, revealed by JS) is how a
+   page ends up permanently blank when JS is slow, blocked, or throws —
+   an entrance animation is never worth risking the content itself.
+
+   The motion is a heavy fade-up with a blur resolve rather than a 12px
+   nudge: transform + filter + opacity only, all GPU-composited, no
+   layout-triggering properties.
+
+   The plain .reveal rule below is the ORIGINAL mount-time fade, left
+   exactly as it was: /login and the in-app result view (MasterResultView)
+   both use this class and never mount ScrollReveal, so they keep the
+   behaviour they already had. Only a page that mounts the controller
+   opts into the scroll-driven version. */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal {
+  animation: reveal 0.6s ease-out both;
+}
+
+html[data-reveal="on"] .reveal {
+  animation: none;
+  opacity: 0;
+  transform: translate3d(0, 44px, 0);
+  filter: blur(7px);
+  transition:
+    opacity 0.9s var(--ease-premium),
+    transform 0.9s var(--ease-premium),
+    filter 0.9s var(--ease-premium);
+  will-change: transform, opacity;
+}
+
+html[data-reveal="on"] .reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  filter: blur(0);
+  will-change: auto;
+}
+
+/* Anyone who has asked their OS for less motion gets the content, not
+   the choreography — the observer still runs, it just has nothing left
+   to animate. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-reveal="on"] .reveal,
+  html[data-reveal="on"] .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+}
+
+/* ── Film grain ───────────────────────────────────────────────────────
+   Fixed, pointer-events-none, painted once — never attached to a
+   scrolling container, so it costs one composite layer and no repaints.
+   Breaks the flatness of large empty cream areas the way paper stock
+   does in print; at this opacity it is felt rather than seen. */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  /* No z-index on purpose — it's the last element in <body>, so as a
+     positioned element it already paints above page content, while the
+     header/menu/banner (which do carry one) stay above it. */
+  pointer-events: none;
+  opacity: 0.032;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Double-bezel (nested enclosure) ──────────────────────────────────
+   A premium panel is never one flat box on the page: it is an inner core
+   seated in an outer tray, the way a glass plate sits in a milled
+   aluminium frame. The inner radius is the outer radius minus the tray
+   padding so the two curves stay concentric — mismatched radii are the
+   single most common tell of a nested box that was eyeballed. */
+.bezel {
+  padding: 0.5rem;
+  border-radius: 2rem;
+  background: rgba(36, 32, 26, 0.045);
+  box-shadow: inset 0 0 0 1px rgba(36, 32, 26, 0.05);
+}
+
+.bezel-core {
+  border-radius: calc(2rem - 0.5rem);
+  background: var(--bg);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.6),
+    var(--shadow-ambient);
+}
+
+/* Same construction, seated on the dark hero band instead of cream. */
+.bezel-on-dark {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.bezel-on-dark > .bezel-core {
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    var(--shadow-ambient-lifted);
+}
+
+/* One consistent focus-visible ring for every interactive element,
+   instead of leaving it to whatever the browser default happens to be
+   (usually a mismatched blue) against the site's own accent-colored,
+   pill-shaped buttons/links. :focus-visible so mouse clicks don't show a
+   ring, only keyboard/AT navigation — an accessibility baseline, not a
+   cosmetic optional. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Both properties set so the delay applies on either path — the
+   mount-animation one (/login, result view) and the scroll-transition
+   one (pages that mount ScrollReveal). */
+.reveal-delay-1 {
+  animation-delay: 0.08s;
+  transition-delay: 0.09s;
+}
+
+.reveal-delay-2 {
+  animation-delay: 0.16s;
+  transition-delay: 0.18s;
+}
+
+.glass-panel {
+  /* Was a dark frosted-glass gradient (the old brand's whole visual
+     language) — the minimal-premium palette has no glassmorphism, so this
+     is now just a plain light card: a background (so it visually reads as
+     raised over the page even though both are the same #F6F5F1) plus a
+     thin border. Left as this class rather than inlined at each of its 3
+     call sites (MasteringConsole/MasterResultView/NotificationBanner) so
+     they can't drift out of sync with each other again. */
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.06);
+}
+
+.legal-prose h2 {
+  margin: 0 0 0.6em;
+  font-family: var(--font-title), sans-serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  scroll-margin-top: 7rem;
+}
+.legal-prose ul {
+  list-style: disc;
+}
+.legal-prose a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  text-underline-offset: 3px;
+}
+
+.legal-prose p {
+  margin: 0 0 0.9em;
+}
+
+.legal-prose ul {
+  margin: 0 0 0.9em;
+  padding-left: 1.3em;
+}
+
+.legal-prose li {
+  margin-bottom: 0.4em;
+}
+
+.legal-prose section + section {
+  margin-top: 1.75rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.legal-prose strong {
+  color: var(--text-primary);
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+.pulse-ring {
+  animation: pulseRing 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* ── Auralith design system: shared primitives ─────────────────────────
+   One definition per control, used by every route (marketing, SEO tool
+   pages, guides, auth, app). Built only on the light-palette tokens at
+   the top of this file — nothing here references the legacy dark tokens.
+
+   Buttons: pill-shaped, the same shape as the header's Open App control.
+     .btn-primary    solid ink — the one main action in a view
+     .btn-secondary  outlined — alternatives next to a primary
+     .btn-quiet      text-weight action with an arrow ("Read the guide →")
+   Sizes: default 44px tall (touch target), .btn-sm 36px for dense rows. */
+@layer components {
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full px-5 text-[13px] font-semibold tracking-[0.02em] no-underline transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-sm {
+    @apply min-h-[36px] px-4 text-xs;
+  }
+  .btn-primary {
+    @apply btn bg-text-primary text-bg hover:bg-[#2a2a2a];
+  }
+  .btn-secondary {
+    @apply btn border border-border-subtle bg-transparent text-text-primary hover:border-text-primary/40 hover:bg-black/[0.03];
+  }
+  .btn-on-dark {
+    @apply btn bg-bg text-text-primary hover:bg-white;
+  }
+  .btn-quiet {
+    @apply inline-flex items-center gap-1.5 text-[14px] font-semibold text-text-primary underline decoration-border-subtle decoration-1 underline-offset-[6px] transition hover:decoration-text-primary;
+  }
+
+  /* Small uppercase label that precedes a heading: a short hairline
+     then the label — editorial, no pill, no colour. */
+  .eyebrow {
+    @apply inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-text-secondary;
+  }
+  .eyebrow::before {
+    content: "";
+    @apply h-px w-7 shrink-0 bg-current opacity-50;
+  }
+
+  /* In-copy links: visible without relying on colour alone. */
+  .text-link {
+    @apply font-medium text-text-primary underline decoration-accent/60 decoration-[1.5px] underline-offset-4 transition hover:decoration-accent;
+  }
+
+  /* Raised content card on the cream background. */
+  .card {
+    @apply rounded-2xl border border-border-subtle bg-white/55;
+  }
+
+  /* Form fields shared by auth, newsletter and app forms. */
+  .field {
+    @apply block w-full rounded-xl border border-border-subtle bg-white/70 px-3.5 py-3 text-sm text-text-primary outline-none transition placeholder:text-text-secondary/70 focus:border-text-primary/60 focus:bg-white;
+  }
+}
+
+/* "What Auralith changed" card: lays out from its OWN width (container
+   query), not the viewport — it sits in a full-width column on the
+   homepage and in a narrow side column in the app. Narrow: label + status
+   on one line, explanation full-width below. Wide: label | body | status. */
+.decisions-card {
+  container-type: inline-size;
+}
+.decision-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label status"
+    "body body";
+  column-gap: 0.75rem;
+  row-gap: 0.375rem;
+  align-items: center;
+}
+.decision-row > .decision-label { grid-area: label; }
+.decision-row > .decision-status { grid-area: status; justify-self: end; }
+.decision-row > .decision-body { grid-area: body; min-width: 0; }
+@container (min-width: 560px) {
+  .decision-row {
+    grid-template-columns: 140px minmax(0, 1fr) auto;
+    grid-template-areas: "label body status";
+    column-gap: 1rem;
+    align-items: baseline;
+  }
+}
+
+/* Long-form reading (guides, legal, SEO education). ~68ch measure,
+   generous leading, real heading hierarchy — typographic, not boxed. */
+.af-prose {
+  max-width: 68ch;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+}
+.af-prose > * + * {
+  margin-top: 1.1em;
+}
+.af-prose h2 {
+  margin-top: 2.2em;
+  font-family: var(--font-title), sans-serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  scroll-margin-top: 7rem;
+}
+.af-prose h3 {
+  margin-top: 1.8em;
+  font-family: var(--font-title), sans-serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.3;
+  scroll-margin-top: 7rem;
+}
+.af-prose p,
+.af-prose li {
+  color: #2b2a27;
+}
+.af-prose ul,
+.af-prose ol {
+  padding-left: 1.25em;
+}
+.af-prose ul {
+  list-style: disc;
+}
+.af-prose ol {
+  list-style: decimal;
+}
+.af-prose li::marker {
+  color: var(--accent);
+}
+.af-prose li + li {
+  margin-top: 0.4em;
+}
+.af-prose a {
+  color: var(--text-primary);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+.af-prose a:hover {
+  text-decoration-color: var(--accent);
+}
+.af-prose strong {
+  font-weight: 600;
+}
+.af-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.af-prose th,
+.af-prose td {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.6em 0.75em 0.6em 0;
+  text-align: left;
+  vertical-align: top;
+}
+.af-prose th {
+  font-weight: 600;
+}
+
+/* Indeterminate progress — for work whose duration the server doesn't
+   report (a master render). Static under reduced motion. */
+.indeterminate-bar {
+  position: relative;
+}
+.indeterminate-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 35%;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: indeterminate 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(290%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .indeterminate-bar > span { animation: none; width: 100%; opacity: 0.35; }
+  .pulse-ring { animation: none !important; }
+}
+
+/* See SIGNED_IN_HOME_GATE in app/layout.js. */
+html[data-auth-pending] body {
+  visibility: hidden;
+}

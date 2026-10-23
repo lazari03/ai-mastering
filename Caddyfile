@@ -1,0 +1,71 @@
+# Terminates HTTPS and routes to the two containers that need to be
+# public — frontend and the Node API (Python's port 8001 stays internal to
+# the Docker network, it's never reached from outside; see ARCHITECTURE.md
+# §7 on why it has no auth of its own).
+#
+# Caddy gets a cert from Let's Encrypt automatically the first time it
+# starts, using this domain — no manual certbot/nginx config. Requires
+# auralithforge.app's DNS A/AAAA record already pointing at this server's
+# IP before you start Caddy, or the ACME challenge fails.
+
+(security_headers) {
+	# Brotli/gzip for text responses — was off entirely, meaning every
+	# HTML/CSS/JS response went out uncompressed. This alone is usually a
+	# large chunk of a bad PageSpeed score (bigger transfer = slower on a
+	# throttled connection, which is exactly what Lighthouse simulates).
+	encode zstd gzip
+	header {
+		# Force HTTPS on repeat visits — 1 year, apex + subdomains.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# Stops a browser from guessing content-type in a way that turns
+		# an upload into executable script.
+		X-Content-Type-Options "nosniff"
+		# No embedding this site in an <iframe> elsewhere (clickjacking).
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# Not a full CSP — this app's Next.js bundle needs inline
+		# hydration scripts, and a naive default-src would break it. A
+		# real CSP needs deliberate per-directive tuning, not a
+		# copy-pasted one; left as a follow-up rather than guessed at.
+		-Server
+	}
+}
+
+auralithforge.app {
+	import security_headers
+	# Next.js sets Cache-Control: s-maxage=31536000, stale-while-revalidate
+	# on statically-prerendered page HTML by default — tuned for a CDN
+	# edge (Vercel) that can purge/on-demand-revalidate the moment a new
+	# deploy lands. Self-hosted behind a plain reverse proxy with no such
+	# CDN, that header instead tells the browser's own cache it's safe to
+	# hold onto the old page for up to a year — the "I deployed, but
+	# visitors still see the old site" bug.
+	#
+	# Four attempts at overriding it here in Caddy all failed empirically
+	# (plain `header` runs before reverse_proxy sees the upstream response
+	# so it can't actually replace anything; header_down inside
+	# reverse_proxy — the directive that's actually supposed to do this —
+	# didn't apply either, for reasons not worth more live-production
+	# trial and error to chase). Fixed at the source instead: /app now
+	# has `export const dynamic = "force-dynamic"` (see app/app/page.js),
+	# which changes what Next.js itself emits for that route rather than
+	# fighting it downstream. Static marketing pages (this domain's `/`
+	# and friends) still emit the long-lived header — lower priority
+	# (content changes rarely) and a separate fix if it's ever worth it.
+	reverse_proxy frontend:3000
+}
+
+# www → apex. Cloudflare proxies www (CNAME www → auralithforge.app) to
+# this server, so Caddy needs this block (and its own www certificate) or
+# Cloudflare returns 525. Verified 2026-10-21: with the block, www/* 301s to
+# the apex with path and query kept; without it, 525. If a Cloudflare
+# Redirect Rule is ever made to work, it answers before this is reached.
+www.auralithforge.app {
+	redir https://auralithforge.app{uri} permanent
+}
+
+api.auralithforge.app {
+	import security_headers
+	reverse_proxy node-api:8000
+}

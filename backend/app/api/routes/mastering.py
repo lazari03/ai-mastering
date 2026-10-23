@@ -1,0 +1,459 @@
+from __future__ import annotations
+
+import glob
+import json
+import logging
+import time
+from pathlib import Path
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+
+from adaptive_mastering import preview_processing_params as compute_preview_params
+from ai_mastering.planning.preset_intent import is_intent_preset, resolve_genre, resolve_style
+from app.core.config import settings
+from app.core.ids import require_codec, require_job_id, require_output_ext
+from app.schemas.mastering import AnalyzeResponse, CodecPreviewResponse, MasterResponse, PresetSummary, PreviewParamsResponse
+from app.services.codec_preview_service import SUPPORTED_CODECS, simulate_codec
+from app.core.job_runner import (
+    CapacityError,
+    CostModel,
+    JobRegistry,
+    JobTerminated,
+    ResourceGovernor,
+    WorkerError,
+    resolve_memory_budget_mb,
+    run_in_worker,
+)
+from app.services.mastering_service import (
+    analyze_uploaded_track,
+    make_browser_preview,
+    parse_json_array,
+    parse_json_object,
+    remove_job_files,
+    resolve_mastering_config,
+    stage_mastering_request,
+)
+from app.services.presets_service import list_mixing_presets
+from params import DELIVERY_TARGETS, list_categories, list_flavours, list_genres, list_styles, list_tags
+
+router = APIRouter(tags=["mastering"])
+
+# Resource-aware admission + killable worker processes: see
+# app/core/job_runner.py for why /master no longer renders on a server
+# thread behind a count-only semaphore.
+MEMORY_BUDGET_MB, MEMORY_BUDGET_SOURCE = resolve_memory_budget_mb(settings.memory_budget_mb)
+COST_MODEL = CostModel(
+    worker_base_mb=settings.cost_worker_base_mb,
+    per_audio_minute_mb=settings.cost_per_audio_minute_mb,
+    stem_extra_mb=settings.cost_stem_extra_mb,
+    reference_extra_mb=settings.cost_reference_extra_mb,
+)
+governor = ResourceGovernor(
+    MEMORY_BUDGET_MB, settings.max_concurrent_masters, settings.max_concurrent_stem_jobs, settings.queue_max, settings.queue_wait_s
+)
+registry = JobRegistry()
+WORKER_TARGET = ("app.services.mastering_service", "render_staged_job")
+WORKER_PRELOAD = ["app.services.mastering_service"]
+# Seconds kept back from the caller's deadline so this service's own,
+# specific answer (timeout, cancelled) arrives before the caller gives up.
+DEADLINE_MARGIN_S = 30.0
+
+
+def max_stem_duration_s(timeout_s: float) -> float:
+    """Longest track a stem job can finish inside timeout_s at the measured
+    separation + mastering speed (0 disables the check)."""
+    rate = settings.stem_seconds_per_audio_second + settings.master_seconds_per_audio_second
+    return timeout_s / rate if rate > 0 else float("inf")
+
+
+def _error(status: int, code: str, detail: str, retry_after_s: int | None = None) -> HTTPException:
+    # detail stays a plain string (what every caller already reads); the
+    # stable machine code travels in a header the gateway localizes from.
+    headers = {"X-Error-Code": code}
+    if retry_after_s:
+        headers["Retry-After"] = str(retry_after_s)
+    return HTTPException(status, detail, headers=headers)
+
+
+@router.get("/genres")
+def get_genres() -> dict:
+    return {"genres": list_genres()}
+
+
+@router.get("/tags")
+def get_tags() -> dict:
+    return {"tags": list_tags()}
+
+
+@router.get("/styles")
+def get_styles() -> dict:
+    return {"styles": list_styles()}
+
+
+@router.get("/delivery-targets")
+def get_delivery_targets() -> dict:
+    return {"delivery_targets": [{"key": k, "label": v["label"], "reference_lufs": v["reference_lufs"]} for k, v in DELIVERY_TARGETS.items()]}
+
+
+@router.get("/categories")
+def get_categories() -> dict:
+    return {"categories": list_categories(), "flavours": list_flavours()}
+
+
+@router.get("/mix-presets", response_model=list[PresetSummary])
+def get_mix_presets() -> list[dict]:
+    presets = list_mixing_presets()
+    return [
+        {
+            "name": name,
+            "description": value.get("description", ""),
+            "genre": value.get("genre", ""),
+            "style": value.get("style", "modern"),
+            "tags": list(value.get("tags", [])),
+            "tweaks": value.get("tweaks", {}),
+            "use_stem_separation": bool(value.get("use_stem_separation", False)),
+            "output_format": value.get("output_format", "wav"),
+        }
+        for name, value in presets.items()
+    ]
+
+
+@router.post("/analyze", response_model=AnalyzeResponse)
+def analyze(file: UploadFile = File(...)) -> dict:
+    """Decode + measure a track without mastering it — the frontend calls
+    this once per upload, then /preview-params as many times as the user
+    browses genre/style/category/flavour/tweaks, so the "professional
+    controls" panel can show real, per-track values live instead of a
+    static default that never reflects what's actually selected."""
+    return analyze_uploaded_track(file)
+
+
+@router.post("/preview-params", response_model=PreviewParamsResponse)
+def preview_params(
+    analysis: str = Form(...),
+    genre: str = Form(...),
+    style: str = Form("modern"),
+    tags: str = Form("[]"),
+    tweaks: str = Form("{}"),
+    category: str | None = Form(None),
+    flavour: str | None = Form(None),
+    delivery: str | None = Form(None),
+    # The selected intent preset's spec (Node resolves it), so the live
+    # parameter preview shows what that preset will actually do.
+    preset_json: str | None = Form(None),
+) -> dict:
+    """Pure computation on an analysis already produced by /analyze — no
+    audio touched, so this is cheap enough to call on every chip click or
+    tweak-slider drag. `analysis` is that endpoint's own `analysis` field,
+    round-tripped back by the caller rather than cached server-side (keeps
+    this endpoint stateless — no job_id, nothing to clean up)."""
+    try:
+        analysis_dict = json.loads(analysis)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(400, "analysis must be valid JSON") from exc
+    preset_intent = None
+    if preset_json:
+        try:
+            spec = json.loads(preset_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(400, "preset_json must be valid JSON") from exc
+        if is_intent_preset(spec):
+            preset_intent = spec
+            genre = resolve_genre(spec.get("genre")) or genre
+            style = resolve_style(spec.get("style")) or style
+    if genre not in list_genres():
+        raise HTTPException(400, f"Unknown genre: {genre}")
+
+    tag_list = parse_json_array(tags, "tags")
+    tweak_values = parse_json_object(tweaks, "tweaks")
+
+    try:
+        processing_params = compute_preview_params(
+            analysis_dict,
+            genre=genre,
+            tags=tag_list,
+            style=style,
+            tweaks=tweak_values,
+            category=category,
+            flavour=flavour,
+            preset_intent=preset_intent,
+            delivery=delivery,
+        )
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(400, f"Couldn't compute preview parameters: {exc}") from exc
+
+    return {"processing_params": processing_params}
+
+
+@router.post("/master", response_model=MasterResponse)
+def master_track(
+    file: UploadFile = File(...),
+    genre: str | None = Form(None),
+    style: str = Form("modern"),
+    use_stem_separation: bool = Form(False),
+    tags: str = Form("[]"),
+    tweaks: str = Form("{}"),
+    output_format: str = Form("wav"),
+    mix_preset: str | None = Form(None),
+    tier: str = Form("standard"),
+    # Optional musical-objective layer (Clean, Modern, Club, ...) — see
+    # params.py:MASTERING_CATEGORY_PROFILES. Omit both for genre+style-only
+    # behavior, unchanged from before this existed.
+    category: str | None = Form(None),
+    flavour: str | None = Form(None),
+    delivery: str | None = Form(None),
+    # A caller that has already fully resolved a preset itself (Node does,
+    # for both its curated and user-imported-custom presets — see
+    # backend-node/src/services/presetsService.js) can send the resolved
+    # spec directly instead of a mix_preset name for this service to look
+    # up in its own mixing_presets.json. Takes priority over mix_preset
+    # when present. This is what keeps Node's custom-presets feature
+    # (backend-node-only, this service has no knowledge of it) working
+    # without duplicating preset-resolution logic on both sides.
+    full_preset_json: str | None = Form(None),
+    reference_file: UploadFile | None = File(None),
+    # Gateway-assigned id (so it can cancel this job) and its own deadline,
+    # epoch ms. Both optional for direct callers.
+    job_id: str | None = Form(None),
+    deadline_epoch_ms: int | None = Form(None),
+) -> dict:
+    tag_list = parse_json_array(tags, "tags")
+    tweak_values = parse_json_object(tweaks, "tweaks")
+    preset_spec = None
+    if full_preset_json:
+        try:
+            preset_spec = json.loads(full_preset_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(400, "full_preset_json must be valid JSON") from exc
+
+    resolved_config = resolve_mastering_config(
+        genre=genre,
+        style=style,
+        tags=tag_list,
+        tweaks=tweak_values,
+        use_stem_separation=use_stem_separation,
+        output_format=output_format,
+        mix_preset=mix_preset,
+        tier=tier,
+        category=category,
+        flavour=flavour,
+        delivery=delivery,
+        preset_spec=preset_spec,
+    )
+
+    result = _run_master_job(file, resolved_config, reference_file, job_id, deadline_epoch_ms)
+    return {
+        "job_id": result["job_id"],
+        "download_url": result["download_url"],
+        "before_lufs": result["before_lufs"],
+        "after_lufs": result["after_lufs"],
+        "analysis_before": result["analysis_before"],
+        "analysis_after": result["analysis_after"],
+        "ab_gain_match": result.get("ab_gain_match"),
+        "ab_analysis": result.get("ab_analysis"),
+        "source_warnings": result.get("source_warnings", []),
+        "quality_control": result.get("quality_control"),
+        "processing_applied": result["processing_applied"],
+        "target_profile_used": result["target_profile_used"],
+    }
+
+
+def _run_master_job(file, resolved_config: dict, reference_file, job_id: str | None, deadline_epoch_ms: int | None) -> dict:
+    staged = stage_mastering_request(file=file, config=resolved_config, reference_file=reference_file, job_id=job_id)
+    job_id = staged["job_id"]
+    try:
+        rec = registry.create(job_id)
+    except CapacityError as exc:
+        raise _error(exc.status, exc.code, exc.detail) from exc
+
+    timeout_s = float(settings.job_timeout_s)
+    if deadline_epoch_ms:
+        timeout_s = min(timeout_s, deadline_epoch_ms / 1000.0 - time.time() - DEADLINE_MARGIN_S)
+    stems = bool(resolved_config.get("use_stem_separation"))
+    est_mb = COST_MODEL.estimate_mb(staged.get("duration_s"), stems=stems, reference=bool(staged.get("reference_path")), sample_rate=staged.get("sample_rate"))
+    started = time.monotonic()
+    try:
+        if timeout_s <= 0:
+            raise JobTerminated("timeout", "The request's deadline had already passed.")
+        stem_cap_s = max_stem_duration_s(float(settings.job_timeout_s))
+        if stems and staged.get("duration_s") and staged["duration_s"] > stem_cap_s:
+            raise CapacityError(
+                413,
+                "stems_too_long",
+                f"Stem separation is available for tracks up to {stem_cap_s / 60:.1f} minutes on this server. Turn off stem separation or upload a shorter track.",
+            )
+        with governor.admit(job_id, est_mb, stems, wait_s=min(settings.queue_wait_s, timeout_s)):
+            if rec.cancel_requested:
+                raise JobTerminated("cancelled", "Mastering was cancelled.")
+            remaining = timeout_s - (time.monotonic() - started)
+            result, stats = run_in_worker(rec, registry, WORKER_TARGET, (staged, resolved_config), timeout_s=remaining, preload=WORKER_PRELOAD)
+    except CapacityError as exc:
+        registry.transition(job_id, "cancelled" if exc.code == "cancelled" else "failed", detail=exc.code)
+        remove_job_files(job_id)
+        raise _error(exc.status, exc.code, exc.detail, exc.retry_after_s) from exc
+    except JobTerminated as exc:
+        state, status, code = {"timeout": ("timed_out", 504, "processing_timeout"), "cancelled": ("cancelled", 499, "cancelled"), "crashed": ("failed", 500, "worker_crashed")}[exc.reason]
+        registry.transition(job_id, state, detail=exc.detail)
+        remove_job_files(job_id)
+        raise _error(status, code, exc.detail) from exc
+    except WorkerError as exc:
+        registry.transition(job_id, "failed", detail=exc.detail)
+        remove_job_files(job_id)
+        raise _error(exc.status, "invalid_audio" if exc.status == 400 else ("too_long" if exc.status == 413 else "render_failed"), exc.detail) from exc
+
+    # A cancel that arrived while the result was on its way still wins: the
+    # caller has given up, so nothing may be delivered or kept.
+    if rec.cancel_requested:
+        registry.transition(job_id, "cancelled", detail="cancelled at completion")
+        remove_job_files(job_id)
+        raise _error(499, "cancelled", "Mastering was cancelled.")
+    registry.transition(job_id, "completed", peak_rss_mb=stats.get("peak_rss_mb"))
+    result.setdefault("processing_applied", {})["worker"] = {
+        **stats,
+        "estimated_mb": round(est_mb),
+        "duration_s": staged.get("duration_s"),
+        "wall_s": round(time.monotonic() - started, 1),
+    }
+    return result
+
+
+@router.post("/jobs/{job_id}/cancel")
+def cancel_job(job_id: str) -> dict:
+    """Idempotent. Queued: removed from the queue. Running: the worker's
+    process group is killed within ~0.25 s. Terminal: unchanged (a completed
+    job stays completed; the caller decides what to do with it)."""
+    require_job_id(job_id)
+    rec = registry.request_cancel(job_id)
+    governor.cancel_queued(job_id)
+    if rec is None:
+        return {"job_id": job_id, "state": "unknown"}
+    return {"job_id": job_id, "state": rec.state, "cancel_requested": rec.cancel_requested}
+
+
+@router.get("/jobs/{job_id}")
+def job_state(job_id: str) -> dict:
+    require_job_id(job_id)
+    rec = registry.get(job_id)
+    if rec is None:
+        raise HTTPException(404, "Unknown job")
+    return {"job_id": job_id, "state": rec.state, "detail": rec.detail, "peak_rss_mb": rec.peak_rss_mb}
+
+
+@router.get("/capacity")
+def capacity() -> dict:
+    return {**governor.snapshot(), "budget_source": MEMORY_BUDGET_SOURCE, "cost_model": COST_MODEL.__dict__, "job_timeout_s": settings.job_timeout_s, "max_stem_duration_s": round(max_stem_duration_s(float(settings.job_timeout_s)))}
+
+
+@router.get("/download/{job_id}.{ext}")
+def download(job_id: str, ext: str):
+    require_job_id(job_id)
+    require_output_ext(ext)
+    path = settings.output_dir / f"{job_id}_mastered.{ext}"
+    if not path.exists():
+        raise HTTPException(404, "File not found")
+    # content_disposition_type="inline": passing filename= without this
+    # makes Starlette default to Content-Disposition: attachment, which
+    # tells a browser "save this," not "stream it" — breaking an <audio
+    # src> pointed straight at this route. Node's proxy currently doesn't
+    # forward this header either way (see masteringRoutes.js's
+    # proxyFromPython, which only copies Content-Type/-Length), so this is
+    # defense-in-depth for any direct caller, not the actual production
+    # fix — that's the separate /preview route, which the frontend now
+    # uses for in-browser playback instead of this one.
+    return FileResponse(path, filename=f"mastered_{job_id}.{ext}", content_disposition_type="inline")
+
+
+@router.get("/original/{job_id}")
+def get_original(job_id: str):
+    require_job_id(job_id)
+    matches = list(settings.upload_dir.glob(f"{glob.escape(job_id)}_input.*"))
+    if not matches:
+        raise HTTPException(404, "Original not found")
+    return FileResponse(matches[0])
+
+
+@router.get("/preview/{job_id}")
+def get_preview(job_id: str):
+    require_job_id(job_id)
+    # Always 16-bit PCM WAV (see mastering_service.py:make_browser_preview)
+    # — the deliverable itself stays at its real bit depth, this exists
+    # purely so an in-browser <audio> player never hits the 24-bit-WAV
+    # compatibility gap that /download's own FileResponse (filename= set,
+    # so Content-Disposition: attachment) would add on top of anyway. No
+    # filename kwarg here — matches /original's already-correct inline
+    # behavior, not /download's attachment one.
+    path = settings.output_dir / f"{job_id}_preview.wav"
+    if not path.exists():
+        # Two ways to land here with no _preview.wav on disk: a job
+        # rendered before this browser-preview copy existed at all (any
+        # job from before this route/service pair shipped — this is the
+        # "after doesn't play" bug reported against the results page),
+        # or one where the best-effort ffmpeg transcode at render time
+        # failed silently. Either way, the fix isn't "the player is
+        # broken" — it's "regenerate the missing copy" rather than
+        # leaving this route permanently 404ing for that job forever.
+        # Regenerated once, on first request; every request after that
+        # hits the `path.exists()` branch above like normal.
+        wav_mastered_path = settings.output_dir / f"{job_id}_mastered.wav"
+        if wav_mastered_path.exists():
+            make_browser_preview(wav_mastered_path, path)
+        if not path.exists():
+            # Regeneration wasn't possible (no mastered .wav on disk —
+            # e.g. an mp3-only output — or ffmpeg itself failed). Fall
+            # back to serving the actual mastered file so playback still
+            # works rather than hard-failing the player outright.
+            matches = list(settings.output_dir.glob(f"{glob.escape(job_id)}_mastered.*"))
+            if not matches:
+                raise HTTPException(404, "Preview not found")
+            return FileResponse(matches[0])
+    return FileResponse(path)
+
+
+@router.delete("/files/{job_id}")
+def delete_job_files(job_id: str) -> dict:
+    require_job_id(job_id)
+    # Every file this job ever produced (input, decoded intermediates,
+    # mastered output in every format, codec-preview renders) is named
+    # "{job_id}_..." in either upload_dir or output_dir — same convention
+    # storage_cleanup.py's automatic 48h sweep relies on, just triggered
+    # immediately instead of waiting for the age-based sweep. No ownership
+    # check here — Node's DELETE /jobs/:jobId already verified the
+    # requester owns this job_id before ever calling this.
+    removed = 0
+    for directory in (settings.upload_dir, settings.output_dir):
+        for path in directory.glob(f"{glob.escape(job_id)}_*"):
+            if path.is_file():
+                path.unlink(missing_ok=True)
+                removed += 1
+    return {"removed": removed}
+
+
+@router.post("/codec-preview", response_model=CodecPreviewResponse)
+def codec_preview(job_id: str = Form(...), codec: str = Form("mp3_128")) -> dict:
+    require_job_id(job_id)
+    if codec not in SUPPORTED_CODECS:
+        raise HTTPException(400, f"Unknown codec '{codec}'. Options: {sorted(SUPPORTED_CODECS)}")
+
+    mastered_wav = settings.output_dir / f"{job_id}_mastered.wav"
+    if not mastered_wav.exists():
+        raise HTTPException(404, f"No mastered wav found for job '{job_id}' — run /master first")
+
+    preview_wav = settings.output_dir / f"{job_id}_codec_{codec}.wav"
+    try:
+        result = simulate_codec(str(mastered_wav), str(preview_wav), codec)
+    except Exception as exc:  # pragma: no cover
+        logging.getLogger(__name__).exception("Codec preview failed for job %s (%s)", job_id, codec)
+        raise _error(500, "render_failed", "Codec preview failed. Please try again.") from exc
+
+    return {**result, "preview_download_url": f"/download-codec-preview/{job_id}/{codec}"}
+
+
+@router.get("/download-codec-preview/{job_id}/{codec}")
+def download_codec_preview(job_id: str, codec: str):
+    require_job_id(job_id)
+    require_codec(codec, SUPPORTED_CODECS)
+    path = settings.output_dir / f"{job_id}_codec_{codec}.wav"
+    if not path.exists():
+        raise HTTPException(404, "Codec preview not found — run /codec-preview first")
+    return FileResponse(path)

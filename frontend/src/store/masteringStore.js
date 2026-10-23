@@ -1,0 +1,749 @@
+import { create } from "zustand";
+
+import { fetchCatalog, importPreset, deletePreset, runMasteringJob, analyzeAudio, previewParams, saveUserPreset, editUserPreset } from "@/domain/mastering/masteringDomain";
+import { DEFAULT_DIRECTION, tweaksForDirection, directionFromPreset } from "@/domain/mastering/directions";
+import { mapAdaptiveParamsToProParams } from "@/domain/mastering/adaptiveToProParams";
+import { trackEvent } from "@/lib/analytics";
+import { useAuthStore } from "@/store/authStore";
+import { useEntitlementsStore } from "@/store/entitlementsStore";
+
+function currentAuthState() {
+  const user = useAuthStore.getState().user;
+  return user ? (user.isAnonymous ? "anonymous" : "authenticated") : "anonymous";
+}
+
+const EMPTY_TWEAKS = {
+  low_end: 0,
+  punch: 0,
+  presence: 0,
+  brightness: 0,
+  warmth: 0,
+  width: 0,
+  loudness: 0,
+};
+
+// Mirrors exactly what backend/app/services/preset_dsp_engine.py actually
+// reads out of a preset's "processing" block — every key here is a real,
+// engine-processed parameter, not a decorative slider. Sensible neutral-ish
+// defaults so switching into Pro mode doesn't silently do nothing (bus
+// compressor and limiter are always meaningfully engaged; EQ/saturation/
+// highpass/clipper start at "off"/flat so the user opts in deliberately).
+export const DEFAULT_PRO_PARAMS = {
+  input: { auto_gain: true, headroom_target_db: -6 },
+  highpass: { enabled: false, frequency_hz: 30, slope_db_oct: 12 },
+  eq: [
+    { frequency_hz: 100, gain_db: 0, q: 1.0 },
+    { frequency_hz: 1000, gain_db: 0, q: 1.0 },
+    { frequency_hz: 8000, gain_db: 0, q: 1.0 },
+  ],
+  bus_compressor: { ratio: 2.0, attack_ms: 20, release_ms: 150, max_gain_reduction_db: 3 },
+  dynamic_eq: [],
+  saturation: { enabled: false, amount: 0.03, oversampling: 4 },
+  stereo: { low_end_mono_below_hz: 120, bands: [] },
+  clipper: { enabled: false, ceiling_dbtp: -1, drive_db: 0, oversampling: 4 },
+  limiter: { target_lufs_i: -10, ceiling_dbtp: -1 },
+  output: { bit_depth: 24, dither: "triangular" },
+};
+
+// Reference mode needs *some* genre/style so the adaptive engine's target
+// profile resolves — the reference track's spectral balance is what
+// actually shapes the tone (see ai_mastering/mastering.py), this is just a
+// harmless baseline the user never has to think about.
+const REFERENCE_MODE_DEFAULTS = { genre: "pop", style: "modern" };
+
+function cloneProParams(params) {
+  return JSON.parse(JSON.stringify(params));
+}
+
+// Debounce for the live parameter preview — module-level (not store state)
+// since it's pure plumbing, not something any component reads. 350ms: long
+// enough that a fast run across genre chips or a dragged tweak knob only
+// fires the request once it settles, short enough that it still reads as
+// "live" rather than laggy.
+let previewDebounceTimer = null;
+const PREVIEW_DEBOUNCE_MS = 350;
+
+export const useMasteringStore = create((set, get) => ({
+  isBootstrapping: true,
+  isSubmitting: false,
+  // { loaded, total, done } bytes while the master request is uploading —
+  // real transfer progress for the wait screen; null once the server has
+  // the file (or when nothing is uploading).
+  uploadProgress: null,
+  isImportingPreset: false,
+  error: "",
+  errorCode: null,
+  status: "",
+  result: null,
+  importError: "",
+
+  file: null,
+  referenceFile: null,
+  // Where the master is going (lib/deliveryTargets.js) — sets the loudness
+  // target and true-peak ceiling alongside genre/style/objective.
+  selectedDelivery: "auto",
+  genres: [],
+  tags: [],
+  styles: [],
+  categories: [],
+  flavoursByCategory: {},
+  presets: [],
+
+  selectedGenre: "",
+  selectedStyle: "modern",
+  // Optional musical-objective layer (Clean, Modern, Club, ...) — "" means
+  // "no category selected", genre + style behave exactly as without it.
+  selectedCategory: "",
+  selectedFlavour: "",
+  selectedPreset: "",
+  selectedTags: [],
+  useStemSeparation: false,
+  tweaks: { ...EMPTY_TWEAKS },
+  // Direction controls (Quick mode): a tone + intensity + loudness choice
+  // that expands into the 7 engine tweaks above (see directions.js).
+  // Fine-tuning any tweak by hand flips tone to "custom".
+  direction: { ...DEFAULT_DIRECTION },
+  // The user preset the current settings came from. Unlike selectedPreset
+  // (cleared on any edit so /master uses the edited values), this survives
+  // edits — it's what "Update preset" writes back to.
+  basePreset: "",
+  isSavingPreset: false,
+  presetSaveError: "",
+  tier: "standard",
+
+  // "quick" = automatic, DSP picks everything from genre/style/tags.
+  // "pro" = manual professional parameters (proParams below), still
+  // rendered by the same DSP engine (preset_dsp_engine). Reference mode
+  // is not a third value here — it's driven by referenceFile being set,
+  // and overrides both (see submit()).
+  mode: "quick",
+  proParams: cloneProParams(DEFAULT_PRO_PARAMS),
+
+  // Live "adaptive controls" preview (Quick mode) — analysis is the
+  // one-time real-audio measurement of the current file (see
+  // analyzeAudio()); livePreviewParams is what compute_processing_params
+  // would actually do with the current genre/style/category/flavour/
+  // tweaks selection against THAT analysis, refreshed via
+  // refreshPreviewParams() below every time one of those changes. null
+  // livePreviewParams before the first successful preview, or whenever
+  // analysis itself is stale/missing — components should treat that as
+  // "no live values yet", not an error.
+  analysis: null,
+  isAnalyzing: false,
+  analyzeError: "",
+  livePreviewParams: null,
+  isPreviewLoading: false,
+  previewError: "",
+  // Set true on a 501 from the server (ffmpeg-fallback engine, no
+  // adaptive parameter model to preview) — sticky for the session so
+  // components can just hide the panel instead of retrying a dead feature
+  // on every selection change.
+  previewUnavailable: false,
+
+  async bootstrap() {
+    // The console remounts on every tab switch; once the catalog is in,
+    // re-running this would reset the genre and drop a preset the user
+    // just picked from My Presets. Preset edits refresh the list
+    // themselves (upsertUserPreset/deletePreset/importPreset).
+    if (get().genres.length && !get().error) {
+      if (get().isBootstrapping) set({ isBootstrapping: false });
+      return;
+    }
+    set({ isBootstrapping: true, error: "", errorCode: null });
+
+    try {
+      const catalog = await fetchCatalog();
+      set({
+        genres: catalog.genres,
+        tags: catalog.tags,
+        styles: catalog.styles,
+        categories: catalog.categories || [],
+        flavoursByCategory: catalog.flavours || {},
+        presets: catalog.presets,
+        selectedGenre: catalog.genres[0] || "",
+        selectedStyle: catalog.styles[0] || "modern",
+        selectedPreset: "",
+        isBootstrapping: false,
+      });
+    } catch (err) {
+      set({
+        isBootstrapping: false,
+        error: err.message || "Failed to load mastering catalog",
+        errorCode: err.code || null,
+      });
+    }
+  },
+
+  setFile(file, sourceTool = "studio") {
+    // New file invalidates any analysis/preview from the previous one —
+    // clear both immediately (stale numbers for a track that's no longer
+    // selected are worse than no numbers) rather than waiting for the new
+    // analysis to land.
+    set({
+      file,
+      result: null,
+      error: "",
+      errorCode: null,
+      analysis: null,
+      livePreviewParams: null,
+      analyzeError: "",
+      previewUnavailable: false,
+    });
+    if (file) {
+      trackEvent("audio_upload_started", {
+        source_tool: sourceTool,
+        file_type: file.type || "unknown",
+        authenticated: currentAuthState(),
+      });
+      get().analyzeCurrentFile(sourceTool);
+    }
+  },
+
+  // Fires once per file selection — the one real audio-decode call the
+  // whole live-preview feature needs. Everything after this (every genre/
+  // style/category/flavour/tweak change) is pure math against the result,
+  // via refreshPreviewParams() below.
+  async analyzeCurrentFile(sourceTool = "studio") {
+    const file = get().file;
+    if (!file) return;
+    set({ isAnalyzing: true, analyzeError: "" });
+    try {
+      const analysis = await analyzeAudio(file);
+      // The file could have changed again while this was in flight —
+      // don't clobber a newer selection's (possibly still-loading) state
+      // with a stale response.
+      if (get().file !== file) return;
+      set({ analysis, isAnalyzing: false });
+      trackEvent("audio_upload_completed", {
+        source_tool: sourceTool,
+        file_type: file.type || "unknown",
+        authenticated: currentAuthState(),
+      });
+      get().refreshPreviewParams();
+    } catch (err) {
+      if (get().file !== file) return;
+      const unavailable = err?.status === 501;
+      set({
+        isAnalyzing: false,
+        previewUnavailable: unavailable,
+        analyzeError: unavailable ? "" : err.message || "Couldn't analyze this file for live preview.",
+      });
+    }
+  },
+
+  // Debounced live-preview refresh — called after every genre/style/
+  // category/flavour/tweak change (see those actions below). No-ops
+  // silently when there's no analysis yet (nothing uploaded, still
+  // analyzing, or the server doesn't support it) rather than erroring —
+  // this is a bonus preview, never a blocker for actually mastering.
+  refreshPreviewParams() {
+    if (!get().analysis || get().previewUnavailable) return;
+    if (previewDebounceTimer) clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(() => {
+      get()._refreshPreviewParamsNow();
+    }, PREVIEW_DEBOUNCE_MS);
+  },
+
+  async _refreshPreviewParamsNow() {
+    const state = get();
+    const analysis = state.analysis;
+    if (!analysis) return;
+    set({ isPreviewLoading: true, previewError: "" });
+    try {
+      const params = await previewParams({
+        analysis,
+        genre: state.selectedGenre,
+        style: state.selectedStyle,
+        tags: state.selectedTags,
+        tweaks: state.tweaks,
+        category: state.selectedCategory,
+        flavour: state.selectedFlavour,
+        delivery: state.selectedDelivery,
+        mixPreset: state.presets.find((p) => p.name === state.selectedPreset)?.kind === "direction" ? state.selectedPreset : null,
+      });
+      // The selection could have moved on again while this was in
+      // flight — a stale response would flash outdated numbers for a
+      // moment before the next debounced call lands. Simplest guard:
+      // only apply if analysis is still the same object (set again only
+      // by a fresh upload, which itself invalidates any in-flight call
+      // via the file-identity check in analyzeCurrentFile).
+      if (get().analysis !== analysis) return;
+      set({ livePreviewParams: params, isPreviewLoading: false });
+      // In Pro mode, a fresh objective/tag/genre/style selection reseeds
+      // the manual knobs with the newly-computed values — see
+      // applyPreviewParamsToProParams's own comment for why this is a
+      // one-time seed, not a continuous link.
+      if (get().mode === "pro") get().applyPreviewParamsToProParams(params);
+    } catch (err) {
+      if (get().analysis !== analysis) return;
+      const unavailable = err?.status === 501;
+      set({
+        isPreviewLoading: false,
+        previewUnavailable: unavailable,
+        previewError: unavailable ? "" : err.message || "Couldn't refresh live preview.",
+      });
+    }
+  },
+
+  // Uploading a reference track is its own workflow (see submit()) — it
+  // does NOT clear the main file, and clearing the reference (back button)
+  // does not touch the main file either, so switching between manual and
+  // reference mastering never loses the user's uploaded audio.
+  setReferenceFile(referenceFile) {
+    set({ referenceFile });
+  },
+
+  setMode(mode) {
+    const next = mode === "pro" ? "pro" : "quick";
+    set({ mode: next });
+    // Switching into Pro with an objective/tag already selected (and a
+    // live preview already computed for it) seeds the manual knobs with
+    // those real values right away, instead of only the next time the
+    // selection changes — see adaptiveToProParams.js.
+    if (next === "pro" && get().livePreviewParams) {
+      get().applyPreviewParamsToProParams(get().livePreviewParams);
+    }
+  },
+
+  // Applies the adaptive engine's live-computed values (real numbers for
+  // the current track + genre/style/category/flavour/tags selection, not
+  // generic defaults) to Pro Master's manual knobs — a one-time seed, not
+  // a continuous link, so hand-tuning a knob afterward sticks until the
+  // objective/tag selection itself changes again. See
+  // adaptiveToProParams.js for the actual field mapping and why it's not
+  // a clean 1:1 translation.
+  applyPreviewParamsToProParams(params) {
+    set({ proParams: mapAdaptiveParamsToProParams(params, get().proParams) });
+  },
+
+  setGenre(selectedGenre) {
+    set({ selectedGenre, selectedPreset: "" });
+    get().refreshPreviewParams();
+  },
+
+  setStyle(selectedStyle) {
+    set({ selectedStyle, selectedPreset: "" });
+    get().refreshPreviewParams();
+  },
+
+  setCategory(selectedCategory) {
+    // Switching category resets flavour — flavours are scoped to their
+    // parent category (see FLAVOURS_BY_CATEGORY), a stale flavour name from
+    // a different category would silently do nothing server-side.
+    set({ selectedCategory, selectedFlavour: "", selectedPreset: "" });
+    get().refreshPreviewParams();
+  },
+
+  setFlavour(selectedFlavour) {
+    set({ selectedFlavour, selectedPreset: "" });
+    get().refreshPreviewParams();
+  },
+
+  setPreset(selectedPreset) {
+    const preset = get().presets.find((item) => item.name === selectedPreset);
+    if (!preset) {
+      set({ selectedPreset: "" });
+      return;
+    }
+
+    // Only a literal chain (kind "chain": an imported JSON chain or a saved
+    // Pro setup) is a manual processing spec that belongs in the Pro knobs.
+    // Built-in presets are "direction": adaptive intents that steer the
+    // adaptive engine — loading them into the Pro knobs used to leave the
+    // console in Pro mode with an intent spec the manual engine can't read.
+    const hasProcessing = preset.kind === "chain";
+    const tweaks = { ...EMPTY_TWEAKS, ...(preset.tweaks || {}) };
+    set({
+      selectedPreset,
+      basePreset: preset.custom && !hasProcessing ? preset.name : "",
+      selectedGenre: preset.genre || get().selectedGenre,
+      selectedStyle: preset.style || get().selectedStyle,
+      selectedTags: preset.tags || [],
+      tweaks,
+      direction: directionFromPreset(preset, tweaks),
+      // User-built presets carry their objective; built-ins don't have one,
+      // so they clear it (the preset alone defines the sound).
+      selectedCategory: preset.category || "",
+      selectedFlavour: preset.category ? preset.flavour || "" : "",
+      useStemSeparation: Boolean(preset.use_stem_separation),
+      // A preset without its own literal spec doesn't touch mode/proParams
+      // here (unlike the hasProcessing branch just below) — the
+      // refreshPreviewParams() call after this set() is what seeds Pro
+      // Master's knobs for it instead, same as picking a genre/tag/
+      // objective chip does. Skipped entirely for a full preset (below):
+      // that one already IS a literal spec, re-seeding it from the
+      // adaptive engine's guess would overwrite the exact values the
+      // preset was saved with.
+      // A saved preset with a full "processing" spec IS a professional
+      // preset — selecting it switches to Pro mode and populates the
+      // manual control panel with its actual values, so the UI reflects
+      // exactly what will run rather than just a name in a dropdown.
+      ...(hasProcessing
+        ? { mode: "pro", proParams: { ...cloneProParams(DEFAULT_PRO_PARAMS), ...preset.processing } }
+        : {}),
+    });
+    if (!hasProcessing) get().refreshPreviewParams();
+  },
+
+  setDelivery(selectedDelivery) {
+    // Independent of the preset — "this preset, delivered for streaming" is
+    // a real combination — so this doesn't clear selectedPreset.
+    set({ selectedDelivery });
+    get().refreshPreviewParams();
+  },
+
+  toggleTag(tag) {
+    const selectedTags = get().selectedTags;
+    if (selectedTags.includes(tag)) {
+      set({ selectedTags: selectedTags.filter((item) => item !== tag), selectedPreset: "" });
+    } else {
+      set({ selectedTags: [...selectedTags, tag], selectedPreset: "" });
+    }
+    get().refreshPreviewParams();
+  },
+
+  setUseStemSeparation(useStemSeparation) {
+    set({ useStemSeparation, selectedPreset: "" });
+  },
+
+  setTweak(key, value) {
+    const numeric = Number(value);
+    const direction = get().direction;
+    set({
+      tweaks: {
+        ...get().tweaks,
+        [key]: Number.isFinite(numeric) ? numeric : 0,
+      },
+      // Loudness has its own segment; any tonal tweak makes it custom.
+      direction: key === "loudness" ? direction : { ...direction, tone: "custom" },
+      selectedPreset: "",
+    });
+    get().refreshPreviewParams();
+  },
+
+  // patch: any of { tone, intensity, loudness }.
+  setDirection(patch) {
+    const direction = { ...get().direction, ...patch };
+    set({
+      direction,
+      tweaks: tweaksForDirection(direction, get().tweaks),
+      selectedPreset: "",
+    });
+    get().refreshPreviewParams();
+  },
+
+  resetDirection() {
+    set({ direction: { ...DEFAULT_DIRECTION }, tweaks: { ...EMPTY_TWEAKS }, selectedPreset: "" });
+    get().refreshPreviewParams();
+  },
+
+  // The current Quick-mode settings as a user preset body.
+  currentPresetSettings() {
+    const s = get();
+    return {
+      genre: s.selectedGenre,
+      style: s.selectedStyle,
+      tags: s.selectedTags,
+      tweaks: s.tweaks,
+      category: s.selectedCategory,
+      flavour: s.selectedFlavour,
+      direction: s.direction,
+    };
+  },
+
+  // Create (existingName empty) or overwrite a user preset, then reload the
+  // preset list. Returns the saved preset, or null on failure (the message
+  // lands in presetSaveError). Doesn't touch the console selection — the
+  // console's own save/update wrappers below do that.
+  async upsertUserPreset(input, existingName = "") {
+    set({ isSavingPreset: true, presetSaveError: "" });
+    try {
+      const saved = existingName ? await editUserPreset(existingName, input) : await saveUserPreset(input);
+      const catalog = await fetchCatalog();
+      set({ presets: catalog.presets, isSavingPreset: false });
+      // Edited from My Presets while the console has it applied (and
+      // unmodified): reload it so the console shows what will render.
+      if (existingName && get().selectedPreset === existingName) get().setPreset(existingName);
+      trackEvent("preset_saved", { action: existingName ? "updated" : "created", tone: input.direction?.tone || "custom" });
+      return saved;
+    } catch (err) {
+      set({ isSavingPreset: false, presetSaveError: err.message || "Couldn't save the preset" });
+      return null;
+    }
+  },
+
+  async saveCurrentAsPreset(name, description = "") {
+    const saved = await get().upsertUserPreset({ ...get().currentPresetSettings(), name, description });
+    if (saved) set({ selectedPreset: saved.name, basePreset: saved.name });
+    return saved;
+  },
+
+  async updateBasePreset() {
+    const base = get().presets.find((p) => p.name === get().basePreset);
+    if (!base) return null;
+    const saved = await get().upsertUserPreset(
+      { ...get().currentPresetSettings(), name: base.display_name, description: base.description },
+      base.name
+    );
+    if (saved) set({ selectedPreset: saved.name });
+    return saved;
+  },
+
+  clearPresetSaveError() {
+    set({ presetSaveError: "" });
+  },
+
+  setTier(tier) {
+    set({ tier: tier === "professional" ? "professional" : "standard" });
+  },
+
+  // Shallow-merges a patch into one section of proParams, e.g.
+  // setProSection("limiter", { target_lufs_i: -9 }).
+  setProSection(section, patch) {
+    set({
+      proParams: { ...get().proParams, [section]: { ...get().proParams[section], ...patch } },
+      selectedPreset: "",
+    });
+  },
+
+  addProBand(section, band) {
+    const proParams = get().proParams;
+    set({
+      proParams: { ...proParams, [section]: [...proParams[section], band] },
+      selectedPreset: "",
+    });
+  },
+
+  updateProBand(section, index, patch) {
+    const proParams = get().proParams;
+    const list = proParams[section].map((band, i) => (i === index ? { ...band, ...patch } : band));
+    set({ proParams: { ...proParams, [section]: list }, selectedPreset: "" });
+  },
+
+  removeProBand(section, index) {
+    const proParams = get().proParams;
+    set({
+      proParams: { ...proParams, [section]: proParams[section].filter((_, i) => i !== index) },
+      selectedPreset: "",
+    });
+  },
+
+  // Stereo bands live at proParams.stereo.bands (nested one level deeper
+  // than the other band lists), so they get their own small helpers.
+  addStereoBand(band) {
+    const stereo = get().proParams.stereo;
+    set({ proParams: { ...get().proParams, stereo: { ...stereo, bands: [...stereo.bands, band] } }, selectedPreset: "" });
+  },
+
+  updateStereoBand(index, patch) {
+    const stereo = get().proParams.stereo;
+    const bands = stereo.bands.map((band, i) => (i === index ? { ...band, ...patch } : band));
+    set({ proParams: { ...get().proParams, stereo: { ...stereo, bands } }, selectedPreset: "" });
+  },
+
+  removeStereoBand(index) {
+    const stereo = get().proParams.stereo;
+    set({
+      proParams: { ...get().proParams, stereo: { ...stereo, bands: stereo.bands.filter((_, i) => i !== index) } },
+      selectedPreset: "",
+    });
+  },
+
+  resetProParams() {
+    set({ proParams: cloneProParams(DEFAULT_PRO_PARAMS) });
+  },
+
+  async importPreset(file, displayName) {
+    if (!file) return;
+    set({ isImportingPreset: true, importError: "" });
+
+    try {
+      const preset = await importPreset(file, displayName);
+      const catalog = await fetchCatalog();
+      const hasProcessing = preset.kind === "chain";
+      set({
+        presets: catalog.presets,
+        selectedPreset: preset.name,
+        basePreset: "",
+        selectedGenre: preset.genre || get().selectedGenre,
+        selectedStyle: preset.style || get().selectedStyle,
+        selectedTags: preset.tags || [],
+        tweaks: { ...EMPTY_TWEAKS, ...(preset.tweaks || {}) },
+        useStemSeparation: Boolean(preset.use_stem_separation),
+        isImportingPreset: false,
+        ...(hasProcessing
+          ? { mode: "pro", proParams: { ...cloneProParams(DEFAULT_PRO_PARAMS), ...preset.processing } }
+          : {}),
+      });
+      trackEvent("preset_saved", { action: "imported" });
+    } catch (err) {
+      set({ isImportingPreset: false, importError: err.message || "Preset import failed" });
+    }
+  },
+
+  async deletePreset(name) {
+    try {
+      await deletePreset(name);
+      const catalog = await fetchCatalog();
+      const stillSelected = catalog.presets.some((p) => p.name === get().selectedPreset);
+      const baseStillExists = catalog.presets.some((p) => p.name === get().basePreset);
+      set({
+        presets: catalog.presets,
+        ...(stillSelected ? {} : { selectedPreset: "" }),
+        ...(baseStillExists ? {} : { basePreset: "" }),
+      });
+    } catch (err) {
+      set({ importError: err.message || "Failed to remove preset" });
+    }
+  },
+
+  // preview=true is the free path (30s, Standard engine, no stems, no
+  // paywall — see PRICING.md); preview=false is the paid full render.
+  async submit(preview = false) {
+    const state = get();
+
+    if (!state.file) {
+      set({ error: "Select an audio file before mastering.", errorCode: "no_file" });
+      return;
+    }
+
+    const referenceMode = Boolean(state.referenceFile);
+
+    if (!referenceMode && !state.selectedGenre && !state.selectedPreset) {
+      set({ error: "Select a genre or mixing preset.", errorCode: "no_genre" });
+      return;
+    }
+
+    set({
+      isSubmitting: true,
+      uploadProgress: { loaded: 0, total: 0, done: false },
+      status: preview ? "Rendering preview..." : "Analyzing and mastering...",
+      error: "",
+      errorCode: null,
+      result: null,
+    });
+
+    const masteringMode = referenceMode ? "reference" : state.mode;
+    const startedAt = Date.now();
+    trackEvent("master_started", {
+      mastering_mode: masteringMode,
+      tier: state.tier,
+      preview,
+      authenticated: currentAuthState(),
+    });
+
+    // A preset actually going into a real master (not a preview/reference
+    // render). Built-in names are safe to send; custom names are user text.
+    if (state.selectedPreset && !preview && !referenceMode) {
+      const applied = state.presets.find((p) => p.name === state.selectedPreset);
+      trackEvent("preset_applied", { source: applied?.custom ? "custom" : "builtin", preset: applied?.custom ? null : state.selectedPreset });
+    }
+
+    try {
+      const usingSavedPreset = Boolean(state.selectedPreset);
+      const usingLiteralChain = state.presets.find((p) => p.name === state.selectedPreset)?.kind === "chain";
+      // Reference mode always uses the adaptive engine (spectral matching
+      // against the reference) — never the manual Pro processing spec, per
+      // "no manual parameter form while reference mode is active".
+      const useProProcessing = !preview && !referenceMode && state.mode === "pro" && !usingSavedPreset;
+
+      const response = await runMasteringJob({
+        file: state.file,
+        referenceFile: state.referenceFile,
+        genre: referenceMode ? state.selectedGenre || REFERENCE_MODE_DEFAULTS.genre : state.selectedGenre,
+        style: referenceMode ? state.selectedStyle || REFERENCE_MODE_DEFAULTS.style : state.selectedStyle,
+        tags: referenceMode ? [] : state.selectedTags,
+        tweaks: state.tweaks,
+        useStemSeparation: state.useStemSeparation,
+        mixPreset: state.selectedPreset || null,
+        processing: useProProcessing ? state.proParams : null,
+        tier: state.tier,
+        // Category/flavour only make sense for the adaptive engine — never
+        // sent for a saved preset (a preset is a self-sufficient literal
+        // spec) or a Pro-mode manual processing spec.
+        // Objective/flavour apply to the adaptive engine — the free preview
+        // included (it used to drop them, so a preview didn't match its
+        // master). Only a literal chain or the Pro manual knobs skip them.
+        category: !usingLiteralChain && !useProProcessing ? state.selectedCategory || null : null,
+        flavour: !usingLiteralChain && !useProProcessing ? state.selectedFlavour || null : null,
+        delivery: state.selectedDelivery || "auto",
+        preview,
+        onUploadProgress: (progress) => set({ uploadProgress: progress.done ? null : progress }),
+      });
+
+      set({
+        isSubmitting: false,
+        uploadProgress: null,
+        status: preview ? "Preview ready." : "Mastering complete.",
+        result: response,
+      });
+      trackEvent("master_completed", {
+        mastering_mode: masteringMode,
+        tier: state.tier,
+        preview,
+        authenticated: currentAuthState(),
+        processing_duration_ms: Date.now() - startedAt,
+        // Server-decided (POST /master): true only on the user's first real
+        // master -> Meta FirstMasterCompleted (lib/analytics.js).
+        ...(response?.first_master === true ? { first_master: true, job_id: response.job_id } : {}),
+      });
+      // Funnel checkpoint distinguishing a one-and-done trial user from
+      // someone who came back for a repeat master — masterQuota.used is
+      // read from BEFORE this job's own consumption is reflected (it's
+      // only refreshed after this resolves, see AppClient's
+      // refreshEntitlements() call), so used === 1 here means this
+      // completion is what brings the count to exactly 2.
+      if (!preview) {
+        const quotaBeforeThisJob = useEntitlementsStore.getState().masterQuota;
+        if (quotaBeforeThisJob?.used === 1) {
+          trackEvent("second_master", { mastering_mode: masteringMode, authenticated: currentAuthState() });
+        }
+      }
+    } catch (err) {
+      set({
+        isSubmitting: false,
+        uploadProgress: null,
+        status: "",
+        error: err.message || "Mastering failed",
+        // Stable reason from the API (X-Error-Code / payload.code); the UI
+        // localizes it and falls back to `error` (see masteringErrors.js).
+        errorCode: err.code || null,
+      });
+      trackEvent("master_failed", {
+        mastering_mode: masteringMode,
+        tier: state.tier,
+        preview,
+        authenticated: currentAuthState(),
+        processing_duration_ms: Date.now() - startedAt,
+        error_reason: err?.status ? `http_${err.status}` : "unknown",
+      });
+    }
+  },
+
+  // Called from the dedicated result page's "Master Another Track" —
+  // clears the just-finished result (and file) so returning to the Master
+  // tab starts clean rather than showing stale before/after data. Does NOT
+  // touch genre/style/category/tweaks — those stay as the user left them,
+  // same convenience as re-mastering a similar track.
+  clearResult() {
+    set({ result: null, file: null, referenceFile: null, status: "", error: "", errorCode: null });
+  },
+
+  // Called by AppClient's auto-navigation effect the moment it has actually
+  // pushed the user to /app?job=:jobId for a finished real (non-preview)
+  // master — NOT a general-purpose reset like clearResult() above. The
+  // result view is a query param on AppClient's one persistent page
+  // instance now (a separate /app/masters/:jobId route was tried and
+  // reverted — it remounted the whole shell on every visit, a visible
+  // regression), so a `lastAutoNavJobId` ref in that same effect is what
+  // actually stops it from re-firing; this just tidies the store's
+  // "unseen finished result" signal away once it's been acted on, mostly
+  // so NotificationBanner's "your master is ready" toast doesn't linger
+  // for a result the user is already looking at. Deliberately leaves
+  // file/genre/tweaks/status alone (unlike clearResult) since the user
+  // hasn't chosen to start over — they just got auto-routed to see their
+  // finished master.
+  acknowledgeResult() {
+    set({ result: null });
+  },
+}));

@@ -1,0 +1,263 @@
+// Must be the first import: it checks the Node version before any native
+// addon (better-sqlite3) gets a chance to segfault. See the module docs.
+import "./config/requireNodeVersion.js";
+
+import fs from "node:fs";
+
+import cors from "cors";
+import express from "express";
+
+import { settings } from "./config/settings.js";
+import { requireAuth } from "./middleware/auth.js";
+import { generalLimiter } from "./middleware/rateLimit.js";
+import { verifyDownloadToken } from "./services/downloadTokenService.js";
+import masteringRoutes, { reconcileReservations } from "./routes/masteringRoutes.js";
+import webhookRoutes from "./routes/webhookRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
+import adminUsersRoutes from "./routes/adminUsersRoutes.js";
+import adminNotificationsRoutes from "./routes/adminNotificationsRoutes.js";
+import { reconcileAllSubscriptions } from "./services/polarService.js";
+import { startBot as startTelegramBot } from "./services/telegramService.js";
+import { clientIp } from "./middleware/clientIp.js";
+import { purgeExpiredJobs } from "./services/jobsService.js";
+import { purgeOldAnalytics } from "./config/analyticsDb.js";
+import { startUploadSweep } from "./middleware/cleanupUploads.js";
+
+// <a href download>, <audio src>, and direct browser navigation to a
+// download-family route can't attach an Authorization header — a ?dl=
+// query token (see downloadTokenService.js) is checked first as an
+// alternate credential for exactly these paths, falling through to normal
+// header-based requireAuth if it's missing/invalid (so a real fetch() call
+// with a Bearer header, e.g. from a future non-browser client, still works
+// too). ownsJob() inside each route still checks the resolved uid actually
+// owns the requested job either way — this only replaces *how* the uid is
+// established, not the ownership check itself.
+// /preview/ is the result page's "After" source (<audio src> + fetch for
+// the instant A/B) — without it here every preview request 401'd and the
+// player could only limp along on the full-size /download fallback.
+const DOWNLOAD_PATH_PREFIXES = ["/download/", "/download-codec-preview/", "/original/", "/preview/"];
+
+function isDownloadPath(reqPath) {
+  return DOWNLOAD_PATH_PREFIXES.some((prefix) => reqPath.startsWith(prefix));
+}
+
+fs.mkdirSync(settings.uploadDir, { recursive: true });
+fs.mkdirSync(settings.outputDir, { recursive: true });
+
+// The "any other value silently falls back to the crude ffmpeg engine"
+// behavior (see masteringService.js) is fine for local dev — it isn't fine
+// in production, where it means every render silently degrades instead of
+// failing loud the moment someone forgets to set this. Refuse to boot
+// rather than serve worse masters with no error signal.
+if (settings.nodeEnv === "production" && settings.masteringEngine !== "adaptive_python") {
+  console.error(
+    `Refusing to start: NODE_ENV=production but MASTERING_ENGINE=${settings.masteringEngine || "(unset)"}, ` +
+      `not "adaptive_python". This would silently downgrade every render to the crude ffmpeg fallback engine. ` +
+      `Set MASTERING_ENGINE=adaptive_python.`
+  );
+  process.exit(1);
+}
+// Was a console.warn — silently permissive in production is exactly the
+// "found out from a customer/security report instead of at boot" failure
+// mode the masteringEngine check above already refuses to allow for a
+// worse-quality render. A wildcard origin here means literally any website
+// can call this API's authenticated routes from a signed-in user's own
+// browser (CORS governs which origins a BROWSER lets read the response —
+// it's not a server-side allowlist, so this is a real cross-origin request
+// forgery surface, not just a style nit). docker-compose.yml already seeds
+// CORS_ORIGINS from FRONTEND_ORIGIN, which every other real-deploy
+// integration here (share links, this check) also depends on being set.
+if (settings.nodeEnv === "production" && settings.corsOrigins.includes("*")) {
+  console.error(
+    "Refusing to start: NODE_ENV=production but CORS_ORIGINS is '*' (or FRONTEND_ORIGIN is unset — " +
+      "docker-compose.yml seeds one from the other). Any website could call this API from a signed-in " +
+      "user's browser. Set FRONTEND_ORIGIN to your real frontend origin(s), e.g. https://auralithforge.app."
+  );
+  process.exit(1);
+}
+
+const app = express();
+
+// Caddy terminates HTTPS and reverse-proxies to this container over plain
+// HTTP — without this, Express never trusts Caddy's X-Forwarded-Proto
+// header, so req.protocol always reports "http" even though the real
+// public request was HTTPS. That bug was building http:// share-download
+// links (masteringRoutes.js's /shared/:jobId/info) from an HTTPS page,
+// which browsers silently mixed-content-block — surfaced to the user as a
+// bare "NetworkError when attempting to fetch resource" with no other
+// detail. Safe to trust unconditionally here: Caddy is the only thing
+// that ever talks to this container (see ARCHITECTURE.md §7 / Caddyfile).
+app.set("trust proxy", true);
+
+// Real visitor IP + country behind Cloudflare (see middleware/clientIp.js)
+// — before anything that keys on the client (rate limits, analytics).
+app.use(clientIp);
+
+// Temp-upload backstop sweep (see middleware/cleanupUploads.js).
+startUploadSweep();
+
+app.use(
+  cors({
+    origin: settings.corsOrigins.includes("*") ? true : settings.corsOrigins,
+  })
+);
+
+// Mounted before express.json() — its own route applies express.raw()
+// itself, and needs to (see webhookRoutes.js). Polar authenticates this
+// via HMAC signature (verified inside the route), not a Firebase user, so
+// it's also outside the requireAuth gate below.
+app.use("/", webhookRoutes);
+
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+// Mounted after webhookRoutes on purpose — Polar's webhook calls are never
+// rate-limited (they're signature-verified, not user traffic, and Polar
+// retries on failure). Generous floor under every other route; the real
+// per-route protection for expensive DSP work is expensiveLimiter,
+// applied directly to /master, /analyze-chords, /codec-preview.
+app.use(generalLimiter);
+
+// Every route requires a signed-in Firebase user except /health (load
+// balancers/uptime monitors don't carry a user token), /validate-email
+// (checked *before* an account exists — signup itself, so there's no
+// token yet to require), /newsletter/subscribe (meant for an anonymous
+// homepage visitor, not just a signed-in user), /admin/* (gated instead
+// by requireAdminKey in masteringRoutes.js), /webhooks/* (gated by
+// signature verification, handled above and already responded to by the
+// time a request would reach here), /shared/* — a share link is
+// explicitly meant for someone with no account at all; it's gated by its
+// own ?token= instead (verifyShareToken, inside the route itself) — and
+// /analytics/collect, the one first-party-analytics ingestion endpoint
+// that must accept a request from a visitor with literally no Firebase
+// interaction yet (a first page view, before even anonymous sign-in
+// exists). /analytics/admin/* is deliberately NOT listed here — it's a
+// real authenticated + role-checked admin surface (requireAdmin.js), and
+// naming it "/admin/..." would have wrongly matched the bypass above.
+app.use((req, res, next) => {
+  if (
+    req.path === "/health" ||
+    req.path === "/validate-email" ||
+    req.path === "/newsletter/subscribe" ||
+    req.path === "/analytics/collect" ||
+    req.path.startsWith("/admin/") ||
+    req.path.startsWith("/webhooks/") ||
+    req.path.startsWith("/shared/")
+  ) {
+    return next();
+  }
+
+  if (isDownloadPath(req.path)) {
+    const uid = verifyDownloadToken(req.query.dl);
+    if (uid) {
+      req.user = { uid, email: null };
+      return next();
+    }
+  }
+
+  return requireAuth(req, res, next);
+});
+
+app.use("/", masteringRoutes);
+app.use("/", analyticsRoutes);
+app.use("/", adminUsersRoutes);
+app.use("/", adminNotificationsRoutes);
+
+// Without this, anything thrown/passed to next(err) that a route didn't
+// catch itself (a multer file-filter rejection, a body-size overflow, a
+// genuine bug) falls through to Express's own default error handler —
+// an HTML page, not this API's JSON error shape, and in some
+// configurations that page can include a stack trace. One place, JSON
+// always, message only (never error.stack) in the response body.
+app.use((err, req, res, _next) => {
+  console.error(`Unhandled error on ${req.method} ${req.path}:`, err);
+  if (res.headersSent) return;
+  if (err.name === "MulterError" && err.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ detail: `That file is larger than ${settings.maxUploadMb} MB. Export a shorter or compressed version and try again.`, code: "file_too_large" });
+  }
+  const status = err.status || err.statusCode || (err.name === "MulterError" ? 400 : 500);
+  // 4xx messages are written for users (validation, file-type rejection);
+  // an unexpected 5xx message can describe internals, so it stays in the log.
+  const detail = status < 500 ? err.message || "Request rejected." : "Something went wrong on our side. Please try again.";
+  res.status(status).json(err.code && status < 500 ? { detail, code: err.code } : { detail });
+});
+
+app.listen(settings.port, () => {
+  console.log(`${settings.appTitle} listening on http://localhost:${settings.port}`);
+});
+
+// No-op when TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID aren't set (logs once and
+// returns) — safe to always call rather than gating on NODE_ENV like the
+// reconciliation loop below, since local dev is exactly where you'd want
+// to test the bot against a sandbox chat before it ever touches production.
+startTelegramBot();
+
+// Reconciliation backstop — webhooks are the fast path for keeping
+// Firestore's subscription mirror in sync with Polar, but nothing catches
+// a webhook that never arrives at all (endpoint unreachable during a
+// deploy, wrong URL registered in Polar's dashboard, etc.). This periodic
+// pass asks Polar directly for the truth on every user with a
+// subscription on file and self-heals any drift. No new infra — this
+// server process is already always running, so setInterval is enough;
+// doesn't need a separate cron container. Runs once shortly after boot
+// (catches drift from any downtime just before this deploy), then every
+// 6 hours. Only in production — skips local/dev boots where
+// POLAR_ACCESS_TOKEN often isn't configured at all.
+if (settings.nodeEnv === "production" && settings.polarAccessToken) {
+  const RECONCILE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+  const runReconciliation = () => {
+    reconcileAllSubscriptions().catch((error) => {
+      console.error("Subscription reconciliation pass failed:", error);
+    });
+  };
+  setTimeout(runReconciliation, 30 * 1000);
+  setInterval(runReconciliation, RECONCILE_INTERVAL_MS);
+}
+
+// Render-reservation backstop (see reservationLedger.js): settles any
+// reservation whose request died before settling it — a restart mid-render,
+// a crash, a refund written while Firestore was down. Refunds undelivered
+// renders, completes delivered ones. Leases outlive the 19-min gateway
+// deadline, so a live render is never touched. Unref'd so it never holds
+// the process open; RESERVATION_RECONCILE_INTERVAL_MS=0 disables it.
+const RESERVATION_RECONCILE_MS = Number(process.env.RESERVATION_RECONCILE_INTERVAL_MS ?? 5 * 60 * 1000);
+if (RESERVATION_RECONCILE_MS > 0) {
+  const runReservationReconcile = () => {
+    reconcileReservations()
+      .then((summary) => {
+        if (summary.completed || summary.refunded || summary.errors) console.log("Reservation reconcile:", JSON.stringify(summary));
+      })
+      .catch((error) => console.error("Reservation reconcile pass failed:", error.message));
+  };
+  setTimeout(runReservationReconcile, 60 * 1000).unref();
+  setInterval(runReservationReconcile, RESERVATION_RECONCILE_MS).unref();
+}
+
+// Bounded retention purge (jobs table + first-party analytics). Each run
+// deletes at most RETENTION_MAX_BATCHES batches per table; the SQLite calls
+// are synchronous, so batches stay small. RETENTION_PURGE_INTERVAL_MS=0
+// disables it. Unref'd so it never holds the process open.
+const RETENTION_PURGE_MS = Number(process.env.RETENTION_PURGE_INTERVAL_MS ?? 60 * 60 * 1000);
+const RETENTION_MAX_BATCHES = 10;
+if (RETENTION_PURGE_MS > 0) {
+  const runPurge = () => {
+    try {
+      const batchSize = settings.retentionBatchSize;
+      const total = { jobs: 0, events: 0, sessions: 0, visitors: 0 };
+      for (let i = 0; i < RETENTION_MAX_BATCHES; i += 1) {
+        const jobs = purgeExpiredJobs({ historyRetentionDays: settings.jobsHistoryRetentionDays, batchSize });
+        const a = purgeOldAnalytics({ retentionDays: settings.analyticsRetentionDays, batchSize });
+        total.jobs += jobs;
+        total.events += a.events;
+        total.sessions += a.sessions;
+        total.visitors += a.visitors;
+        if (jobs < batchSize && a.events < batchSize && a.sessions < batchSize && a.visitors < batchSize) break;
+      }
+      if (total.jobs || total.events || total.sessions || total.visitors) console.log("Retention purge:", JSON.stringify(total));
+    } catch (error) {
+      console.error("Retention purge failed:", error.message);
+    }
+  };
+  setTimeout(runPurge, 2 * 60 * 1000).unref();
+  setInterval(runPurge, RETENTION_PURGE_MS).unref();
+}

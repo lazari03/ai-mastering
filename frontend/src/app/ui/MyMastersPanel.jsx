@@ -1,0 +1,339 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { motion } from "motion/react";
+
+import { getJobs, toAuthedDownloadUrl, deleteJobRecord, downloadFileSafely } from "@/network/http/client";
+import { useEntitlementsStore, planUnlocksShare } from "@/store/entitlementsStore";
+import StatePanel from "@/components/site/StatePanel";
+import { LoadingBlock } from "@/components/ui/Spinner";
+import { shortenFilename } from "@/lib/format";
+import { useLanguage } from "@/lib/i18n";
+import { trackEvent } from "@/lib/analytics";
+import ShareLinkManager from "./ShareLinkManager";
+import InlineAlert from "@/components/ui/InlineAlert";
+
+// Internal token, not display text — "expired" is compared against
+// elsewhere in this file (filtering, conditional rendering), so it stays
+// a stable non-localized sentinel. Actual on-screen text is built by
+// formatExpiry() below, which is localized.
+function timeUntil(iso) {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return "expired";
+  const hours = Math.floor(ms / 3600000);
+  if (hours < 1) return `${Math.max(1, Math.floor(ms / 60000))}m left`;
+  return `${hours}h left`;
+}
+
+function formatExpiry(t, iso) {
+  const raw = timeUntil(iso);
+  if (raw === "expired") return t("myMasters.expired");
+  if (raw == null) return "";
+  const match = /^(\d+)([mh]) left$/.exec(raw);
+  if (!match) return raw;
+  const [, amount, unit] = match;
+  return unit === "m" ? t("myMasters.minutesLeft", { n: amount }) : t("myMasters.hoursLeft", { n: amount });
+}
+
+// The backend caps /jobs at 25 records total (jobsService.js's listJobs),
+// so there's never enough data here to justify a second network
+// round-trip or an infinite-scroll — pagination + the active/expired
+// filter both just slice the one already-fetched array client-side.
+const PAGE_SIZE = 8;
+
+export default function MyMastersPanel({ onNavigate }) {
+  const { t } = useLanguage();
+  const [jobs, setJobs] = useState(null);
+  const [error, setError] = useState("");
+  const [busyJobId, setBusyJobId] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState("");
+  const [openShareJobId, setOpenShareJobId] = useState(""); // whose share panel is open
+  const [downloadErrors, setDownloadErrors] = useState({});
+  const [filter, setFilter] = useState("active"); // "active" | "expired" | "all"
+  const [page, setPage] = useState(1);
+
+  const { plan } = useEntitlementsStore();
+  const shareUnlocked = planUnlocksShare(plan);
+
+  const [reloadKey, setReloadKey] = useState(0);
+  useEffect(() => {
+    setError("");
+    getJobs()
+      .then(async (list) => {
+        // Only the mastered file — My Masters is deliberately just that,
+        // not an A/B archive (the Master tab's Review panel is where the
+        // original-vs-mastered comparison lives, right after rendering).
+        // Built once per job here (not per-render, and not via a raw
+        // toAbsoluteUrl) — this route needs the ?dl= token to work at all
+        // from a plain <a href>, see toAuthedDownloadUrl's own comment.
+        const enriched = await Promise.all(
+          list.map(async (job) => ({
+            ...job,
+            downloadUrl: await toAuthedDownloadUrl(`/download/${job.job_id}.${job.output_format || "wav"}`),
+          }))
+        );
+        setJobs(enriched);
+      })
+      .catch((err) => setError(err?.message || t("myMasters.loadFailed")));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadKey]);
+
+  const handleDelete = async (jobId) => {
+    setBusyJobId(jobId);
+    try {
+      await deleteJobRecord(jobId);
+      setJobs((prev) => prev.filter((j) => j.job_id !== jobId));
+      setConfirmDeleteId("");
+    } catch (err) {
+      setError(err?.message || t("myMasters.deleteFailed"));
+    } finally {
+      setBusyJobId("");
+    }
+  };
+
+  // Opens the share panel (expiry, download limit, existing links) rather
+  // than minting a link straight away — see ShareLinkManager.jsx.
+  const handleShare = (jobId) => {
+    if (!shareUnlocked) return;
+    setOpenShareJobId((current) => (current === jobId ? "" : jobId));
+  };
+
+  const handleDownload = async (job) => {
+    setBusyJobId(job.job_id);
+    setDownloadErrors((prev) => ({ ...prev, [job.job_id]: "" }));
+    try {
+      await downloadFileSafely(job.downloadUrl, `mastered_${job.job_id}.${job.output_format || "wav"}`);
+      trackEvent("download_completed", { source: "my_masters" });
+    } catch (err) {
+      setDownloadErrors((prev) => ({ ...prev, [job.job_id]: err?.message || t("myMasters.downloadFailed") }));
+    } finally {
+      setBusyJobId("");
+    }
+  };
+
+  const filteredJobs =
+    jobs?.filter((job) => {
+      if (filter === "all") return true;
+      const expired = timeUntil(job.expires_at) === "expired";
+      return filter === "expired" ? expired : !expired;
+    }) || [];
+  const pageCount = Math.max(1, Math.ceil(filteredJobs.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageJobs = filteredJobs.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const changeFilter = (next) => {
+    setFilter(next);
+    setPage(1);
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-[1280px]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="m-0 text-[26px]">{t("myMasters.title")}</h1>
+        {onNavigate ? (
+          <button type="button" onClick={() => onNavigate("master")} className="btn-primary btn-sm">
+            + {t("myMasters.newMaster")}
+          </button>
+        ) : null}
+      </div>
+      <p className="mt-2 text-sm leading-relaxed text-text-secondary">{t("myMasters.subtitle")}</p>
+
+      {error && jobs === null ? (
+        <StatePanel
+          tone="error"
+          title={t("state.loadFailed.title")}
+          body={error}
+          compact
+          actions={[{ label: t("state.tryAgain"), onClick: () => setReloadKey((k) => k + 1) }]}
+        />
+      ) : error ? (
+        <p role="alert" className="mt-4 rounded-xl border border-red-600/25 bg-red-600/[0.05] px-3.5 py-2.5 text-sm text-red-800">
+          {error}
+        </p>
+      ) : null}
+      {jobs === null && !error ? <LoadingBlock /> : null}
+      {jobs?.length === 0 ? (
+        <StatePanel
+          title={t("state.noMasters.title")}
+          body={t("myMasters.empty")}
+          compact
+          actions={onNavigate ? [{ label: t("state.noMasters.action"), onClick: () => onNavigate("master") }] : []}
+        />
+      ) : null}
+
+      {jobs?.length > 0 ? (
+        <div className="mt-5 flex gap-2">
+          {[
+            { key: "active", labelKey: "myMasters.filter.active" },
+            { key: "expired", labelKey: "myMasters.filter.expired" },
+            { key: "all", labelKey: "myMasters.filter.all" },
+          ].map(({ key, labelKey }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => changeFilter(key)}
+              className={`rounded-full border px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] transition ${
+                filter === key ? "border-accent bg-black/[0.05] text-accent" : "border-border-subtle bg-black/[0.045] text-text-secondary hover:border-text-primary/30"
+              }`}
+            >
+              {t(labelKey)}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {jobs?.length > 0 && filteredJobs.length === 0 ? (
+        <p className="mt-4 text-xs text-text-secondary">
+          {filter === "expired" ? t("myMasters.emptyExpired") : t("myMasters.emptyActive")}
+        </p>
+      ) : null}
+
+      {pageJobs.length ? (
+        <div className="mt-5 hidden grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 border-b border-border-subtle px-4 pb-2 text-[11px] uppercase tracking-[0.12em] text-text-secondary lg:grid" aria-hidden="true">
+          <span>{t("myMasters.col.track")}</span>
+          <span>{t("myMasters.col.style")}</span>
+          <span>LUFS</span>
+          <span>{t("myMasters.col.status")}</span>
+          <span className="w-[260px] text-right">{t("myMasters.col.actions")}</span>
+        </div>
+      ) : null}
+      <ul className="m-0 list-none divide-y divide-border-subtle p-0 lg:mt-0 mt-5">
+        {pageJobs.map((job, jobIndex) => {
+          const expiry = timeUntil(job.expires_at);
+          const expired = expiry === "expired";
+          const isBusy = busyJobId === job.job_id;
+          return (
+            // Staggered fade-in per card — 30ms apart reads as one smooth
+            // cascade over a PAGE_SIZE (8) list, not a slow one-by-one
+            // reveal. Capped by the page size, so it never gets long.
+            <motion.li
+              key={job.job_id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: jobIndex * 0.03, ease: "easeOut" }}
+              className="px-1 py-4 lg:px-4"
+            >
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center lg:gap-4">
+              {/* The clickable "cell" — opens the same dedicated preview
+                  view a fresh render lands on (WebGL before/after,
+                  download, processing summary), for any still-valid or
+                  expired master, not just the one just rendered. ?job= on
+                  this same /app page, not a separate route — that's what
+                  keeps this an instant in-place switch instead of
+                  Next.js mounting a whole fresh page (new sidebar, new
+                  topbar) for it; see AppClient.jsx's jobIdParam comment.
+                  A sibling of the action buttons below, not a wrapper
+                  around them — nesting <button> inside <a> is invalid
+                  HTML and would double-fire on every click. */}
+              <Link href={`/app?job=${job.job_id}`} className="group min-w-0 rounded-lg transition">
+                <p className="m-0 truncate text-sm font-semibold text-text-primary group-hover:underline" title={job.original_filename || undefined}>
+                  {shortenFilename(job.original_filename) || job.job_id}
+                </p>
+                <p className="m-0 mt-0.5 text-xs text-text-secondary">{job.created_at ? new Date(job.created_at).toLocaleString() : ""}</p>
+              </Link>
+              <p className="m-0 text-xs capitalize text-text-secondary">
+                {job.genre || t("myMasters.custom")} · {job.tier || t("myMasters.standard")}
+              </p>
+              <p className="m-0 font-mono text-xs text-text-primary">
+                {job.before_lufs != null || job.after_lufs != null ? `${job.before_lufs ?? "—"} → ${job.after_lufs ?? "—"}` : "—"}
+              </p>
+              <span className={`w-fit rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] ${expired ? "border-red-400/30 text-red-700" : "border-border-subtle text-text-secondary"}`}>
+                {formatExpiry(t, job.expires_at)}
+              </span>
+
+              {!expired ? (
+                <div className="flex flex-wrap gap-2 lg:w-[260px] lg:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(job)}
+                    disabled={isBusy}
+                    className="rounded-lg border border-border-subtle bg-accent/[0.15] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-accent hover:bg-black/[0.06] disabled:opacity-50"
+                  >
+                    {isBusy ? "…" : t("myMasters.download")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleShare(job.job_id)}
+                    disabled={isBusy || !shareUnlocked}
+                    aria-expanded={openShareJobId === job.job_id}
+                    title={shareUnlocked ? undefined : t("myMasters.shareTitle")}
+                    className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30 disabled:opacity-50"
+                  >
+                    {isBusy ? "…" : t("myMasters.share")}
+                    {!shareUnlocked ? (
+                      <span className="rounded-full border border-border-subtle bg-accent/[0.12] px-1.5 py-0.5 text-[9px] normal-case text-accent">
+                        {t("myMasters.shareAllAccess")}
+                      </span>
+                    ) : null}
+                  </button>
+                  {confirmDeleteId === job.job_id ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(job.job_id)}
+                        disabled={isBusy}
+                        className="rounded-lg border border-red-400/50 bg-red-500/20 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-700 disabled:opacity-50"
+                      >
+                        {isBusy ? t("myMasters.deleting") : t("myMasters.confirmDelete")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId("")}
+                        className="rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary"
+                      >
+                        {t("myMasters.cancel")}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(job.job_id)}
+                      className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-red-700 hover:border-red-400/50"
+                    >
+                      {t("myMasters.delete")}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <Link href={`/app?job=${job.job_id}`} className="text-xs font-semibold text-text-primary underline decoration-border-subtle underline-offset-2 lg:w-[260px] lg:text-right">
+                  {t("myMasters.open")}
+                </Link>
+              )}
+              </div>
+
+              {downloadErrors[job.job_id] ? <InlineAlert size="xs" className="mt-2">{downloadErrors[job.job_id]}</InlineAlert> : null}
+
+              {!expired && openShareJobId === job.job_id ? <ShareLinkManager jobId={job.job_id} t={t} /> : null}
+            </motion.li>
+          );
+        })}
+      </ul>
+
+      {pageCount > 1 ? (
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={safePage <= 1}
+            className="rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30 disabled:opacity-40"
+          >
+            {t("myMasters.pagePrev")}
+          </button>
+          <span className="text-[11px] text-text-secondary">
+            {t("myMasters.pageOf", { page: safePage, count: pageCount, total: filteredJobs.length })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            disabled={safePage >= pageCount}
+            className="rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30 disabled:opacity-40"
+          >
+            {t("myMasters.pageNext")}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}

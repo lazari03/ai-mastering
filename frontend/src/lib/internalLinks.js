@@ -1,0 +1,96 @@
+// Single source of truth for this site's internal link graph and CTA
+// targets. Every page that links to another page or to a conversion
+// target (signup, pricing) reads from here — nothing hardcodes "/login"
+// or picks a "related content" link ad hoc in a content file. Change a
+// relationship or a CTA destination once, here, and every page that uses
+// it updates together.
+import { GENRE_KEYS } from "@/content/genrePages";
+import { POSTS } from "@/content/posts";
+
+// ---- Conversion CTA targets ------------------------------------------
+// One name per destination, used everywhere instead of a raw path string.
+export const CTA = {
+  // Frictionless entry point — no plan chosen yet, starts on Free. Lands
+  // directly on the Sign Up tab (see LoginClient.jsx's ?mode= read) — every
+  // current use of this is a "try it free" conversion moment, not a
+  // returning-user login, so defaulting to Sign In there cost every one of
+  // them an extra, unnecessary click to find the right tab.
+  signup: "/login?mode=signup",
+  // Explicit "I already have an account" entry point — used only by the
+  // header's own "Sign In" links, which should default to that tab.
+  signin: "/login",
+  // Anonymous visitors can't check out directly (Polar checkout requires
+  // an authed uid — see PlansPanel.jsx), so "subscribe" from a public
+  // page always means "go see the plans," not a direct checkout link.
+  pricing: "/pricing",
+  blog: "/blog",
+};
+
+// Signup that lands on the in-app Plans page with the chosen billing
+// period already selected — for a paid plan's CTA, so someone who picked
+// "Studio, yearly" on a public page doesn't have to find it again after
+// creating their account. Free keeps the plain signup.
+export function planSignupHref(planKey, billing = "monthly") {
+  if (!planKey || planKey === "free") return CTA.signup;
+  return `${CTA.signup}&redirect=${encodeURIComponent(`/app?tab=plans&billing=${billing}`)}`;
+}
+
+// ---- Genre <-> blog post graph ----------------------------------------
+// One declared edge per genre, to the single most topically relevant
+// post. Reverse lookups (which genres reference a given post) are
+// derived, never duplicated by hand.
+const GENRE_TO_POST = {
+  pop: "what-happens-inside-an-ai-mastering-engine",
+  edm: "what-happens-inside-an-ai-mastering-engine",
+  lofi: "what-happens-inside-an-ai-mastering-engine",
+  rock: "what-ai-mastering-actually-automates",
+  acoustic: "what-ai-mastering-actually-automates",
+  classical: "what-ai-mastering-actually-automates",
+  hiphop: "building-a-repeatable-mastering-chain-for-your-studio",
+  podcast: "building-a-repeatable-mastering-chain-for-your-studio",
+};
+
+const POST_BY_SLUG = Object.fromEntries(POSTS.map((p) => [p.slug, p]));
+
+// Fails loud at build/import time if a genre/slug typo ever creeps in,
+// rather than silently rendering a dead link in production.
+for (const [genre, slug] of Object.entries(GENRE_TO_POST)) {
+  if (!GENRE_KEYS.includes(genre)) throw new Error(`internalLinks: unknown genre "${genre}" in GENRE_TO_POST`);
+  if (!POST_BY_SLUG[slug]) throw new Error(`internalLinks: unknown post slug "${slug}" for genre "${genre}"`);
+}
+
+export function relatedPostForGenre(genre) {
+  const slug = GENRE_TO_POST[genre];
+  return slug ? POST_BY_SLUG[slug] : null;
+}
+
+export function relatedGenresForPost(slug) {
+  return Object.entries(GENRE_TO_POST)
+    .filter(([, postSlug]) => postSlug === slug)
+    .map(([genre]) => genre);
+}
+
+// ---- Chord Detector cross-links ----------------------------------------
+// Chord detection is genre-agnostic (works on any recording, any
+// instrument) so it's a legitimate "also useful" link from every genre
+// page and every blog post — unlike GENRE_TO_POST, this isn't one
+// declared edge per genre, it's one shared destination every content page
+// reciprocally links to/from, matching how the feature is actually used.
+export const CHORD_DETECTOR_URL = "/chord-detector";
+
+// The reverse direction: which genre pages the chord-detector page itself
+// links back out to. Kept short and specific (not "all 8") — these three
+// are the genres where "know the chords" most obviously matters (bands
+// covering songs, singer-songwriters, acoustic performers), which is a
+// more honest, specific reciprocal link than a generic link-to-everything.
+export const CHORD_DETECTOR_RELATED_GENRES = ["rock", "acoustic", "pop"];
+
+// ---- Loudness targets reference ----------------------------------------
+// /mastering-loudness-targets answers "how loud should I master" with the
+// engine's own numbers. Unlike the genre and comparison pages it's a
+// reference page, not a landing page, which changes how it should be
+// linked: every genre page cites it (each one's target is a row in its
+// table), the guides link to it in-body where loudness comes up, and it's
+// in the footer. A page that answers a question outright earns links and
+// citations, and both need it to be reachable from more than the sitemap.
+export const LOUDNESS_TARGETS_URL = "/mastering-loudness-targets";

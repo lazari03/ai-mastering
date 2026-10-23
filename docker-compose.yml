@@ -1,0 +1,192 @@
+services:
+  python-service:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      MASTERING_ENV: production
+      MASTERING_CORS_ORIGINS: http://node-api:8000
+      MASTERING_FILE_RETENTION_HOURS: ${MASTERING_FILE_RETENTION_HOURS:-48}
+      # Must match the volume mounts below (also set in backend/Dockerfile).
+      # Unset, the service wrote to /uploads and /outputs — outside the
+      # volumes — and every deploy wiped every user's files.
+      MASTERING_UPLOAD_DIR: /app/uploads
+      MASTERING_OUTPUT_DIR: /app/outputs
+      # How readily the engine corrects measured tonal problems:
+      # conservative | balanced | assertive (see backend/ai_mastering/planning/config.py).
+      MASTERING_CALIBRATION: ${MASTERING_CALIBRATION:-balanced}
+    volumes:
+      - mastering_uploads:/app/uploads
+      - mastering_outputs:/app/outputs
+      - mastering_cache:/app/.cache # demucs/essentia/madmom model weights — avoids re-downloading on every recreate
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # No ports published — only Caddy and node-api (on the internal
+    # compose network) ever need to reach this. It has no auth of its own
+    # (see ARCHITECTURE.md §7), so it must never be reachable from outside.
+
+  node-api:
+    build: ./backend-node
+    restart: unless-stopped
+    depends_on:
+      python-service:
+        condition: service_healthy
+    volumes:
+      # Analytics (visitors/sessions/events) moved off Firestore to a local
+      # SQLite file — see backend-node/src/config/analyticsDb.js. A named
+      # volume, same as mastering_uploads/mastering_outputs above, so the
+      # database survives a container recreate instead of resetting to
+      # empty on every deploy.
+      - analytics_db:/app/data
+    environment:
+      NODE_ENV: production
+      PORT: 8000
+      PYTHON_API_BASE_URL: http://python-service:8001
+      MASTERING_ENGINE: adaptive_python
+      # Your real frontend origin — https://auralithforge.app once DNS is
+      # live. Leaving this at "*" in production only warns, doesn't block,
+      # but don't ship it that way.
+      CORS_ORIGINS: ${FRONTEND_ORIGIN:-*}
+      # Same origin, read directly (not just as CORS_ORIGINS) so share
+      # links can point at the frontend's own /shared/:jobId page — see
+      # settings.js:frontendOrigin.
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      # Inline JSON is simpler in Docker than mounting the service account
+      # file — no volume needed. Set this in a .env next to this compose
+      # file (see FIREBASE_SETUP.md for where to get the file's content).
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON}
+      # Billing — see PRICING.md + POLAR_SETUP.md. Unset product IDs mean
+      # that specific item stays ungated rather than breaking the feature.
+      POLAR_ACCESS_TOKEN: ${POLAR_ACCESS_TOKEN}
+      POLAR_WEBHOOK_SECRET: ${POLAR_WEBHOOK_SECRET}
+      POLAR_ENVIRONMENT: ${POLAR_ENVIRONMENT:-sandbox}
+      # Every plan in both billing periods — run
+      # backend-node/scripts/seed-polar-products.js to create them in Polar
+      # and print these IDs. Indie and the three yearly products were
+      # missing here, so those checkouts failed with "Billing isn't
+      # configured" in production.
+      POLAR_PLAN_INDIE_PRODUCT_ID: ${POLAR_PLAN_INDIE_PRODUCT_ID}
+      POLAR_PLAN_STUDIO_PRODUCT_ID: ${POLAR_PLAN_STUDIO_PRODUCT_ID}
+      POLAR_PLAN_PRO_PRODUCT_ID: ${POLAR_PLAN_PRO_PRODUCT_ID}
+      POLAR_PLAN_INDIE_ANNUAL_PRODUCT_ID: ${POLAR_PLAN_INDIE_ANNUAL_PRODUCT_ID}
+      POLAR_PLAN_STUDIO_ANNUAL_PRODUCT_ID: ${POLAR_PLAN_STUDIO_ANNUAL_PRODUCT_ID}
+      POLAR_PLAN_PRO_ANNUAL_PRODUCT_ID: ${POLAR_PLAN_PRO_ANNUAL_PRODUCT_ID}
+      POLAR_SINGLE_MASTER_PRODUCT_ID: ${POLAR_SINGLE_MASTER_PRODUCT_ID}
+      POLAR_STEM_SEPARATION_PRODUCT_ID: ${POLAR_STEM_SEPARATION_PRODUCT_ID}
+      # Retired chord products — no longer sold, kept only so existing
+      # chord subscribers are still recognized by the webhook handler.
+      POLAR_CHORDS_MONTHLY_PRODUCT_ID: ${POLAR_CHORDS_MONTHLY_PRODUCT_ID}
+      POLAR_CHORD_DETECTION_PRODUCT_ID: ${POLAR_CHORD_DETECTION_PRODUCT_ID}
+      # Signs the ?dl= download tokens and public /shared/ links — must
+      # stay stable across restarts or every outstanding link breaks the
+      # moment this container redeploys (see settings.js:downloadTokenSecret).
+      DOWNLOAD_TOKEN_SECRET: ${DOWNLOAD_TOKEN_SECRET}
+      SESSION_MAX_AGE_DAYS: ${SESSION_MAX_AGE_DAYS:-14}
+      # Idle-session cap, separate from the absolute one above — see
+      # requireAuth.js / settings.js:sessionInactivityHours.
+      SESSION_INACTIVITY_HOURS: ${SESSION_INACTIVITY_HOURS:-24}
+      # Telegram admin bot — new-signup/new-purchase alerts plus a /stats
+      # command. Unset either and the whole feature silently disables
+      # itself (see services/telegramService.js and backend-node/.env.example
+      # for how to get both values).
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      # One shared 10%-off Polar discount code shown to every newsletter
+      # subscriber (see services/newsletterService.js). Unset just means
+      # the widget still records the subscriber but shows no code.
+      NEWSLETTER_DISCOUNT_CODE: ${NEWSLETTER_DISCOUNT_CODE}
+      # Brevo — actually sends the newsletter (see services/brevoService.js).
+      # BREVO_API_KEY from Brevo > Settings > SMTP & API > API Keys.
+      # BREVO_LIST_ID defaults to 4 ("Auralith Forge Newsletter") if unset.
+      BREVO_API_KEY: ${BREVO_API_KEY}
+      BREVO_LIST_ID: ${BREVO_LIST_ID:-4}
+      # TelemetryDeck — mirrors analytics events alongside the existing
+      # SQLite store (see services/telemetryDeckService.js). Unset means
+      # every signal silently no-ops.
+      TELEMETRYDECK_APP_ID: ${TELEMETRYDECK_APP_ID}
+      TELEMETRYDECK_SALT: ${TELEMETRYDECK_SALT}
+      # Meta Conversions API (services/metaCapiService.js, docs/META_ADS_SETUP.md).
+      # Server-side twin of the Pixel + server-only Purchase; consent-gated.
+      # META_PIXEL_ID defaults to the frontend's NEXT_PUBLIC_META_PIXEL_ID.
+      # Unset token = every send is a silent no-op.
+      META_PIXEL_ID: ${META_PIXEL_ID:-${NEXT_PUBLIC_META_PIXEL_ID:-}}
+      META_CAPI_TOKEN: ${META_CAPI_TOKEN}
+      META_TEST_EVENT_CODE: ${META_TEST_EVENT_CODE}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    # No ports published to the host — Caddy reaches this over the
+    # internal compose network at http://node-api:8000 (see Caddyfile).
+    # Add "8000:8000" back temporarily if you need to curl it directly
+    # for debugging.
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # These become part of the built JS bundle at image-build time —
+        # set real values in .env next to this compose file, then
+        # `docker compose build frontend` again if any of them change.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://api.auralithforge.app}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://auralithforge.app}
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+        NEXT_PUBLIC_PLAUSIBLE_DOMAIN: ${NEXT_PUBLIC_PLAUSIBLE_DOMAIN}
+        # Meta Pixel (components/MetaPixel.jsx) — loads only after consent.
+        NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID}
+        # Same TelemetryDeck app + salt as node-api — the browser sends
+        # page/product signals itself (frontend/src/lib/telemetryDeck.js) so
+        # TelemetryDeck sees the visitor's real country and device. The app
+        # ID is public by design (it ships in every client SDK).
+        NEXT_PUBLIC_TELEMETRYDECK_APP_ID: ${TELEMETRYDECK_APP_ID}
+        NEXT_PUBLIC_TELEMETRYDECK_SALT: ${TELEMETRYDECK_SALT}
+    restart: unless-stopped
+    depends_on:
+      - node-api
+    # No ports published — Caddy reaches this at http://frontend:3000.
+
+  # Browser log viewer — bound to localhost only, not published publicly
+  # (no auth of its own, and container logs can contain enough detail that
+  # it shouldn't be open to the internet). Reach it via an SSH tunnel:
+  #   ssh -L 8888:localhost:8888 root@your-server-ip
+  # then open http://localhost:8888 in your own browser.
+  dozzle:
+    image: amir20/dozzle:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "127.0.0.1:8888:8080"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - node-api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # Let's Encrypt certs — losing this volume means re-issuing on every recreate
+      - caddy_config:/config
+
+volumes:
+  mastering_uploads:
+  mastering_outputs:
+  mastering_cache:
+  analytics_db:
+  caddy_data:
+  caddy_config:

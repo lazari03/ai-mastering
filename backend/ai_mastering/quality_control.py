@@ -1,0 +1,345 @@
+from __future__ import annotations
+
+import numpy as np
+
+from .audio_utils import EPS, _db, _ensure_stereo, _rms, _true_peak_db
+from .planning import config as C
+
+# Real automated quality control (spec section 18) — every check here reads
+# the actual rendered waveform / actual measured analysis numbers, never a
+# hardcoded pass. Two entry points:
+#   validate_input_signal — runs first, before analysis/processing (section
+#     3's "Input validation" stage); can reject genuinely unusable audio and
+#     performs one real correction (DC offset removal) rather than just
+#     reporting it.
+#   run_quality_control — runs last, against the finished master; reports
+#     pass/warn/fail per check, never silently "fixes" anything itself (the
+#     caller in mastering.py decides what, if anything, to do about a fail).
+
+DC_OFFSET_THRESHOLD_DB = -50.0  # per-channel |mean| vs full scale; below this is measurement noise, not audible DC
+SILENCE_RMS_DB = -70.0
+MIN_SAMPLES_FOR_MASTERING = 4410  # 0.1s at 44.1kHz — below this there's nothing to analyze or master
+CHANNEL_IMBALANCE_WARN_DB = 6.0
+# A master's L/R balance may differ from the SOURCE's by at most this much
+# before it counts as something processing did. A deliberately lopsided
+# mix (hard-panned instrument, old stereo recording) is the artist's
+# balance, not a defect — it used to fail QC / get "corrected" to 0 dB.
+CHANNEL_IMBALANCE_ADDED_TOLERANCE_DB = 1.0
+
+
+def lr_balance_db(audio: np.ndarray) -> float:
+    """Signed L - R RMS level difference in dB (positive = left louder)."""
+    audio = _ensure_stereo(audio)
+    left, right = _rms(audio[:, 0]), _rms(audio[:, 1])
+    if left <= EPS or right <= EPS:
+        return 0.0
+    return float(_db(left) - _db(right))
+
+
+class InvalidAudioError(ValueError):
+    """Raised by validate_input_signal for source audio that can't be
+    mastered at all — not a quality issue to report and continue past, a
+    hard stop before analysis or processing ever runs."""
+
+
+def validate_input_signal(audio: np.ndarray, sr: int) -> dict:
+    """First pipeline stage: real signal-integrity validation on the actual
+    uploaded waveform, not a format/extension check (ffmpeg/soundfile
+    already reject undecodable files upstream of this).
+
+    Raises InvalidAudioError for input that cannot be mastered at all:
+    too short, non-finite samples, or digital silence throughout — these
+    are stop conditions, not "issues" to note and proceed past.
+
+    Returns a report dict plus a "_corrected_audio" array (DC offset
+    removed when present) that the caller pops and uses for every
+    downstream stage — DC offset is corrected here, not just reported,
+    because leaving it in would bias every measurement that follows
+    (RMS/peak/LUFS all shift with an uncorrected DC component).
+    """
+    audio = _ensure_stereo(audio).astype(np.float32)
+
+    if audio.shape[0] < MIN_SAMPLES_FOR_MASTERING:
+        raise InvalidAudioError(f"Audio is too short to master ({audio.shape[0]} samples at {sr}Hz).")
+
+    if not np.all(np.isfinite(audio)):
+        raise InvalidAudioError("Audio contains invalid (NaN/Inf) samples — the file is likely corrupt.")
+
+    peak = float(np.max(np.abs(audio)))
+    overall_rms_db = _db(_rms(audio.reshape(-1)))
+    if peak < 1e-6:
+        raise InvalidAudioError("Audio is digital silence — there is no signal to master.")
+    if overall_rms_db < SILENCE_RMS_DB:
+        # Same stop condition as before; only the message changed. A file
+        # that has signal but sits below -70 dBFS RMS is not "silence" —
+        # telling its owner it was confused people with very quiet exports.
+        raise InvalidAudioError(
+            f"Audio is far too quiet to master (overall level {overall_rms_db:.0f} dBFS RMS, below {SILENCE_RMS_DB:.0f} dBFS). "
+            "Check the export level of your mix and upload it again."
+        )
+
+    issues: list[str] = []
+
+    dc_offsets_db = []
+    needs_dc_correction = False
+    for ch in range(audio.shape[1]):
+        dc = float(np.mean(audio[:, ch]))
+        dc_db = float(_db(abs(dc))) if abs(dc) > EPS else -240.0
+        dc_offsets_db.append(round(dc_db, 2))
+        if dc_db > DC_OFFSET_THRESHOLD_DB:
+            needs_dc_correction = True
+
+    corrected = audio
+    if needs_dc_correction:
+        corrected = audio - np.mean(audio, axis=0, keepdims=True).astype(np.float32)
+        issues.append(f"DC offset removed (measured per-channel offsets: {dc_offsets_db} dBFS).")
+
+    # A stereo file with one channel at digital silence (by the same
+    # SILENCE_RMS_DB definition as above) and signal on the other is a mono
+    # recording exported to one side, a common export mistake. Mastering it
+    # as stereo can only fail: every candidate trips the channel-balance,
+    # low-end and tilt checks and nothing is delivered (measured). Playing
+    # it the way any player would play a mono file, on both sides, is the
+    # recording the user meant to send.
+    silent_channel = None
+    if corrected.shape[1] == 2:
+        per_channel_db = [float(_db(_rms(corrected[:, ch]))) for ch in range(2)]
+        dead = [ch for ch in range(2) if per_channel_db[ch] < SILENCE_RMS_DB]
+        if len(dead) == 1:
+            silent_channel = "left" if dead[0] == 0 else "right"
+            live = 1 - dead[0]
+            corrected = np.repeat(corrected[:, live : live + 1], 2, axis=1).astype(np.float32)
+            issues.append(f"The {silent_channel} channel was silent; the {('right' if live else 'left')} channel was used for both sides (mastered as mono).")
+
+    channel_rms_db = [round(float(_db(_rms(corrected[:, ch]))), 2) for ch in range(corrected.shape[1])]
+    channel_imbalance_db = float(max(channel_rms_db) - min(channel_rms_db)) if len(channel_rms_db) > 1 else 0.0
+    if channel_imbalance_db > CHANNEL_IMBALANCE_WARN_DB:
+        issues.append(f"Significant L/R channel level imbalance in the source ({channel_imbalance_db:.1f}dB).")
+
+    return {
+        "valid": True,
+        "sample_rate": int(sr),
+        "channels": int(audio.shape[1]),
+        "duration_s": round(audio.shape[0] / float(sr), 2),
+        "dc_offset_db_per_channel": dc_offsets_db,
+        "dc_offset_corrected": needs_dc_correction,
+        "channel_imbalance_db": round(channel_imbalance_db, 2),
+        "silent_channel_restored": silent_channel,
+        "issues": issues,
+        "_corrected_audio": corrected,
+    }
+
+
+def _add(checks: list[dict], check_id: str, status: str, message: str, value: float | None = None) -> None:
+    checks.append({"id": check_id, "status": status, "message": message, "value": value})
+
+
+def run_quality_control(
+    *,
+    analysis_before: dict,
+    analysis_after: dict,
+    mastered_audio: np.ndarray,
+    processing_params: dict,
+    limiter_report: dict | None,
+    true_peak_ceiling_db: float = -1.0,
+    source_lr_balance_db: float | None = None,
+) -> dict:
+    """QC pass on the finished master. Answers "is this output technically
+    sound" — clipping, true peak, over-processing, phase/mono safety,
+    channel integrity, rendering errors. See ab_analysis.build_ab_report for
+    the separate "did this actually improve the source" verdict."""
+    mastered_audio = _ensure_stereo(mastered_audio).astype(np.float32)
+    checks: list[dict] = []
+
+    finite = bool(np.all(np.isfinite(mastered_audio)))
+    if finite:
+        _add(checks, "rendering_integrity", "pass", "Rendered audio contains only finite samples.")
+    else:
+        _add(checks, "rendering_integrity", "fail", "Rendered audio contains NaN/Inf samples — rendering error.")
+
+    clipping = bool(analysis_after.get("clipping_detected", False)) or bool(np.any(np.abs(mastered_audio) >= 0.9999))
+    _add(
+        checks,
+        "clipping",
+        "fail" if clipping else "pass",
+        "Full-scale clipping detected in the final master." if clipping else "No full-scale clipping in the final master.",
+    )
+
+    true_peak_db = float(analysis_after.get("true_peak_db", _true_peak_db(mastered_audio)))
+    tp_tolerance_db = 0.15
+    if true_peak_db > true_peak_ceiling_db + tp_tolerance_db:
+        _add(
+            checks,
+            "true_peak",
+            "fail",
+            f"True peak {true_peak_db:.2f}dBTP exceeds the {true_peak_ceiling_db:.1f}dBTP ceiling.",
+            true_peak_db,
+        )
+    else:
+        _add(
+            checks,
+            "true_peak",
+            "pass",
+            f"True peak {true_peak_db:.2f}dBTP is within the {true_peak_ceiling_db:.1f}dBTP ceiling.",
+            true_peak_db,
+        )
+
+    limiter_gr_db = float((limiter_report or {}).get("limiter_gain_reduction_db", 0.0))
+    if limiter_gr_db > C.QC_LIMITER_MAX_GR_DB:
+        _add(
+            checks,
+            "limiter_gain_reduction",
+            "fail",
+            f"Limiter gain reduction of {limiter_gr_db:.1f}dB is heavy enough to risk audible pumping or distortion.",
+            limiter_gr_db,
+        )
+    elif limiter_gr_db > 3.0:
+        _add(
+            checks,
+            "limiter_gain_reduction",
+            "warn",
+            f"Limiter gain reduction of {limiter_gr_db:.1f}dB is moderate — worth listening for pumping.",
+            limiter_gr_db,
+        )
+    else:
+        _add(checks, "limiter_gain_reduction", "pass", f"Limiter gain reduction of {limiter_gr_db:.1f}dB is light.", limiter_gr_db)
+
+    plr_after_db = float(analysis_after.get("plr_db", 12.0))
+    if plr_after_db < 4.0:
+        _add(
+            checks,
+            "plr",
+            "fail",
+            f"Peak-to-loudness ratio of {plr_after_db:.1f}dB is the classic brickwalled-master signature.",
+            plr_after_db,
+        )
+    elif plr_after_db < 6.0:
+        _add(checks, "plr", "warn", f"Peak-to-loudness ratio of {plr_after_db:.1f}dB is low — check for over-limiting.", plr_after_db)
+    else:
+        _add(checks, "plr", "pass", f"Peak-to-loudness ratio of {plr_after_db:.1f}dB is healthy.", plr_after_db)
+
+    dr_before_db = float(analysis_before.get("dynamic_range_db", 0.0))
+    dr_after_db = float(analysis_after.get("dynamic_range_db", 0.0))
+    dr_collapse_db = dr_before_db - dr_after_db
+    if dr_collapse_db > 9.0:
+        _add(
+            checks,
+            "dynamics_preservation",
+            "fail",
+            f"Dynamic range collapsed by {dr_collapse_db:.1f}dB — the master is likely over-compressed or over-limited.",
+            dr_collapse_db,
+        )
+    elif dr_collapse_db > 6.0:
+        _add(
+            checks,
+            "dynamics_preservation",
+            "warn",
+            f"Dynamic range reduced by {dr_collapse_db:.1f}dB — check for over-processing.",
+            dr_collapse_db,
+        )
+    else:
+        _add(
+            checks,
+            "dynamics_preservation",
+            "pass",
+            f"Dynamic range change ({-dr_collapse_db:+.1f}dB) is within normal mastering bounds.",
+            dr_collapse_db,
+        )
+
+    saturation_amount = float(processing_params.get("saturation_amount", 0.0))
+    if saturation_amount > 0.20:
+        _add(checks, "saturation_amount", "warn", f"Saturation amount ({saturation_amount:.3f}) is on the high side.", saturation_amount)
+    else:
+        _add(checks, "saturation_amount", "pass", f"Saturation amount ({saturation_amount:.3f}) is conservative.", saturation_amount)
+
+    correlation = float(analysis_after.get("stereo_correlation", 1.0))
+    if correlation < -0.5:
+        _add(checks, "phase_correlation", "fail", f"Phase correlation {correlation:.2f} is likely to cancel badly in mono.", correlation)
+    elif correlation < 0.0:
+        _add(checks, "phase_correlation", "warn", f"Phase correlation {correlation:.2f} — check mono compatibility.", correlation)
+    else:
+        _add(checks, "phase_correlation", "pass", f"Phase correlation {correlation:.2f} is mono-safe.", correlation)
+
+    mono_risk = bool(analysis_after.get("mono_compatibility_risk", False))
+    _add(
+        checks,
+        "mono_compatibility",
+        "warn" if mono_risk else "pass",
+        "Mono compatibility risk detected in the final master." if mono_risk else "Master is mono-compatible.",
+    )
+
+    after_rms_db = float(analysis_after.get("rms_db", -100.0))
+    before_rms_db = float(analysis_before.get("rms_db", -100.0))
+    if after_rms_db < SILENCE_RMS_DB and before_rms_db >= SILENCE_RMS_DB:
+        _add(
+            checks,
+            "output_silence",
+            "fail",
+            "The rendered master is silent even though the source was not — likely a rendering error.",
+            after_rms_db,
+        )
+    else:
+        _add(checks, "output_silence", "pass", "Rendered master has audible signal.", after_rms_db)
+
+    balance_db = lr_balance_db(mastered_audio)
+    channel_imbalance_db = abs(balance_db)
+    added_db = abs(balance_db - source_lr_balance_db) if source_lr_balance_db is not None else channel_imbalance_db
+    if channel_imbalance_db > CHANNEL_IMBALANCE_WARN_DB and added_db > CHANNEL_IMBALANCE_ADDED_TOLERANCE_DB:
+        _add(checks, "channel_balance", "fail", f"L/R channel imbalance of {channel_imbalance_db:.1f}dB in the final master ({added_db:.1f} dB away from the source's own balance).", channel_imbalance_db)
+    elif channel_imbalance_db > CHANNEL_IMBALANCE_WARN_DB:
+        _add(checks, "channel_balance", "warn", f"L/R imbalance of {channel_imbalance_db:.1f}dB — the source's own balance, kept as mixed.", channel_imbalance_db)
+    else:
+        _add(checks, "channel_balance", "pass", f"L/R channels balanced within {channel_imbalance_db:.1f}dB.", channel_imbalance_db)
+
+    lufs_after = float(analysis_after.get("integrated_lufs", -70.0))
+    if lufs_after < -40.0 or lufs_after > -4.0:
+        _add(
+            checks,
+            "loudness_sanity",
+            "warn",
+            f"Final integrated loudness ({lufs_after:.1f} LUFS) is outside the range a real master should land in.",
+            lufs_after,
+        )
+    else:
+        _add(checks, "loudness_sanity", "pass", f"Final integrated loudness ({lufs_after:.1f} LUFS) is plausible.", lufs_after)
+
+    dc_after_db = max(
+        (_db(abs(float(np.mean(mastered_audio[:, ch])))) if abs(float(np.mean(mastered_audio[:, ch]))) > EPS else -240.0)
+        for ch in range(mastered_audio.shape[1])
+    )
+    if dc_after_db > DC_OFFSET_THRESHOLD_DB:
+        _add(checks, "dc_offset", "warn", f"DC offset of {dc_after_db:.1f}dBFS remains in the final master.", dc_after_db)
+    else:
+        _add(checks, "dc_offset", "pass", "No meaningful DC offset in the final master.", dc_after_db)
+
+    fails = [c for c in checks if c["status"] == "fail"]
+    warns = [c for c in checks if c["status"] == "warn"]
+    severity_rank = {"fail": 0, "warn": 1, "pass": 2}
+    checks_sorted = sorted(checks, key=lambda c: severity_rank.get(c["status"], 3))
+
+    return {
+        "passed": len(fails) == 0,
+        "checks": checks_sorted,
+        "issues": [c["message"] for c in fails + warns],
+        "fail_count": len(fails),
+        "warn_count": len(warns),
+    }
+
+
+def rebalance_channels(audio: np.ndarray, target_balance_db: float = 0.0) -> np.ndarray:
+    """Corrective action for a QC-flagged channel imbalance: brings the L/R
+    difference back to `target_balance_db` (the SOURCE's own balance when
+    known — restoring it, not flattening a deliberate mix to 0 dB) by
+    trimming the louder side rather than boosting (never risk introducing a
+    new clipping problem while fixing a balance one)."""
+    audio = _ensure_stereo(audio).astype(np.float32)
+    current = lr_balance_db(audio)
+    excess = current - float(target_balance_db)
+    if abs(excess) < 1e-6:
+        return audio
+    corrected = audio.copy()
+    if excess > 0:  # left too loud relative to target
+        corrected[:, 0] *= float(10.0 ** (-excess / 20.0))
+    else:
+        corrected[:, 1] *= float(10.0 ** (excess / 20.0))
+    return corrected

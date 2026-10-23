@@ -1,0 +1,119 @@
+"use client";
+
+import DirectionControls from "@/components/audio/DirectionControls";
+import { Spinner } from "@/components/ui/Spinner";
+import { useLanguage } from "@/lib/i18n";
+
+// The Quick-mode counterpart to ProParamsPanel. Direction controls on top
+// (tone/intensity/loudness, expanding into the adaptive engine's 7 user
+// tweaks — see domain/mastering/directions.js), and below them the live,
+// real per-band EQ correction the current selection produces against the
+// uploaded file — computed by the same compute_processing_params() call a
+// real render uses (see masteringStore.js:refreshPreviewParams), not an
+// approximation.
+const BANDS = [
+  ["sub_bass_20_60hz", "adaptive.band.sub"],
+  ["bass_60_250hz", "adaptive.band.bass"],
+  ["low_mid_250_500hz", "adaptive.band.lowMid"],
+  ["mid_500_2000hz", "adaptive.band.mid"],
+  ["high_mid_2000_4000hz", "adaptive.band.highMid"],
+  ["presence_4000_6000hz", "adaptive.band.presence"],
+  ["brilliance_6000_20000hz", "adaptive.band.air"],
+];
+
+// +/-8dB covers the correction ceiling compute_processing_params actually
+// uses (up to -6/+4dB severity-scaled, plus a little user-tweak headroom
+// on top) — bars very rarely clip against this range, and when they do
+// it's still an accurate "this band is being pushed hard" signal.
+const BAR_RANGE_DB = 8;
+
+function BandBar({ label, db }) {
+  const clamped = Math.max(-BAR_RANGE_DB, Math.min(BAR_RANGE_DB, db));
+  const centerPct = 50;
+  const valuePct = ((clamped + BAR_RANGE_DB) / (BAR_RANGE_DB * 2)) * 100;
+  const positive = clamped >= 0;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="w-14 shrink-0 truncate text-[9px] uppercase tracking-[0.06em] text-text-secondary">{label}</span>
+      <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-black/[0.04]">
+        <div className="absolute inset-y-0 left-1/2 w-px bg-black/[0.05]" />
+        <div
+          className={`absolute inset-y-0 ${positive ? "bg-accent" : "bg-accent"}`}
+          style={{
+            left: `${positive ? centerPct : valuePct}%`,
+            width: `${Math.abs(valuePct - centerPct)}%`,
+          }}
+        />
+      </div>
+      <span className="w-10 shrink-0 text-right text-[9px] tabular-nums text-text-secondary">
+        {db >= 0 ? "+" : ""}
+        {db.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
+export default function AdaptiveControlsPanel({
+  tweaks,
+  onTweak,
+  direction,
+  onDirection,
+  onReset,
+  footer = null,
+  analysis,
+  livePreviewParams,
+  isAnalyzing,
+  isPreviewLoading,
+  previewUnavailable,
+  previewError,
+}) {
+  const { t } = useLanguage();
+
+  const gains = livePreviewParams?.per_band_gain_changes_db;
+
+  return (
+    <div className="mt-3.5 rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="m-0 text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t("adaptive.title")}</p>
+        {isAnalyzing || isPreviewLoading ? <Spinner size={11} /> : null}
+      </div>
+      <p className="mt-1 text-[10px] leading-relaxed text-text-secondary">{t("adaptive.body")}</p>
+
+      <div className="mt-3">
+        <DirectionControls direction={direction} tweaks={tweaks} onDirection={onDirection} onTweak={onTweak} onReset={onReset} idPrefix="console-dir" />
+      </div>
+
+      {/* The live band view needs the adaptive engine's preview endpoint;
+          the direction controls above work (and render) without it. */}
+      {previewUnavailable ? null : !analysis ? (
+        <p className="mt-3 border-t border-border-subtle pt-2.5 text-[10px] text-text-secondary">{t("adaptive.uploadHint")}</p>
+      ) : gains ? (
+        <div className="mt-3 flex flex-col gap-3 border-t border-border-subtle pt-3 sm:flex-row sm:gap-6">
+          <div className="flex flex-1 flex-col gap-1">
+            {BANDS.map(([key, labelKey]) => (
+              <BandBar key={key} label={t(labelKey)} db={gains[key] ?? 0} />
+            ))}
+          </div>
+          <div className="flex shrink-0 flex-col gap-1 text-[10px] sm:w-40">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-text-secondary">{t("adaptive.targetLoudness")}</span>
+              <span className="font-semibold tabular-nums text-text-primary">{livePreviewParams.target_lufs?.toFixed(1)} LUFS</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-text-secondary">{t("adaptive.dynamicRange")}</span>
+              <span className="font-semibold tabular-nums text-text-primary">{livePreviewParams.target_dynamic_range_db?.toFixed(1)} dB</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-text-secondary">{t("adaptive.stereoWidth")}</span>
+              <span className="font-semibold tabular-nums text-text-primary">{livePreviewParams.target_width?.toFixed(2)}×</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 border-t border-border-subtle pt-2.5 text-[10px] text-text-secondary">{previewError || t("adaptive.computing")}</p>
+      )}
+      {footer}
+    </div>
+  );
+}
