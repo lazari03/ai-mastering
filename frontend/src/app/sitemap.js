@@ -42,7 +42,7 @@ import { SITE_URL } from "@/lib/seo";
 // site changed on every deploy — a signal that gets discounted as noise
 // once it's obviously untrue. Bump this by hand when the copy in
 // src/content/*.js or a landing page actually changes.
-const CONTENT_LAST_MODIFIED = "2026-10-22";
+const CONTENT_LAST_MODIFIED = "2026-10-23";
 
 export default function sitemap() {
   // /ai-mastering-online is priority 0.9, just under the homepage — it's

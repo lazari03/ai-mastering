@@ -71,7 +71,7 @@ One entry per indexable page. Purpose: before adding any new page, check this ma
 ### `/mastering-loudness-targets`
 - **Intent:** Informational (reference) with commercial follow-through
 - **Primary:** lufs by genre, how loud should i master
-- **Secondary:** what lufs for spotify, true peak explained, mixing vs mastering loudness
+- **Secondary:** true peak explained, mixing vs mastering loudness (platform-specific "lufs for spotify" moved to `/blog/lufs-for-spotify-apple-music-youtube` 2026-10-23)
 - **Funnel stage:** Problem-aware → Solution-aware
 - **Primary CTA:** Start free / Measure your track (`/lufs-meter`)
 - **Related:** `/lufs-meter`, `/master/[genre]`, `/ai-mastering-online`
@@ -91,6 +91,14 @@ One entry per indexable page. Purpose: before adding any new page, check this ma
 - **Funnel stage:** Solution-aware → Decision
 - **Primary CTA:** Start free
 - **Related:** `/`, `/ai-mastering-online`
+
+### `/blog/lufs-for-spotify-apple-music-youtube`
+- **Intent:** Informational (feature post: loudness / LUFS targeting)
+- **Primary:** lufs for spotify, spotify lufs, what lufs for spotify
+- **Secondary:** apple music lufs, youtube lufs, streaming loudness targets, mastering for spotify, loudness normalization
+- **Funnel stage:** Problem-aware → Solution-aware
+- **Primary CTA:** master three tracks free (inline) + `/lufs-meter`
+- **Related:** `/mastering-loudness-targets` (links in), `/lufs-meter`, `/master/edm`, `/master/hiphop`
 
 ### `/blog` + posts
 - **Intent:** Informational
@@ -112,8 +120,7 @@ One entry per indexable page. Purpose: before adding any new page, check this ma
 | `/ai-mastering` | Commercial — generic AI mastering | `/ai-mastering-online` already owns this |
 | `/master-a-song` | Task-oriented | No content angle yet distinct from `/ai-mastering-online` |
 | `/blog/what-is-lufs` | Informational | `/mastering-loudness-targets`'s existing FAQ already answers this |
-| `/blog/lufs-for-spotify` | Informational | P1 — real gap, not yet written |
-| `/blog/lufs-for-apple-music` | Informational | P1 — real gap, not yet written |
+| `/blog/lufs-for-spotify`, `/blog/lufs-for-apple-music` | Informational | DONE as one combined post: `/blog/lufs-for-spotify-apple-music-youtube` (2026-10-23) — don't split |
 | `/blog/mixing-vs-mastering` | Informational | P1 — real gap, not yet written |
 | `/blog/how-to-prepare-a-mix-for-mastering` | Informational | P1 — real gap, not yet written |
 | `/true-peak-meter`, `/dynamic-range-meter`, `/stereo-width-checker` | Utility | Same underlying `/analyze` data as `/lufs-meter` — do not fragment into separate near-duplicate tool pages without demand evidence |
