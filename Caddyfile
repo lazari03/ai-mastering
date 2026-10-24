@@ -53,7 +53,18 @@ auralithforge.app {
 	# fighting it downstream. Static marketing pages (this domain's `/`
 	# and friends) still emit the long-lived header — lower priority
 	# (content changes rarely) and a separate fix if it's ever worth it.
-	reverse_proxy frontend:3000
+	#
+	# First-party analytics, same-origin under a neutral path so ad
+	# blockers don't drop it (see frontend/src/lib/analyticsClient.js).
+	# Goes straight to node-api, so CF-Connecting-IP/CF-IPCountry and the
+	# Cloudflare peer address arrive exactly as on api.auralithforge.app.
+	handle /sync {
+		rewrite * /analytics/collect
+		reverse_proxy node-api:8000
+	}
+	handle {
+		reverse_proxy frontend:3000
+	}
 }
 
 # www → apex. Cloudflare proxies www (CNAME www → auralithforge.app) to

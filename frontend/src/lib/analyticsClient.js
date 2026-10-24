@@ -84,8 +84,14 @@ const KNOWN_EVENT_NAMES = new Set([
   "purchase",
 ]);
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-const COLLECT_URL = `${API_BASE}/analytics/collect`;
+// Same-origin, neutral path. Ad blockers (EasyPrivacy via uBlock/Brave)
+// match both a third-party api.* host and the literal "/analytics/collect"
+// pattern, which silently dropped a real share of visitors. In production
+// Caddy routes this path on the apex straight to node-api's
+// /analytics/collect (see Caddyfile) — not through Next.js, which would
+// replace every visitor's IP with the frontend server's and collapse the
+// per-IP rate limit and geolocation. In dev, next.config.mjs rewrites it.
+const COLLECT_URL = "/sync";
 
 // The cookie banner promises analytics only "if you allow it". Until the
 // visitor accepts, the visitor/session ids live in memory for this tab only

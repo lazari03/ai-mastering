@@ -39,6 +39,14 @@ const nextConfig = {
   images: {
     remotePatterns: [{ protocol: "https", hostname: "images.pexels.com" }],
   },
+  // Dev only: the analytics collector posts to same-origin /sync. In
+  // production Caddy answers /sync before Next.js ever sees it (see
+  // Caddyfile) — proxying it through here would hide every visitor's IP.
+  async rewrites() {
+    if (process.env.NODE_ENV === "production") return [];
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+    return [{ source: "/sync", destination: `${apiBase}/analytics/collect` }];
+  },
 };
 
 export default nextConfig;
