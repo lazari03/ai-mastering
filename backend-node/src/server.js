@@ -142,7 +142,12 @@ app.use((req, res, next) => {
     req.path === "/analytics/collect" ||
     req.path.startsWith("/admin/") ||
     req.path.startsWith("/webhooks/") ||
-    req.path.startsWith("/shared/")
+    req.path.startsWith("/shared/") ||
+    // Signed-out 30 s preview of the visitor's own track: guarded by IP
+    // limits + a site-wide budget (upload) and a job-scoped token
+    // (playback) — see masteringRoutes.js "/public/preview".
+    req.path === "/public/preview" ||
+    req.path.startsWith("/public/preview/")
   ) {
     return next();
   }
@@ -173,7 +178,11 @@ app.use((err, req, res, _next) => {
   console.error(`Unhandled error on ${req.method} ${req.path}:`, err);
   if (res.headersSent) return;
   if (err.name === "MulterError" && err.code === "LIMIT_FILE_SIZE") {
-    return res.status(413).json({ detail: `That file is larger than ${settings.maxUploadMb} MB. Export a shorter or compressed version and try again.`, code: "file_too_large" });
+    // A route with a smaller cap than the global one (the signed-out
+    // preview) records it on the request, so the message names the limit
+    // that actually applied.
+    const limitMb = req.uploadLimitMb || settings.maxUploadMb;
+    return res.status(413).json({ detail: `That file is larger than ${limitMb} MB. Export a shorter or compressed version and try again.`, code: "file_too_large" });
   }
   const status = err.status || err.statusCode || (err.name === "MulterError" ? 400 : 500);
   // 4xx messages are written for users (validation, file-type rejection);
@@ -182,9 +191,42 @@ app.use((err, req, res, _next) => {
   res.status(status).json(err.code && status < 500 ? { detail, code: err.code } : { detail });
 });
 
-app.listen(settings.port, () => {
+const server = app.listen(settings.port, () => {
   console.log(`${settings.appTitle} listening on http://localhost:${settings.port}`);
 });
+
+// A stray rejected promise (a fire-and-forget analytics/Firestore call
+// whose .catch was missed) must not take the whole gateway down: Node's
+// default is to crash, which kills every in-flight render with it. Log it
+// loudly instead. A synchronous uncaught exception still exits — the
+// process state is unknown at that point — and Docker restarts it.
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection (kept running):", reason);
+});
+
+// Deploys recreate this container. Stop taking new requests and give
+// in-flight ones (uploads, renders) time to finish instead of cutting them
+// off mid-response; anything still running at the deadline is settled by
+// the reservation reconciler (no user is charged for a lost render).
+// Must stay below docker-compose's stop_grace_period for node-api.
+const SHUTDOWN_GRACE_MS = Number(process.env.SHUTDOWN_GRACE_MS || 50_000);
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`${signal} received — draining in-flight requests (up to ${Math.round(SHUTDOWN_GRACE_MS / 1000)}s)...`);
+  server.close(() => {
+    console.log("All requests finished — exiting.");
+    process.exit(0);
+  });
+  server.closeIdleConnections?.();
+  setTimeout(() => {
+    console.warn("Shutdown grace period over — exiting with requests still open.");
+    process.exit(0);
+  }, SHUTDOWN_GRACE_MS).unref();
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
 // No-op when TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID aren't set (logs once and
 // returns) — safe to always call rather than gating on NODE_ENV like the

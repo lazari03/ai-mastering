@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import { motion } from "motion/react";
 
 import { useAuthStore } from "@/store/authStore";
@@ -10,6 +9,7 @@ import { scorePassword } from "@/lib/passwordStrength";
 import { Spinner } from "@/components/ui/Spinner";
 import { useLanguage } from "@/lib/i18n";
 import InlineAlert from "@/components/ui/InlineAlert";
+import TermsNotice from "@/components/auth/TermsNotice";
 
 const fieldStyle = "field";
 
@@ -28,7 +28,8 @@ export default function ChordAuthGate({ onDone, onClose, eyebrowKey = "chordGate
   const [mode, setMode] = useState("signup"); // "signup" | "signin"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  // Clickwrap (see TermsNotice.jsx): pressing a button is the acceptance.
+  const termsAccepted = true;
   const isSignup = mode === "signup";
   const passwordStrength = scorePassword(password);
 
@@ -52,7 +53,7 @@ export default function ChordAuthGate({ onDone, onClose, eyebrowKey = "chordGate
     if (!useAuthStore.getState().error) onDone?.();
   };
 
-  const googleDisabled = busy || (isSignup && !termsAccepted);
+  const googleDisabled = busy;
 
   // Rendered into <body>, not where it's used: every caller sits inside
   // positioned/transformed page sections, and a fixed overlay inside one of
@@ -167,33 +168,13 @@ export default function ChordAuthGate({ onDone, onClose, eyebrowKey = "chordGate
             ) : null}
           </label>
 
-          {isSignup ? (
-            <label className="flex items-start gap-2.5 text-xs leading-relaxed text-text-secondary">
-              <input
-                type="checkbox"
-                required
-                checked={termsAccepted}
-                onChange={(e) => setTermsAccepted(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0"
-              />
-              <span>
-                {t("login.termsPrefix")}{" "}
-                <Link href="/terms" target="_blank" className="text-link">
-                  {t("login.termsLink")}
-                </Link>{" "}
-                {t("login.termsAnd")}{" "}
-                <Link href="/privacy" target="_blank" className="text-link">
-                  {t("login.privacyLink")}
-                </Link>
-              </span>
-            </label>
-          ) : null}
+          <TermsNotice />
 
           {error ? <InlineAlert size="sm" className="m-0">{error}</InlineAlert> : null}
 
           <button
             type="submit"
-            disabled={busy || (isSignup && !termsAccepted)}
+            disabled={busy}
             className="btn-primary w-full"
           >
             {busy ? (

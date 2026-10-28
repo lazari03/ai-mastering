@@ -4,7 +4,6 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
-  signInAnonymously,
   signInWithCredential,
   linkWithCredential,
   linkWithPopup,
@@ -51,6 +50,8 @@ function readableAuthError(error) {
 
 export const useAuthStore = create((set) => ({
   user: null,
+  // Mirrors user.emailVerified as a primitive (see refreshUser for why).
+  emailVerified: false,
   // True until the very first onAuthStateChanged callback fires — Firebase
   // checks a persisted session asynchronously on load, so without this the
   // UI would flash "logged out" for a moment even for an already-signed-in
@@ -92,7 +93,7 @@ export const useAuthStore = create((set) => ({
       // correctly redirect to /login with user staying null.
       return onAuthStateChanged(
         auth,
-        (user) => set({ user, loading: false }),
+        (user) => set({ user, emailVerified: Boolean(user?.emailVerified), loading: false }),
         (error) => {
           console.error("Firebase auth state error:", error);
           set({ user: null, loading: false });
@@ -258,26 +259,6 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  // Silent, no busy/error state — this is meant to run in the background
-  // the moment someone starts using a tool without being signed in (see
-  // PublicChordDetector.jsx), not as a user-facing action. Anonymous
-  // Firebase users are real, rate-limited, quota-tracked identities
-  // server-side (requireAuth accepts them like any other token) — this is
-  // what lets "try it before you sign up" reuse the exact same
-  // entitlements/quota system as everything else, with zero backend
-  // changes and zero abuse-surface beyond what already exists per-account.
-  async ensureAnonymous() {
-    if (!isFirebaseConfigured()) return;
-    const auth = getFirebaseAuth();
-    if (auth && !auth.currentUser) {
-      try {
-        await signInAnonymously(auth);
-      } catch (error) {
-        console.error("Anonymous sign-in failed:", error);
-      }
-    }
-  },
-
   // Upgrades an anonymous session into a real account IN PLACE — same
   // uid, so whatever was done anonymously (a chord analysis result held
   // in React state, a spent free-trial quota slot) is simply already
@@ -417,12 +398,25 @@ export const useAuthStore = create((set) => ({
   // the cached user object built from it) only refreshes on its own
   // schedule. Called from the verification banner's "I've verified" button
   // so clicking it reflects immediately instead of needing a full sign-out.
+  // Returns whether the email is verified now. `user` is the same Firebase
+  // User object before and after reload(), so a store update with it alone
+  // is an Object.is no-op for subscribers — `emailVerified` is mirrored as
+  // its own primitive field so the banner actually re-renders.
   async refreshUser() {
     const auth = getFirebaseAuth();
-    if (!auth?.currentUser) return;
-    await auth.currentUser.reload();
-    await auth.currentUser.getIdToken(true);
-    set({ user: auth.currentUser });
+    const current = auth?.currentUser;
+    if (!current) return false;
+    const wasVerified = current.emailVerified;
+    try {
+      await current.reload();
+      await current.getIdToken(true);
+    } catch (error) {
+      console.error("Refreshing the signed-in user failed:", error);
+      return current.emailVerified;
+    }
+    if (!wasVerified && current.emailVerified) trackEvent("email_verified");
+    set({ user: auth.currentUser, emailVerified: Boolean(auth.currentUser?.emailVerified) });
+    return Boolean(auth.currentUser?.emailVerified);
   },
 
   // Manual re-send for Settings / the verification banner — the automatic

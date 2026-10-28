@@ -159,6 +159,23 @@ export async function postMaster(formData, { onUploadProgress } = {}) {
   }, MASTERING_TIMEOUT_MS);
 }
 
+// Signed-out 30 s preview of the visitor's own track (no account, no auth
+// header — the backend guards it with IP limits and a site-wide budget).
+// The response's preview_url is relative to the API and carries its own
+// job-scoped token; resolve it with apiUrl() before handing it to <audio>.
+export async function postPublicPreview(formData, { onUploadProgress } = {}) {
+  return request("/public/preview", {
+    method: "POST",
+    body: formData,
+    public: true,
+    onUploadProgress,
+  }, MASTERING_TIMEOUT_MS);
+}
+
+export function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
+
 export async function postAnalyzeChords(formData, { onUploadProgress } = {}) {
   return request("/analyze-chords", {
     method: "POST",

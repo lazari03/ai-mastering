@@ -7,10 +7,11 @@ import { useRouter } from "next/navigation";
 import FileDropzone from "@/components/ui/FileDropzone";
 import LufsMeterResult from "@/components/audio/LufsMeterResult";
 import ChordAuthGate from "@/components/audio/ChordAuthGate";
+import PublicPreviewPlayer from "@/components/marketing/PublicPreviewPlayer";
 import { Spinner } from "@/components/ui/Spinner";
 import { useAuthStore } from "@/store/authStore";
 import { useMasteringStore } from "@/store/masteringStore";
-import { postAnalyzeAudio } from "@/network/http/client";
+import { postAnalyzeAudio, postPublicPreview, apiUrl } from "@/network/http/client";
 import { stashPendingToolFile, takePendingToolFile } from "@/lib/toolHandoff";
 import { measureFileLocally, LocalMeasureUnavailable, SilentAudioError } from "@/lib/localLoudness";
 import { trackEvent } from "@/lib/analytics";
@@ -32,24 +33,35 @@ import { DEMO_MASTER } from "@/content/demoMaster";
  *    before/after player next to it is that same track, mastered).
  *
  * An uploaded file is measured in the browser (lib/localLoudness.js), so it
- * needs no account either. Only a file the browser can't decode goes to the
- * server /analyze, which needs a registered account (anonymous sign-in is
- * off): a signed-out visitor then gets ChordAuthGate first. Once signed in, HomeClient sends them to /app anyway,
- * so an uploaded file is handed to the Master tab (same handoff as "Master
- * this track") instead of the try resuming here.
+ * needs no account either. A signed-out visitor who wants to hear it
+ * mastered gets a free 30 s preview of their OWN track right here
+ * (POST /public/preview — no account, IP-limited), with a loudness-matched
+ * before/after; the account is asked for only after that, to get the full
+ * master. A file the browser can't measure skips the meter and goes
+ * straight to that preview. Signed-in visitors are handed to the Master tab
+ * (same file, no re-upload).
  */
 export default function HeroQuickTry() {
   const { t } = useLanguage();
   const router = useRouter();
   const setMasteringFile = useMasteringStore((s) => s.setFile);
+  const authUser = useAuthStore((s) => s.user);
+  const signedIn = Boolean(authUser) && !authUser.isAnonymous;
   const [file, setFile] = useState(null);
   const [input, setInput] = useState(null); // "upload" | "sample"
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [upload, setUpload] = useState(null);
   const [error, setError] = useState("");
-  const [gate, setGate] = useState(null); // null | { kind: "analyze", file, source } | { kind: "master" }
+  const [gate, setGate] = useState(null); // null | { kind: "master" }
   const [method, setMethod] = useState(null); // "browser" | "server" — which meter produced `analysis`
+  // Signed-out preview of the visitor's own track (POST /public/preview).
+  const [preview, setPreview] = useState(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewUpload, setPreviewUpload] = useState(null);
+  // The browser couldn't decode the file, so there's no meter reading —
+  // the preview (server-side decode) is still available.
+  const [serverOnly, setServerOnly] = useState(false);
   // A file dropped while the sample is still analyzing must win — only the
   // latest try may write results.
   const latestRun = useRef(0);
@@ -61,6 +73,8 @@ export default function HeroQuickTry() {
     setFile(nextFile);
     setInput(source);
     setAnalysis(null);
+    setPreview(null);
+    setServerOnly(false);
     setError("");
     setIsLoading(true);
 
@@ -85,11 +99,10 @@ export default function HeroQuickTry() {
 
     const { user } = useAuthStore.getState();
     if (!user || user.isAnonymous) {
+      // No wall: the meter needs a server decode (an account), but the
+      // preview doesn't — offer that instead.
       setIsLoading(false);
-      setGate({ kind: "analyze", file: nextFile, source });
-      // Stashed now, not after sign-in: signing in makes HomeClient redirect
-      // to /app straight away, which can beat a stash started in onDone.
-      if (source === "upload") stashPendingToolFile(nextFile);
+      setServerOnly(true);
       return;
     }
     try {
@@ -137,13 +150,62 @@ export default function HeroQuickTry() {
       router.push("/app?tab=master");
       return;
     }
+    runPublicPreview();
+  };
+
+  const runPublicPreview = async () => {
+    if (!file || previewing) return;
+    const runId = latestRun.current;
+    setPreviewing(true);
+    setError("");
+    trackEvent("public_preview_started", { source_tool: "homepage_hero" });
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await postPublicPreview(formData, {
+        onUploadProgress: (p) => runId === latestRun.current && setPreviewUpload(p),
+      });
+      if (runId !== latestRun.current) return;
+      setPreview(result);
+      trackEvent("public_preview_completed", { source_tool: "homepage_hero", genre: result.genre });
+    } catch (err) {
+      if (runId !== latestRun.current) return;
+      trackEvent("public_preview_failed", { source_tool: "homepage_hero", error_code: err?.code || null, status: err?.status || null });
+      if (err?.code === "public_preview_limit" || err?.code === "public_preview_busy") {
+        // Out of signed-out previews: the account is the way forward, and
+        // the file comes along (no re-upload).
+        setError(t("heroTry.previewLimited"));
+        openSignupGate();
+      } else {
+        setError(err?.message || t("lufsMeter.failed"));
+      }
+    } finally {
+      if (runId === latestRun.current) {
+        setPreviewing(false);
+        setPreviewUpload(null);
+      }
+    }
+  };
+
+  // Stashed when the gate opens, not only in onDone: signing in makes
+  // HomeClient redirect to /app straight away, which can beat onDone.
+  const openSignupGate = () => {
+    stashPendingToolFile(file);
     setGate({ kind: "master" });
   };
 
+  const getFullMaster = () => {
+    trackEvent("cta_click", { cta_id: "public_preview_get_full", location: "homepage_hero" });
+    openSignupGate();
+  };
+
   const reset = () => {
+    latestRun.current += 1;
     setFile(null);
     setInput(null);
     setAnalysis(null);
+    setPreview(null);
+    setServerOnly(false);
     setError("");
   };
 
@@ -212,17 +274,51 @@ export default function HeroQuickTry() {
           </div>
         ) : null}
 
-        {analysis && input === "upload" ? (
+        {serverOnly && input === "upload" && !preview ? (
+          <p className="m-0 mt-3 text-[13px] text-text-secondary">{t("heroTry.cantMeasure")}</p>
+        ) : null}
+
+        {(analysis || serverOnly) && input === "upload" && !preview ? (
           <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.045] p-4 text-center">
             <button
               type="button"
               onClick={masterThisTrack}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-bg transition hover:opacity-85"
+              disabled={previewing}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-bg transition hover:opacity-85 disabled:cursor-wait disabled:opacity-60"
             >
-              {t("lufsMeter.masterThisTrack")}
+              {previewing ? (
+                <>
+                  <Spinner size={13} /> {uploadStatusText(t, previewUpload, t("heroTry.previewing"))}
+                </>
+              ) : signedIn ? (
+                t("lufsMeter.masterThisTrack")
+              ) : (
+                t("heroTry.hearPreview")
+              )}
             </button>
-            <p className="mt-2 text-[11px] text-text-secondary">{t("lufsMeter.sameFileNote")}</p>
+            <p className="mt-2 text-[11px] text-text-secondary">{signedIn ? t("lufsMeter.sameFileNote") : t("heroTry.previewNote")}</p>
           </div>
+        ) : null}
+
+        {preview && input === "upload" ? (
+          <>
+            <PublicPreviewPlayer
+              originalFile={file}
+              previewUrl={apiUrl(preview.preview_url)}
+              startSeconds={preview.preview_excerpt_start_s}
+              gainMatch={preview.ab_gain_match}
+            />
+            <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.045] p-4 text-center">
+              <button
+                type="button"
+                onClick={getFullMaster}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-text-primary px-5 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-bg transition hover:opacity-85"
+              >
+                {t("heroTry.getFull")}
+              </button>
+              <p className="mt-2 text-[11px] text-text-secondary">{t("heroTry.getFullNote")}</p>
+            </div>
+          </>
         ) : null}
 
         <p className="m-0 mt-4 text-[12px] text-text-secondary">
@@ -238,25 +334,15 @@ export default function HeroQuickTry() {
         </p>
       </div>
 
-      {gate?.kind === "analyze" ? (
+      {gate?.kind === "master" ? (
         <ChordAuthGate
-          eyebrowKey="toolGate.eyebrow"
-          titleKey="toolGate.title"
-          bodyKey="toolGate.body"
+          eyebrowKey={preview ? "previewGate.eyebrow" : "lufsGate.eyebrow"}
+          titleKey={preview ? "previewGate.title" : "lufsGate.title"}
+          bodyKey={preview ? "previewGate.body" : "lufsGate.body"}
           onClose={() => {
             setGate(null);
             takePendingToolFile(); // discard the stash; the visitor backed out
           }}
-          onDone={() => router.push(gate.source === "upload" ? "/app?tab=master" : "/app")}
-        />
-      ) : null}
-
-      {gate?.kind === "master" ? (
-        <ChordAuthGate
-          eyebrowKey="lufsGate.eyebrow"
-          titleKey="lufsGate.title"
-          bodyKey="lufsGate.body"
-          onClose={() => setGate(null)}
           onDone={async () => {
             await stashPendingToolFile(file);
             router.push("/app?tab=master");

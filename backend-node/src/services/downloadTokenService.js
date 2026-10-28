@@ -83,3 +83,32 @@ export function isShareJobExpired(job, now = Date.now()) {
   const ms = raw ? new Date(raw).getTime() : NaN;
   return !Number.isFinite(ms) || ms <= now;
 }
+
+// Signed-out "hear your own track" preview (POST /public/preview). The
+// visitor has no account, so the token itself is the only credential: it
+// names exactly one preview job and expires long before the 48h file sweep.
+// Signed under its own namespace prefix, so it can never verify as a
+// download or share token (or the other way round) even though all three
+// use the same secret.
+const PUBLIC_PREVIEW_TTL_MS = 2 * 60 * 60 * 1000; // 2h — one listening session
+const PUBLIC_PREVIEW_NS = "public-preview";
+
+export function mintPublicPreviewToken(jobId, now = Date.now()) {
+  const exp = now + PUBLIC_PREVIEW_TTL_MS;
+  const payload = `${jobId}.${exp}`;
+  return `${Buffer.from(payload).toString("base64url")}.${sign(`${PUBLIC_PREVIEW_NS}:${payload}`)}`;
+}
+
+// True only for an unexpired token minted for this exact jobId.
+export function verifyPublicPreviewToken(token, jobId, now = Date.now()) {
+  if (!token || typeof token !== "string" || !token.includes(".") || !jobId) return false;
+  const [encodedPayload, sig] = token.split(".");
+  const payload = Buffer.from(encodedPayload, "base64url").toString("utf8");
+  const expectedSig = sign(`${PUBLIC_PREVIEW_NS}:${payload}`);
+  if (sig?.length !== expectedSig.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) {
+    return false;
+  }
+  const [tokenJobId, expStr] = payload.split(".");
+  const exp = Number(expStr);
+  return tokenJobId === jobId && Number.isFinite(exp) && now <= exp;
+}

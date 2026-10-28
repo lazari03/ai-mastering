@@ -57,6 +57,8 @@ function sessionFromRow(row) {
     hasViewedPricing: Boolean(row.has_viewed_pricing),
     hasStartedCheckout: Boolean(row.has_started_checkout),
     hasPaid: Boolean(row.has_paid),
+    hasPreviewed: Boolean(row.has_previewed),
+    hasSignedUp: Boolean(row.has_signed_up),
   };
 }
 
@@ -278,7 +280,8 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
     pricingViews: list.filter((s) => s.hasViewedPricing).length,
     checkoutStarts: list.filter((s) => s.hasStartedCheckout).length,
     paid: list.filter((s) => s.hasPaid).length,
-    signups: list.filter((s) => s.authenticated && s.isNewVisitor).length,
+    previews: list.filter((s) => s.hasPreviewed).length,
+    signups: list.filter((s) => s.hasSignedUp).length,
     avgActiveSeconds: list.length ? Math.round(list.reduce((sum, s) => sum + (s.activeMs || 0), 0) / list.length / 1000) : 0,
   });
 
@@ -297,6 +300,7 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
     signups: withDelta(signupCount, prevSignupCount),
     avgSessionSeconds: withDelta(current.avgActiveSeconds, previous.avgActiveSeconds),
     uploads: withDelta(current.uploads, previous.uploads),
+    previews: withDelta(current.previews, previous.previews),
     masters: withDelta(current.masters, previous.masters),
     pricingViews: withDelta(current.pricingViews, previous.pricingViews),
     checkoutStarts: withDelta(current.checkoutStarts, previous.checkoutStarts),
@@ -313,6 +317,8 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
     // exceed 100% (one visitor, three sessions, three uploads).
     conversion: {
       visitorToUpload: pct(current.uploads, current.sessions),
+      visitorToPreview: pct(current.previews, current.sessions),
+      visitorToSignup: pct(current.signups, current.sessions),
       visitorToMaster: pct(current.masters, current.sessions),
       visitorToPaid: withDelta(pct(current.paid, current.sessions), pct(previous.paid, previous.sessions)),
       checkoutToPaid: pct(current.paid, current.checkoutStarts),
@@ -367,19 +373,21 @@ export async function getOverviewTimeseries({ from, to }) {
 export async function getFunnel({ from, to, filters }) {
   const sessions = applySessionFilters(fetchSessionsInRange(from, to), filters);
   const visitors = sessions.length;
-  const uploaded = sessions.filter((s) => s.hasUploaded).length;
-  const mastered = sessions.filter((s) => s.hasMastered).length;
-  const pricing = sessions.filter((s) => s.hasViewedPricing).length;
-  const checkout = sessions.filter((s) => s.hasStartedCheckout).length;
-  const paid = sessions.filter((s) => s.hasPaid).length;
-
+  const count = (pred) => sessions.filter(pred).length;
+  // Order follows the product flow since 2026-10-28: a visitor adds their
+  // own track, hears a free 30 s preview (no account needed), signs up,
+  // then gets a full master. Sessions are counted per step independently
+  // (a session can sign up without previewing), so a later step can
+  // exceed an earlier one — that is information, not a bug.
   const steps = [
     { key: "visitors", label: "Visitors", count: visitors },
-    { key: "upload", label: "Audio Uploaded", count: uploaded },
-    { key: "master", label: "Master Completed", count: mastered },
-    { key: "pricing", label: "Pricing Viewed", count: pricing },
-    { key: "checkout", label: "Checkout Started", count: checkout },
-    { key: "paid", label: "Paid", count: paid },
+    { key: "upload", label: "Added Own Track", count: count((s) => s.hasUploaded) },
+    { key: "preview", label: "Heard Preview", count: count((s) => s.hasPreviewed) },
+    { key: "signup", label: "Signed Up", count: count((s) => s.hasSignedUp) },
+    { key: "master", label: "Full Master Completed", count: count((s) => s.hasMastered) },
+    { key: "pricing", label: "Pricing Viewed", count: count((s) => s.hasViewedPricing) },
+    { key: "checkout", label: "Checkout Started", count: count((s) => s.hasStartedCheckout) },
+    { key: "paid", label: "Paid", count: count((s) => s.hasPaid) },
   ];
   return steps.map((step, i) => ({
     ...step,
@@ -603,7 +611,7 @@ export async function getSales({ from, to }) {
   };
 }
 
-const FAILURE_EVENT_NAMES = ["audio_upload_failed", "analysis_failed", "master_failed", "checkout_failed"];
+const FAILURE_EVENT_NAMES = ["audio_upload_failed", "analysis_failed", "master_failed", "checkout_failed", "public_preview_render_failed"];
 
 // master_* is written twice: by the browser (masteringStore.js, including
 // preview renders and client-side network errors) and by the server

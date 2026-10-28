@@ -221,3 +221,21 @@ jobs:
             # those directories don't exist and this is a no-op.
             docker compose exec -T python-service sh -c 'for d in uploads outputs; do if [ -d /$d ] && [ "$(ls -A /$d 2>/dev/null)" ]; then cp -an /$d/. /app/$d/ && echo "salvaged /$d -> /app/$d"; fi; done' || true
             make deploy
+            # Post-deploy verification: a deploy that leaves a service
+            # unhealthy must fail this job (red in GitHub, not a silent
+            # outage). Polls Docker's own healthchecks for up to 4 minutes —
+            # the Python service warms numba/essentia/demucs on start.
+            echo "--- waiting for services to report healthy ---"
+            ok=0
+            for i in $(seq 1 48); do
+              unhealthy=$(docker compose ps --format '{{.Service}} {{.Health}}' python-service node-api | grep -v ' healthy$' || true)
+              if [ -z "$unhealthy" ]; then ok=1; break; fi
+              sleep 5
+            done
+            docker compose ps
+            if [ "$ok" != 1 ]; then
+              echo "::error::Services not healthy after deploy: $unhealthy"
+              docker compose logs --tail 80 node-api python-service || true
+              exit 1
+            fi
+            echo "--- deploy healthy ---"

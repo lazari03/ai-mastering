@@ -109,3 +109,30 @@ export const shareAccessLimiter = rateLimit({
   keyGenerator: (req) => ipKeyGenerator(req.clientIp || req.ip),
   message: { detail: "Too many requests for shared files — try again in a few minutes.", code: "rate_limited" },
 });
+
+// Signed-out 30-second preview (POST /public/preview) — real DSP compute
+// with no account behind it, so IP-keyed and tight: enough for a visitor
+// to try two or three tracks, then the next step is a free account (which
+// gets expensiveLimiter's per-user budget instead).
+export const publicPreviewLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: Number(process.env.PUBLIC_PREVIEW_PER_IP_PER_HOUR || 3),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.clientIp || req.ip),
+  message: {
+    detail: "You've used your free previews for now — create a free account to keep going (3 full masters included).",
+    code: "public_preview_limit",
+  },
+});
+
+// Audio playback of a signed-out preview — IP-keyed; <audio> issues several
+// range requests per play, so this is generous.
+export const publicPreviewAudioLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.clientIp || req.ip),
+  message: { detail: "Too many requests — try again in a few minutes.", code: "rate_limited" },
+});

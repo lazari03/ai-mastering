@@ -31,6 +31,9 @@ services:
   node-api:
     build: ./backend-node
     restart: unless-stopped
+    # Time for server.js's SIGTERM drain (SHUTDOWN_GRACE_MS, 50s) to let
+    # in-flight uploads/renders finish during a deploy before Docker kills it.
+    stop_grace_period: 60s
     depends_on:
       python-service:
         condition: service_healthy

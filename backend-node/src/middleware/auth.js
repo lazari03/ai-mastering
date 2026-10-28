@@ -89,12 +89,11 @@ export function invalidateCachedSession(uid) {
 // A password-account signup never checks that the email itself is real
 // beyond a best-effort deliverability lookup (see authStore.js's signUp) —
 // nothing stops someone registering with a typo'd or made-up address and
-// using the product on it indefinitely. This gates the two actions that
-// actually cost real money/resources (a final master render, a purchase)
-// rather than the whole app, so browsing/previewing stays frictionless.
-// OAuth providers (Google) arrive pre-verified by the provider itself, and
-// an anonymous session (PublicChordDetector's try-before-signup flow) has
-// no real email yet to verify — both skip this check entirely.
+// using the product on it indefinitely. Since 2026-10-28 this no longer
+// blocks anything (it used to gate the final master and checkout, which
+// was the funnel's biggest drop-off) — it's kept as the one definition of
+// "unverified" for analytics props and the frontend's warning banner.
+// OAuth providers (Google) arrive pre-verified by the provider itself.
 export function requiresEmailVerification(user) {
   return user?.signInProvider === "password" && !user?.emailVerified;
 }

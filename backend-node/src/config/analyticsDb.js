@@ -100,6 +100,23 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_visitors_last_seen_at ON analytics_visitors(last_seen_at);
 `);
 
+// Additive column migrations — CREATE TABLE IF NOT EXISTS never alters an
+// existing table, so columns added after the first deploy are added here,
+// idempotently, on every boot. Never drop or rename here: old rows simply
+// read the default.
+function ensureColumn(table, column, definition) {
+  const exists = db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all()
+    .some((col) => col.name === column);
+  if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+// Funnel steps added 2026-10-28: a 30-second preview heard (signed in or
+// not) is no longer counted as a master, and "signed up in this session"
+// is its own step instead of being inferred from `authenticated`.
+ensureColumn("analytics_sessions", "has_previewed", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn("analytics_sessions", "has_signed_up", "INTEGER NOT NULL DEFAULT 0");
+
 // Bounded retention purge (DB-01 family). Deletes at most `batchSize` rows per
 // table per call (key-subselect, so no SQLITE_ENABLE_UPDATE_DELETE_LIMIT
 // needed) and never touches rows newer than `retentionDays`. Returns

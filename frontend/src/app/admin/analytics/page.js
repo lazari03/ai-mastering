@@ -154,6 +154,7 @@ export default function AdminOverviewPage() {
 
           <StatGroup title={t("admin.overview.sectionEngine")} Icon={IconWaveform}>
             <StatCard label={t("admin.stat.uploads")} stat={data.uploads} icon={IconUpload} />
+            {data.previews ? <StatCard label={t("admin.stat.previews")} stat={data.previews} icon={IconWaveform} /> : null}
             <StatCard label={t("admin.stat.sharesCreated")} stat={data.sharesCreated} icon={IconShare} />
             <StatCard label={t("admin.stat.downloadsCompleted")} stat={data.downloadsCompleted} icon={IconDownload} />
             <StatCard label={t("admin.stat.pricingViews")} stat={data.pricingViews} icon={IconTag} />
@@ -174,6 +175,12 @@ export default function AdminOverviewPage() {
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <StatCard label={t("admin.stat.visitorToUpload")} stat={`${data.conversion.visitorToUpload}%`} icon={IconFunnel} />
+              {data.conversion.visitorToPreview != null ? (
+                <StatCard label={t("admin.stat.visitorToPreview")} stat={`${data.conversion.visitorToPreview}%`} icon={IconFunnel} />
+              ) : null}
+              {data.conversion.visitorToSignup != null ? (
+                <StatCard label={t("admin.stat.visitorToSignup")} stat={`${data.conversion.visitorToSignup}%`} icon={IconFunnel} />
+              ) : null}
               <StatCard label={t("admin.stat.visitorToMaster")} stat={`${data.conversion.visitorToMaster}%`} icon={IconFunnel} />
               <StatCard label={t("admin.stat.visitorToPaid")} stat={data.conversion.visitorToPaid} suffix="%" icon={IconFunnel} />
               <StatCard label={t("admin.stat.checkoutToPaid")} stat={`${data.conversion.checkoutToPaid}%`} icon={IconFunnel} />

@@ -8,7 +8,7 @@ import multer from "multer";
 
 import { GENRES, STYLES, TAGS, CATEGORIES, FLAVOURS_BY_CATEGORY, AUDIO_DECODE_EXTS, DELIVERY_TARGETS } from "../config/constants.js";
 import { settings } from "../config/settings.js";
-import { invalidateCachedSession, requiresEmailVerification } from "../middleware/auth.js";
+import { invalidateCachedSession } from "../middleware/auth.js";
 import { processMastering, execFileAsync, deleteJobFiles, postMultipartToPython, cancelPythonJob } from "../services/masteringService.js";
 import { analyzeChords, previewCodec } from "../services/chordCleanService.js";
 import { getMixPresetByName, isIntentPreset, listMixPresets } from "../services/presetsService.js";
@@ -32,9 +32,18 @@ import { UPSTREAM_TIMEOUT_MS } from "../services/pythonUpstream.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { subscribeToNewsletter } from "../services/newsletterService.js";
 import { getAuth } from "../config/firebase.js";
-import { expensiveLimiter, shareAccessLimiter, newsletterLimiter, previewParamsLimiter, adminKeyFailureLimiter } from "../middleware/rateLimit.js";
+import {
+  expensiveLimiter,
+  shareAccessLimiter,
+  newsletterLimiter,
+  previewParamsLimiter,
+  adminKeyFailureLimiter,
+  publicPreviewLimiter,
+  publicPreviewAudioLimiter,
+} from "../middleware/rateLimit.js";
 import { recordServerEvent, normalizeMasteringFailure } from "../services/analyticsService.js";
-import { mintDownloadToken, verifyShareToken, isShareJobExpired } from "../services/downloadTokenService.js";
+import { mintDownloadToken, verifyShareToken, isShareJobExpired, mintPublicPreviewToken, verifyPublicPreviewToken } from "../services/downloadTokenService.js";
+import { publicPreviewBudget } from "../services/publicPreviewBudget.js";
 import { shareLinks, ShareLinkError } from "../services/shareLinkService.js";
 import { cleanupUploadsOnFinish } from "../middleware/cleanupUploads.js";
 import { toClientError } from "../services/clientError.js";
@@ -528,12 +537,8 @@ const CHECKOUT_ITEM_TO_PRODUCT_KEY = {
 };
 
 router.post("/billing/checkout", async (req, res) => {
-  if (requiresEmailVerification(req.user)) {
-    return res.status(403).json({
-      detail: "Please verify your email address before purchasing — check your inbox for the verification link, or resend it from Settings.",
-      code: "EMAIL_NOT_VERIFIED",
-    });
-  }
+  // No email-verification gate: Polar's checkout collects and validates the
+  // buyer's own email, so a paying customer is never turned away here.
   const productKey = CHECKOUT_ITEM_TO_PRODUCT_KEY[req.body?.item];
   if (!productKey) {
     return res.status(400).json({ detail: `Unknown item "${req.body?.item}"` });
@@ -775,6 +780,123 @@ const masterUpload = upload.fields([
 // Free preview excerpt: the loudest 30 s, as float WAV — see
 // services/previewExcerpt.js for why it is not the first 30 s any more.
 
+// ---------------------------------------------------------------------
+// Signed-out preview: "hear your own track before you sign up".
+//
+// The biggest funnel drop was that nobody could hear their own song
+// mastered without first creating (and verifying) an account. This route
+// renders the same free 30 s preview signed-in users get — loudest 30 s,
+// Standard engine, no stems, no Pro, no download of a usable file — for a
+// visitor with no account at all. No anonymous Firebase user is minted
+// (anonymous auth is off): the only credential is a short-lived token
+// scoped to the one preview job (downloadTokenService.js).
+//
+// Guard rails: per-IP limit (publicPreviewLimiter), a site-wide hourly
+// budget (publicPreviewBudget), a smaller upload cap than /master, and the
+// Python service's own concurrency cap. Nothing here touches Firestore or
+// any plan/quota counter. Files fall under the normal 48h retention sweep.
+// ---------------------------------------------------------------------
+const PUBLIC_PREVIEW_MAX_MB = Math.min(settings.maxUploadMb, Number(process.env.PUBLIC_PREVIEW_MAX_UPLOAD_MB || 100));
+const publicPreviewMulter = multer({
+  dest: settings.uploadDir,
+  limits: { fileSize: PUBLIC_PREVIEW_MAX_MB * 1024 * 1024 },
+  fileFilter: audioFileFilter,
+}).single("file");
+
+// A rejected upload (too large, not audio) never rendered anything, so it
+// hands its budget slot back before the error reaches server.js's handler.
+function publicPreviewUpload(req, res, next) {
+  req.uploadLimitMb = PUBLIC_PREVIEW_MAX_MB;
+  publicPreviewMulter(req, res, (error) => {
+    if (error) publicPreviewBudget.release();
+    next(error);
+  });
+}
+
+function publicPreviewBudgetGate(_req, res, next) {
+  if (!publicPreviewBudget.tryTake()) {
+    return res.status(429).json({
+      code: "public_preview_busy",
+      detail: "Free previews are busy right now — create a free account to master your track straight away (3 full masters included).",
+    });
+  }
+  return next();
+}
+
+router.post("/public/preview", publicPreviewLimiter, publicPreviewBudgetGate, publicPreviewUpload, cleanupUploadsOnFinish, async (req, res) => {
+  const file = req.file;
+  if (!file) {
+    publicPreviewBudget.release();
+    return res.status(400).json({ code: "no_file", detail: "file is required" });
+  }
+  const genre = GENRES.includes(req.body?.genre) ? req.body.genre : "pop";
+  const delivery = DELIVERY_TARGETS.some((target) => target.key === req.body?.delivery) ? req.body.delivery : "auto";
+  const jobId = crypto.randomUUID().replace(/-/g, "");
+  const startedAt = Date.now();
+  let excerptPath = null;
+  try {
+    const excerpt = await cutPreviewExcerpt(file.path, settings.uploadDir);
+    excerptPath = excerpt.path;
+    const result = await processMastering({
+      jobId,
+      deadlineEpochMs: Date.now() + UPSTREAM_TIMEOUT_MS,
+      file: { ...file, path: excerpt.path },
+      uid: null,
+      fields: {
+        genre,
+        style: "modern",
+        tags: [],
+        tweaks: {},
+        use_stem_separation: false,
+        output_format: "wav",
+        tier: "standard",
+        delivery,
+      },
+    });
+    const resultJobId = result.job_id || jobId;
+    const token = mintPublicPreviewToken(resultJobId);
+    recordServerEvent("public_preview_rendered", {
+      // DSP props first: their genre is null when the engine didn't echo
+      // its target profile, and must not hide the genre that was requested.
+      props: { ...masteringDspProps(result), genre, delivery, processing_duration_ms: Date.now() - startedAt },
+    });
+    return res.json({
+      job_id: resultJobId,
+      preview: true,
+      public: true,
+      genre,
+      preview_excerpt_start_s: excerpt.startSeconds,
+      before_lufs: result.before_lufs,
+      after_lufs: result.after_lufs,
+      analysis_before: result.analysis_before,
+      analysis_after: result.analysis_after,
+      ab_gain_match: result.ab_gain_match,
+      // Relative to the API base; the token is the only credential.
+      preview_url: `/public/preview/${resultJobId}/audio?t=${encodeURIComponent(token)}`,
+    });
+  } catch (error) {
+    if (error?.code === "processing_timeout" || error?.name === "UpstreamTimeoutError") {
+      await cancelPythonJob(jobId);
+      await deleteJobFiles(jobId).catch(() => {});
+    }
+    const reason = normalizeMasteringFailure(error);
+    recordServerEvent("public_preview_render_failed", { props: { genre, reason } });
+    if (!error?.status || error.status >= 500) console.error(`public preview failed (job ${jobId}):`, error?.message || error);
+    const { status, body } = toClientError(error, { fallbackDetail: "The preview failed on our side. Please try again in a moment." });
+    return res.status(status).json(body);
+  } finally {
+    if (excerptPath) fs.unlink(excerptPath, () => {});
+  }
+});
+
+router.get("/public/preview/:jobId/audio", publicPreviewAudioLimiter, (req, res) => {
+  const { jobId } = req.params;
+  if (!verifyPublicPreviewToken(req.query.t, jobId)) {
+    return res.status(404).json({ detail: "Preview not found or expired — upload the track again." });
+  }
+  return proxyFromPython(upstreamPath("preview", jobId), res, "Preview not found", req);
+});
+
 router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, async (req, res) => {
   const file = req.files?.file?.[0];
   if (!file) {
@@ -785,15 +907,11 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
   const tier = !preview && req.body.tier === "professional" ? "professional" : "standard";
   const useStemSeparation = !preview && req.body.use_stem_separation === "true";
 
-  // Only a real, final render is gated — previews are free to try even on
-  // an unverified account, same "browsing stays frictionless" principle
-  // requiresEmailVerification's own comment describes.
-  if (!preview && requiresEmailVerification(req.user)) {
-    return res.status(403).json({
-      detail: "Please verify your email address before mastering a track — check your inbox for the verification link, or resend it from Settings.",
-      code: "EMAIL_NOT_VERIFIED",
-    });
-  }
+  // Email verification no longer blocks mastering (2026-10-28): the wall
+  // between "signed up" and "heard my own master" was the funnel's biggest
+  // drop. Unverified password accounts still see a persistent warning
+  // (VerifyEmailBanner.jsx) and the 3-master trial is still per account;
+  // the signup MX check (authStore.signUp) still rejects dead domains.
   // Anonymous sessions exist for the public try-before-signup tools. A
   // final master spends the 3-master Free trial, and anonymous uids are
   // free to mint by script — every one would get a fresh trial.

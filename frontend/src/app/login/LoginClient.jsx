@@ -9,6 +9,7 @@ import { useLanguage } from "@/lib/i18n";
 import { scorePassword } from "@/lib/passwordStrength";
 import { Spinner } from "@/components/ui/Spinner";
 import LogoMark from "@/components/brand/LogoMark";
+import TermsNotice from "@/components/auth/TermsNotice";
 
 export default function LoginClient() {
   const router = useRouter();
@@ -37,7 +38,6 @@ export default function LoginClient() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // ?redirect=/admin/analytics (or any other in-app path) sends someone
   // back where they actually meant to go instead of always landing on
@@ -63,7 +63,8 @@ export default function LoginClient() {
       return;
     }
     if (mode === "signup") {
-      await signUp(email, password, { firstName, lastName, phone, termsAccepted });
+      // Clickwrap: submitting under <TermsNotice> is the acceptance.
+      await signUp(email, password, { firstName, lastName, phone, termsAccepted: true });
     } else {
       await signIn(email, password);
     }
@@ -77,7 +78,8 @@ export default function LoginClient() {
     setResetSent(false);
     setMode(next);
   };
-  const googleDisabled = busy || (isSignup && !termsAccepted);
+  // Never gated on a checkbox: Google is one tap for a new or returning user.
+  const googleDisabled = busy;
   const passwordStrength = scorePassword(password);
 
   return (
@@ -122,12 +124,13 @@ export default function LoginClient() {
           {isReset && resetSent ? null : (
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
             {isSignup ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 items-end gap-3">
                 <label className="block">
-                  <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-text-secondary">{t("login.firstName")}</span>
+                  <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-text-secondary">
+                    {t("login.firstName")} <span className="normal-case tracking-normal opacity-70">({t("login.optional")})</span>
+                  </span>
                   <input
                     type="text"
-                    required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     className={fieldStyle}
@@ -135,10 +138,11 @@ export default function LoginClient() {
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-text-secondary">{t("login.lastName")}</span>
+                  <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-text-secondary">
+                    {t("login.lastName")} <span className="normal-case tracking-normal opacity-70">({t("login.optional")})</span>
+                  </span>
                   <input
                     type="text"
-                    required
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     className={fieldStyle}
@@ -163,10 +167,11 @@ export default function LoginClient() {
 
             {isSignup ? (
               <label className="block">
-                <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-text-secondary">{t("login.phone")}</span>
+                <span className="mb-2 block text-xs uppercase tracking-[0.12em] text-text-secondary">
+                  {t("login.phone")} <span className="normal-case tracking-normal opacity-70">({t("login.optional")})</span>
+                </span>
                 <input
                   type="tel"
-                  required
                   placeholder="+355 6X XXX XXXX"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -212,27 +217,7 @@ export default function LoginClient() {
             </label>
             ) : null}
 
-            {isSignup ? (
-              <label className="flex items-start gap-2.5 text-xs leading-relaxed text-text-secondary">
-                <input
-                  type="checkbox"
-                  required
-                  checked={termsAccepted}
-                  onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0"
-                />
-                <span>
-                  {t("login.termsPrefix")}{" "}
-                  <Link href="/terms" target="_blank" className="text-link">
-                    {t("login.termsLink")}
-                  </Link>{" "}
-                  {t("login.termsAnd")}{" "}
-                  <Link href="/privacy" target="_blank" className="text-link">
-                    {t("login.privacyLink")}
-                  </Link>
-                </span>
-              </label>
-            ) : null}
+            {isSignup ? <TermsNotice /> : null}
 
             {error ? (
               <p role="alert" className="m-0 rounded-xl border border-red-600/25 bg-red-600/[0.05] px-3.5 py-2.5 text-[13px] text-red-800">
@@ -242,7 +227,7 @@ export default function LoginClient() {
 
             <button
               type="submit"
-              disabled={busy || (isSignup && !termsAccepted)}
+              disabled={busy}
               className="btn-primary w-full justify-center py-3.5 disabled:opacity-50"
             >
               {busy ? (
@@ -274,12 +259,13 @@ export default function LoginClient() {
 
           <button
             type="button"
-            onClick={() => signInWithGoogle(termsAccepted)}
+            onClick={() => signInWithGoogle(true)}
             disabled={googleDisabled}
             className="btn-secondary w-full justify-center py-3.5 disabled:opacity-50"
           >
             {t("login.google")}
           </button>
+          {!isSignup ? <TermsNotice className="mt-3 text-center" /> : null}
 
           <button
             type="button"

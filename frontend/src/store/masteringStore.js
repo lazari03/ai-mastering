@@ -716,6 +716,10 @@ export const useMasteringStore = create((set, get) => ({
         authenticated: currentAuthState(),
         processing_duration_ms: Date.now() - startedAt,
         error_reason: err?.status ? `http_${err.status}` : "unknown",
+        // The API's stable reason (quota_exhausted, ACCOUNT_REQUIRED,
+        // server_busy, ...) — "http_402" alone can't tell "out of free
+        // masters" from "plan doesn't include Professional".
+        error_code: err?.code || null,
       });
     }
   },

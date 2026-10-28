@@ -1,26 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useAuthStore } from "@/store/authStore";
 import { useLanguage } from "@/lib/i18n";
 
 // Mirrors the backend's requiresEmailVerification (backend-node's auth.js):
-// only a password-account user with an unverified email is gated — Google
-// sign-in arrives pre-verified, and an anonymous session has no real email
-// yet. Shown persistently (not dismissible) since it names a real,
-// standing restriction (mastering/checkout are blocked server-side), not a
-// one-time announcement.
+// shown only to a password-account user with an unverified email (Google
+// sign-in arrives pre-verified). A warning, not a gate — mastering and
+// checkout work while unverified — so it stays persistent and points at
+// the spam folder, where most "I never got it" verification mails end up.
 export default function VerifyEmailBanner() {
   const { t } = useLanguage();
   const user = useAuthStore((s) => s.user);
   const resendVerificationEmail = useAuthStore((s) => s.resendVerificationEmail);
   const refreshUser = useAuthStore((s) => s.refreshUser);
+  const emailVerified = useAuthStore((s) => s.emailVerified);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const isPasswordAccount = user?.providerData?.some((p) => p.providerId === "password");
-  if (!isPasswordAccount || user?.emailVerified) return null;
+  const showBanner = isPasswordAccount && !emailVerified && !user?.emailVerified;
+
+  // The verification link opens in another tab or the mail app; when the
+  // user comes back here, check silently so the banner clears on its own
+  // instead of waiting for a click on "I've verified".
+  useEffect(() => {
+    if (!showBanner) return undefined;
+    const onFocus = () => {
+      if (document.visibilityState === "visible") refreshUser().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [showBanner, refreshUser]);
+
+  if (!showBanner) return null;
 
   const handleResend = async () => {
     setBusy(true);
@@ -31,8 +49,11 @@ export default function VerifyEmailBanner() {
 
   const handleRefresh = async () => {
     setBusy(true);
-    await refreshUser();
-    setBusy(false);
+    try {
+      await refreshUser();
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

@@ -90,6 +90,13 @@ export const ALLOWED_EVENT_NAMES = new Set([
   "signup_completed",
   "preset_applied",
   "preset_saved",
+  // Signed-out 30-second preview of the visitor's own track (/public/preview,
+  // HeroQuickTry.jsx) and email verification completed after the fact —
+  // both added 2026-10-28 with the "preview before signup" flow.
+  "public_preview_started",
+  "public_preview_completed",
+  "public_preview_failed",
+  "email_verified",
 ]);
 
 // Backend-only event names — never accepted from the public /collect
@@ -109,6 +116,9 @@ export const SERVER_ONLY_EVENT_NAMES = new Set([
   "share_created", // the /jobs/:jobId/share route observes this directly; a client claiming it created a share link proves nothing
   "share_revoked",
   "share_downloaded",
+  // Signed-out preview outcomes as the server saw them (/public/preview).
+  "public_preview_rendered",
+  "public_preview_render_failed",
 ]);
 
 const SENSITIVE_QUERY_KEY_PATTERNS = [
@@ -292,6 +302,29 @@ async function isAdminUid(uid) {
 // one atomic transaction without any of the async batching machinery the
 // old Firestore version needed.
 // ---------------------------------------------------------------------
+// Which funnel flags a browser event sets on its session. One place, so
+// the funnel definition can't drift between call sites:
+// - "Track added" means the visitor used their OWN audio: the homepage
+//   demo sample (input: "sample") is a click, not an upload.
+// - A 30-second preview (signed-in `preview: true`, or the signed-out
+//   /public/preview) is "heard a preview", never "mastered" — only a full
+//   render counts as a master.
+export function sessionFlagsForEvent(name, props = {}) {
+  const flags = {};
+  if (name === "audio_upload_completed" || name === "public_preview_started") flags.has_uploaded = 1;
+  if (name === "free_tool_analysis_completed" && props?.input !== "sample") flags.has_uploaded = 1;
+  if (name === "analysis_completed") flags.has_analyzed = 1;
+  if (name === "master_completed") {
+    if (props?.preview === true) flags.has_previewed = 1;
+    else flags.has_mastered = 1;
+  }
+  if (name === "public_preview_completed") flags.has_previewed = 1;
+  if (name === "signup_completed") flags.has_signed_up = 1;
+  if (name === "pricing_view" || name === "pricing_viewed") flags.has_viewed_pricing = 1;
+  if (name === "checkout_started" || name === "begin_checkout") flags.has_started_checkout = 1;
+  return flags;
+}
+
 const getVisitorStmt = analyticsDb.prepare("SELECT * FROM analytics_visitors WHERE visitor_id = ?");
 const insertVisitorStmt = analyticsDb.prepare(`
   INSERT INTO analytics_visitors
@@ -464,10 +497,16 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, country: 
       // reasonably fresh).
       const sessionStale = Date.now() - new Date(sessionRow.last_seen_at).getTime() > SESSION_LAST_SEEN_THROTTLE_MS;
       const uidChanged = uid && uid !== sessionRow.uid;
-      if (sessionStale || uidChanged) {
+      // `authenticated` used to be written only on the session's first
+      // batch, so someone who signed up or logged in mid-session stayed
+      // "not registered" forever (and the dashboard showed mastering
+      // sessions as unregistered). It now follows the uid: once a session
+      // has a verified uid it is authenticated.
+      const authNeedsSet = uid && !sessionRow.authenticated;
+      if (sessionStale || uidChanged || authNeedsSet) {
         analyticsDb
-          .prepare("UPDATE analytics_sessions SET last_seen_at = @lastSeenAt, uid = @uid WHERE session_id = @sessionId")
-          .run({ lastSeenAt: now, uid: uid || sessionRow.uid || null, sessionId });
+          .prepare("UPDATE analytics_sessions SET last_seen_at = @lastSeenAt, uid = @uid, authenticated = @authenticated WHERE session_id = @sessionId")
+          .run({ lastSeenAt: now, uid: uid || sessionRow.uid || null, authenticated: uid || sessionRow.authenticated ? 1 : 0, sessionId });
       }
     }
 
@@ -504,11 +543,7 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, country: 
         runningPageViewCount += 1;
         sessionPatch.page_view_count = runningPageViewCount;
       }
-      if (evt.name === "audio_upload_completed" || evt.name === "free_tool_analysis_completed") sessionPatch.has_uploaded = 1;
-      if (evt.name === "analysis_completed") sessionPatch.has_analyzed = 1;
-      if (evt.name === "master_completed") sessionPatch.has_mastered = 1;
-      if (evt.name === "pricing_view" || evt.name === "pricing_viewed") sessionPatch.has_viewed_pricing = 1;
-      if (evt.name === "checkout_started" || evt.name === "begin_checkout") sessionPatch.has_started_checkout = 1;
+      for (const [column, value] of Object.entries(sessionFlagsForEvent(evt.name, props))) sessionPatch[column] = value;
 
       if (activeMsForEvent) {
         runningActiveMs += activeMsForEvent;
@@ -537,6 +572,12 @@ export async function ingestBatch({ visitorId, sessionId, uid, ua, ip, country: 
 // spec section 1: "Backend events... written directly from the backend
 // rather than relying on browser events."
 // ---------------------------------------------------------------------
+// Server-observed events that only know the uid but should still light up
+// the funnel on the session that led to them. The browser's own
+// signup_completed/begin_checkout can be lost (closed tab, blocked script);
+// these are the authoritative copies.
+const SESSION_ATTRIBUTED_SERVER_EVENTS = new Set(["payment_succeeded", "sign_up", "checkout_started"]);
+
 export async function recordServerEvent(name, { uid = null, sessionId = null, visitorId = null, props = {} } = {}) {
   try {
     if (uid && (await isAdminUid(uid))) return;
@@ -544,7 +585,7 @@ export async function recordServerEvent(name, { uid = null, sessionId = null, vi
     // user's most recent session so funnel/SEO/acquisition "Paid" counts work.
     // sessions.uid is only ever set from a verified token (see
     // resolveCollectUid), never from client-asserted input.
-    if (uid && !sessionId && name === "payment_succeeded") {
+    if (uid && !sessionId && SESSION_ATTRIBUTED_SERVER_EVENTS.has(name)) {
       const row = analyticsDb
         .prepare("SELECT session_id, visitor_id FROM analytics_sessions WHERE uid = ? ORDER BY last_seen_at DESC LIMIT 1")
         .get(uid);
@@ -569,6 +610,8 @@ export async function recordServerEvent(name, { uid = null, sessionId = null, vi
       const patch = {};
       if (name === "master_completed") patch.has_mastered = 1;
       if (name === "payment_succeeded") patch.has_paid = 1;
+      if (name === "sign_up") patch.has_signed_up = 1;
+      if (name === "checkout_started") patch.has_started_checkout = 1;
       const keys = Object.keys(patch);
       if (keys.length) {
         const setClause = keys.map((k) => `${k} = @${k}`).join(", ");
