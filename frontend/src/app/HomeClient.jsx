@@ -20,6 +20,7 @@ import GenreShowcase from "@/components/marketing/GenreShowcase";
 import SectionHeading from "@/components/marketing/SectionHeading";
 import HeroQuickTry from "@/components/marketing/HeroQuickTry";
 import HearTheDifference from "@/components/marketing/HearTheDifference";
+import ServiceProviderDisclosure from "@/components/marketing/ServiceProviderDisclosure";
 import MasteringDecisions from "@/components/audio/MasteringDecisions";
 import LoudnessMeter from "@/components/audio/LoudnessMeter";
 import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
@@ -521,6 +522,8 @@ export default function HomeClient() {
           ))}
         </div>
       </section>
+
+      <ServiceProviderDisclosure />
 
       <GenreShowcase />
 
