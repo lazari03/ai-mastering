@@ -22,7 +22,6 @@ jobs:
         run: |
           python - <<'PY'
           import json, os, sys
-          from urllib.parse import urlparse
           inventory=json.load(open('seo-daily.json'))
           pages=inventory['pages']
           issues=[]
@@ -42,7 +41,7 @@ jobs:
           if '...EXTRA_POSTS' not in posts_source:
               issues.append('new articles not connected to main POSTS list')
           for slug in ('how-to-prepare-a-mix-for-mastering','mixing-vs-mastering-what-to-fix-before-release'):
-              if f'/blog/{slug}' not in pages:
+              if not pages.get(f'/blog/{slug}', {}).get('in_sitemap'):
                   issues.append(f'{slug}: not in live sitemap')
           for part in extra_source.split('slug: ')[1:]:
               if 'images.pexels.com/photos/' not in part.split('datePublished:')[0]:
