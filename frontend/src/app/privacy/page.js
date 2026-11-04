@@ -102,6 +102,26 @@ export default function PrivacyPage() {
       </section>
 
       <section>
+        <h2>Third-party trademarks and visual assets</h2>
+        <p>
+          The homepage may identify Cloudflare (website delivery and protection), Polar
+          (checkout) and Pexels (licensed editorial photography) with their names or an
+          approved provider badge. This identifies service providers and image sources,
+          not sponsors or independent endorsements. Their names and logos do not by themselves
+          mean that these companies receive your uploaded audio or personal data.
+          Actual personal-data disclosures to providers are listed in Section 4 above.
+        </p>
+        <p>
+          Editorial photographs supplied through Pexels may be fetched by a visitor&apos;s
+          browser from Pexels image-hosting infrastructure, which can receive ordinary
+          technical request information such as an IP address and browser details.
+          Photo credits are provided where practical, and Pexels is not a mastering
+          or payment processor. See the <a href="/terms">Terms &amp; Conditions</a> for
+          trademark and non-endorsement details.
+        </p>
+      </section>
+
+      <section>
         <h2>5. Data retention</h2>
         <ul>
           <li>
