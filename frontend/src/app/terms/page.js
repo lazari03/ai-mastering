@@ -174,6 +174,31 @@ export default function TermsPage() {
       </section>
 
       <section>
+        <h2>Third-party names, trademarks and website badges</h2>
+        <p>
+          We may identify technology providers and sources of licensed visual content on our website,
+          including Cloudflare, Polar and Pexels, to describe factual services used by Auralith Forge.
+          Cloudflare provides website/network delivery and protection; Polar processes checkout and
+          payments; and Pexels supplies some editorial photographs used on the site and blog.
+        </p>
+        <p>
+          Any official provider badge, where displayed, is used solely to identify that provider&apos;s
+          actual role, subject to its published brand rules. Other provider names may be presented as
+          plain text rather than reproduced logos. Their names, trademarks, badges and logos remain
+          the property of their respective owners. Such references do not mean that they sponsor,
+          certify, recommend or endorse Auralith Forge, its audio processing quality or its output.
+        </p>
+        <p>
+          References elsewhere on the site to Spotify, Apple Music, YouTube, SoundCloud or other
+          music services discuss streaming, audio formats and playback behavior only. Auralith Forge
+          is an independent mastering application; it is not affiliated with or endorsed by these
+          services and does not provide direct distribution to them unless explicitly stated.
+          Contact <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a> about a
+          trademark attribution or an inaccurate provider reference.
+        </p>
+      </section>
+
+      <section>
         <h2>10. Disclaimer of warranties</h2>
         <p>
           The Service is provided &quot;as is&quot; and &quot;as available&quot;, without warranties of any kind,
