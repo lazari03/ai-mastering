@@ -1,0 +1,64 @@
+name: Daily SEO audit
+
+on:
+  schedule:
+    - cron: "17 7 * * *" # 07:17 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SEO audit dependencies
+        run: python -m pip install --disable-pip-version-check beautifulsoup4
+      - name: Crawl public sitemap and pages
+        run: python frontend/scripts/seo_inventory.py https://auralithforge.app seo-daily.json
+      - name: Validate indexed pages and required blog images
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          from urllib.parse import urlparse
+          inventory=json.load(open('seo-daily.json'))
+          pages=inventory['pages']
+          issues=[]
+          for path,p in sorted(pages.items()):
+              if not p.get('in_sitemap'): continue
+              if p.get('status')!=200: issues.append(f'{path}: HTTP {p.get("status")}')
+              if not p.get('title'): issues.append(f'{path}: missing title')
+              if not p.get('description'): issues.append(f'{path}: missing meta description')
+              if not p.get('h1'): issues.append(f'{path}: missing H1')
+              canonical=p.get('canonical')
+              if canonical!=f'https://auralithforge.app{path}':
+                  issues.append(f'{path}: canonical mismatch ({canonical})')
+              if path.startswith('/blog/') and not p.get('og_title'):
+                  issues.append(f'{path}: missing Open Graph title')
+          posts_source=open('frontend/src/content/posts.js').read()
+          extra_source=open('frontend/src/content/extraPosts.js').read()
+          if '...EXTRA_POSTS' not in posts_source:
+              issues.append('new articles not connected to main POSTS list')
+          for slug in ('how-to-prepare-a-mix-for-mastering','mixing-vs-mastering-what-to-fix-before-release'):
+              if f'/blog/{slug}' not in pages:
+                  issues.append(f'{slug}: not in live sitemap')
+          for part in extra_source.split('slug: ')[1:]:
+              if 'images.pexels.com/photos/' not in part.split('datePublished:')[0]:
+                  issues.append('blog article missing Pexels image')
+          summary=['# Daily SEO audit',f'Crawled {len(pages)} routes',f'Problems: {len(issues)}','']
+          summary += [f'- {problem}' for problem in issues] if issues else ['No critical SEO issues detected.']
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f: f.write('\n'.join(summary)+'\n')
+          if issues:
+              print('\n'.join(issues),file=sys.stderr)
+              sys.exit(1)
+          PY
+      - name: Upload crawl inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-inventory
+          path: seo-daily.json
+          if-no-files-found: ignore
+          retention-days: 14
