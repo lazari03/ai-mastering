@@ -28,6 +28,8 @@ import {
 } from "../services/polarService.js";
 import { PLAN_MASTER_LIMITS, STEM_MONTHLY_LIMIT, readUserData, entitlementsFromUserData } from "../services/entitlementsService.js";
 import { createLedger, partsFor } from "../services/reservationLedger.js";
+import { decideMasterCharge } from "../services/masterEntitlement.js";
+import { mcpDeleteUserData, mcpRevokeUser } from "../mcp/hooks.js";
 import { UPSTREAM_TIMEOUT_MS } from "../services/pythonUpstream.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
 import { subscribeToNewsletter } from "../services/newsletterService.js";
@@ -463,6 +465,9 @@ router.get("/shared/link/download", shareAccessLimiter, async (req, res) => {
 router.delete("/account", async (req, res) => {
   try {
     await deleteAllUserData(req.user.uid);
+    // ChatGPT connections, MCP uploads and job rows go with it (no-op when
+    // the MCP integration is disabled).
+    mcpDeleteUserData(req.user.uid);
     return res.json({ ok: true });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to delete account data" });
@@ -478,6 +483,8 @@ router.post("/account/sign-out-everywhere", async (req, res) => {
   try {
     await getAuth().revokeRefreshTokens(req.user.uid);
     invalidateCachedSession(req.user.uid);
+    // "Everywhere" includes ChatGPT (MCP OAuth grants).
+    mcpRevokeUser(req.user.uid, "signed_out_everywhere");
     return res.json({ ok: true });
   } catch (error) {
     return res.status(400).json({ detail: error?.message || "Failed to revoke sessions" });
@@ -992,78 +999,19 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
     });
     plan = userData ? planFromUserData(userData) : "free";
     const snapshot = userData ? entitlementsFromUserData(userData, plan) : null;
-    const planUnlocked = plan === "studio" || plan === "pro";
-    quotaLimit = PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free;
-
-    if (tier === "professional" && !planUnlocked) {
-      return res.status(402).json({
-        detail: "Professional mastering needs the Studio plan or higher. See plans in Settings → Billing.",
-      });
+    // Plan rules (Professional tier gate, stem sub-quota/credits, master
+    // quota then single-master credits) live in one shared, pure function
+    // so the ChatGPT MCP integration enforces exactly the same ones — see
+    // services/masterEntitlement.js. Same responses as before ({ detail }).
+    const decision = decideMasterCharge({ plan, snapshot, tier, useStemSeparation });
+    if (!decision.ok) {
+      return res.status(decision.status).json({ detail: decision.detail });
     }
-
-    if (useStemSeparation) {
-      if (plan === "pro") {
-        // Bounded monthly sub-limit, not "unlimited within your 250
-        // masters" — see entitlementsService.js's STEM_MONTHLY_LIMIT
-        // comment for why this stays separately metered even on the top
-        // plan. Fails CLOSED, same discipline as the master quota below.
-        const stemQuota = snapshot ? snapshot.stemQuota : { remaining: 0, limit: STEM_MONTHLY_LIMIT };
-        if (stemQuota.remaining > 0) {
-          mustConsumeStemQuota = true;
-        } else {
-          const stemCredits = snapshot ? snapshot.extraStemCredits : 0;
-          if (stemCredits > 0) {
-            mustConsumeStemCredit = true;
-          } else {
-            return res.status(402).json({
-              detail: `You've used your ${stemQuota.limit} stem separations this month — they reset next month. Buy an extra one if you don't want to wait. Manage in Settings → Billing.`,
-            });
-          }
-        }
-      } else {
-        // Free/Studio get no bundled stem access at all, not even a
-        // trial — this is the single most expensive operation in the
-        // app. A purchased credit is the only way in.
-        const stemCredits = snapshot ? snapshot.extraStemCredits : 0;
-        if (stemCredits > 0) {
-          mustConsumeStemCredit = true;
-        } else {
-          return res.status(402).json({
-            detail:
-              "Stem separation is included on All-Access (20/month), or buy a single stem-separated master. Manage in Settings → Billing.",
-          });
-        }
-      }
-    }
-
-    // Fails CLOSED — a Firestore hiccup here must never read as "quota
-    // available." Forces the same path as a genuinely exhausted quota,
-    // which correctly falls through to checking credits and then a clear
-    // error, rather than a raw 500 or silently letting the render through
-    // unverified.
-    const quota = snapshot ? snapshot.masterQuota : { remaining: 0, limit: quotaLimit };
-    if (quota.remaining > 0) {
-      mustConsumeQuota = true;
-    } else {
-      // Quota exhausted — fall back to a purchased single-master credit
-      // before refusing outright. For Free this is the ONLY way forward
-      // besides upgrading (no reset coming); for Studio/All-Access it's
-      // an alternative to waiting for next month.
-      const credits = snapshot ? snapshot.extraCredits : 0;
-      if (credits > 0) {
-        mustConsumeCredit = true;
-      } else if (plan === "free") {
-        return res.status(402).json({
-          detail: `You've used your ${quotaLimit} free masters — that's a one-time trial, it doesn't renew. Buy a single master for just this track, or subscribe — Indie (15/month), Studio (50/month) or All-Access (250/month) — in Settings → Billing.`,
-        });
-      } else {
-        const upsellPlan = plan === "indie" ? "Studio for 50/month" : plan === "studio" ? "All-Access for 250/month" : null;
-        const upsell = upsellPlan ? ` Upgrade to ${upsellPlan}, or` : " Or";
-        return res.status(402).json({
-          detail: `You've used your ${quotaLimit} masters this month — they reset next month.${upsell} buy a single master if you don't want to wait. Manage in Settings → Billing.`,
-        });
-      }
-    }
+    quotaLimit = decision.quotaLimit;
+    mustConsumeQuota = decision.needs.master === "quota";
+    mustConsumeCredit = decision.needs.master === "credit";
+    mustConsumeStemQuota = decision.needs.stem === "quota";
+    mustConsumeStemCredit = decision.needs.stem === "credit";
 
     // ---- RESERVE THE SLOT NOW, BEFORE RENDERING -----------------------
     //

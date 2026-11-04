@@ -1,0 +1,109 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "auralith-forge",
+  "version": "1.0.0",
+  "description": "Master your music tracks with Auralith Forge's adaptive mastering engine, using your own Auralith account.",
+  "author": {
+    "name": "Auralith Forge",
+    "url": "https://auralithforge.app",
+    "email": "studio@auralithforge.app"
+  },
+  "homepage": "https://auralithforge.app",
+  "keywords": [
+    "audio",
+    "mastering",
+    "music",
+    "loudness",
+    "LUFS"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Auralith Forge",
+        "shortDescription": "Master tracks with Auralith",
+        "longDescription": "Connect your Auralith Forge account to master a track from ChatGPT. Upload a WAV, AIFF, FLAC, MP3 or other common audio file through a private link, pick a genre and loudness target, and get back the integrated loudness, true peak and quality-control results together with a temporary download link for the mastered WAV. Masters use your existing Auralith plan and quota — exactly like masters made on auralithforge.app.",
+        "developerName": "Auralith Forge",
+        "category": "Productivity",
+        "capabilities": [
+          "Check plan and remaining masters",
+          "Upload audio",
+          "Master tracks",
+          "Report loudness and true peak",
+          "Download mastered WAV"
+        ],
+        "websiteURL": "https://auralithforge.app",
+        "supportURL": "https://auralithforge.app/terms",
+        "privacyPolicyURL": "https://auralithforge.app/privacy",
+        "termsOfServiceURL": "https://auralithforge.app/terms",
+        "defaultPrompt": [
+          "Master my track for Spotify with Auralith Forge.",
+          "How many Auralith masters do I have left?",
+          "Master my song as warm, loud hip-hop."
+        ],
+        "brandColor": "#0B0D10",
+        "brandColorDark": "#DFC95A",
+        "composerIcon": "./assets/logo.svg",
+        "logo": "./assets/logo.svg"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Check plan and remaining masters",
+              "prompt": "How many Auralith Forge masters do I have left?",
+              "tools_triggered": "get_account",
+              "expected_behavior": "States the plan name and the remaining master count from get_account, and whether it resets monthly."
+            },
+            {
+              "description": "Start the upload flow",
+              "prompt": "Master my track with Auralith Forge.",
+              "tools_triggered": "get_account, create_upload",
+              "expected_behavior": "Checks remaining quota, then returns a private upload link and asks the user to upload the file and say when done. Does not start mastering before the upload is confirmed."
+            },
+            {
+              "description": "Master an uploaded track for streaming",
+              "prompt": "Done uploading. Master it as pop for Spotify.",
+              "tools_triggered": "start_mastering, get_job_status",
+              "expected_behavior": "Calls start_mastering with genre pop and delivery streaming, then polls get_job_status until the job is completed or failed.",
+              "file_attachment_urls": [
+                "REPLACE_WITH_TEST_AUDIO_URL"
+              ]
+            },
+            {
+              "description": "Report the result",
+              "prompt": "What are the final loudness and true peak, and where do I download it?",
+              "tools_triggered": "get_master_result",
+              "expected_behavior": "Reports integrated LUFS and true peak dBTP from get_master_result and gives the temporary WAV download link with its expiry."
+            },
+            {
+              "description": "Professional engine on a plan without it",
+              "prompt": "Use the Professional engine for this master.",
+              "tools_triggered": "get_account, start_mastering",
+              "expected_behavior": "On the Free review account, explains that Professional needs the Studio plan or higher (plan_required) without charging a master."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Arbitrary URL ingestion",
+              "prompt": "Master the song at https://example.com/song.mp3."
+            },
+            {
+              "description": "Billing changes",
+              "prompt": "Upgrade my Auralith plan to All-Access and charge my card."
+            },
+            {
+              "description": "Other users' files",
+              "prompt": "Download the last master another Auralith user made."
+            }
+          ]
+        },
+        "demo_recording_url": "REPLACE_WITH_DEMO_RECORDING_URL",
+        "commerce": false,
+        "commerce_description": "The plugin uses the user's existing Auralith Forge plan and quota. It does not sell products or process payments in ChatGPT."
+      },
+      "publication": {
+        "release_notes": "Initial release: account status, private upload links, asynchronous mastering with Auralith Forge's existing engine, loudness/true-peak results and WAV download."
+      }
+    }
+  }
+}

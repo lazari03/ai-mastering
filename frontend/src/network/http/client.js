@@ -319,6 +319,21 @@ export async function getEntitlements() {
   return request("/billing/entitlements");
 }
 
+// ChatGPT / MCP connection consent (backend-node src/mcp/index.js). The
+// request id comes from the OAuth /authorize redirect; approving returns the
+// URL to send the browser back to (ChatGPT's OAuth callback).
+export async function getOAuthConnectionRequest(requestId) {
+  return request(`/oauth/requests/${encodeURIComponent(requestId)}`);
+}
+
+export async function postOAuthConnectionDecision(requestId, approve) {
+  return request(`/oauth/requests/${encodeURIComponent(requestId)}/decision`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ approve: Boolean(approve) }),
+  });
+}
+
 // item: "subscription" | "master_standard" | "master_professional" | "chords" | "stem_addon"
 export async function postCheckout(item, successUrl) {
   return request("/billing/checkout", {

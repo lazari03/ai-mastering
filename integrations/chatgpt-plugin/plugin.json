@@ -1,0 +1,50 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "auralith-forge",
+  "version": "0.1.0",
+  "description": "Master your music tracks with Auralith Forge's adaptive mastering engine, using your own Auralith account.",
+  "author": {
+    "name": "Auralith Forge",
+    "url": "https://auralithforge.app",
+    "email": "studio@auralithforge.app"
+  },
+  "homepage": "https://auralithforge.app",
+  "keywords": [
+    "audio",
+    "mastering",
+    "music",
+    "loudness",
+    "LUFS"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Auralith Forge",
+        "shortDescription": "Master tracks with Auralith",
+        "longDescription": "Connect your Auralith Forge account to master a track from ChatGPT. Upload a WAV, AIFF, FLAC, MP3 or other common audio file through a private link, pick a genre and loudness target, and get back the integrated loudness, true peak and quality-control results together with a temporary download link for the mastered WAV. Masters use your existing Auralith plan and quota — exactly like masters made on auralithforge.app.",
+        "developerName": "Auralith Forge",
+        "category": "Productivity",
+        "capabilities": [
+          "Check plan and remaining masters",
+          "Upload audio",
+          "Master tracks",
+          "Report loudness and true peak",
+          "Download mastered WAV"
+        ],
+        "websiteURL": "https://auralithforge.app",
+        "supportURL": "https://auralithforge.app/terms",
+        "privacyPolicyURL": "https://auralithforge.app/privacy",
+        "termsOfServiceURL": "https://auralithforge.app/terms",
+        "defaultPrompt": [
+          "Master my track for Spotify with Auralith Forge.",
+          "How many Auralith masters do I have left?",
+          "Master my song as warm, loud hip-hop."
+        ],
+        "brandColor": "#0B0D10",
+        "brandColorDark": "#DFC95A",
+        "composerIcon": "./assets/logo.svg",
+        "logo": "./assets/logo.svg"
+      }
+    }
+  }
+}

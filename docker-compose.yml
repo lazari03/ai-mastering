@@ -119,6 +119,20 @@ services:
       META_PIXEL_ID: ${META_PIXEL_ID:-${NEXT_PUBLIC_META_PIXEL_ID:-}}
       META_CAPI_TOKEN: ${META_CAPI_TOKEN}
       META_TEST_EVENT_CODE: ${META_TEST_EVENT_CODE}
+      # ChatGPT / MCP integration (backend-node/src/mcp, docs/mcp/README.md).
+      # On by default; set MCP_ENABLED=false in .env to turn it off — that
+      # is the rollback. State lives in /app/data/mcp.db (the analytics_db
+      # volume). Upload/download links are signed with DOWNLOAD_TOKEN_SECRET
+      # above (required — without it MCP stays off, the site keeps running).
+      MCP_ENABLED: ${MCP_ENABLED:-true}
+      MCP_PUBLIC_ORIGIN: ${MCP_PUBLIC_ORIGIN:-https://auralithforge.app}
+      MCP_OAUTH_ISSUER: ${MCP_OAUTH_ISSUER:-https://api.auralithforge.app}
+      MCP_CONSENT_URL: ${MCP_CONSENT_URL:-https://auralithforge.app/connect/authorize}
+      MCP_MAX_CONCURRENT_JOBS: ${MCP_MAX_CONCURRENT_JOBS:-2}
+      MCP_MAX_ACTIVE_JOBS_PER_USER: ${MCP_MAX_ACTIVE_JOBS_PER_USER:-2}
+      # Optional: OpenAI domain-verification token, served at
+      # https://auralithforge.app/.well-known/openai-apps-challenge.
+      OPENAI_APPS_CHALLENGE_TOKEN: ${OPENAI_APPS_CHALLENGE_TOKEN:-}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
       interval: 30s
