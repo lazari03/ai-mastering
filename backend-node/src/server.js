@@ -116,12 +116,19 @@ app.use("/", webhookRoutes);
 // (every ChatGPT user arrives from OpenAI's shared egress IPs — it applies
 // its own per-account budgets instead), and before the Firebase gate below
 // (it authenticates with its own OAuth tokens and presigned links).
+// A misconfigured MCP integration disables only itself: the website and
+// its API must keep running (logged loudly, not a crash loop).
 let mcp = null;
 if (loadMcpConfig().enabled) {
-  const { bootstrapMcp } = await import("./mcp/bootstrap.js");
-  mcp = bootstrapMcp().integration;
-  app.use(mcp.publicRouter);
-  console.log("MCP integration enabled (/mcp, OAuth authorization server).");
+  try {
+    const { bootstrapMcp } = await import("./mcp/bootstrap.js");
+    mcp = bootstrapMcp().integration;
+    app.use(mcp.publicRouter);
+    console.log("MCP integration enabled (/mcp, OAuth authorization server).");
+  } catch (error) {
+    mcp = null;
+    console.error("MCP integration NOT started (website unaffected):", error.message);
+  }
 }
 
 app.use(express.json({ limit: "5mb" }));
