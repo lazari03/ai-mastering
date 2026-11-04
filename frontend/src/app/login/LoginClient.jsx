@@ -52,7 +52,9 @@ export default function LoginClient() {
     // sign in. Signing up from here links the anonymous session instead
     // (authStore.claimWithEmail / claimWithGoogle).
     if (!loading && user && !user.isAnonymous) {
-      router.replace(redirectTo && redirectTo.startsWith("/") ? redirectTo : "/app");
+      // "//host" and "/\\host" are protocol-relative — they leave the site.
+      const safe = redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//") && !redirectTo.startsWith("/\\");
+      router.replace(safe ? redirectTo : "/app");
     }
   }, [loading, user, router, redirectTo]);
 

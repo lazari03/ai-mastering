@@ -22,6 +22,7 @@ import { clientIp } from "./middleware/clientIp.js";
 import { purgeExpiredJobs } from "./services/jobsService.js";
 import { purgeOldAnalytics } from "./config/analyticsDb.js";
 import { startUploadSweep } from "./middleware/cleanupUploads.js";
+import { loadMcpConfig } from "./mcp/config.js";
 
 // <a href download>, <audio src>, and direct browser navigation to a
 // download-family route can't attach an Authorization header — a ?dl=
@@ -108,6 +109,21 @@ app.use(
 // it's also outside the requireAuth gate below.
 app.use("/", webhookRoutes);
 
+// ChatGPT / MCP integration (src/mcp/, docs/mcp/README.md). Off unless
+// MCP_ENABLED=true; loaded lazily so a disabled integration has no side
+// effects. Mounted here on purpose: before express.json() (its routes parse
+// their own bodies, and uploads stream raw audio), before generalLimiter
+// (every ChatGPT user arrives from OpenAI's shared egress IPs — it applies
+// its own per-account budgets instead), and before the Firebase gate below
+// (it authenticates with its own OAuth tokens and presigned links).
+let mcp = null;
+if (loadMcpConfig().enabled) {
+  const { bootstrapMcp } = await import("./mcp/bootstrap.js");
+  mcp = bootstrapMcp().integration;
+  app.use(mcp.publicRouter);
+  console.log("MCP integration enabled (/mcp, OAuth authorization server).");
+}
+
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -163,6 +179,9 @@ app.use((req, res, next) => {
   return requireAuth(req, res, next);
 });
 
+// The consent page's API (approve/deny a ChatGPT connection) — behind the
+// Firebase gate above, so only a signed-in Auralith user can grant access.
+if (mcp) app.use("/", mcp.consentRouter);
 app.use("/", masteringRoutes);
 app.use("/", analyticsRoutes);
 app.use("/", adminUsersRoutes);
@@ -215,9 +234,15 @@ function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`${signal} received — draining in-flight requests (up to ${Math.round(SHUTDOWN_GRACE_MS / 1000)}s)...`);
+  mcp?.stop();
   server.close(() => {
-    console.log("All requests finished — exiting.");
-    process.exit(0);
+    // Background MCP renders aren't HTTP requests; let them finish too
+    // (still capped by the grace timer below — anything left is settled by
+    // the reservation reconciler and marked interrupted on the next boot).
+    Promise.resolve(mcp?.jobRunner.drain()).finally(() => {
+      console.log("All requests finished — exiting.");
+      process.exit(0);
+    });
   });
   server.closeIdleConnections?.();
   setTimeout(() => {
@@ -233,6 +258,10 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 // reconciliation loop below, since local dev is exactly where you'd want
 // to test the bot against a sandbox chat before it ever touches production.
 startTelegramBot();
+
+// MCP housekeeping: settles jobs interrupted by a restart, expires upload
+// links/files, purges expired OAuth codes and tokens. No-op when disabled.
+mcp?.start();
 
 // Reconciliation backstop — webhooks are the fast path for keeping
 // Firestore's subscription mirror in sync with Polar, but nothing catches

@@ -3,6 +3,7 @@ import { settings } from "../config/settings.js";
 import { isEntitled } from "./polarService.js";
 import { sendPasswordResetEmail } from "./brevoService.js";
 import { invalidateCachedSession } from "../middleware/auth.js";
+import { mcpRevokeUser } from "../mcp/hooks.js";
 
 // Firebase Auth is the source of truth for "who is a registered user" (the
 // user's own requirement: "the users must be the same as in firebase") —
@@ -162,6 +163,7 @@ export async function setUserDisabled(uid, disabled) {
   if (disabled) {
     await auth.revokeRefreshTokens(uid).catch((error) => console.error("Failed to revoke tokens for disabled user (non-fatal):", error.message));
     invalidateCachedSession(uid);
+    mcpRevokeUser(uid, "account_disabled");
   }
   return { ok: true, disabled: Boolean(disabled) };
 }
