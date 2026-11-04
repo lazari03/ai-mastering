@@ -85,7 +85,7 @@ export function buildMcpServer({ auth, deps }) {
     {
       instructions:
         "Auralith Forge masters music tracks with its own adaptive mastering engine, using the signed-in user's Auralith Forge plan and quota. " +
-        "Workflow: get_account (plan, remaining masters, valid options) → create_upload (gives the user a link to upload their audio file) → after the user says the upload is done, start_mastering → poll get_job_status every ~15 s until completed → get_master_result for loudness/true-peak measurements and a temporary WAV download link. " +
+        "Workflow: create_upload (gives the user a link to upload their audio file) → after the user says the upload is done, start_mastering → poll get_job_status every ~15 s until completed → get_master_result for loudness/true-peak measurements and a temporary WAV download link. " +
         "Never invent upload ids or job ids; never call start_mastering twice for the same request (it is idempotent, but each new request may use a master from the user's quota).",
     },
   );
@@ -115,24 +115,14 @@ export function buildMcpServer({ auth, deps }) {
       scope: MCP_SCOPES.read,
       title: "Get Auralith Forge account",
       description:
-        "Returns the connected Auralith Forge account: plan, subscription status, how many masters remain (and whether they reset monthly), purchased single-master credits, whether the Professional engine is available, upload limits, and the exact genre/style/tag/delivery/category options start_mastering accepts. Call this first, and before starting a master if quota is uncertain.",
+        "Returns the connected Auralith Forge account’s plan, subscription status, remaining mastering allowance, purchased credits, Professional engine eligibility, and upload limits. Use when the user asks about these account details.",
       inputSchema: z.object({}).strict(),
       outputSchema: z.object({
-        account: z.object({ email: z.string().nullable(), plan: z.string(), plan_name: z.string() }),
+        account: z.object({ plan: z.string(), plan_name: z.string() }),
         subscription: z.object({ active: z.boolean(), status: z.string().nullable(), current_period_end: z.string().nullable() }),
         masters: z.object({ used: z.number(), remaining: z.number(), limit: z.number(), resets_monthly: z.boolean(), extra_credits: z.number(), can_master_now: z.boolean() }),
         professional_tier_available: z.boolean(),
-        active_jobs: z.number(),
         limits: z.object({ max_upload_mb: z.number(), max_duration_minutes: z.number(), supported_formats: z.array(z.string()), output_format: z.string() }),
-        options: z.object({
-          genres: z.array(z.string()),
-          styles: z.array(z.string()),
-          tags: z.array(z.string()),
-          delivery_targets: z.array(z.string()),
-          tiers: z.array(z.string()),
-          categories: z.record(z.array(z.string())),
-        }),
-        manage_billing_url: z.string(),
       }),
       annotations: { title: "Get account", readOnlyHint: true, destructiveHint: false, openWorldHint: false, idempotentHint: true },
       _meta: securityMeta(MCP_SCOPES.read, "Checking your Auralith account…", "Checked your account"),
@@ -148,7 +138,7 @@ export function buildMcpServer({ auth, deps }) {
       const sub = subscriptionStatusFromUserData(data);
       const ent = entitlementsFromUserData(data, plan);
       const out = {
-        account: { email: auth.extra.email || null, plan, plan_name: PLAN_NAMES[plan] || plan },
+        account: { plan, plan_name: PLAN_NAMES[plan] || plan },
         subscription: { active: Boolean(sub.active), status: sub.status || null, current_period_end: sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd?.toDate ? sub.currentPeriodEnd.toDate() : sub.currentPeriodEnd).toISOString() : null },
         masters: {
           used: ent.masterQuota.used,
@@ -159,17 +149,7 @@ export function buildMcpServer({ auth, deps }) {
           can_master_now: ent.masterQuota.remaining > 0 || ent.extraCredits > 0,
         },
         professional_tier_available: plan === "studio" || plan === "pro",
-        active_jobs: store.countActiveJobs(uid),
         limits: { max_upload_mb: config.maxUploadMb, max_duration_minutes: config.maxDurationMinutes, supported_formats: SUPPORTED_UPLOAD_EXTS.map((e) => e.slice(1)), output_format: "wav" },
-        options: {
-          genres: GENRES,
-          styles: STYLES,
-          tags: TAGS,
-          delivery_targets: DELIVERY_KEYS,
-          tiers: plan === "studio" || plan === "pro" ? ["standard", "professional"] : ["standard"],
-          categories: FLAVOURS_BY_CATEGORY,
-        },
-        manage_billing_url: `${config.publicOrigin}/app`,
       };
       const quotaText = out.masters.can_master_now
         ? `${out.masters.remaining} of ${out.masters.limit} masters left${out.masters.resets_monthly ? " this month" : " (one-time free trial)"}${out.masters.extra_credits ? `, plus ${out.masters.extra_credits} single-master credit(s)` : ""}.`
@@ -186,7 +166,7 @@ export function buildMcpServer({ auth, deps }) {
       budget: "uploads",
       title: "Create an upload link",
       description:
-        "Creates a temporary, single-use upload link for one audio file (WAV, AIFF, FLAC, MP3, AAC/M4A, OGG, WMA or WebM; size and duration limits from get_account). Show upload_url to the user as a clickable link and ask them to upload their track there, then wait until they confirm it is done before calling start_mastering with the returned upload_id. Does not use any quota.",
+        "Creates a temporary, single-use upload link for one audio file (WAV, AIFF, FLAC, MP3, AAC/M4A, OGG, WMA or WebM). Show upload_url to the user as a clickable link and ask them to upload their track there, then wait until they confirm it is done before calling start_mastering with the returned upload_id. Does not use any quota.",
       inputSchema: z
         .object({
           filename: z.string().min(1).max(200).optional().describe("The track's file name if the user mentioned it (used only as a label, e.g. 'my-song.wav')."),
@@ -252,7 +232,7 @@ export function buildMcpServer({ auth, deps }) {
       budget: "masters",
       title: "Start mastering",
       description:
-        "Starts mastering an uploaded track with Auralith Forge's existing engine and presets, asynchronously. Returns a job_id immediately; then poll get_job_status. Uses one master from the user's plan quota (or a purchased single-master credit) — failed masters are refunded automatically. Idempotent: repeating the same call (same upload_id and settings, or the same idempotency_key) returns the existing job instead of mastering and charging again. Only call after the user confirmed the upload finished. genre is required unless mix_preset is given; use only values listed by get_account.",
+        "Starts mastering an uploaded track with Auralith Forge's existing engine and presets, asynchronously. Returns a job_id immediately; then poll get_job_status. Uses one master from the user's plan quota (or a purchased single-master credit) — failed masters are refunded automatically. Idempotent: repeating the same call (same upload_id and settings, or the same idempotency_key) returns the existing job instead of mastering and charging again. Only call after the user confirmed the upload finished. genre is required unless mix_preset is given.",
       inputSchema: z
         .object({
           upload_id: UPLOAD_ID,
@@ -262,7 +242,7 @@ export function buildMcpServer({ auth, deps }) {
           tier: z.enum(["standard", "professional"]).default("standard").describe("'professional' needs the Studio or All-Access plan."),
           delivery: z.enum(DELIVERY_KEYS).default("auto").describe("Loudness target: auto (genre best practice), streaming (-14 LUFS), apple (-16 LUFS) or loud."),
           category: z.enum(CATEGORIES).optional().describe("Optional musical objective (clean, modern, dynamic, punch, club, warm, bright, vocal_focus, bass_control)."),
-          flavour: z.string().max(40).optional().describe("Optional flavour of the category (see get_account options.categories)."),
+          flavour: z.string().max(40).optional().describe(`Optional flavour for the selected category. Allowed flavours by category: ${JSON.stringify(FLAVOURS_BY_CATEGORY)}`),
           mix_preset: z.string().min(1).max(100).optional().describe("Optional name of an existing Auralith preset (built-in or the user's own saved preset)."),
           idempotency_key: z
             .string()

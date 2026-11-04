@@ -468,7 +468,10 @@ test("free user: account → upload → master (async) → poll → result → d
   assert.equal(acct.data.masters.remaining, 3);
   assert.equal(acct.data.masters.resets_monthly, false);
   assert.equal(acct.data.professional_tier_available, false);
-  assert.ok(acct.data.options.genres.includes("pop"));
+  assert.deepEqual(acct.data.account, { plan: "free", plan_name: "Free" });
+  assert.equal("options" in acct.data, false);
+  assert.equal("active_jobs" in acct.data, false);
+  assert.equal("manage_billing_url" in acct.data, false);
 
   const { started } = await masterOnce(mcp);
   assert.equal(started.isError, false, JSON.stringify(started.data));
@@ -550,7 +553,7 @@ test("active paid subscriber: Professional tier allowed, monthly quota charged",
   assert.equal(acct.data.subscription.active, true);
   assert.equal(acct.data.masters.limit, 50);
   assert.equal(acct.data.masters.resets_monthly, true);
-  assert.deepEqual(acct.data.options.tiers, ["standard", "professional"]);
+  assert.equal(acct.data.professional_tier_available, true);
   const { started } = await masterOnce(mcp, { tier: "professional", delivery: "streaming" });
   assert.equal(started.isError, false, JSON.stringify(started.data));
   await integration.jobRunner.drain();
