@@ -1,3 +1,4 @@
+import { EXTRA_POSTS } from "./extraPosts";
 // Real editorial content, one per gallery photo on the landing page —
 // written for genuine SEO value (search intent + internal linking), not
 // thin stubs. English only: mixing legal/marketing content across two
@@ -17,6 +18,7 @@
 // sentence already named the concept; don't bolt them onto wording that
 // has to be bent to accommodate a link.
 export const POSTS = [
+  ...EXTRA_POSTS,
   {
     slug: "what-happens-inside-an-ai-mastering-engine",
     title: "What Really Happens Inside an AI Mastering Engine",
