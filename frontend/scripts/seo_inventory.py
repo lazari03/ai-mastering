@@ -27,9 +27,15 @@ from bs4 import BeautifulSoup
 EXTRA_ROUTES = ["/login", "/app", "/thank-you", "/share", "/newsletter", "/this-route-does-not-exist"]
 
 
+# The site's edge rejects Python's default "Python-urllib" user agent with
+# 403, so identify the crawler explicitly.
+USER_AGENT = "AuralithSEOAudit/1.0 (+https://auralithforge.app)"
+
+
 def fetch(url: str) -> tuple[int, str]:
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(url, timeout=30) as r:
+        with urllib.request.urlopen(req, timeout=30) as r:
             return r.status, r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode("utf-8", "replace")
@@ -89,8 +95,12 @@ def audit_page(base: str, path: str) -> dict:
 
 
 def build(base: str) -> dict:
-    sitemap = fetch(base + "/sitemap.xml")[1]
+    status, sitemap = fetch(base + "/sitemap.xml")
     paths = [urlparse(u).path or "/" for u in re.findall(r"<loc>([^<]+)</loc>", sitemap)]
+    if status != 200 or not paths:
+        # Fail loudly: an unreadable sitemap would otherwise look like every
+        # indexed page had vanished.
+        sys.exit(f"sitemap fetch failed: HTTP {status}, {len(paths)} URLs")
     pages = {}
     for path in paths + [p for p in EXTRA_ROUTES if p not in paths]:
         pages[path] = audit_page(base, path)

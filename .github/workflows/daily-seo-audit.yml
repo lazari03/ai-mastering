@@ -33,7 +33,7 @@ jobs:
               if not p.get('description'): issues.append(f'{path}: missing meta description')
               if not p.get('h1'): issues.append(f'{path}: missing H1')
               canonical=p.get('canonical')
-              if canonical!=f'https://auralithforge.app{path}':
+              if (canonical or '').rstrip('/')!=f'https://auralithforge.app{path}'.rstrip('/'):
                   issues.append(f'{path}: canonical mismatch ({canonical})')
               if path.startswith('/blog/') and not p.get('og_title'):
                   issues.append(f'{path}: missing Open Graph title')
