@@ -1,4 +1,5 @@
 import { EXTRA_POSTS } from "./extraPosts";
+import { FEATURE_POSTS } from "./featurePosts";
 // Real editorial content, one per gallery photo on the landing page —
 // written for genuine SEO value (search intent + internal linking), not
 // thin stubs. English only: mixing legal/marketing content across two
@@ -18,6 +19,7 @@ import { EXTRA_POSTS } from "./extraPosts";
 // sentence already named the concept; don't bolt them onto wording that
 // has to be bent to accommodate a link.
 export const POSTS = [
+  ...FEATURE_POSTS,
   ...EXTRA_POSTS,
   {
     slug: "what-happens-inside-an-ai-mastering-engine",
@@ -67,7 +69,11 @@ export const POSTS = [
     paragraphs: [
       "A common misconception is that AI mastering tools are trying to replace a mixing engineer riding faders on individual tracks. They're not — that's a different job, working with individual stems and full session context. Mastering, automated or not, works on a finished two-track mix and makes bus-level decisions: overall tonal balance, dynamics, stereo image, and final loudness.",
       "What actually gets automated is the analysis-to-decision step that a human mastering engineer does by ear and experience: listening to a rough mix, deciding it's 2dB too dark above 8kHz for the target genre, deciding the low end needs a touch more control before it'll translate to club systems, and picking compression timing that suits the track's actual tempo rather than a generic setting. An adaptive engine does the same measurement-to-decision mapping, consistently, on every track, without fatigue.",
-      "Where stem-aware processing exists, the line moves slightly closer to mixing: splitting vocals, drums, bass, and other elements lets the engine apply more targeted correction — tightening a bass stem's low end independently from vocal presence, for instance — before the final mixdown and mastering pass. That's still working from a mix that's already been made, not building one from raw multitrack.",
+      [
+        "Where stem-aware processing exists, the line moves slightly closer to mixing: separating the vocal from the accompaniment lets the engine make targeted corrections — lifting a chorus vocal that sits under the arrangement, or taming vocal sibilance without dulling the cymbals — before the recombined mix goes through the mastering pass. That's still working from a mix that's already been made, not building one from raw multitrack. Our guide to ",
+        { href: "/blog/stem-mastering-with-ai-stem-separation", text: "stem mastering with AI stem separation" },
+        " covers what that can and can't fix.",
+      ],
       [
         "The practical upshot: AI mastering is well-suited to the repeatable, measurable parts of finishing a track — ",
         { href: "/mastering-loudness-targets", text: "loudness targets" },
