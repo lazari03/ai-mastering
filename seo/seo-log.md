@@ -6,16 +6,16 @@ Running state for the daily SEO run. Read this first; newest run on top.
 
 Feature posts (priority until complete):
 - [x] Loudness / LUFS for Spotify, Apple Music, YouTube → `/blog/lufs-for-spotify-apple-music-youtube` (2026-10-23)
-- [ ] Stem separation (vocals vs accompaniment rebalancing; note: product splits vocals/accompaniment — check engine before claiming drums/bass stems)
+- [x] Stem separation → `/blog/stem-mastering-with-ai-stem-separation` (2026-11-05; verified engine = Demucs `--two-stems vocals`, htdemucs_ft→htdemucs; only vocals/accompaniment)
 - [ ] Multiband compression
 - [ ] Mid/side EQ
 - [ ] Genre presets — Radio Glue / Stream Safe / Club Ready. **Open question:** these names do not appear anywhere in the frontend code (2026-10-23 grep); UI exposes Delivery targets (Genre best practice / Streaming -14 / Apple Music -16 / Loud club-DJ) and genre styles. Confirm with Fonsi before writing posts under those names.
 - [ ] Prompt-based mastering (describe the sound) — verify the UI feature name before writing
 Tutorials:
-- [ ] Mixing vs mastering (`/blog/mixing-vs-mastering`, 22-interest Trends gap)
+- [x] Mixing vs mastering → `/blog/mixing-vs-mastering-what-to-fix-before-release` (2026-11-04, outside this routine)
 - [ ] How to master a track for Spotify (careful: overlaps LUFS post — make it a step-by-step HowTo, link to LUFS post)
 - [ ] What LUFS should I master to (covered by LUFS post + `/mastering-loudness-targets` — likely skip, extend instead)
-- [ ] How to prepare a mix for mastering
+- [x] How to prepare a mix for mastering → `/blog/how-to-prepare-a-mix-for-mastering` (2026-11-04, outside this routine)
 - [ ] How to master vocal-heavy tracks
 - [ ] Genre guides (extend `/master/[genre]` rather than duplicate)
 Comparison / alternatives (exist: `/vs/landr`, `/vs/emastered`, `/vs/bandlab`, `/vs/waves`):
@@ -30,11 +30,39 @@ Comparison / alternatives (exist: `/vs/landr`, `/vs/emastered`, `/vs/bandlab`, `
 - `/tools` and `/blog` have only BreadcrumbList (could add ItemList/CollectionPage).
 - Blog post template has no FAQ/HowTo support — needed for tutorial series (HowTo).
 - `npm test` script doesn't exist; run `node --test tests/*.mjs` (bare `node --test tests/` fails to resolve). Build needs `NEXT_PUBLIC_SITE_URL` set.
+- Mobile Lighthouse (local lab run, 2026-11-05) on `/`: perf 0.67, LCP 3.3 s, **TBT 1,180 ms**, CLS 0 — main-thread JS is the bottleneck. Candidate for the performance audit day.
+- Blog template emits only Article + BreadcrumbList; posts with a "Quick answers" section (stem post) could carry FAQPage — needs a `faq` field in the template.
+- `/vs/waves` is not in the footer (4 inlinks vs 31 for the other /vs pages).
+- Pushing from the scheduled routine is blocked: no add_repo tool in the session and the git proxy doesn't authorize lazari03/ai-mastering. 2026-11-05 commits exist only as a patch (see run entry).
 - Live site 403s non-browser user agents (Python urllib) — Cloudflare bot rule. curl works. Check that it isn't blocking legitimate crawlers (Googlebot/Bingbot/AI bots allowed in robots.txt).
 
 ## Backlink opportunities (outreach drafts for Fonsi — nothing sent)
 
 See per-run entries below.
+
+---
+
+## 2026-11-05 — Audit: internal linking + orphan check
+
+**Push blocked:** the session had no `add_repo` tool and the git proxy refused lazari03/ai-mastering (not in authorized repos). Work was done in a public clone; two commits were built and verified but **not pushed** — `seo/2026-11-05.patch` holds them (`git am seo/2026-11-05.patch` from main @ 72952ec).
+
+**Audit (live site, all 32 sitemap URLs fetched, link graph built):** all 200, 0.3–0.9 s. No broken internal links; nothing linked that's missing from the sitemap except `/app`, `/login` (expected). Main finding: **guides are siloed** — every blog post is linked only from `/blog` and the other posts (6–10 inlinks each vs 31 for nav/footer pages). No landing, tool or comparison page linked to any guide; `/lufs-meter` didn't link to the LUFS guide. Home gallery only shows the 3 captioned posts. Also: `/blog/what-ai-mastering-actually-automates` claimed the engine splits "vocals, drums, bass" — wrong (two-stem only); corrected. All blog posts still `og:type=website`; meta descriptions on `/` (229), `/mastering-loudness-targets` (240), `/ai-mastering-online` (209), `/chord-progression-finder` (207) unchanged.
+
+**Fix (commit 71aeeee, not pushed):** `PAGE_GUIDES` + `guideLinksFor()` in `frontend/src/lib/internalLinks.js` (slugs validated at import), rendered as "Mastering guides" on `/ai-mastering-online` (5 guides), "Read more" on `/lufs-meter` (LUFS guide + export checklist), "Before you choose a tool" on every `/vs/*` page (3 guides). Build, lint and `node --test tests/*.mjs` pass.
+
+**Article (commit 8acabcc, not pushed):** "Stem Mastering with AI Stem Separation: A Vocal-First Guide" → `/blog/stem-mastering-with-ai-stem-separation` (~1,650 words, 8 H2s, Article + BreadcrumbList via template). Primary: stem mastering; secondary: stem separation mastering, stem mastering vs stereo mastering, ai stem separation, demucs mastering. New file `frontend/src/content/featurePosts.js` (pulls plan/price from lib/pricing + lib/product). Facts from code: presence band 1–4 kHz, section lift = half the gap capped +1 dB (tolerance 1.5 dB), accompaniment presence cut ≤1.2 dB, moves <0.25 dB dropped, no section moves when sections unreliable, no reverb added. Demucs SDR ~9.0 dB MUSDB-HQ from PyPI demucs 4.0.0. Links out: mixing-vs-mastering, prepare-a-mix, inside-the-engine, /ai-mastering-online, /master/pop, /master/hiphop, /lufs-meter, LUFS guide, signup, /pricing. Links in: what-ai-mastering-actually-automates (inline), /ai-mastering-online, /vs/*, /blog, More guides, sitemap. Sitemap `CONTENT_LAST_MODIFIED` → 2026-11-05.
+
+**Competitor insight ("stem mastering"):** SERP = iZotope ("Stem mastering: How and when to use stems…", ~1,700 w, no FAQ), eMastered ("Stem Mastering: The Definitive Guide for Beginners", ~1,800 w, 10-question FAQ, 2021), Sage Audio (stereo vs stem — title tag is just "Sage Audio", a gap), Abbey Road (short interview: "not a mix fixing service"), Boris FX/Imagineer, Mastering The Mix. All assume you *have* stems; none cover mastering from a stereo file via separation — our angle. "AI stem separation" SERP is splitters (LANDR Stems, LALAL.AI, Music.ai, StemSplit) selling stems, not mastering.
+
+**Metrics:** Search Console / GA not reachable from this session. PageSpeed API quota exhausted (429). Local Lighthouse mobile lab run on `/`: perf 0.67, FCP 1.4 s, LCP 3.3 s, TBT 1,180 ms, CLS 0, SI 3.5 s (cloud container, simulated throttling — lab only, not field data). No SERP positions observed for auralithforge.app in today's searches.
+
+**Backlink opportunities added (drafts for Fonsi — nothing sent):**
+1. **guideflow.com/blog/audio-mastering-software** (Aug 2026; lists WaveLab, LANDR, Mixea, Waves, Ozone…). Page states: "Want your tool listed … Reach us at content@guideflow.com — include a product link and one line on who it's for." Draft: "Subject: Tool suggestion for your audio mastering software guide — Hi Guideflow team, for your audio mastering software list: Auralith Forge — https://auralithforge.app — an online mastering engine for independent musicians and producers who want to see what was changed: it measures loudness (ITU-R BS.1770), spectrum and dynamics first, offers Streaming −14 / Apple Music −16 LUFS targets, optional vocal stem separation and a codec preview. Free tier: 3 full masters, no card. — Fonsi"
+2. **pluginerds.com/11-best-websites-online-mixing/** (May 2026, author Viliam; lists LANDR, eMastered, RoEx, Masterchannel, Cryo Mix, Waves, SoundBoost, Mixea…). Invites suggestions via pluginerds.com/contact/ (paid placement also exists at /advertise — not recommended). Draft: "Hi Viliam — your 2026 list of online mixing & mastering sites is one of the better ones because it separates marketplaces from automated tools. One you might add next update: Auralith Forge (auralithforge.app), an online mastering engine that analyzes the mix before processing, can separate the vocal from the accompaniment to fix a buried chorus vocal from a stereo file, and previews MP3/AAC/Opus encoding before download. 3 masters free, so it's quick to test. Happy to answer questions. — Fonsi"
+3. **musicianwave.com/best-online-mastering-services/** (title says 2026 but last updated Apr 2023; author Brian Clark; lists Abbey Road, Metropolis, LANDR, BandLab, CloudBounce). Contact: contact@musicianwave.com. Draft: "Hi Brian — I noticed your best online mastering services article still carries an April 2023 update date while the title says 2026. If you refresh it, Auralith Forge (auralithforge.app) might be worth testing alongside LANDR and BandLab: automated online mastering with explicit LUFS delivery targets, optional vocal stem separation and a free tier (3 full masters, no card). Glad to give you extended access for testing. — Fonsi"
+(Skipped lalal.ai's roundup: no contact path, and they sell stem separation.)
+
+**Tomorrow:** audit focus = conversion paths/CTAs (signup CTA placement on guides, /pricing → signup, blog post end CTAs). Fix candidates: trim the over-long meta descriptions, or og:type=article for posts. Next article: multiband compression feature post. If push is still blocked, Fonsi needs to apply `seo/2026-11-05.patch` and authorize the repo for the routine.
 
 ---
 
