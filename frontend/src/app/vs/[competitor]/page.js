@@ -6,7 +6,7 @@ import { Breadcrumbs, CtaBand, Faq, LinkList, PageHero, PageShell, Section } fro
 import { COMPARISON_PAGES, COMPARISON_KEYS } from "@/content/comparisonPages";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { buildMetadata, JsonLd, faqJsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
-import { CTA } from "@/lib/internalLinks";
+import { CTA, guideLinksFor } from "@/lib/internalLinks";
 
 export function generateStaticParams() {
   return COMPARISON_KEYS.map((competitor) => ({ competitor }));
@@ -120,14 +120,17 @@ export default async function ComparisonPage({ params }) {
       </Section>
 
       <Section>
-        <LinkList
-          title="More ways to master"
-          links={[
-            ...otherComparisons.map((key) => ({ href: `/vs/${key}`, label: `Auralith Forge vs ${COMPARISON_PAGES[key].label}` })),
-            ...GENRE_KEYS.slice(0, 3).map((g) => ({ href: `/master/${g}`, label: `${GENRE_PAGES[g].label} mastering` })),
-            { href: "/ai-mastering-online", label: "AI mastering online" },
-          ]}
-        />
+        <div className="grid gap-10 sm:grid-cols-2">
+          <LinkList title="Before you choose a tool" links={guideLinksFor("vs")} />
+          <LinkList
+            title="More ways to master"
+            links={[
+              ...otherComparisons.map((key) => ({ href: `/vs/${key}`, label: `Auralith Forge vs ${COMPARISON_PAGES[key].label}` })),
+              ...GENRE_KEYS.slice(0, 3).map((g) => ({ href: `/master/${g}`, label: `${GENRE_PAGES[g].label} mastering` })),
+              { href: "/ai-mastering-online", label: "AI mastering online" },
+            ]}
+          />
+        </div>
       </Section>
 
       <RelatedTools current="adaptive-mastering" />

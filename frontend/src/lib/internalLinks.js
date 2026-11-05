@@ -94,3 +94,37 @@ export const CHORD_DETECTOR_RELATED_GENRES = ["rock", "acoustic", "pop"];
 // in the footer. A page that answers a question outright earns links and
 // citations, and both need it to be reachable from more than the sitemap.
 export const LOUDNESS_TARGETS_URL = "/mastering-loudness-targets";
+
+// ---- Guides linked from conversion + tool pages -------------------------
+// The 2026-11-05 link-graph audit found every guide reachable only from
+// /blog and the other guides: no landing, tool or comparison page linked
+// to one, so the pages closest to signup passed no authority to the
+// articles that answer the questions searchers arrive with (and readers on
+// a landing page had no path to them). One declared list per page type,
+// validated at import time like GENRE_TO_POST.
+const PAGE_GUIDES = {
+  "ai-mastering-online": [
+    "what-happens-inside-an-ai-mastering-engine",
+    "stem-mastering-with-ai-stem-separation",
+    "mixing-vs-mastering-what-to-fix-before-release",
+    "how-to-prepare-a-mix-for-mastering",
+    "lufs-for-spotify-apple-music-youtube",
+  ],
+  "lufs-meter": ["lufs-for-spotify-apple-music-youtube", "how-to-prepare-a-mix-for-mastering"],
+  vs: [
+    "what-happens-inside-an-ai-mastering-engine",
+    "stem-mastering-with-ai-stem-separation",
+    "mixing-vs-mastering-what-to-fix-before-release",
+  ],
+};
+
+for (const [page, slugs] of Object.entries(PAGE_GUIDES)) {
+  for (const slug of slugs) {
+    if (!POST_BY_SLUG[slug]) throw new Error(`internalLinks: unknown post slug "${slug}" in PAGE_GUIDES.${page}`);
+  }
+}
+
+// [{ href, label }] for LinkList.
+export function guideLinksFor(page) {
+  return (PAGE_GUIDES[page] || []).map((slug) => ({ href: `/blog/${slug}`, label: POST_BY_SLUG[slug].title }));
+}

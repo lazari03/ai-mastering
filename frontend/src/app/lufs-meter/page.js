@@ -4,7 +4,7 @@ import PublicLufsMeter from "@/components/audio/PublicLufsMeter";
 import RelatedTools from "@/components/site/RelatedTools";
 import { SUPPORTED_FORMATS } from "@/components/site/AnalyzeToolPage";
 import { Breadcrumbs, Callout, CtaBand, Faq, LinkList, PageHero, PageShell, Section, ToolFrame } from "@/components/site/Page";
-import { CTA } from "@/lib/internalLinks";
+import { CTA, guideLinksFor } from "@/lib/internalLinks";
 import { LOUDNESS_TARGETS, STREAMING_REFERENCE_LUFS, labelForGenre } from "@/content/loudnessTargets";
 import { buildMetadata, JsonLd, faqJsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
 
@@ -174,6 +174,7 @@ export default function LufsMeterPage() {
         <LinkList
           title="Read more"
           links={[
+            ...guideLinksFor("lufs-meter"),
             { href: "/mastering-loudness-targets", label: "Loudness targets by genre" },
             { href: CTA.blog, label: "Mastering guides" },
             { href: "/tools", label: "All free tools" },

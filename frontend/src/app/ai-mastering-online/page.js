@@ -7,7 +7,7 @@ import { PRODUCT, SUPPORTED_FORMATS_TEXT, paidEntryText } from "@/lib/product";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { COMPARISON_PAGES, COMPARISON_KEYS } from "@/content/comparisonPages";
 import { TOOL_LANDING_KEYS, TOOL_LANDING_PAGES } from "@/content/toolLandingPages";
-import { CTA, CHORD_DETECTOR_URL, LOUDNESS_TARGETS_URL } from "@/lib/internalLinks";
+import { CTA, CHORD_DETECTOR_URL, LOUDNESS_TARGETS_URL, guideLinksFor } from "@/lib/internalLinks";
 import { buildMetadata, JsonLd, faqJsonLd, organizationJsonLd, SITE_NAME } from "@/lib/seo";
 
 // The broad-intent landing page — "AI mastering online" / "master a song
@@ -188,6 +188,7 @@ export default function AiMasteringOnlinePage() {
 
       <Section>
         <div className="grid gap-10 sm:grid-cols-2">
+          <LinkList title="Mastering guides" links={guideLinksFor("ai-mastering-online")} />
           <LinkList
             title="Comparing tools?"
             links={COMPARISON_KEYS.map((key) => ({ href: `/vs/${key}`, label: `Auralith Forge vs ${COMPARISON_PAGES[key].label}` }))}
