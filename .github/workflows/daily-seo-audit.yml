@@ -34,18 +34,26 @@ jobs:
               canonical=p.get('canonical')
               if (canonical or '').rstrip('/')!=f'https://auralithforge.app{path}'.rstrip('/'):
                   issues.append(f'{path}: canonical mismatch ({canonical})')
-              if path.startswith('/blog/') and not p.get('og_title'):
-                  issues.append(f'{path}: missing Open Graph title')
-          posts_source=open('frontend/src/content/posts.js').read()
-          extra_source=open('frontend/src/content/extraPosts.js').read()
-          if '...EXTRA_POSTS' not in posts_source:
-              issues.append('new articles not connected to main POSTS list')
-          for slug in ('how-to-prepare-a-mix-for-mastering','mixing-vs-mastering-what-to-fix-before-release'):
-              if not pages.get(f'/blog/{slug}', {}).get('in_sitemap'):
-                  issues.append(f'{slug}: not in live sitemap')
-          for part in extra_source.split('slug: ')[1:]:
-              if 'images.pexels.com/photos/' not in part.split('datePublished:')[0]:
-                  issues.append('blog article missing Pexels image')
+          # Every published article from the live sitemap is checked,
+          # not a fixed list of two historic slugs or one photo host.
+          blog_pages=[(path,p) for path,p in pages.items() if path.startswith('/blog/') and p.get('in_sitemap')]
+          if not blog_pages:
+              issues.append('No blog articles found in live sitemap')
+          for path,p in blog_pages:
+              if not p.get('og_title'): issues.append(f'{path}: missing Open Graph title')
+              if not p.get('og_image'): issues.append(f'{path}: missing social preview image')
+              if not p.get('twitter_image'): issues.append(f'{path}: missing Twitter preview image')
+          for path,p in pages.items():
+              if not p.get('in_sitemap'): continue
+              if 'noindex' in (p.get('robots') or '').lower():
+                  issues.append(f'{path}: sitemap URL is marked noindex')
+              # A blog link to a URL absent from the sitemap often means a
+              # typo or forgotten article; authenticated and tool pages are
+              # intentionally not checked this way.
+              for link in p.get('internal_links', []):
+                  href=link.get('href','')
+                  if href.startswith('/blog/') and href not in pages:
+                      issues.append(f'{path}: broken or unsitemapped article link {href}')
           summary=['# Daily SEO audit',f'Crawled {len(pages)} routes',f'Problems: {len(issues)}','']
           summary += [f'- {problem}' for problem in issues] if issues else ['No critical SEO issues detected.']
           with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f: f.write('\n'.join(summary)+'\n')
