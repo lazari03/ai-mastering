@@ -214,6 +214,28 @@ function pct(numerator, denominator) {
   return Math.round((numerator / denominator) * 10000) / 100;
 }
 
+// Count distinct accounts whose first retained successful payment occurred
+// inside the requested window. This is not lifetime acquisition: analytics
+// retention may purge older transactions. Matches the Sales dashboard.
+function firstRecordedPayers(from, to) {
+  return db().prepare(`SELECT COUNT(*) AS total FROM (
+    SELECT uid, MIN(ts) AS first_ts FROM analytics_events
+    WHERE name = 'payment_succeeded' AND uid IS NOT NULL AND uid != ''
+    GROUP BY uid
+  ) WHERE first_ts >= ? AND first_ts < ?`).get(from.toISOString(), to.toISOString()).total;
+}
+
+function revenueByCurrency(events) {
+  const totals = new Map();
+  for (const e of events) {
+    const currency = typeof e.props?.currency === "string" && /^[a-zA-Z]{3}$/.test(e.props.currency) ? e.props.currency.toUpperCase() : "UNKNOWN";
+    const cents = Number(e.props?.amountCents);
+    if (!Number.isFinite(cents)) continue;
+    totals.set(currency, (totals.get(currency) || 0) + cents);
+  }
+  return [...totals].map(([currency, cents]) => ({ currency, amount: Math.round(cents) / 100 }));
+}
+
 // PLANS pricing mirrored here for MRR estimation — see frontend/src/lib/
 // pricing.js, the single source of truth for what these actually cost.
 // Kept as a small constant map (not imported cross-project) since
@@ -290,6 +312,8 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
   const revenue = paymentEvents.reduce((sum, e) => sum + (e.props?.amountCents || 0), 0) / 100;
   const prevRevenue = prevPaymentEvents.reduce((sum, e) => sum + (e.props?.amountCents || 0), 0) / 100;
 
+  const firstPayers = firstRecordedPayers(from, to);
+  const previousFirstPayers = firstRecordedPayers(prevFrom, prevTo);
   const withDelta = (curr, prev) => ({ value: curr, previous: prev, deltaPct: prev ? Math.round(((curr - prev) / prev) * 1000) / 10 : null });
 
   return {
@@ -304,7 +328,10 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
     masters: withDelta(current.masters, previous.masters),
     pricingViews: withDelta(current.pricingViews, previous.pricingViews),
     checkoutStarts: withDelta(current.checkoutStarts, previous.checkoutStarts),
-    newCustomers: withDelta(current.paid, previous.paid),
+    newCustomers: withDelta(firstPayers, previousFirstPayers),
+    paidAccounts: withDelta(new Set(paymentEvents.map((e) => e.uid).filter(Boolean)).size, new Set(prevPaymentEvents.map((e) => e.uid).filter(Boolean)).size),
+    paymentTransactions: paymentEvents.length,
+    revenueByCurrency: revenueByCurrency(paymentEvents),
     revenue: withDelta(revenue, prevRevenue),
     mrr: subStats.mrr,
     activeSubscribers: subStats.activeSubscribers,
@@ -321,7 +348,9 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
       visitorToSignup: pct(current.signups, current.sessions),
       visitorToMaster: pct(current.masters, current.sessions),
       visitorToPaid: withDelta(pct(current.paid, current.sessions), pct(previous.paid, previous.sessions)),
-      checkoutToPaid: pct(current.paid, current.checkoutStarts),
+      // A completed checkout must belong to a session that initiated one;
+      // unrelated late payments must not inflate conversion above 100%.
+      checkoutToPaid: pct(sessions.filter((s) => s.hasStartedCheckout && s.hasPaid).length, current.checkoutStarts),
     },
   };
 }
@@ -599,10 +628,7 @@ export async function getSales({ from, to }) {
     // mislabeled renewals and repeat purchases as new customers.
     // Historical records beyond analytics retention are unavailable, so
     // this is "new in retained history", not lifetime customer acquisition.
-    newCustomers: [...new Set(paymentEvents.map((e) => e.uid).filter(Boolean))].filter((uid) => {
-      const first = db().prepare("SELECT MIN(ts) AS first_ts FROM analytics_events WHERE name = 'payment_succeeded' AND uid = ?").get(uid)?.first_ts;
-      return first && first >= from.toISOString() && first < to.toISOString();
-    }).length,
+    newCustomers: firstRecordedPayers(from, to),
     subscriptionsCreated: subCreated.length,
     renewals: subRenewed.length,
     cancellations: subCancelled.length,
