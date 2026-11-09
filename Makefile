@@ -56,8 +56,14 @@ build: ## Rebuild every image, then start (normal deploy — picks up code + .en
 #
 # Comments live out here rather than inside the recipe because Make echoes
 # every recipe line, comments included, into the deploy log.
-deploy: ## Pull latest git + full rebuild + restart — the one command for "ship it"
-	git pull
+deploy: ## Deploy exact CI-tested SHA when DEPLOY_SHA is set; otherwise fast-forward pull
+	@if [ -n "$(DEPLOY_SHA)" ]; then \
+	  git fetch origin main && git checkout main && git merge --ff-only "$(DEPLOY_SHA)" || exit 1; \
+	  actual=$$(git rev-parse HEAD); \
+	  if [ "$$actual" != "$(DEPLOY_SHA)" ]; then echo >&2 "Refusing deploy: HEAD $$actual != tested SHA $(DEPLOY_SHA)"; exit 1; fi; \
+	else \
+	  git pull --ff-only || exit 1; \
+	fi
 	docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{8,}_' | xargs -r docker rm -f || true
 	# Every deploy rebuilds images, which orphans the previous build's
 	# layers as dangling images and grows BuildKit's cache — left alone,

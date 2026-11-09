@@ -84,6 +84,8 @@ def audit_page(base: str, path: str) -> dict:
         "canonical": canonical.get("href") if canonical else None,
         "robots": meta("robots"),
         "og_title": meta("og:title", "property"),
+        "og_image": meta("og:image", "property"),
+        "twitter_image": meta("twitter:image"),
         "h1": [text_of(h) for h in soup.find_all("h1")],
         "h2": [text_of(h) for h in soup.find_all("h2")],
         "h3": [text_of(h) for h in soup.find_all("h3")],

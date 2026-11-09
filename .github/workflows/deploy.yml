@@ -220,7 +220,16 @@ jobs:
             # first. -n never overwrites; once every container runs the fix
             # those directories don't exist and this is a no-op.
             docker compose exec -T python-service sh -c 'for d in uploads outputs; do if [ -d /$d ] && [ "$(ls -A /$d 2>/dev/null)" ]; then cp -an /$d/. /app/$d/ && echo "salvaged /$d -> /app/$d"; fi; done' || true
-            make deploy
+            # Checkout the exact commit whose CI jobs passed. Never deploy
+            # whatever branch HEAD happens to point to after a later push.
+            git fetch origin main
+            git checkout main
+            git merge --ff-only "${{ github.sha }}"
+            test "$(git rev-parse HEAD)" = "${{ github.sha }}" || { echo "::error::Deployment SHA mismatch"; exit 1; }
+            # Validate required production environment before touching
+            # running containers. Fails closed if signing/origin config is missing.
+            docker compose config --quiet
+            make deploy DEPLOY_SHA="${{ github.sha }}"
             # Post-deploy verification: a deploy that leaves a service
             # unhealthy must fail this job (red in GitHub, not a silent
             # outage). Polls Docker's own healthchecks for up to 4 minutes —

@@ -593,7 +593,16 @@ export async function getSales({ from, to }) {
 
   return {
     revenue,
-    newCustomers: paymentEvents.filter((e) => e.props?.isFirstPurchase).length || paymentEvents.length,
+    // Count distinct accounts whose earliest *recorded* successful payment
+    // falls in this reporting window. Polar's webhook payloads do not set
+    // isFirstPurchase; the old `filter(...).length || paymentEvents.length`
+    // mislabeled renewals and repeat purchases as new customers.
+    // Historical records beyond analytics retention are unavailable, so
+    // this is "new in retained history", not lifetime customer acquisition.
+    newCustomers: [...new Set(paymentEvents.map((e) => e.uid).filter(Boolean))].filter((uid) => {
+      const first = db().prepare("SELECT MIN(ts) AS first_ts FROM analytics_events WHERE name = 'payment_succeeded' AND uid = ?").get(uid)?.first_ts;
+      return first && first >= from.toISOString() && first < to.toISOString();
+    }).length,
     subscriptionsCreated: subCreated.length,
     renewals: subRenewed.length,
     cancellations: subCancelled.length,

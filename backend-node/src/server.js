@@ -77,6 +77,15 @@ if (settings.nodeEnv === "production" && settings.corsOrigins.includes("*")) {
   process.exit(1);
 }
 
+// Download and share-link signing must survive deployments. Without a
+// configured secret settings.js generates a fresh random key at each boot,
+// invalidating every outstanding customer link on a routine restart.
+// This is acceptable for local development, never for production.
+if (settings.nodeEnv === "production" && !process.env.DOWNLOAD_TOKEN_SECRET?.trim()) {
+  console.error("Refusing to start: DOWNLOAD_TOKEN_SECRET is required in production.");
+  process.exit(1);
+}
+
 const app = express();
 
 // Caddy terminates HTTPS and reverse-proxies to this container over plain
