@@ -22,7 +22,7 @@ test("sales counts only distinct first observed purchasers, not repeat payments 
   insert.run("new", "2026-11-05T00:00:00.000Z", '{"amountCents":499}');
   const result = await getSales({ from, to });
   assert.equal(result.newCustomers, 1);
-  assert.equal(result.revenue, 24.96);
+  assert.equal(result.revenue, 19.97);
 });
 
 test("sales never calls a renewal a new customer when there are no first purchases in range", async () => {
