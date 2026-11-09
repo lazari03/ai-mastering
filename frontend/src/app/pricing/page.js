@@ -48,6 +48,21 @@ export default function PricingPage() {
         }
       />
 
+      <section aria-labelledby="choose-plan-title" className="mt-8 rounded-2xl border border-border-subtle bg-white/70 p-5 sm:p-6">
+        <h2 id="choose-plan-title" className="m-0 text-[20px] font-semibold text-text-primary">
+          Which plan should you choose?
+        </h2>
+        <p className="m-0 mt-2 text-[14px] leading-relaxed text-text-secondary">
+          Start with your own mix, then pick a plan based on how often you master — not on promises about sound quality.
+        </p>
+        <ul className="m-0 mt-4 grid list-none gap-3 p-0 text-[14px] sm:grid-cols-2">
+          <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-free">Free</a> — Hear three full masters before deciding.</li>
+          <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-indie">Indie</a> — Best fit for occasional releases, up to 15 tracks/month.</li>
+          <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-studio">Studio</a> — For regular sessions and client projects, up to 50/month.</li>
+          <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-pro">All-Access</a> — For high-volume teams needing stems and shareable links.</li>
+        </ul>
+      </section>
+
       <section aria-labelledby="plans-title" className="mt-14">
         <h2 id="plans-title" className="sr-only">
           Plans
@@ -57,7 +72,7 @@ export default function PricingPage() {
             const plan = PLANS[key];
             const featured = key === "studio";
             return (
-              <li key={key} className={`flex flex-col rounded-2xl border p-6 ${featured ? "border-text-primary bg-white" : "border-border-subtle bg-white/55"}`}>
+              <li key={key} id={`plan-${key}`} className={`flex scroll-mt-24 flex-col rounded-2xl border p-6 ${featured ? "border-text-primary bg-white" : "border-border-subtle bg-white/55"}`}>
                 <h3 className="m-0 flex items-center justify-between text-[16px] font-semibold text-text-primary">
                   {plan.label}
                 </h3>
