@@ -49,10 +49,9 @@ services:
       PORT: 8000
       PYTHON_API_BASE_URL: http://python-service:8001
       MASTERING_ENGINE: adaptive_python
-      # Your real frontend origin — https://auralithforge.app once DNS is
-      # live. Leaving this at "*" in production only warns, doesn't block,
-      # but don't ship it that way.
-      CORS_ORIGINS: ${FRONTEND_ORIGIN:-*}
+      # Required: a missing origin must fail compose validation instead
+      # of silently configuring cross-origin access to every website.
+      CORS_ORIGINS: ${FRONTEND_ORIGIN:?Set FRONTEND_ORIGIN to the production HTTPS origin}
       # Same origin, read directly (not just as CORS_ORIGINS) so share
       # links can point at the frontend's own /shared/:jobId page — see
       # settings.js:frontendOrigin.
@@ -87,7 +86,7 @@ services:
       # Signs the ?dl= download tokens and public /shared/ links — must
       # stay stable across restarts or every outstanding link breaks the
       # moment this container redeploys (see settings.js:downloadTokenSecret).
-      DOWNLOAD_TOKEN_SECRET: ${DOWNLOAD_TOKEN_SECRET}
+      DOWNLOAD_TOKEN_SECRET: ${DOWNLOAD_TOKEN_SECRET:?Set a persistent DOWNLOAD_TOKEN_SECRET before deployment}
       SESSION_MAX_AGE_DAYS: ${SESSION_MAX_AGE_DAYS:-14}
       # Idle-session cap, separate from the absolute one above — see
       # requireAuth.js / settings.js:sessionInactivityHours.
