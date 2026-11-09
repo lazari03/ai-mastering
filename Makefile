@@ -59,8 +59,8 @@ build: ## Rebuild every image, then start (normal deploy — picks up code + .en
 deploy: ## Deploy exact CI-tested SHA when DEPLOY_SHA is set; otherwise fast-forward pull
 	@if [ -n "$(DEPLOY_SHA)" ]; then \
 	  git fetch origin main && git checkout main && git merge --ff-only "$(DEPLOY_SHA)" || exit 1; \
-	  actual=$(git rev-parse HEAD); \
-	  if [ "$actual" != "$(DEPLOY_SHA)" ]; then echo >&2 "Refusing deploy: HEAD $actual != tested SHA $(DEPLOY_SHA)"; exit 1; fi; \
+	  actual=$$(git rev-parse HEAD); \
+	  if [ "$$actual" != "$(DEPLOY_SHA)" ]; then echo >&2 "Refusing deploy: HEAD $$actual != tested SHA $(DEPLOY_SHA)"; exit 1; fi; \
 	else \
 	  git pull --ff-only || exit 1; \
 	fi
