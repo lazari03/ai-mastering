@@ -11,6 +11,14 @@ import ExportButtons from "@/components/admin/ExportButtons";
 import { IconTarget } from "@/components/admin/icons";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
+function currencyTotals(row) {
+  const parts = row.revenueByCurrency || [];
+  if (!parts.length) return "—";
+  return parts.map(({ currency, amount }) => currency === "UNKNOWN"
+    ? `?${amount.toFixed(2)}`
+    : `${currency} ${amount.toFixed(2)}`).join(" · ");
+}
+
 export default function AdminAcquisitionPage() {
   const { t } = useLanguage();
   const [preset, setPreset] = useState("7d");
@@ -23,8 +31,8 @@ export default function AdminAcquisitionPage() {
     { key: "uploads", label: t("admin.table.uploads"), align: "right" },
     { key: "masters", label: t("admin.table.masters"), align: "right" },
     { key: "checkouts", label: t("admin.table.checkouts"), align: "right" },
-    { key: "customers", label: t("admin.table.paid"), align: "right" },
-    { key: "revenue", label: t("admin.table.revenue"), align: "right", render: (r) => `€${r.revenue.toFixed(2)}` },
+    { key: "customers", label: t("admin.overview.paidAccounts"), align: "right" },
+    { key: "revenue", label: t("admin.table.revenue"), align: "right", render: currencyTotals },
     { key: "conversion", label: t("admin.table.conversion"), align: "right", render: (r) => `${r.conversion}%` },
   ];
 
@@ -44,6 +52,7 @@ export default function AdminAcquisitionPage() {
       {!rows && loading ? <LoadingBlock /> : null}
       {rows ? (
         <div className={`transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
+          <p className="m-0 mb-2 text-[11px] leading-4 text-zinc-500">{t("admin.acquisition.attributionNote")}</p>
           <AdminTable columns={columns} rows={rows.map((r) => ({ ...r, id: r.source }))} emptyLabel={t("admin.table.noData")} />
         </div>
       ) : null}
