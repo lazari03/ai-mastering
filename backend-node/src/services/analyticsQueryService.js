@@ -236,6 +236,23 @@ function revenueByCurrency(events) {
   return [...totals].map(([currency, cents]) => ({ currency, amount: Math.round(cents) / 100 }));
 }
 
+// Read-only SQLite ingestion health for the authenticated admin overview.
+// Row counts are storage diagnostics, NOT visitors or paying customers.
+function databaseHealth() {
+  const visitors = db().prepare("SELECT COUNT(*) AS count FROM analytics_visitors").get().count;
+  const sessions = db().prepare("SELECT COUNT(*) AS count, MIN(started_at) AS oldest FROM analytics_sessions").get();
+  const events = db().prepare("SELECT COUNT(*) AS count, MAX(ts) AS latest FROM analytics_events").get();
+  const lastPayment = db().prepare("SELECT MAX(ts) AS latest FROM analytics_events WHERE name = 'payment_succeeded'").get().latest;
+  return {
+    visitorRows: visitors,
+    sessionRows: sessions.count,
+    eventRows: events.count,
+    oldestSessionAt: sessions.oldest,
+    latestEventAt: events.latest,
+    latestPaymentAt: lastPayment,
+  };
+}
+
 // PLANS pricing mirrored here for MRR estimation — see frontend/src/lib/
 // pricing.js, the single source of truth for what these actually cost.
 // Kept as a small constant map (not imported cross-project) since
@@ -318,6 +335,7 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
 
   return {
     range: { from, to, prevFrom, prevTo },
+    databaseHealth: databaseHealth(),
     visitors: withDelta(current.visitors, previous.visitors),
     newVisitors: withDelta(current.newVisitors, previous.newVisitors),
     returningVisitors: withDelta(current.returningVisitors, previous.returningVisitors),
