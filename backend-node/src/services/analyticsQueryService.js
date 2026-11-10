@@ -214,6 +214,45 @@ function pct(numerator, denominator) {
   return Math.round((numerator / denominator) * 10000) / 100;
 }
 
+// Count distinct accounts whose first retained successful payment occurred
+// inside the requested window. This is not lifetime acquisition: analytics
+// retention may purge older transactions. Matches the Sales dashboard.
+function firstRecordedPayers(from, to) {
+  return db().prepare(`SELECT COUNT(*) AS total FROM (
+    SELECT uid, MIN(ts) AS first_ts FROM analytics_events
+    WHERE name = 'payment_succeeded' AND uid IS NOT NULL AND uid != ''
+    GROUP BY uid
+  ) WHERE first_ts >= ? AND first_ts < ?`).get(from.toISOString(), to.toISOString()).total;
+}
+
+function revenueByCurrency(events) {
+  const totals = new Map();
+  for (const e of events) {
+    const currency = typeof e.props?.currency === "string" && /^[a-zA-Z]{3}$/.test(e.props.currency) ? e.props.currency.toUpperCase() : "UNKNOWN";
+    const cents = Number(e.props?.amountCents);
+    if (!Number.isFinite(cents)) continue;
+    totals.set(currency, (totals.get(currency) || 0) + cents);
+  }
+  return [...totals].map(([currency, cents]) => ({ currency, amount: Math.round(cents) / 100 }));
+}
+
+// Read-only SQLite ingestion health for the authenticated admin overview.
+// Row counts are storage diagnostics, NOT visitors or paying customers.
+function databaseHealth() {
+  const visitors = db().prepare("SELECT COUNT(*) AS count FROM analytics_visitors").get().count;
+  const sessions = db().prepare("SELECT COUNT(*) AS count, MIN(started_at) AS oldest FROM analytics_sessions").get();
+  const events = db().prepare("SELECT COUNT(*) AS count, MAX(ts) AS latest FROM analytics_events").get();
+  const lastPayment = db().prepare("SELECT MAX(ts) AS latest FROM analytics_events WHERE name = 'payment_succeeded'").get().latest;
+  return {
+    visitorRows: visitors,
+    sessionRows: sessions.count,
+    eventRows: events.count,
+    oldestSessionAt: sessions.oldest,
+    latestEventAt: events.latest,
+    latestPaymentAt: lastPayment,
+  };
+}
+
 // PLANS pricing mirrored here for MRR estimation — see frontend/src/lib/
 // pricing.js, the single source of truth for what these actually cost.
 // Kept as a small constant map (not imported cross-project) since
@@ -290,10 +329,13 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
   const revenue = paymentEvents.reduce((sum, e) => sum + (e.props?.amountCents || 0), 0) / 100;
   const prevRevenue = prevPaymentEvents.reduce((sum, e) => sum + (e.props?.amountCents || 0), 0) / 100;
 
+  const firstPayers = firstRecordedPayers(from, to);
+  const previousFirstPayers = firstRecordedPayers(prevFrom, prevTo);
   const withDelta = (curr, prev) => ({ value: curr, previous: prev, deltaPct: prev ? Math.round(((curr - prev) / prev) * 1000) / 10 : null });
 
   return {
     range: { from, to, prevFrom, prevTo },
+    databaseHealth: databaseHealth(),
     visitors: withDelta(current.visitors, previous.visitors),
     newVisitors: withDelta(current.newVisitors, previous.newVisitors),
     returningVisitors: withDelta(current.returningVisitors, previous.returningVisitors),
@@ -304,7 +346,10 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
     masters: withDelta(current.masters, previous.masters),
     pricingViews: withDelta(current.pricingViews, previous.pricingViews),
     checkoutStarts: withDelta(current.checkoutStarts, previous.checkoutStarts),
-    newCustomers: withDelta(current.paid, previous.paid),
+    newCustomers: withDelta(firstPayers, previousFirstPayers),
+    paidAccounts: withDelta(new Set(paymentEvents.map((e) => e.uid).filter(Boolean)).size, new Set(prevPaymentEvents.map((e) => e.uid).filter(Boolean)).size),
+    paymentTransactions: paymentEvents.length,
+    revenueByCurrency: revenueByCurrency(paymentEvents),
     revenue: withDelta(revenue, prevRevenue),
     mrr: subStats.mrr,
     activeSubscribers: subStats.activeSubscribers,
@@ -321,7 +366,9 @@ export async function getOverview({ from, to, prevFrom, prevTo }) {
       visitorToSignup: pct(current.signups, current.sessions),
       visitorToMaster: pct(current.masters, current.sessions),
       visitorToPaid: withDelta(pct(current.paid, current.sessions), pct(previous.paid, previous.sessions)),
-      checkoutToPaid: pct(current.paid, current.checkoutStarts),
+      // A completed checkout must belong to a session that initiated one;
+      // unrelated late payments must not inflate conversion above 100%.
+      checkoutToPaid: pct(sessions.filter((s) => s.hasStartedCheckout && s.hasPaid).length, current.checkoutStarts),
     },
   };
 }
@@ -405,41 +452,67 @@ function sourceKeyFor(session) {
 export async function getAcquisition({ from, to }) {
   const sessions = fetchSessionsInRange(from, to);
   const paymentEvents = fetchEventsInRange(from, to, ["payment_succeeded"]);
-  const revenueByUid = new Map();
-  for (const e of paymentEvents) {
-    if (!e.uid) continue;
-    revenueByUid.set(e.uid, (revenueByUid.get(e.uid) || 0) + (e.props?.amountCents || 0));
-  }
+  const bySession = new Map(sessions.map((s) => [s.sessionId, s]));
+  const byUid = new Map();
   const groups = new Map();
+  const ensure = (key) => {
+    if (!groups.has(key)) groups.set(key, {
+      source: key, visitors: new Set(), newIds: new Set(), uploads: 0,
+      masters: 0, checkouts: 0, customers: new Set(), revenueCents: 0,
+      currencies: new Map(), paymentEvents: 0,
+    });
+    return groups.get(key);
+  };
+
   for (const s of sessions) {
-    const key = sourceKeyFor(s);
-    if (!groups.has(key)) groups.set(key, { source: key, visitors: new Set(), newVisitors: 0, uploads: 0, masters: 0, checkouts: 0, customers: 0, revenueCents: 0, uids: new Set() });
-    const g = groups.get(key);
-    g.visitors.add(identityKey(s));
-    if (s.isNewVisitor) g.newVisitors++;
+    const g = ensure(sourceKeyFor(s));
+    const identity = identityKey(s);
+    g.visitors.add(identity);
+    if (s.isNewVisitor) g.newIds.add(identity);
     if (s.hasUploaded) g.uploads++;
     if (s.hasMastered) g.masters++;
     if (s.hasStartedCheckout) g.checkouts++;
-    if (s.hasPaid) {
-      g.customers++;
-      if (s.uid) g.uids.add(s.uid);
+    if (s.uid) {
+      if (!byUid.has(s.uid)) byUid.set(s.uid, []);
+      byUid.get(s.uid).push(s);
     }
   }
+  for (const list of byUid.values()) list.sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
+
+  // Attribute each payment event once, using its verified session when
+  // available, otherwise the last authenticated session before payment.
+  // An event without an attributable session belongs to "unattributed",
+  // never to every source the account happened to visit.
+  for (const e of paymentEvents) {
+    const exact = bySession.get(e.sessionId);
+    const session = exact && (!e.uid || exact.uid === e.uid)
+      ? exact
+      : (byUid.get(e.uid) || []).find((s) => s.startedAt <= e.ts);
+    const g = ensure(session ? sourceKeyFor(session) : "unattributed");
+    if (e.uid) g.customers.add(e.uid);
+    g.paymentEvents++;
+    const cents = Number(e.props?.amountCents);
+    if (!Number.isFinite(cents)) continue;
+    const currency = typeof e.props?.currency === "string" && /^[a-z]{3}$/i.test(e.props.currency)
+      ? e.props.currency.toUpperCase() : "UNKNOWN";
+    g.revenueCents += cents; // legacy numeric for CSV exports; use revenueByCurrency in UI
+    g.currencies.set(currency, (g.currencies.get(currency) || 0) + cents);
+  }
+
   return [...groups.values()]
-    .map((g) => {
-      const revenueCents = [...g.uids].reduce((sum, uid) => sum + (revenueByUid.get(uid) || 0), 0);
-      return {
-        source: g.source,
-        visitors: g.visitors.size,
-        newVisitors: g.newVisitors,
-        uploads: g.uploads,
-        masters: g.masters,
-        checkouts: g.checkouts,
-        customers: g.customers,
-        revenue: Math.round(revenueCents) / 100,
-        conversion: pct(g.customers, g.visitors.size),
-      };
-    })
+    .map((g) => ({
+      source: g.source,
+      visitors: g.visitors.size,
+      newVisitors: g.newIds.size,
+      uploads: g.uploads,
+      masters: g.masters,
+      checkouts: g.checkouts,
+      customers: g.customers.size,
+      paymentEvents: g.paymentEvents,
+      revenue: Math.round(g.revenueCents) / 100,
+      revenueByCurrency: [...g.currencies].map(([currency, cents]) => ({ currency, amount: Math.round(cents) / 100 })),
+      conversion: pct(g.customers.size, g.visitors.size),
+    }))
     .sort((a, b) => b.visitors - a.visitors);
 }
 
@@ -582,7 +655,10 @@ export async function getSales({ from, to }) {
 
   const revenue = paymentEvents.reduce((sum, e) => sum + (e.props?.amountCents || 0), 0) / 100;
   const checkoutStarted = sessions.filter((s) => s.hasStartedCheckout).length;
-  const checkoutSucceeded = sessions.filter((s) => s.hasPaid).length;
+  // A succeeded checkout needs both initiation and payment in that session.
+  // A late payment attributed to a different session is still a payment,
+  // but must not make checkout conversion exceed its denominator.
+  const checkoutSucceeded = sessions.filter((s) => s.hasStartedCheckout && s.hasPaid).length;
   const abandoned = sessions.filter((s) => s.hasStartedCheckout && !s.hasPaid && Date.now() - (s.lastSeenAt ? new Date(s.lastSeenAt).getTime() : 0) > CHECKOUT_ABANDON_MS).length;
 
   const failureReasons = {};
@@ -593,16 +669,16 @@ export async function getSales({ from, to }) {
 
   return {
     revenue,
+    revenueByCurrency: revenueByCurrency(paymentEvents),
+    paidAccounts: new Set(paymentEvents.map((e) => e.uid).filter(Boolean)).size,
+    paymentTransactions: paymentEvents.length,
     // Count distinct accounts whose earliest *recorded* successful payment
     // falls in this reporting window. Polar's webhook payloads do not set
     // isFirstPurchase; the old `filter(...).length || paymentEvents.length`
     // mislabeled renewals and repeat purchases as new customers.
     // Historical records beyond analytics retention are unavailable, so
     // this is "new in retained history", not lifetime customer acquisition.
-    newCustomers: [...new Set(paymentEvents.map((e) => e.uid).filter(Boolean))].filter((uid) => {
-      const first = db().prepare("SELECT MIN(ts) AS first_ts FROM analytics_events WHERE name = 'payment_succeeded' AND uid = ?").get(uid)?.first_ts;
-      return first && first >= from.toISOString() && first < to.toISOString();
-    }).length,
+    newCustomers: firstRecordedPayers(from, to),
     subscriptionsCreated: subCreated.length,
     renewals: subRenewed.length,
     cancellations: subCancelled.length,

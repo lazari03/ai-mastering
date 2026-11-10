@@ -12,6 +12,12 @@ import ExportButtons from "@/components/admin/ExportButtons";
 import { IconDollar, IconUserCheck as IconCustomer, IconRefresh, IconXCircle, IconCoins, IconCart } from "@/components/admin/icons";
 import { LoadingBlock } from "@/components/ui/Spinner";
 
+function formatRecordedRevenue(data) {
+  const parts = data.revenueByCurrency || [];
+  if (!parts.length) return "—";
+  return parts.map((item) => `${item.currency} ${item.amount.toFixed(2)}`).join(" · ");
+}
+
 export default function AdminSalesPage() {
   const { t } = useLanguage();
   const [preset, setPreset] = useState("7d");
@@ -38,9 +44,11 @@ export default function AdminSalesPage() {
       {!data && loading ? <LoadingBlock /> : null}
       {data ? (
         <div className={`space-y-5 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <StatCard label={t("admin.stat.revenue")} stat={data.revenue.toFixed(2)} suffix=" €" icon={IconCoins} />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatCard label={t("admin.stat.revenue")} stat={formatRecordedRevenue(data)} icon={IconCoins} />
             <StatCard label={t("admin.stat.newCustomers")} stat={data.newCustomers} icon={IconCustomer} />
+            <StatCard label={t("admin.overview.paidAccounts")} stat={data.paidAccounts} icon={IconCustomer} />
+            <StatCard label={t("admin.overview.transactions")} stat={data.paymentTransactions} icon={IconCart} />
             <StatCard label={t("admin.sales.subscriptionsCreated")} stat={data.subscriptionsCreated} icon={IconRefresh} />
             <StatCard label={t("admin.sales.renewals")} stat={data.renewals} icon={IconRefresh} />
             <StatCard label={t("admin.stat.cancellations")} stat={data.cancellations} icon={IconXCircle} />
