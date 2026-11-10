@@ -128,6 +128,18 @@ export default function AdminOverviewPage() {
             <Metric label={t("admin.stat.sharesCreated")} value={number(data.sharesCreated)} />
             <Metric label={t("admin.stat.errors")} value={number(data.errorCount)} />
           </div>
+          {data.databaseHealth ? <div className="border-t border-white/10 px-3 py-3">
+            <p className="m-0 mb-2 text-[11px] font-semibold text-zinc-300">{t("admin.overview.databaseHealth")}</p>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] sm:grid-cols-3">
+              <div><span className="text-zinc-500">{t("admin.overview.dbVisitors")}</span><p className="m-0 font-semibold tabular-nums text-zinc-200">{number(data.databaseHealth.visitorRows)}</p></div>
+              <div><span className="text-zinc-500">{t("admin.overview.dbSessions")}</span><p className="m-0 font-semibold tabular-nums text-zinc-200">{number(data.databaseHealth.sessionRows)}</p></div>
+              <div><span className="text-zinc-500">{t("admin.overview.dbEvents")}</span><p className="m-0 font-semibold tabular-nums text-zinc-200">{number(data.databaseHealth.eventRows)}</p></div>
+              <div><span className="text-zinc-500">{t("admin.overview.latestEvent")}</span><p className="m-0 font-medium text-zinc-200">{data.databaseHealth.latestEventAt ? new Date(data.databaseHealth.latestEventAt).toLocaleString() : "—"}</p></div>
+              <div><span className="text-zinc-500">{t("admin.overview.latestPayment")}</span><p className="m-0 font-medium text-zinc-200">{data.databaseHealth.latestPaymentAt ? new Date(data.databaseHealth.latestPaymentAt).toLocaleString() : "—"}</p></div>
+              <div><span className="text-zinc-500">{t("admin.overview.oldestSession")}</span><p className="m-0 font-medium text-zinc-200">{data.databaseHealth.oldestSessionAt ? new Date(data.databaseHealth.oldestSessionAt).toLocaleDateString() : "—"}</p></div>
+            </div>
+            <p className="m-0 mt-2 text-[10px] text-zinc-500">{t("admin.overview.databaseNote")}</p>
+          </div> : null}
         </details>
         <p className="m-0 text-[10px] leading-4 text-zinc-500">{t("admin.overview.footnote")}</p>
       </div> : null}
