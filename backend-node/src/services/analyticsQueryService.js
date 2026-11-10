@@ -434,41 +434,67 @@ function sourceKeyFor(session) {
 export async function getAcquisition({ from, to }) {
   const sessions = fetchSessionsInRange(from, to);
   const paymentEvents = fetchEventsInRange(from, to, ["payment_succeeded"]);
-  const revenueByUid = new Map();
-  for (const e of paymentEvents) {
-    if (!e.uid) continue;
-    revenueByUid.set(e.uid, (revenueByUid.get(e.uid) || 0) + (e.props?.amountCents || 0));
-  }
+  const bySession = new Map(sessions.map((s) => [s.sessionId, s]));
+  const byUid = new Map();
   const groups = new Map();
+  const ensure = (key) => {
+    if (!groups.has(key)) groups.set(key, {
+      source: key, visitors: new Set(), newIds: new Set(), uploads: 0,
+      masters: 0, checkouts: 0, customers: new Set(), revenueCents: 0,
+      currencies: new Map(), paymentEvents: 0,
+    });
+    return groups.get(key);
+  };
+
   for (const s of sessions) {
-    const key = sourceKeyFor(s);
-    if (!groups.has(key)) groups.set(key, { source: key, visitors: new Set(), newVisitors: 0, uploads: 0, masters: 0, checkouts: 0, customers: 0, revenueCents: 0, uids: new Set() });
-    const g = groups.get(key);
-    g.visitors.add(identityKey(s));
-    if (s.isNewVisitor) g.newVisitors++;
+    const g = ensure(sourceKeyFor(s));
+    const identity = identityKey(s);
+    g.visitors.add(identity);
+    if (s.isNewVisitor) g.newIds.add(identity);
     if (s.hasUploaded) g.uploads++;
     if (s.hasMastered) g.masters++;
     if (s.hasStartedCheckout) g.checkouts++;
-    if (s.hasPaid) {
-      g.customers++;
-      if (s.uid) g.uids.add(s.uid);
+    if (s.uid) {
+      if (!byUid.has(s.uid)) byUid.set(s.uid, []);
+      byUid.get(s.uid).push(s);
     }
   }
+  for (const list of byUid.values()) list.sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
+
+  // Attribute each payment event once, using its verified session when
+  // available, otherwise the last authenticated session before payment.
+  // An event without an attributable session belongs to "unattributed",
+  // never to every source the account happened to visit.
+  for (const e of paymentEvents) {
+    const exact = bySession.get(e.sessionId);
+    const session = exact && (!e.uid || exact.uid === e.uid)
+      ? exact
+      : (byUid.get(e.uid) || []).find((s) => s.startedAt <= e.ts);
+    const g = ensure(session ? sourceKeyFor(session) : "unattributed");
+    if (e.uid) g.customers.add(e.uid);
+    g.paymentEvents++;
+    const cents = Number(e.props?.amountCents);
+    if (!Number.isFinite(cents)) continue;
+    const currency = typeof e.props?.currency === "string" && /^[a-z]{3}$/i.test(e.props.currency)
+      ? e.props.currency.toUpperCase() : "UNKNOWN";
+    g.revenueCents += cents; // legacy numeric for CSV exports; use revenueByCurrency in UI
+    g.currencies.set(currency, (g.currencies.get(currency) || 0) + cents);
+  }
+
   return [...groups.values()]
-    .map((g) => {
-      const revenueCents = [...g.uids].reduce((sum, uid) => sum + (revenueByUid.get(uid) || 0), 0);
-      return {
-        source: g.source,
-        visitors: g.visitors.size,
-        newVisitors: g.newVisitors,
-        uploads: g.uploads,
-        masters: g.masters,
-        checkouts: g.checkouts,
-        customers: g.customers,
-        revenue: Math.round(revenueCents) / 100,
-        conversion: pct(g.customers, g.visitors.size),
-      };
-    })
+    .map((g) => ({
+      source: g.source,
+      visitors: g.visitors.size,
+      newVisitors: g.newIds.size,
+      uploads: g.uploads,
+      masters: g.masters,
+      checkouts: g.checkouts,
+      customers: g.customers.size,
+      paymentEvents: g.paymentEvents,
+      revenue: Math.round(g.revenueCents) / 100,
+      revenueByCurrency: [...g.currencies].map(([currency, cents]) => ({ currency, amount: Math.round(cents) / 100 })),
+      conversion: pct(g.customers.size, g.visitors.size),
+    }))
     .sort((a, b) => b.visitors - a.visitors);
 }
 
