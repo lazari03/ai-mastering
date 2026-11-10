@@ -25,8 +25,8 @@ import {
 // separate nav layouts, and never overflows awkwardly on a narrow screen —
 // it just scrolls, same convention as a native app's tab bar.
 const NAV = [
-  { href: "/admin/analytics/behavior", labelKey: "admin.nav.behavior", Icon: IconTarget },
   { href: "/admin/analytics", labelKey: "admin.nav.overview", Icon: IconGrid },
+  { href: "/admin/analytics/behavior", labelKey: "admin.nav.behavior", Icon: IconTarget },
   { href: "/admin/analytics/live", labelKey: "admin.nav.live", Icon: IconRadio },
   { href: "/admin/analytics/sessions", labelKey: "admin.nav.sessions", Icon: IconList },
   { href: "/admin/analytics/funnel", labelKey: "admin.nav.funnel", Icon: IconFunnel },
@@ -55,7 +55,7 @@ export default function AdminShell({ children }) {
             </Link>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-[1200px] gap-1 overflow-x-auto px-4 pb-2 pt-3 sm:px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav className="mx-auto flex max-w-[1200px] gap-1 overflow-x-auto px-4 pb-2 pt-2 sm:px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {NAV.map((item) => {
             const active = item.href === "/admin/analytics" ? pathname === item.href : pathname.startsWith(item.href);
             const Icon = item.Icon;
@@ -63,6 +63,7 @@ export default function AdminShell({ children }) {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition ${
                   active ? "bg-brass text-[#100b08]" : "border border-white/10 text-zinc-400 hover:border-white/25 hover:text-zinc-200"
                 }`}
