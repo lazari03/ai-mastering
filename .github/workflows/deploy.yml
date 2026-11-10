@@ -18,13 +18,76 @@ on:
   # of that.
   workflow_dispatch:
 
+# Cancel superseded PR runs, but never interrupt or cancel a main-branch
+# release. Production deploys are serialized separately below.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
 jobs:
+  changes:
+    name: Detect affected areas
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.paths.outputs.frontend }}
+      node: ${{ steps.paths.outputs.node }}
+      python: ${{ steps.paths.outputs.python }}
+      python_deps: ${{ steps.paths.outputs.python_deps }}
+      deploy: ${{ steps.paths.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Identify changed files (fail closed on errors)
+        id: paths
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          frontend=false; node=false; python=false; python_deps=false; deploy=false
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            frontend=true; node=true; python=true; python_deps=true; deploy=true
+          elif [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            # An initial push has no valid base: run everything rather than
+            # accidentally skipping the tests before a production deploy.
+            frontend=true; node=true; python=true; python_deps=true; deploy=true
+          else
+            git cat-file -e "$BASE_SHA^{commit}"
+            git diff --name-only -z "$BASE_SHA" HEAD > "$RUNNER_TEMP/affected-files"
+            while IFS= read -r -d '' file; do
+              case "$file" in
+                frontend/*) frontend=true; deploy=true ;;
+                backend-node/*) node=true; deploy=true ;;
+                backend/*) python=true; deploy=true ;;
+                docker-compose.yml|Caddyfile|Makefile|.github/workflows/deploy.yml)
+                  frontend=true; node=true; python=true; deploy=true ;;
+              esac
+              case "$file" in
+                backend/requirements.txt) python_deps=true ;;
+              esac
+            done < "$RUNNER_TEMP/affected-files"
+          fi
+          {
+            echo "frontend=$frontend"
+            echo "node=$node"
+            echo "python=$python"
+            echo "python_deps=$python_deps"
+            echo "deploy=$deploy"
+          } >> "$GITHUB_OUTPUT"
+          echo "Frontend: $frontend; Node: $node; Python: $python; deps: $python_deps; deploy: $deploy"
   # Independent checks, run in parallel — the slowest one, not their sum,
   # sets how long a deploy waits. Deploy needs every one of them: until
   # now none of them ran a single test, so a broken engine or billing path
   # deployed as long as it compiled.
   frontend-check:
     name: Frontend build
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +119,8 @@ jobs:
 
   node-check:
     name: Node API check
+    needs: changes
+    if: needs.changes.outputs.node == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,12 +153,11 @@ jobs:
 
   python-check:
     name: Python DSP check
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          # Two commits, so a push can be diffed against its parent below.
-          fetch-depth: 2
 
       - uses: actions/setup-python@v5
         with:
@@ -107,22 +171,10 @@ jobs:
         working-directory: backend
         run: python -m compileall -q app ai_mastering
 
-      # The full dependency install (torch via demucs, essentia, ...) took
-      # ~1m40s of every deploy while the check after it never imported any
-      # of it. It only proves requirements.txt still resolves, so it runs
-      # when that can have changed: a push touching requirements.txt, or a
-      # manual / pull-request run. Everything else deploys without it.
-      - name: Did Python dependencies change?
-        id: deps
-        run: |
-          if [ "${{ github.event_name }}" != "push" ] || ! git diff --quiet HEAD~1 HEAD -- backend/requirements.txt 2>/dev/null; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
-
+      # Only resolve the heavy DSP dependencies when requirements.txt
+      # changed; Python unit tests use the small requirements-test.txt.
       - name: Python DSP service — dependency install
-        if: steps.deps.outputs.changed == 'true'
+        if: needs.changes.outputs.python_deps == 'true'
         working-directory: backend
         run: pip install -r requirements.txt
 
@@ -130,6 +182,8 @@ jobs:
   # torch/essentia): nothing the tests import needs the heavy set above.
   python-tests:
     name: Python DSP tests
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -156,6 +210,8 @@ jobs:
   # in the same commit as the change that explains it.
   synthetic-regression:
     name: Synthetic mastering regression
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -179,15 +235,26 @@ jobs:
 
   deploy:
     name: Deploy to VPS
-    needs: [frontend-check, node-check, python-check, python-tests, synthetic-regression]
+    needs: [changes, frontend-check, node-check, python-check, python-tests, synthetic-regression]
     # Still main-only: workflow_dispatch lets the person triggering it pick
     # a ref, and this github.ref check is what stops someone dispatching
     # against a feature branch and deploying it to production. Only the
     # event list widens — a manual run from main deploys exactly as a push
     # to main does, which is the point: retry a failed deploy without
     # inventing a commit.
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: >-
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.deploy == 'true' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
+    # Serializes releases, never cancels an in-progress VPS update.
+    concurrency:
+      group: auralith-production-deploy
+      cancel-in-progress: false
     steps:
       - name: SSH and deploy
         uses: appleboy/ssh-action@v1.0.3
