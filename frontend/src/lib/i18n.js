@@ -1315,6 +1315,7 @@ const DICT = {
   "admin.badge": { en: "Analytics", sq: "Analitika" },
 
   "admin.overview.title": { en: "Overview", sq: "Përmbledhje" },
+  "admin.acquisition.attributionNote": { en: "Last known authenticated session before a payment determines its source. Unmatched payments show as unattributed. Accounts are unique per source; these are not necessarily first-time customers.", sq: "Burimi i pagesës merret nga sesioni i fundit i verifikuar. Pagesat pa sesion tregohen si pa atribuuara. Llogaritë janë unike për burim; jo domosdoshmërisht klientë të rinj." },
   "admin.overview.dataSource": { en: "First-party analytics · selected period", sq: "Analitika e brendshme · periudha e zgjedhur" },
   "admin.overview.viewDetails": { en: "Details", sq: "Detaje" },
   "admin.overview.paidAccounts": { en: "Paying accounts", sq: "Llogari paguese" },
