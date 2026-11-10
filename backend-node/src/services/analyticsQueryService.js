@@ -648,6 +648,9 @@ export async function getSales({ from, to }) {
 
   return {
     revenue,
+    revenueByCurrency: revenueByCurrency(paymentEvents),
+    paidAccounts: new Set(paymentEvents.map((e) => e.uid).filter(Boolean)).size,
+    paymentTransactions: paymentEvents.length,
     // Count distinct accounts whose earliest *recorded* successful payment
     // falls in this reporting window. Polar's webhook payloads do not set
     // isFirstPurchase; the old `filter(...).length || paymentEvents.length`
