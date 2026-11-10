@@ -637,7 +637,10 @@ export async function getSales({ from, to }) {
 
   const revenue = paymentEvents.reduce((sum, e) => sum + (e.props?.amountCents || 0), 0) / 100;
   const checkoutStarted = sessions.filter((s) => s.hasStartedCheckout).length;
-  const checkoutSucceeded = sessions.filter((s) => s.hasPaid).length;
+  // A succeeded checkout needs both initiation and payment in that session.
+  // A late payment attributed to a different session is still a payment,
+  // but must not make checkout conversion exceed its denominator.
+  const checkoutSucceeded = sessions.filter((s) => s.hasStartedCheckout && s.hasPaid).length;
   const abandoned = sessions.filter((s) => s.hasStartedCheckout && !s.hasPaid && Date.now() - (s.lastSeenAt ? new Date(s.lastSeenAt).getTime() : 0) > CHECKOUT_ABANDON_MS).length;
 
   const failureReasons = {};
