@@ -29,6 +29,7 @@ import {
 import { PLAN_MASTER_LIMITS, STEM_MONTHLY_LIMIT, readUserData, entitlementsFromUserData } from "../services/entitlementsService.js";
 import { createLedger, partsFor } from "../services/reservationLedger.js";
 import { decideMasterCharge } from "../services/masterEntitlement.js";
+import { sendLifecycleEmail, markCheckoutStarted, verifyUnsubscribeToken, optOut } from "../services/lifecycleEmailService.js";
 import { mcpDeleteUserData, mcpRevokeUser } from "../mcp/hooks.js";
 import { UPSTREAM_TIMEOUT_MS } from "../services/pythonUpstream.js";
 import { isEmailDeliverable } from "../services/emailValidationService.js";
@@ -187,6 +188,25 @@ router.post("/validate-email", async (req, res) => {
 // with typo'd/fake addresses. `source` is just a free-text tag (e.g.
 // "footer", "newsletter-page") for telling signup channels apart later,
 // never trusted for anything security-sensitive.
+// Public, no auth — the unsubscribe link in every lifecycle email
+// (lifecycleEmailService.js). The signed token is the credential and only
+// ever grants "stop emailing this account". GET is the link a person
+// clicks; POST is RFC 8058 one-click unsubscribe, which mail clients call
+// themselves from the List-Unsubscribe header.
+async function unsubscribeHandler(req, res) {
+  const uid = verifyUnsubscribeToken(req.query.token);
+  if (!uid) return res.status(400).type("text/plain").send("This unsubscribe link is invalid.");
+  try {
+    await optOut(uid);
+  } catch (error) {
+    console.error("Lifecycle unsubscribe failed:", error.message);
+    return res.status(503).type("text/plain").send("Couldn't update your preference right now — please try again in a minute.");
+  }
+  return res.type("text/plain").send("You're unsubscribed. You won't get these emails from Auralith Forge again.");
+}
+router.get("/email/unsubscribe", newsletterLimiter, unsubscribeHandler);
+router.post("/email/unsubscribe", newsletterLimiter, unsubscribeHandler);
+
 router.post("/newsletter/subscribe", newsletterLimiter, async (req, res) => {
   const email = req.body?.email;
   // The normalized email becomes a Firestore document id: a string of sane
@@ -314,7 +334,7 @@ router.delete("/jobs/:jobId", async (req, res) => {
 // Owner side (signed in): create, list, revoke. Recipient side (public,
 // no account): /shared/link/info and /shared/link/download, authenticated
 // only by the X-Share-Token header. See shareLinkService.js for the token
-// model. All-Access only — a real plan feature.
+// model. Available on every plan, including Free.
 
 function shareUrlFor(req, token) {
   // The token goes in the URL FRAGMENT: browsers never send it to any
@@ -329,10 +349,12 @@ function parseOptionalInt(value) {
 }
 
 async function createShareLinkHandler(req, res) {
-  const plan = await getPlan(req.user.uid).catch(() => "free");
-  if (plan !== "pro") {
-    return res.status(402).json({ detail: "Share links are an All-Access feature. See plans in Settings → Billing." });
-  }
+  // Share links are open to every plan (was All-Access only until
+  // 2026-11): a shared master is the product's only organic loop — each
+  // recipient lands on /share with a "Master your own" CTA — so gating it
+  // to the top tier kept it away from nearly every user. Abuse is bounded
+  // by the same limits as before: the job must be the caller's own
+  // full-length master, and the link dies with the 48-hour file expiry.
   const job = await getJob(req.user.uid, req.params.jobId);
   if (!job || job.preview) {
     return res.status(404).json({ detail: "Job not found" });
@@ -583,6 +605,9 @@ router.post("/billing/checkout", async (req, res) => {
       userAgent: req.headers["user-agent"],
     });
     recordServerEvent("checkout_started", { uid: req.user.uid, props: { plan: productKey } });
+    // Stamp for the abandoned-checkout reminder; the payment webhook clears
+    // it (lifecycleEmailService.js). Fire-and-forget, never blocks checkout.
+    markCheckoutStarted(req.user.uid, productKey);
     return res.json({ url });
   } catch (error) {
     recordServerEvent("checkout_failed", { uid: req.user.uid, props: { plan: productKey, reason: "provider_error" } });
@@ -976,6 +1001,7 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
   // gate as a plain read that concurrent requests could all pass.
   // Previews never reach any of this — the whole block is !preview.
   let mustConsumeQuota = false;
+  let freeRemainingBefore = null;
   let mustConsumeCredit = false;
   let mustConsumeStemQuota = false;
   let mustConsumeStemCredit = false;
@@ -1008,6 +1034,7 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
       return res.status(decision.status).json({ detail: decision.detail });
     }
     quotaLimit = decision.quotaLimit;
+    freeRemainingBefore = snapshot ? snapshot.masterQuota.remaining : null;
     mustConsumeQuota = decision.needs.master === "quota";
     mustConsumeCredit = decision.needs.master === "credit";
     mustConsumeStemQuota = decision.needs.stem === "quota";
@@ -1258,6 +1285,23 @@ router.post("/master", expensiveLimiter, masterUpload, cleanupUploadsOnFinish, a
         firstMaster = await claimFirstMaster(req.user.uid, result.job_id, { priorMasters: Math.max(0, (await countRealJobs(req.user.uid)) - 1) });
       } catch (error) {
         console.error("First-master check failed (non-fatal):", error.message);
+      }
+    }
+    // Lifecycle emails — fire-and-forget, each at most once per account and
+    // a no-op unless LIFECYCLE_EMAILS_ENABLED (lifecycleEmailService.js).
+    // remainingBefore is the free allowance as read before this render
+    // reserved its slot, so 1 means "this master was the last free one".
+    if (!preview) {
+      const remainingBefore = plan === "free" && mustConsumeQuota ? Number(freeRemainingBefore) : null;
+      if (firstMaster) {
+        sendLifecycleEmail("first_master", {
+          uid: req.user.uid,
+          email: req.user.email,
+          context: { freeMastersLeft: remainingBefore === null ? null : Math.max(0, remainingBefore - 1) },
+        });
+      }
+      if (remainingBefore === 1) {
+        sendLifecycleEmail("trial_exhausted", { uid: req.user.uid, email: req.user.email });
       }
     }
     return res.json({ ...result, preview, ...(firstMaster ? { first_master: true } : {}), ...(preview ? { preview_excerpt_start_s: previewStartSeconds } : {}) });

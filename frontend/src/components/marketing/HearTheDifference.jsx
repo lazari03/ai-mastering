@@ -11,7 +11,7 @@ const COUNTS = summarizeDecisions(DEMO_MASTER)?.counts || { corrections: 0, unto
 // How much louder the master is than the mix — attenuating the master by
 // this much makes Before/After a fair comparison of what changed, not of
 // which one is louder (louder almost always wins a quick A/B).
-const LOUDNESS_GAP_DB = DEMO_MASTER.after_lufs - DEMO_MASTER.before_lufs;
+const LOUDNESS_GAP_DB = DEMO.loudnessGapDb;
 
 /**
  * The homepage demo, right under the hero: the same instant A/B player

@@ -39,6 +39,7 @@ export const PLANS = {
     features: [
       { en: "3 full-length masters, one-time trial", sq: "3 masterë të plotë, provë një-herëshe" },
       { en: "Unlimited 30s mastering previews", sq: "Parapamje masterizimi 30-sekondëshe pa limit" },
+      { en: "Shareable download links", sq: "Lidhje shkarkimi për t'u ndarë" },
     ],
     // No annual variant — there's nothing to bill yearly at €0, and a
     // "€0/yr" column next to real prices is just noise.
@@ -91,7 +92,6 @@ export const PLANS = {
       { en: "250 masters / month", sq: "250 masterë / muaj" },
       { en: "Everything in Studio", sq: "Gjithçka nga Studio" },
       { en: "Stem separation, 20/month included", sq: "Ndarje stem-esh, 20/muaj të përfshira" },
-      { en: "Shareable download links", sq: "Lidhje shkarkimi për t'u ndarë" },
     ],
     annual: { item: "plan_pro_annual", price: "€199.90", period: "/yr", perMonth: "€16.66" },
   },

@@ -45,6 +45,7 @@ export async function generateMetadata({ params }) {
     path: `/blog/${post.slug}`,
     keywords: post.keywords,
     image: post.image,
+    article: { publishedTime: post.datePublished, modifiedTime: post.dateModified },
   });
 }
 

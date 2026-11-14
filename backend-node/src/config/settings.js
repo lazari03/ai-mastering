@@ -182,4 +182,10 @@ export const settings = {
   // at a different Brevo list.
   brevoApiKey: process.env.BREVO_API_KEY || null,
   brevoListId: Number(process.env.BREVO_LIST_ID || 4),
+
+  // Lifecycle emails (first master, free trial used up, abandoned
+  // checkout) — see services/lifecycleEmailService.js. Off unless this is
+  // exactly "true" AND BREVO_API_KEY is set, so shipping the code sends
+  // nothing until the owner decides to turn it on.
+  lifecycleEmailsEnabled: process.env.LIFECYCLE_EMAILS_ENABLED === "true",
 };

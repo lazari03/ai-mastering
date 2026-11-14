@@ -123,7 +123,7 @@ export default function TermsPage() {
           4), and are treated as Your Content under Section 4.
         </p>
         <p>
-          <strong>Share links.</strong> On plans that include them, you can create a link that lets anyone who has
+          <strong>Share links.</strong> On every plan, you can create a link that lets anyone who has
           it download a finished master, until the link expires, is revoked, or the files are deleted. You are
           responsible for who you share a link with.
         </p>
@@ -141,7 +141,7 @@ export default function TermsPage() {
           <li><strong>{PLANS.studio.label}</strong> — {PLANS.studio.masterLimit} masters per month, Standard and Professional engines;</li>
           <li>
             <strong>{PLANS.pro.label}</strong> — {PLANS.pro.masterLimit} masters per month, both engines,{" "}
-            {PRODUCT.stems.includedPerMonth} stem-separated masters per month, and share links;
+            {PRODUCT.stems.includedPerMonth} stem-separated masters per month;
           </li>
           <li>
             One-time purchases, on any plan: a {SINGLE_MASTER.label} credit (one extra full-length master) or a{" "}

@@ -21,6 +21,7 @@ import SectionHeading from "@/components/marketing/SectionHeading";
 import HeroQuickTry from "@/components/marketing/HeroQuickTry";
 import HearTheDifference from "@/components/marketing/HearTheDifference";
 import ServiceProviderDisclosure from "@/components/marketing/ServiceProviderDisclosure";
+import Testimonials from "@/components/marketing/Testimonials";
 import MasteringDecisions from "@/components/audio/MasteringDecisions";
 import LoudnessMeter from "@/components/audio/LoudnessMeter";
 import { LOUDNESS_TARGETS } from "@/content/loudnessTargets";
@@ -341,6 +342,10 @@ export default function HomeClient() {
         </div>
       </section>
 
+      {/* Customer quotes — renders nothing until content/testimonials.js has
+          real, permissioned entries. */}
+      <Testimonials />
+
       <section id="pricing" ref={pricingSectionRef} className="reveal mt-24 scroll-mt-28 pt-4">
         <SectionHeading eyebrow={t("pricing.eyebrow")} title={t("pricing.title")} subtitle={t("pricing.subtitle")} />
 
@@ -523,8 +528,6 @@ export default function HomeClient() {
         </div>
       </section>
 
-      <ServiceProviderDisclosure />
-
       <GenreShowcase />
 
       <section id="faq" className="reveal mt-24 scroll-mt-28">
@@ -553,6 +556,11 @@ export default function HomeClient() {
           </a>
         </p>
       </section>
+
+      {/* Service-provider disclosure (delivery, checkout, photo licensing).
+          Kept, but at the very end: mid-page it sat where a visitor expects
+          customer logos, which it explicitly is not. */}
+      <ServiceProviderDisclosure />
 
     </main>
     <Footer />

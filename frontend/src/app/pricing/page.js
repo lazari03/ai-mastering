@@ -59,7 +59,7 @@ export default function PricingPage() {
           <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-free">Free</a> — Hear three full masters before deciding.</li>
           <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-indie">Indie</a> — Best fit for occasional releases, up to 15 tracks/month.</li>
           <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-studio">Studio</a> — For regular sessions and client projects, up to 50/month.</li>
-          <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-pro">All-Access</a> — For high-volume teams needing stems and shareable links.</li>
+          <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-pro">All-Access</a> — For high-volume teams needing bundled stem separation.</li>
         </ul>
       </section>
 

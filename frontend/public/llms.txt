@@ -183,7 +183,7 @@ No credit card required to start. A new account gets:
 
 - **3 full-length masters** — a one-time lifetime allowance, not a monthly
   reset, on the Standard engine.
-- **3 chord/key/BPM detections** — same one-time shape.
+- **Chord/key/BPM detection and the LUFS meter** — free and unlimited.
 - **Unlimited 30-second mastering previews** — not metered at all, so the
   engine can be evaluated on any number of tracks before paying.
 
@@ -196,29 +196,29 @@ All-Access plan.
 All prices in EUR. Subscription quotas reset monthly; free-tier allowances
 are one-time and never reset.
 
-| Plan           | Price      | Masters/month | Engines                | Stems          | Chords     |
-|----------------|------------|---------------|------------------------|----------------|------------|
-| Free           | €0         | 3 (lifetime)  | Standard               | none           | 3 lifetime |
-| Studio         | €9.99/mo   | 50            | Standard, Professional | none           | 3 lifetime |
-| All-Access     | €19.99/mo  | 250           | Standard, Professional | 20/mo          | unlimited  |
+| Plan           | Price                  | Masters        | Engines                | Stems (bundled) |
+|----------------|------------------------|----------------|------------------------|-----------------|
+| Free           | €0                     | 3 (one-time)   | Standard               | none            |
+| Indie          | €4.99/mo or €49.90/yr  | 15 / month     | Standard               | none            |
+| Studio         | €9.99/mo or €99.90/yr  | 50 / month     | Standard, Professional | none            |
+| All-Access     | €19.99/mo or €199.90/yr| 250 / month    | Standard, Professional | 20 / month      |
 
-All-Access also includes shareable download links.
+Yearly billing charges ten months for twelve. Shareable download links are
+included on every plan, Free included. Chord, key and BPM detection and the
+LUFS meter are free and unlimited on every plan. The pricing page
+(https://auralithforge.app/pricing) is authoritative.
 
 Pay-as-you-go, for a single release rather than a subscription:
 
 - **Single Master — €2.99.** One extra master, same engine tier as the
   buyer's plan.
 - **Stem Separation — €4.99.** One stem-separated master. The only route to
-  stems for Free and Studio accounts.
-- **Chord Detection — €1.49.** Key, BPM and progression for one song, after
-  the 3 free lifetime detections.
-- **Chords Monthly — €2.99/mo.** Unlimited chord detection with no
-  mastering plan. Not offered on All-Access, which already includes it.
+  stems for Free, Indie and Studio accounts.
 
 ## Stem separation
 
-Demucs (`htdemucs_ft` / `htdemucs`) splits a track into vocals, drums, bass
-and other. Used two ways: as a targeted mastering aid, so processing such as
+Demucs (`htdemucs_ft` / `htdemucs`) separates the vocal from the accompaniment
+(two stems). Used two ways: as a targeted mastering aid, so processing such as
 a vocal presence boost applies to one stem without disturbing the rest of
 the bed before recombining — and as a standalone stem-separated render for
 remixing, sampling or making an instrumental.

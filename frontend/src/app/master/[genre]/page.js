@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import RelatedTools from "@/components/site/RelatedTools";
+import GenreDemo from "@/components/marketing/GenreDemo";
+import { demoForGenre } from "@/lib/beforeAfterDemos";
 import { Breadcrumbs, Checklist, CtaBand, Faq, LinkList, PageHero, PageShell, Section } from "@/components/site/Page";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { GENRE_ENGINE_CONTEXT, GENRE_HERO, PRIORITY_LABELS } from "@/content/genreEngineContext";
@@ -69,6 +71,8 @@ export default async function GenreMasteringPage({ params }) {
   const relatedPost = relatedPostForGenre(genre);
   const label = page.label.toLowerCase();
   const faq = faqFor(page, ctx, hero);
+  // Real before/after audio for this genre, when one exists (lib/beforeAfterDemos.js).
+  const demo = demoForGenre(genre);
 
   const numbers = [
     ["Preferred loudness", `${f1(ctx.preferredLufs)} LUFS`, "Default Modern style"],
@@ -146,6 +150,17 @@ export default async function GenreMasteringPage({ params }) {
           <p>{page.intro}</p>
         </div>
       </Section>
+
+      {demo ? (
+        <Section
+          id="hear-it"
+          eyebrow="Hear it"
+          title={`A ${label} mix, before and after`}
+          intro="Real output of the current engine on this track, nothing retouched. Both sides play at matched loudness, so you compare tone and dynamics rather than volume."
+        >
+          <GenreDemo demo={demo} />
+        </Section>
+      ) : null}
 
       <Section title="Genre is context — your mix drives the decisions" tone="band">
         <div className="af-prose">
