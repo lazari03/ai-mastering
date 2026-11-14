@@ -25,7 +25,7 @@ import { buildMetadata, JsonLd, faqJsonLd, absoluteUrl, SITE_NAME } from "@/lib/
 export const metadata = buildMetadata({
   title: "Mastering Loudness Targets — LUFS by Genre (Reference Table)",
   description:
-    "How loud to master, by genre: integrated LUFS targets, dynamic range and true-peak ceilings for pop, hip-hop, rock, EDM, acoustic, lo-fi, podcast and classical — with what streaming loudness normalisation does to a master that ignores them.",
+    "How loud to master, by genre: LUFS targets, dynamic range and true-peak ceilings for pop, hip-hop, rock, EDM and more, plus what streaming normalisation does.",
   path: "/mastering-loudness-targets",
   keywords: [
     "mastering loudness targets",

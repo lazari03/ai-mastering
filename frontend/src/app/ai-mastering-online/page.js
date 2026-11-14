@@ -24,7 +24,7 @@ import { buildMetadata, JsonLd, faqJsonLd, organizationJsonLd, SITE_NAME } from 
 export const metadata = buildMetadata({
   title: `Free AI Mastering Online — Online Mastering Service | ${SITE_NAME}`,
   description:
-    "AI mastering online with an adaptive DSP engine that analyzes your mix before changing anything — genre-aware targets, level-matched A/B, codec preview, stem-aware processing. 3 free masters, no card required.",
+    "AI mastering online with an adaptive DSP engine that analyzes your mix first. Genre-aware targets, level-matched A/B, codec preview. 3 free masters, no card.",
   path: "/ai-mastering-online",
   keywords: [
     "ai mastering",

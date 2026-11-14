@@ -57,7 +57,9 @@ export function absoluteUrl(path = "/") {
 // every marketing page shipped with no og:image / twitter:image at all.
 const DEFAULT_OG_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: `${SITE_NAME} — Free Online Audio Mastering` };
 
-export function buildMetadata({ title, description, path = "/", keywords = [], noindex = false, image }) {
+// `article` ({ publishedTime, modifiedTime? }) switches og:type to "article"
+// for blog posts; every other page stays "website".
+export function buildMetadata({ title, description, path = "/", keywords = [], noindex = false, image, article = null }) {
   const url = absoluteUrl(path);
   return {
     title,
@@ -72,7 +74,9 @@ export function buildMetadata({ title, description, path = "/", keywords = [], n
       description,
       url,
       siteName: SITE_NAME,
-      type: "website",
+      type: article ? "article" : "website",
+      ...(article?.publishedTime ? { publishedTime: article.publishedTime } : {}),
+      ...(article?.modifiedTime ? { modifiedTime: article.modifiedTime } : {}),
       images: image ? [{ url: image }] : [DEFAULT_OG_IMAGE],
     },
     twitter: {

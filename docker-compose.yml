@@ -106,6 +106,9 @@ services:
       # BREVO_LIST_ID defaults to 4 ("Auralith Forge Newsletter") if unset.
       BREVO_API_KEY: ${BREVO_API_KEY}
       BREVO_LIST_ID: ${BREVO_LIST_ID:-4}
+      # First-master / trial-used-up / abandoned-checkout emails
+      # (lifecycleEmailService.js). Sends nothing unless "true".
+      LIFECYCLE_EMAILS_ENABLED: ${LIFECYCLE_EMAILS_ENABLED:-false}
       # TelemetryDeck — mirrors analytics events alongside the existing
       # SQLite store (see services/telemetryDeckService.js). Unset means
       # every signal silently no-ops.

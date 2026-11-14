@@ -72,6 +72,7 @@ export default function PrivacyPage() {
           <li>Store your Artist Profiles, master history and share links so you can reuse them (contract);</li>
           <li>Handle payments, plan allowances and credits (contract, and legal obligations for billing records);</li>
           <li>Send a welcome email when you sign up and service messages about your account (contract);</li>
+          <li>Send a small number of emails about your use of the service — your first master being ready, your free masters running out, a checkout you started and didn&apos;t finish — each at most once, with an unsubscribe link in every one (legitimate interest);</li>
           <li>Send the newsletter, only if you subscribed (consent — unsubscribe anytime from any newsletter email);</li>
           <li>Understand how the Service is used and improve it (legitimate interest, or consent where Section 7 says so);</li>
           <li>Keep the Service secure and prevent abuse, such as rate limiting (legitimate interest);</li>
@@ -87,7 +88,7 @@ export default function PrivacyPage() {
           <li><strong>Google Firebase</strong> (Authentication and Firestore) — sign-in, account profile, Artist Profiles, plan and credit records;</li>
           <li><strong>Cloudflare</strong> — delivers the website and API and protects them from attacks; it sees your IP address and request data in transit;</li>
           <li><strong>Polar</strong> — our payment provider and merchant of record: checkout, invoices, tax and refunds;</li>
-          <li><strong>Brevo</strong> — sends the welcome email and, if you subscribed, the newsletter;</li>
+          <li><strong>Brevo</strong> — sends the welcome email, the service emails described in Section 3 and, if you subscribed, the newsletter;</li>
           <li><strong>TelemetryDeck</strong> — privacy-focused product analytics, only if you accept analytics (Section 7). It receives events with a hashed identifier, not your name or email;</li>
           <li><strong>Plausible</strong> — cookieless page analytics, only if you accept analytics;</li>
           <li><strong>Meta Platforms Ireland</strong> (Meta Pixel and Conversions API) — measures our Facebook/Instagram ads, only if you accept cookies (Section 7). It receives page views, funnel events (viewing pricing, signing up, your first master, starting checkout, purchases with their amount), your IP address, browser user agent and Meta cookie IDs, plus your email and account ID as SHA-256 hashes, never in plain text. If you don&apos;t accept, Meta is only told that a sale happened (product, amount and currency), with no information about you;</li>

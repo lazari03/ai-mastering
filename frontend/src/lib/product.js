@@ -30,7 +30,7 @@ export const PRODUCT = {
 export const PLAN_FEATURES = {
   professionalEngine: ["studio", "pro"],
   bundledStems: ["pro"],
-  shareLinks: ["pro"],
+  shareLinks: ["free", "indie", "studio", "pro"],
 };
 
 export const SUPPORTED_FORMATS_TEXT = `${PRODUCT.supportedFormats.slice(0, -1).join(", ")} and ${PRODUCT.supportedFormats.at(-1)}`;
@@ -81,7 +81,7 @@ export const PLAN_COMPARISON = [
   },
   { label: { en: "Chord, key & BPM detection", sq: "Zbulim akordesh, tonaliteti dhe BPM" }, values: [FREE_UNLIMITED, FREE_UNLIMITED, FREE_UNLIMITED, FREE_UNLIMITED] },
   { label: { en: "Codec preview & level-matched A/B", sq: "Parapamje kodekësh dhe A/B me nivel të barazuar" }, values: [true, true, true, true] },
-  { label: { en: "Shareable download links", sq: "Lidhje shkarkimi për t'u ndarë" }, values: [false, false, false, true] },
+  { label: { en: "Shareable download links", sq: "Lidhje shkarkimi për t'u ndarë" }, values: [true, true, true, true] },
 ];
 
 export { PLANS, PLAN_ORDER, SINGLE_MASTER, STEM_SEPARATION, localized };

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { motion } from "motion/react";
 
 import { getJobs, toAuthedDownloadUrl, deleteJobRecord, downloadFileSafely } from "@/network/http/client";
-import { useEntitlementsStore, planUnlocksShare } from "@/store/entitlementsStore";
 import StatePanel from "@/components/site/StatePanel";
 import { LoadingBlock } from "@/components/ui/Spinner";
 import { shortenFilename } from "@/lib/format";
@@ -54,8 +53,6 @@ export default function MyMastersPanel({ onNavigate }) {
   const [filter, setFilter] = useState("active"); // "active" | "expired" | "all"
   const [page, setPage] = useState(1);
 
-  const { plan } = useEntitlementsStore();
-  const shareUnlocked = planUnlocksShare(plan);
 
   const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => {
@@ -96,7 +93,6 @@ export default function MyMastersPanel({ onNavigate }) {
   // Opens the share panel (expiry, download limit, existing links) rather
   // than minting a link straight away — see ShareLinkManager.jsx.
   const handleShare = (jobId) => {
-    if (!shareUnlocked) return;
     setOpenShareJobId((current) => (current === jobId ? "" : jobId));
   };
 
@@ -256,17 +252,11 @@ export default function MyMastersPanel({ onNavigate }) {
                   <button
                     type="button"
                     onClick={() => handleShare(job.job_id)}
-                    disabled={isBusy || !shareUnlocked}
+                    disabled={isBusy}
                     aria-expanded={openShareJobId === job.job_id}
-                    title={shareUnlocked ? undefined : t("myMasters.shareTitle")}
                     className="flex items-center gap-1.5 rounded-lg border border-border-subtle bg-black/[0.045] px-3 py-2 text-[11px] uppercase tracking-[0.1em] text-text-secondary hover:border-text-primary/30 disabled:opacity-50"
                   >
                     {isBusy ? "…" : t("myMasters.share")}
-                    {!shareUnlocked ? (
-                      <span className="rounded-full border border-border-subtle bg-accent/[0.12] px-1.5 py-0.5 text-[9px] normal-case text-accent">
-                        {t("myMasters.shareAllAccess")}
-                      </span>
-                    ) : null}
                   </button>
                   {confirmDeleteId === job.job_id ? (
                     <>

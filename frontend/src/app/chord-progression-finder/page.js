@@ -7,7 +7,9 @@ const page = TOOL_LANDING_PAGES[SLUG];
 
 export const metadata = buildMetadata({
   title: `${page.headline} | ${SITE_NAME}`,
-  description: page.description,
+  // Search-result snippet, kept under 160 characters; page.description is
+  // the longer on-page/structured-data copy.
+  description: "Upload a song and get its chord progression, section by section, for learning by ear or charting a cover. Free and unlimited, no card required.",
   path: `/${SLUG}`,
   keywords: page.keywords,
 });

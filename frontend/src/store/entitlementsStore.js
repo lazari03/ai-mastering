@@ -61,9 +61,6 @@ export function planUnlocksProfessional(plan) {
   return plan === "studio" || plan === "pro";
 }
 
-// Share links stay a pure All-Access plan perk — no standalone purchase
-// path (unlike chord detection used to be — it's unconditionally free now,
-// see ChordDetector.jsx, nothing left to unlock there).
-export function planUnlocksShare(plan) {
-  return plan === "pro";
-}
+// Share links are on every plan, Free included (All-Access only until
+// 2026-11) — there is no client-side gate; see createShareLinkHandler in
+// backend-node's masteringRoutes.js.

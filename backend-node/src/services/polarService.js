@@ -6,6 +6,7 @@ import { getFirestore as getRealFirestore } from "../config/firebase.js";
 import { notifyPurchase, notifyPaymentFailure } from "./telegramService.js";
 import { writeNotification } from "./adminNotificationService.js";
 import { recordServerEvent } from "./analyticsService.js";
+import { clearPendingCheckout } from "./lifecycleEmailService.js";
 import { persistMetaAttribution, sendPurchaseToMeta } from "./metaConversionsService.js";
 
 // Polar is a Merchant of Record — it handles global VAT/sales tax, so we
@@ -635,6 +636,8 @@ async function applySubscriptionEvent(event) {
     });
     recordServerEvent("subscription_created", { uid, props: { plan: field, amountCents: sub.amount, currency: sub.currency } });
     recordServerEvent("payment_succeeded", { uid, props: { plan: field, amountCents: sub.amount, currency: sub.currency, kind: "subscription" } });
+    // Paid — drop the abandoned-checkout marker so no reminder goes out.
+    clearPendingCheckout(uid, getFirestore());
     // Replays of subscription.created pass the check above too (same state
     // re-applied), so the Meta send carries its own once-per-id marker.
     queueMetaPurchase({ uid, polarId: sub.id, amountCents: sub.amount, currency: sub.currency, email: sub.customer?.email, contentName: productLabel(sub.productId) });
@@ -719,6 +722,7 @@ async function applyOrderPaidEvent(event) {
       currency: order.currency,
     });
     recordServerEvent("payment_succeeded", { uid, props: { plan: creditField, amountCents: order.totalAmount, currency: order.currency, kind: "one_time" } });
+    clearPendingCheckout(uid, getFirestore());
     queueMetaPurchase({ uid, polarId: order.id, amountCents: order.totalAmount, currency: order.currency, email: order.customer?.email, contentName: productLabel(order.productId) });
   }
 }

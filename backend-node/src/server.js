@@ -17,6 +17,7 @@ import analyticsRoutes from "./routes/analyticsRoutes.js";
 import adminUsersRoutes from "./routes/adminUsersRoutes.js";
 import adminNotificationsRoutes from "./routes/adminNotificationsRoutes.js";
 import { reconcileAllSubscriptions } from "./services/polarService.js";
+import { sweepAbandonedCheckouts, lifecycleEmailsEnabled } from "./services/lifecycleEmailService.js";
 import { startBot as startTelegramBot } from "./services/telegramService.js";
 import { clientIp } from "./middleware/clientIp.js";
 import { purgeExpiredJobs } from "./services/jobsService.js";
@@ -171,6 +172,9 @@ app.use((req, res, next) => {
     req.path === "/health" ||
     req.path === "/validate-email" ||
     req.path === "/newsletter/subscribe" ||
+    // Lifecycle-email unsubscribe link: authenticated by its own signed
+    // token (lifecycleEmailService.js), the recipient isn't signed in.
+    req.path === "/email/unsubscribe" ||
     req.path === "/analytics/collect" ||
     req.path.startsWith("/admin/") ||
     req.path.startsWith("/webhooks/") ||
@@ -299,6 +303,19 @@ if (settings.nodeEnv === "production" && settings.polarAccessToken) {
   };
   setTimeout(runReconciliation, 30 * 1000);
   setInterval(runReconciliation, RECONCILE_INTERVAL_MS);
+}
+
+// Abandoned-checkout reminders (lifecycleEmailService.js): every 15 minutes,
+// email accounts whose checkout was opened over an hour ago and never paid.
+// At most one email per account, ever; a no-op unless
+// LIFECYCLE_EMAILS_ENABLED=true and BREVO_API_KEY is set.
+if (settings.nodeEnv === "production" && lifecycleEmailsEnabled()) {
+  const ABANDONED_SWEEP_MS = 15 * 60 * 1000;
+  setInterval(() => {
+    sweepAbandonedCheckouts().catch((error) => {
+      console.error("Abandoned-checkout sweep failed:", error.message);
+    });
+  }, ABANDONED_SWEEP_MS).unref();
 }
 
 // Render-reservation backstop (see reservationLedger.js): settles any
