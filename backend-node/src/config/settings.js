@@ -162,6 +162,16 @@ export const settings = {
   // without this allowlist a stranger could message it and pull real
   // revenue/traffic numbers. Get your own numeric id from @userinfobot.
   telegramChatId: process.env.TELEGRAM_CHAT_ID || null,
+  // Daily overview message (yesterday's funnel + sources), sent by the
+  // bot at this local hour (0-23). "off" disables it. See
+  // telegramService.js startDailyDigest.
+  telegramDigestHour: (() => {
+    const raw = process.env.TELEGRAM_DAILY_DIGEST_HOUR;
+    if (raw === "off") return null;
+    const n = Number(raw);
+    return raw !== undefined && raw !== "" && Number.isInteger(n) && n >= 0 && n <= 23 ? n : 8;
+  })(),
+  telegramDigestTimezone: process.env.TELEGRAM_DAILY_DIGEST_TZ || "Europe/Tirane",
 
   // Newsletter signup — one shared 10%-off Polar discount code (not a
   // unique per-subscriber code; there's no transactional-email sending in

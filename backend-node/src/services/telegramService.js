@@ -451,6 +451,45 @@ async function registerCommandMenu() {
   }
 }
 
+// Daily overview, pushed without being asked: yesterday's funnel and where
+// the visitors came from, once a day at settings.telegramDigestHour in
+// settings.telegramDigestTimezone. Same numbers as /funnel and
+// /acquisition (and the admin dashboard) — this only saves having to ask.
+// Pure so it can be tested: is a digest due at `now`, given the local date
+// (YYYY-MM-DD) the last one went out on?
+export function digestDue(now, lastSentDate, hour, timeZone) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" })
+      .formatToParts(now)
+      .map((p) => [p.type, p.value])
+  );
+  const localDate = `${parts.year}-${parts.month}-${parts.day}`;
+  return { due: Number(parts.hour) === hour && lastSentDate !== localDate, localDate };
+}
+
+export async function buildDailyDigest() {
+  const [funnel, acquisition] = await Promise.all([handleFunnel("yesterday"), handleAcquisition("yesterday")]);
+  return `Daily overview\n\n${funnel}\n\n${acquisition}\n\nMore: /sales /pages /seo /errors /retention`;
+}
+
+let lastDigestDate = null;
+function startDailyDigest() {
+  const hour = settings.telegramDigestHour;
+  if (hour === null) return;
+  const tick = async () => {
+    const { due, localDate } = digestDue(new Date(), lastDigestDate, hour, settings.telegramDigestTimezone);
+    if (!due) return;
+    lastDigestDate = localDate; // set first: a slow or failed send must not repeat every minute
+    try {
+      await sendMessage(await buildDailyDigest());
+    } catch (error) {
+      console.error("Telegram daily digest failed (non-fatal):", error.message);
+    }
+  };
+  setInterval(tick, 60 * 1000).unref();
+  console.log(`Telegram bot: daily overview at ${String(hour).padStart(2, "0")}:00 ${settings.telegramDigestTimezone}.`);
+}
+
 export function startBot() {
   if (!configured()) {
     console.log("Telegram bot: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID unset - notifications and commands disabled.");
@@ -460,6 +499,7 @@ export function startBot() {
   polling = true;
   registerCommandMenu();
   console.log("Telegram bot: listening for admin commands.");
+  startDailyDigest();
   pollLoop();
 }
 
