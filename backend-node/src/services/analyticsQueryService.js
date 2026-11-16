@@ -1,4 +1,4 @@
-import { getFirestore } from "../config/firebase.js";
+import { getAuth, getFirestore } from "../config/firebase.js";
 import { settings } from "../config/settings.js";
 import analyticsDb from "../config/analyticsDb.js";
 import { CHECKOUT_ABANDON_MS } from "./analyticsService.js";
@@ -147,6 +147,9 @@ export function resolveRange({ preset, from, to }) {
         rangeTo = startOfToday;
         break;
       }
+      case "365d":
+        rangeFrom = new Date(startOfToday.getTime() - 365 * 86400000);
+        break;
       case "90d":
         rangeFrom = new Date(startOfToday.getTime() - 90 * 86400000);
         break;
@@ -743,26 +746,85 @@ export async function getErrors({ from, to, prevFrom, prevTo }) {
     .sort((a, b) => b.count - a.count);
 }
 
-export async function listSessions({ from, to, filters, limit = 50, cursor }) {
+// Who a session belongs to. A session row only carries uid if the person
+// was signed in during THAT session, but analytics_visitors.uid is set the
+// first time the browser ever authenticates. So an "anonymous" return
+// visit from a browser that signed in last week still resolves to the
+// account, which is exactly the case "who is this returning visitor?"
+// needs. viaVisitor marks the weaker, browser-level link.
+function withUser(session, linkedUid) {
+  const uid = session.uid || linkedUid || null;
+  return { ...session, userUid: uid, userLinkedVia: session.uid ? "session" : uid ? "visitor" : null, userEmail: null };
+}
+
+// Best-effort uid -> email lookup for one page of sessions (<= 100 uids,
+// Firebase's getUsers batch limit). A failure here (Auth unreachable,
+// credentials missing in tests) must never break the sessions list, so it
+// degrades to "uid only".
+async function attachEmails(sessions) {
+  const uids = [...new Set(sessions.map((s) => s.userUid).filter(Boolean))].slice(0, 100);
+  if (uids.length === 0) return sessions;
+  try {
+    const { users } = await getAuth().getUsers(uids.map((uid) => ({ uid })));
+    const emails = new Map(users.map((u) => [u.uid, u.email || null]));
+    return sessions.map((s) => (s.userUid ? { ...s, userEmail: emails.get(s.userUid) ?? null } : s));
+  } catch (error) {
+    console.warn("sessions: email lookup failed:", error?.message || error);
+    return sessions;
+  }
+}
+
+export async function listSessions({ from, to, filters = {}, limit = 50, cursor }) {
   // cursor is a plain row offset (opaque to the caller — the frontend
   // never inspects it, just echoes whatever nextCursor comes back). Plain
   // OFFSET is the right amount of complexity here: this dataset is one
   // admin's date-range query at a time, not a high-traffic paginated
   // public endpoint where OFFSET's O(n) cost would matter.
   const offset = Number(cursor) > 0 ? Number(cursor) : 0;
+  const where = [];
+  const params = [];
+  // An ID search (session, visitor or user id pasted from somewhere) looks
+  // across ALL retained history, not just the selected window: the point is
+  // "show me everything this person/browser did", and a 7-day default
+  // would silently hide their earlier visits.
+  const q = typeof filters.q === "string" ? filters.q.trim() : "";
+  if (q) {
+    where.push("(s.session_id = ? OR s.visitor_id = ? OR s.uid = ? OR v.uid = ?)");
+    params.push(q, q, q, q);
+  } else {
+    where.push("s.started_at >= ? AND s.started_at < ?");
+    params.push(from.toISOString(), to.toISOString());
+  }
+  // In SQL rather than applySessionFilters so paging stays correct (a JS
+  // filter after LIMIT returns short/empty pages while nextCursor says
+  // there's more).
+  if (filters.newOrReturning === "returning") where.push("s.is_new_visitor = 0");
+  if (filters.newOrReturning === "new") where.push("s.is_new_visitor = 1");
+  if (filters.identified) where.push("COALESCE(NULLIF(s.uid, ''), NULLIF(v.uid, '')) IS NOT NULL");
   const rows = db()
-    .prepare("SELECT * FROM analytics_sessions WHERE started_at >= ? AND started_at < ? ORDER BY started_at DESC LIMIT ? OFFSET ?")
-    .all(from.toISOString(), to.toISOString(), limit, offset);
-  let sessions = rows.map(sessionFromRow);
+    .prepare(
+      `SELECT s.*, NULLIF(v.uid, '') AS linked_uid FROM analytics_sessions s
+       LEFT JOIN analytics_visitors v ON v.visitor_id = s.visitor_id
+       WHERE ${where.join(" AND ")} ORDER BY s.started_at DESC LIMIT ? OFFSET ?`
+    )
+    .all(...params, limit, offset);
+  let sessions = rows.map((row) => withUser(sessionFromRow(row), row.linked_uid));
   sessions = applySessionFilters(sessions, filters);
+  sessions = await attachEmails(sessions);
   return { sessions, nextCursor: rows.length === limit ? String(offset + limit) : null };
 }
 
 export async function getSessionDetail(sessionId) {
-  const sessionRow = db().prepare("SELECT * FROM analytics_sessions WHERE session_id = ?").get(sessionId);
+  const sessionRow = db()
+    .prepare(
+      `SELECT s.*, NULLIF(v.uid, '') AS linked_uid FROM analytics_sessions s
+       LEFT JOIN analytics_visitors v ON v.visitor_id = s.visitor_id WHERE s.session_id = ?`
+    )
+    .get(sessionId);
   if (!sessionRow) return null;
   const eventRows = db().prepare("SELECT * FROM analytics_events WHERE session_id = ? ORDER BY ts ASC").all(sessionId);
-  return { session: sessionFromRow(sessionRow), events: eventRows.map(eventFromRow) };
+  const [session] = await attachEmails([withUser(sessionFromRow(sessionRow), sessionRow.linked_uid)]);
+  return { session, events: eventRows.map(eventFromRow) };
 }
 
 const LIVE_WINDOW_MS = 5 * 60 * 1000;

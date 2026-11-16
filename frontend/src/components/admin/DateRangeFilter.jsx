@@ -12,10 +12,12 @@ const PRESETS = [
 // from/to picker yet, see the report's "known limitations"; the backend
 // (resolveRange in analyticsQueryService.js) already accepts explicit
 // from/to, so adding a picker later is a frontend-only change).
-export default function DateRangeFilter({ value, onChange }) {
+// extraPresets lets a page opt into longer windows (e.g. Sessions' "1Y")
+// without making every in-memory report page offer a year-long scan.
+export default function DateRangeFilter({ value, onChange, extraPresets = [] }) {
   return (
     <div className="flex flex-wrap gap-1.5">
-      {PRESETS.map((p) => (
+      {[...PRESETS, ...extraPresets].map((p) => (
         <button
           key={p.key}
           type="button"
