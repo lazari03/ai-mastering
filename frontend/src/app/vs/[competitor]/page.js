@@ -7,6 +7,7 @@ import { COMPARISON_PAGES, COMPARISON_KEYS } from "@/content/comparisonPages";
 import { GENRE_PAGES, GENRE_KEYS } from "@/content/genrePages";
 import { buildMetadata, JsonLd, faqJsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
 import { CTA, guideLinksFor } from "@/lib/internalLinks";
+import { costPerMasterRows } from "@/lib/product";
 
 export function generateStaticParams() {
   return COMPARISON_KEYS.map((competitor) => ({ competitor }));
@@ -95,6 +96,38 @@ export default async function ComparisonPage({ params }) {
             {page.externalUrl.replace(/^https?:\/\//, "")}
           </a>{" "}
           for their latest plans rather than relying on any snapshot of it here.
+        </p>
+      </Section>
+
+      <Section title="What a master costs on Auralith Forge">
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <table className="w-full min-w-[520px] border-collapse text-left text-[15px]">
+            <thead>
+              <tr className="border-b border-text-primary/80">
+                <th scope="col" className="py-3 pr-4 font-semibold text-text-primary">Option</th>
+                <th scope="col" className="py-3 pr-4 font-semibold text-text-primary">Price</th>
+                <th scope="col" className="py-3 pr-4 text-right font-semibold text-text-primary">Masters</th>
+                <th scope="col" className="py-3 pr-4 text-right font-semibold text-text-primary">Per master</th>
+                <th scope="col" className="py-3 text-right font-semibold text-text-primary">Per master, annual</th>
+              </tr>
+            </thead>
+            <tbody>
+              {costPerMasterRows().map((row) => (
+                <tr key={row.key} className="border-b border-border-subtle">
+                  <th scope="row" className="py-3 pr-4 font-semibold text-text-primary">{row.label}</th>
+                  <td className="py-3 pr-4 text-text-primary">{row.price}</td>
+                  <td className="py-3 pr-4 text-right tabular-nums text-text-primary">{row.key === "single" ? "1" : `${row.masters}/mo`}</td>
+                  <td className="py-3 pr-4 text-right font-semibold tabular-nums text-text-primary">{row.perMaster}</td>
+                  <td className="py-3 text-right tabular-nums text-text-secondary">{row.perMasterAnnual || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-4 text-[13px] leading-[1.6] text-text-secondary">
+          Per-master figures assume you use the full monthly allowance. To compare with {page.label}, divide their plan price by the
+          masters you&apos;d actually release in a month — a plan that includes things you don&apos;t use (distribution, plugins, samples)
+          costs more per master than its headline price suggests. The first 3 masters here are free, no card.
         </p>
       </Section>
 

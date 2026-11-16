@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { useLanguage } from "@/lib/i18n";
+import EmailLink from "@/components/site/EmailLink";
 
 const TOPIC_KEYS = ["topic1", "topic2", "topic3", "topic4", "topic5", "topic6"];
 
@@ -129,9 +130,7 @@ export default function HelpSupportPanel() {
         <h2 className="m-0 text-sm font-semibold text-text-primary">{t("help.stillStuck")}</h2>
         <p className="mt-1.5 text-sm text-text-secondary">
           {t("help.emailIntro")}{" "}
-          <a href="mailto:studio@auralithforge.app" className="text-accent hover:text-accent">
-            studio@auralithforge.app
-          </a>{" "}
+          <EmailLink className="text-accent hover:text-accent" />{" "}
           {t("help.emailTail")}
         </p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-text-secondary">

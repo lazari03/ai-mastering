@@ -32,6 +32,20 @@ EXTRA_ROUTES = ["/login", "/app", "/thank-you", "/share", "/newsletter", "/this-
 USER_AGENT = "AuralithSEOAudit/1.0 (+https://auralithforge.app)"
 
 
+def probe(url: str) -> tuple[int, str]:
+    """Status and content type of a URL without keeping the body (GET, since
+    some image endpoints don't answer HEAD)."""
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            r.read(1024)
+            return r.status, r.headers.get("Content-Type", "")
+    except urllib.error.HTTPError as e:
+        return e.code, e.headers.get("Content-Type", "") if e.headers else ""
+    except Exception as e:  # DNS, TLS, timeout: report, don't abort the crawl
+        return 0, type(e).__name__
+
+
 def fetch(url: str) -> tuple[int, str]:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
@@ -75,6 +89,9 @@ def audit_page(base: str, path: str) -> dict:
         u = urlparse(href)
         if u.netloc in (urlparse(base).netloc, "auralithforge.app"):
             links.append({"href": u.path.rstrip("/") or "/", "text": text_of(a)[:80]})
+    # Rendered <img> sources (next/image emits /_next/image?url=...), so the
+    # audit checks what browsers and crawlers actually request.
+    images = sorted({urljoin(base + path, i["src"]) for i in soup.find_all("img", src=True) if not i["src"].startswith("data:")})
     types, faq = jsonld_types(BeautifulSoup(html, "html.parser"))
     return {
         "path": path,
@@ -85,6 +102,7 @@ def audit_page(base: str, path: str) -> dict:
         "robots": meta("robots"),
         "og_title": meta("og:title", "property"),
         "og_image": meta("og:image", "property"),
+        "og_type": meta("og:type", "property"),
         "twitter_image": meta("twitter:image"),
         "h1": [text_of(h) for h in soup.find_all("h1")],
         "h2": [text_of(h) for h in soup.find_all("h2")],
@@ -93,6 +111,9 @@ def audit_page(base: str, path: str) -> dict:
         "faq_questions": faq,
         "main_word_count": len(text_of(main).split()),
         "internal_links": links,
+        "images": images,
+        # Stock-photo licence credit under a blog post's hero image.
+        "has_photo_credit": any("pexels.com" in a["href"] for a in main.find_all("a", href=True)),
     }
 
 
@@ -109,7 +130,30 @@ def build(base: str) -> dict:
         pages[path]["in_sitemap"] = path in paths
     for page in pages.values():
         page["inbound_from"] = sorted({src for src, p in pages.items() if src != page["path"] and any(l["href"] == page["path"] for l in p["internal_links"])})
-    return {"base": base, "pages": pages}
+    return {"base": base, "pages": pages, "resources": check_resources(base, pages)}
+
+
+def check_resources(base: str, pages: dict) -> dict:
+    """Actually request every internal link target and every image a page
+    references (rendered <img>, og:image, twitter:image), once each."""
+    links = {l["href"] for p in pages.values() for l in p["internal_links"]}
+    images = set()
+    for p in pages.values():
+        images.update(p.get("images", []))
+        for key in ("og_image", "twitter_image"):
+            if p.get(key):
+                images.add(urljoin(base + p["path"], p[key]))
+    out = {"links": {}, "images": {}}
+    for href in sorted(links):
+        if href in pages:  # already fetched during the crawl
+            out["links"][href] = {"status": pages[href]["status"], "content_type": "text/html"}
+            continue
+        status, ctype = probe(base + href)
+        out["links"][href] = {"status": status, "content_type": ctype}
+    for url in sorted(images):
+        status, ctype = probe(url)
+        out["images"][url] = {"status": status, "content_type": ctype}
+    return out
 
 
 def diff(before: dict, after: dict) -> list[str]:

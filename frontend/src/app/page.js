@@ -11,7 +11,7 @@ import { HOME_FAQ } from "@/content/homeFaq";
 export const metadata = buildMetadata({
   title: "Free Online Mastering — Adaptive DSP Audio Mastering | Auralith Forge",
   description:
-    "Free online mastering: 3 full masters and unlimited 30-second previews, no card. An adaptive DSP engine measures your mix and fixes only what it needs.",
+    "Free online mastering: 3 full masters, no card. An adaptive DSP engine measures your mix and fixes only what it needs, with level-matched A/B.",
   path: "/",
   keywords: [
     "free online mastering",

@@ -9,7 +9,7 @@ export const EXTRA_POSTS = [
     description: "Before you upload a mix for mastering, check headroom, clipping, EQ, reverb tails and export settings. Use this producer-friendly checklist.",
     keywords: ["how to prepare a mix for mastering", "mix export settings for mastering", "mastering headroom", "send mix to mastering"],
     image: "https://images.pexels.com/photos/4988144/pexels-photo-4988144.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    imageCredit: "Tima Miroshnichenko / Pexels",
+    imageCredit: { photographer: "Tima Miroshnichenko", url: "https://www.pexels.com/photo/4988144/" },
     datePublished: "2026-11-04",
     readingTime: "6 min read",
     sections: [
@@ -51,7 +51,7 @@ export const EXTRA_POSTS = [
     description: "Understand the difference between mixing and mastering, which problems belong in each stage, and how to test your finished mix before release.",
     keywords: ["mixing vs mastering", "difference between mixing and mastering", "can mastering fix a bad mix", "online mastering for producers"],
     image: "https://images.pexels.com/photos/8197345/pexels-photo-8197345.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    imageCredit: "RDNE Stock project / Pexels",
+    imageCredit: { photographer: "RDNE Stock project", url: "https://www.pexels.com/photo/8197345/" },
     datePublished: "2026-11-04",
     readingTime: "6 min read",
     sections: [

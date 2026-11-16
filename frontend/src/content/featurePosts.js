@@ -23,7 +23,7 @@ export const FEATURE_POSTS = [
       "vocal stem mastering",
     ],
     image: "https://images.pexels.com/photos/270288/pexels-photo-270288.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    imageCredit: "Pexels",
+    imageCredit: { photographer: "Pixabay", url: "https://www.pexels.com/photo/270288/" },
     datePublished: "2026-11-05",
     readingTime: "8 min read",
     sections: [

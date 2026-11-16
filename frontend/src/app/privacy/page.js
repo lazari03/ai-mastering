@@ -1,6 +1,7 @@
 import LegalPage from "@/components/legal/LegalPage";
 import { buildMetadata } from "@/lib/seo";
 import { PRODUCT } from "@/lib/product";
+import EmailLink from "@/components/site/EmailLink";
 
 export const metadata = buildMetadata({
   title: "Privacy Policy — Auralith Forge",
@@ -152,7 +153,7 @@ export default function PrivacyPage() {
           delete your personal data, to object to or restrict certain processing, to withdraw consent at any time,
           and to complain to your data-protection authority. You can delete your account and its data yourself in
           Settings, and change your profile details there. For anything else, email{" "}
-          <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a> and we will respond within 30 days.
+          <EmailLink /> and we will respond within 30 days.
         </p>
       </section>
 
@@ -214,7 +215,7 @@ export default function PrivacyPage() {
         <h2>12. Contact</h2>
         <p>
           Questions about this Privacy Policy or your data? Email{" "}
-          <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a>.
+          <EmailLink />.
         </p>
       </section>
     </LegalPage>
