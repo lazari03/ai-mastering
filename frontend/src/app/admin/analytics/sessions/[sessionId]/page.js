@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { getAdminAnalytics } from "@/network/http/client";
 import { useLanguage } from "@/lib/i18n";
 import { countryLabel } from "@/lib/country";
 import { LoadingBlock } from "@/components/ui/Spinner";
+import SessionIdentity from "@/components/admin/SessionIdentity";
 
 function formatDuration(ms) {
   if (!ms || ms <= 0) return "0s";
@@ -32,6 +33,7 @@ function eventLabel(event) {
 export default function AdminSessionDetailPage() {
   const { t } = useLanguage();
   const params = useParams();
+  const router = useRouter();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
@@ -78,6 +80,9 @@ export default function AdminSessionDetailPage() {
           </span>
           {session.country ? <span>{countryLabel(session.country)}</span> : null}
           <span>{session.isNewVisitor ? t("admin.sessionDetail.new") : t("admin.sessionDetail.returning")}</span>
+        </div>
+        <div className="mt-2.5">
+          <SessionIdentity session={session} onFilterUser={(uid) => router.push(`/admin/analytics/sessions?q=${encodeURIComponent(uid)}`)} />
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>

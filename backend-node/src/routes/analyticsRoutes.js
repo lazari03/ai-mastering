@@ -412,6 +412,10 @@ admin.get("/retention", async (req, res) => {
 
 const SESSIONS_EXPORT_COLUMNS = [
   { key: "startedAt", label: "Started" },
+  { key: "sessionId", label: "Session ID" },
+  { key: "visitorId", label: "Visitor ID" },
+  { key: "userUid", label: "User ID" },
+  { key: "userEmail", label: "User Email" },
   { key: "authenticated", label: "Registered", render: (r) => (r.authenticated ? "yes" : "no") },
   { key: "source", label: "Source", render: (r) => r.utmSource || r.referrerDomain || "direct" },
   { key: "deviceCategory", label: "Device" },
@@ -435,6 +439,8 @@ admin.get("/sessions", async (req, res) => {
       device: req.query.device || null,
       country: req.query.country || null,
       newOrReturning: req.query.newOrReturning || null,
+      identified: req.query.identified === "1" || req.query.identified === "true",
+      q: typeof req.query.q === "string" ? req.query.q.slice(0, 128) : null,
     };
     const limit = Math.min(Number(req.query.limit) || 50, 100);
     const data = await listSessions({ ...range, filters, limit, cursor: req.query.cursor || null });
