@@ -280,9 +280,12 @@ test("first real master is flagged first_master once; the second completion is n
   assert.equal(first.status, 200, first.text);
   assert.equal(first.body.first_master, true);
   assert.equal(db.store.get(`users/${uid}`).firstMasterJobId, first.body.job_id);
+  // The new trial is exhausted; a paid credit funds the second completion.
+  db.store.set(`users/${uid}`, { ...db.store.get(`users/${uid}`), extraMasterCredits: 1 });
   const second = await postMaster(uid);
   assert.equal(second.status, 200, second.text);
   assert.equal(second.body.first_master, undefined, "FirstMasterCompleted must fire only once per user");
+  assert.equal(db.store.get(`users/${uid}`).extraMasterCredits, 0);
   assert.equal(db.store.get(`users/${uid}`).firstMasterJobId, first.body.job_id);
 });
 
