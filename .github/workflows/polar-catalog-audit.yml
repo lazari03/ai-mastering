@@ -1,0 +1,38 @@
+name: Audit Polar catalog
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/polar-catalog-audit.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read product catalog on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -eu
+            cd ${{ secrets.DEPLOY_PATH }}
+            docker compose exec -T node-api node --input-type=module <<'JS'
+            import { Polar } from "@polar-sh/sdk";
+            const env = process.env;
+            if (!env.POLAR_ACCESS_TOKEN) throw new Error("Polar token missing");
+            const polar = new Polar({ accessToken: env.POLAR_ACCESS_TOKEN, server: env.POLAR_ENVIRONMENT === "production" ? "production" : "sandbox" });
+            try {
+              console.log("Polar environment:", env.POLAR_ENVIRONMENT);
+              const pages = await polar.products.list({ isArchived: false, limit: 100 });
+              for await (const page of pages) {
+                for (const p of page.result.items) console.log(JSON.stringify({ id: p.id, name: p.name, key: p.metadata?.auralith_key, interval: p.recurringInterval, prices: p.prices.map(v => ({ type: v.amountType, amount: v.priceAmount, currency: v.priceCurrency, archived: v.isArchived })) }));
+              }
+            } catch (e) {
+              console.error("Polar catalog read failed; HTTP", e.statusCode || e.status || "unknown");
+              process.exitCode = 1;
+            }
+            JS
