@@ -1,16 +1,13 @@
 name: Audit Polar catalog
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: [.github/workflows/polar-catalog-audit.yml]
 permissions:
   contents: read
 jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - name: Restore verified product mappings and measure disk
+      - name: Read product catalog on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -20,31 +17,19 @@ jobs:
           script: |
             set -eu
             cd ${{ secrets.DEPLOY_PATH }}
-            python3 - <<'PY'
-            import os, re, tempfile
-            from pathlib import Path
-            p = Path(".env")
-            ids = {"POLAR_PLAN_INDIE_PRODUCT_ID":"cb20da84-7f5b-43ea-809e-11c6ce5ce0ba","POLAR_PLAN_INDIE_ANNUAL_PRODUCT_ID":"7f2c0790-f7ba-45a9-9408-1d77a69b1652","POLAR_PLAN_STUDIO_ANNUAL_PRODUCT_ID":"6427d71e-5b92-47b2-b5be-530780a990a4","POLAR_PLAN_PRO_ANNUAL_PRODUCT_ID":"50136045-abd9-4bea-9617-202015c25960","POLAR_SINGLE_MASTER_PRODUCT_ID":"9b77616c-6f68-4803-9e82-33f5e1f45d42","POLAR_STEM_SEPARATION_PRODUCT_ID":"811c967f-b0c0-4052-bcb6-eea08bc17890"}
-            original = p.read_text()
-            for key, value in ids.items():
-                matches = re.findall(r"^" + key + r"=(.*)$", original, re.M)
-                if any(v.strip().strip("\"'") not in ("", value) for v in matches):
-                    raise SystemExit("Refusing to overwrite conflicting product mapping: " + key)
-            updated = original
-            for key, value in ids.items():
-                updated = re.sub(r"^" + key + r"=.*\n?", "", updated, flags=re.M)
-                updated = updated.rstrip("\n") + "\n" + key + "=" + value + "\n"
-            fd, temp = tempfile.mkstemp(prefix=".env-mappings-", dir=".")
-            try:
-                with os.fdopen(fd, "w") as f:
-                    f.write(updated)
-                os.chmod(temp, p.stat().st_mode & 0o777)
-                os.replace(temp, p)
-            finally:
-                if os.path.exists(temp): os.unlink(temp)
-            print("Restored six verified Polar product mappings")
-            PY
-            docker system df
-            sudo du -xhd1 /var /opt /root /home 2>/dev/null | sort -h
-            sudo journalctl --disk-usage
-            df -h /
+            docker compose exec -T node-api node --input-type=module <<'JS'
+            import { Polar } from "@polar-sh/sdk";
+            const env = process.env;
+            if (!env.POLAR_ACCESS_TOKEN) throw new Error("Polar token missing");
+            const polar = new Polar({ accessToken: env.POLAR_ACCESS_TOKEN, server: env.POLAR_ENVIRONMENT === "production" ? "production" : "sandbox" });
+            try {
+              console.log("Polar environment:", env.POLAR_ENVIRONMENT);
+              const pages = await polar.products.list({ isArchived: false, limit: 100 });
+              for await (const page of pages) {
+                for (const p of page.result.items) console.log(JSON.stringify({ id: p.id, name: p.name, key: p.metadata?.auralith_key, interval: p.recurringInterval, prices: p.prices.map(v => ({ type: v.amountType, amount: v.priceAmount, currency: v.priceCurrency, archived: v.isArchived })) }));
+              }
+            } catch (e) {
+              console.error("Polar catalog read failed; HTTP", e.statusCode || e.status || "unknown");
+              process.exitCode = 1;
+            }
+            JS
