@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Breadcrumbs, CtaBand, PageHero, PageShell, Section } from "@/components/site/Page";
-import { STUDIO_GROUPS, SIGNUP_URL } from "@/lib/studio";
+import { STUDIO_GROUPS } from "@/lib/studio";
 import { buildMetadata, JsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -45,7 +45,7 @@ function ToolCard({ tool }) {
           {tool.appOnly ? (
             <span className="shrink-0 rounded-full border border-border-subtle px-2 py-0.5 text-[11px] text-text-secondary">In the app</span>
           ) : (
-            <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-text-primary">Free</span>
+            <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-text-primary">{tool.key === "lufs-meter" ? "No signup" : tool.group === "analyze" ? "Free account" : "Try free"}</span>
           )}
         </span>
         <span className="mt-2 text-[14px] leading-[1.6] text-text-secondary">{DESCRIPTIONS[tool.key] || tool.blurb.en}</span>
@@ -86,7 +86,7 @@ export default function ToolsHubPage() {
         <Section key={group.key} id={group.key} eyebrow={group.label.en} title={group.key === "analyze" ? "Analyze a track" : group.key === "master" ? "Master a track" : group.key === "prepare" ? "Prepare a mix" : "Deliver a release"} intro={GROUP_INTRO[group.key]}>
           <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
             {group.tools.map((tool) => (
-              <ToolCard key={tool.key} tool={tool} />
+              <ToolCard key={tool.key} tool={{ ...tool, group: group.key }} />
             ))}
           </ul>
         </Section>
@@ -95,7 +95,7 @@ export default function ToolsHubPage() {
       <CtaBand
         title="Once you've got your reading, hear what your track sounds like mastered."
         body="Adaptive mastering measures the same things these tools do — then decides what to change."
-        primary={{ href: SIGNUP_URL, label: "Try mastering free" }}
+        primary={{ href: "/lufs-meter#lufs-tool", label: "Check your track free" }}
         secondary={{ href: "/ai-mastering-online", label: "How adaptive mastering works" }}
       />
     </PageShell>
