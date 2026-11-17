@@ -65,7 +65,7 @@ export async function saveProfile(uid, profile, email, signInProvider = null) {
   const isNewSignup = profile.termsAcceptedAt !== undefined && !existingProfile.createdAt;
   if (isNewSignup) {
     record.createdAt = new Date();
-    record.freeMasterTrialLimit = freeTrialLimit({ ...existingProfile, createdAt: record.createdAt });
+    record.freeMasterTrialLimit = freeTrialLimit(existingProfile);
   }
 
   await userDoc(uid).set(record, { merge: true });
