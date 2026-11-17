@@ -74,6 +74,8 @@ deploy: ## Deploy exact CI-tested SHA when DEPLOY_SHA is set; otherwise fast-for
 	# currently-running deployment), and --keep-storage retains the most
 	# recent 5GB of build cache so rebuilds stay fast instead of starting
 	# cold every time. Both are no-ops when there's nothing to clean.
+	# Remove stopped containers before pruning images; running containers and volumes stay intact.
+	docker container prune -f || true
 	docker image prune -f || true
 	docker builder prune -f --keep-storage 5GB || true
 	# Sync product copy using the server's existing token before switching app containers.
