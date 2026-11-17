@@ -9,7 +9,7 @@
 
 ## Polar
 
-Subscription prices remain unchanged. The seeded stem product name/description now state the add-on requirement. Live Polar changes require the pending Polar connection. No live Polar products have been changed by this commit.
+Subscription prices remain unchanged. The seeded stem product name/description now state the add-on requirement. Deployment runs scripts/sync-polar-products.js --apply --production-only with the token and product IDs already configured on the server. It validates all eight prices/intervals before updating copy and verifies the results. It never creates products, changes prices, or modifies subscriptions. A failure stops deployment before replacing the app containers; rerunning safely resumes any partial copy update. No ChatGPT Polar connection is required.
 
 ## Measurement
 
