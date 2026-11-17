@@ -1,10 +1,11 @@
+import { freeTrialLimit } from "./freeTrialPolicy.js";
 import { getFirestore } from "../config/firebase.js";
 
 // Master quota — Studio/All-Access get a generous but bounded number of
 // full-length masters per calendar month (resets automatically). Free is
-// different on purpose: 3 masters, ONE TIME — a trial for a first-time
+// different on purpose: 1 master, ONE TIME (legacy accounts keep 3) — a trial for a first-time
 // user, not a recurring monthly allowance. Once a Free user spends
-// those 3, there is no next-month reset for them; their path forward is
+// that allowance, there is no next-month reset for them; their path forward is
 // a single-master purchase (see extra-credit functions below) or
 // upgrading to a paid plan. This is what "pay-per-master is the standard
 // path for Free users past their trial" means in practice — the
@@ -14,7 +15,7 @@ import { getFirestore } from "../config/firebase.js";
 // Keyed by internal plan key, not by Polar product — the monthly and
 // annual variants of a plan are two Polar products but one entitlement
 // level, so both resolve to the same key before reaching this map.
-export const PLAN_MASTER_LIMITS = { free: 3, indie: 15, studio: 50, pro: 250 };
+export const PLAN_MASTER_LIMITS = { free: 1, indie: 15, studio: 50, pro: 250 };
 
 function currentMonthKey() {
   const now = new Date();
@@ -48,7 +49,7 @@ async function consumeLifetime(uid, field, limit) {
     const doc = await tx.get(ref);
     const used = Number(doc.data()?.[field]?.used || 0);
     if (used >= limit) return false;
-    tx.set(ref, { [field]: { used: used + 1 } }, { merge: true });
+    tx.set(ref, { [field]: { used: used + 1 }, ...(field === "freeMasterUsage" ? { freeMasterTrialLimit: limit } : {}) }, { merge: true });
     return true;
   });
 }
@@ -161,7 +162,9 @@ export const refundExtraStemCredit = (uid) => refundCredit(uid, "extraStemCredit
 export async function getMasterQuotaStatus(uid, plan) {
   const limit = PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free;
   if (plan === "free") {
-    const used = await getLifetimeUsed(uid, "freeMasterUsage");
+    const data = await readUserData(uid);
+    const limit = freeTrialLimit(data);
+    const used = Number(data.freeMasterUsage?.used || 0);
     return { used, remaining: Math.max(0, limit - used), limit, resets: false };
   }
   const doc = await userDoc(uid).get();
@@ -237,7 +240,7 @@ export async function readUserData(uid) {
 
 export function entitlementsFromUserData(data, plan) {
   const month = currentMonthKey();
-  const limit = PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free;
+  const limit = plan === "free" ? freeTrialLimit(data) : (PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free);
   let masterQuota;
   if (plan === "free") {
     const used = Number(data?.freeMasterUsage?.used || 0);

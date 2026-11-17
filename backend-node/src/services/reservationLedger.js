@@ -56,7 +56,7 @@ function take(user, part, ctx) {
   if (counter === "freeMasterUsage") {
     const used = Number(user.freeMasterUsage?.used || 0);
     if (used >= part.limit) return null;
-    return { freeMasterUsage: { used: used + 1 } };
+    return { freeMasterTrialLimit: part.limit, freeMasterUsage: { used: used + 1 } };
   }
   const q = user[counter];
   const used = q?.month === ctx.month ? Number(q.used || 0) : 0;

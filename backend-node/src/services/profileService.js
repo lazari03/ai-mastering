@@ -1,3 +1,4 @@
+import { freeTrialLimit } from "./freeTrialPolicy.js";
 import { getFirestore } from "../config/firebase.js";
 import { notifyNewRegistration } from "./telegramService.js";
 import { sendWelcomeEmail } from "./brevoService.js";
@@ -60,9 +61,11 @@ export async function saveProfile(uid, profile, email, signInProvider = null) {
   // ...and only if the account has no createdAt yet: anyone could repeat the
   // call with termsAcceptedAt and re-fire the alerts, the welcome email and
   // the sign_up event (and reset createdAt) as often as they liked.
-  const isNewSignup = profile.termsAcceptedAt !== undefined && !(await userDoc(uid).get()).data()?.createdAt;
+  const existingProfile = (await userDoc(uid).get()).data() || {};
+  const isNewSignup = profile.termsAcceptedAt !== undefined && !existingProfile.createdAt;
   if (isNewSignup) {
     record.createdAt = new Date();
+    record.freeMasterTrialLimit = freeTrialLimit(existingProfile);
   }
 
   await userDoc(uid).set(record, { merge: true });
@@ -152,6 +155,7 @@ export async function deleteAllUserData(uid) {
   const snap = await doc.get();
   const data = snap.data() || {};
   const retained = Object.fromEntries(RETAINED_BILLING_FIELDS.filter((key) => data[key] !== undefined).map((key) => [key, data[key]]));
+  retained.freeMasterTrialLimit = freeTrialLimit(data);
   if (Object.keys(retained).length) {
     await doc.set({ ...retained, accountDeletedAt: new Date() });
   } else {
@@ -159,4 +163,4 @@ export async function deleteAllUserData(uid) {
   }
 }
 
-const RETAINED_BILLING_FIELDS = ["freeMasterUsage", "masterQuota", "stemQuota", "extraMasterCredits", "extraStemCredits", "subscription"];
+const RETAINED_BILLING_FIELDS = ["freeMasterTrialLimit", "freeMasterUsage", "masterQuota", "stemQuota", "extraMasterCredits", "extraStemCredits", "subscription"];

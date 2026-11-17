@@ -11,7 +11,7 @@ export const HOME_FAQ = [
   },
   {
     q: "What's the difference between Standard and Professional?",
-    a: `Both run the same analysis, the same correction decisions and the same delivery checks, so a Standard master is never a cut-down one. Professional adds finer low-end control and a measured refinement pass: when peak processing is active, it compares a gentler render for transient retention, dynamics and limiter load. It keeps that version only when verification passes and tonal correction and loudness stay within comparison tolerances. When compression is needed, sub and kick/bass have their own bands. Already-balanced tracks may still match. Standard is what your ${PRODUCT.freeMasters} free masters and the ${PLANS.indie.label} plan use; Professional comes with ${PLANS.studio.label} and ${PLANS.pro.label}.`,
+    a: `Both run the same analysis, the same correction decisions and the same delivery checks, so a Standard master is never a cut-down one. Professional adds finer low-end control and a measured refinement pass: when peak processing is active, it compares a gentler render for transient retention, dynamics and limiter load. It keeps that version only when verification passes and tonal correction and loudness stay within comparison tolerances. When compression is needed, sub and kick/bass have their own bands. Already-balanced tracks may still match. Standard is what your ${PRODUCT.freeMasters} free master${PRODUCT.freeMasters === 1 ? "" : "s"} and the ${PLANS.indie.label} plan use; Professional comes with ${PLANS.studio.label} and ${PLANS.pro.label}.`,
   },
   {
     q: "Can I keep an artist's sound consistent across releases?",
@@ -23,7 +23,7 @@ export const HOME_FAQ = [
   },
   {
     q: "Is stem separation available?",
-    a: `Yes — stem-aware mastering separates the vocal from the accompaniment so each can be rebalanced before the final master. ${PLANS.pro.label} includes ${PRODUCT.stems.includedPerMonth} a month; on any other plan you can buy a single stem-separated master for ${STEM_SEPARATION.price}.`,
+    a: `Yes — stem-aware mastering separates the vocal from the accompaniment so each can be rebalanced before the final master. ${PLANS.pro.label} includes ${PRODUCT.stems.includedPerMonth} a month; on any plan you can buy a separation add-on for ${STEM_SEPARATION.price}. An available master allowance or ${SINGLE_MASTER.price} Single Master credit is also required.`,
   },
   {
     q: "Can I hear how it'll sound on Spotify or Instagram before downloading?",
@@ -35,6 +35,6 @@ export const HOME_FAQ = [
   },
   {
     q: "What's actually free?",
-    a: `30-second mastering previews (unlimited, Standard engine), chord/key/BPM detection and the LUFS meter (unlimited, always free), and ${PRODUCT.freeMasters} full-length masters total — a one-time trial, not renewed monthly. After that, single masters are ${SINGLE_MASTER.price} each, or subscribe: ${PLANS.indie.label} (${PLANS.indie.price}${PLANS.indie.period}), ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period}) or ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period}).`,
+    a: `30-second mastering previews (unlimited, Standard engine), chord/key/BPM detection and the LUFS meter (unlimited, always free), and ${PRODUCT.freeMasters} full-length master${PRODUCT.freeMasters === 1 ? "" : "s"} total — a one-time trial, not renewed monthly. After that, single masters are ${SINGLE_MASTER.price} each, or subscribe: ${PLANS.indie.label} (${PLANS.indie.price}${PLANS.indie.period}), ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period}) or ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period}).`,
   },
 ];

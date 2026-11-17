@@ -76,6 +76,10 @@ deploy: ## Deploy exact CI-tested SHA when DEPLOY_SHA is set; otherwise fast-for
 	# cold every time. Both are no-ops when there's nothing to clean.
 	docker image prune -f || true
 	docker builder prune -f --keep-storage 5GB || true
+	# Sync product copy using the server's existing token before switching app containers.
+	# Full catalog validation happens before any write; re-runs are idempotent.
+	docker compose build node-api
+	docker compose run --rm --no-deps node-api node scripts/sync-polar-products.js --apply --production-only
 	docker compose up -d --build
 	# Caddy's config is a bind-mounted file (./Caddyfile), not part of its
 	# image — `docker compose up -d` only recreates a container when the

@@ -1,9 +1,10 @@
 import Link from "next/link";
 
+import OneTimeOffers from "@/components/marketing/OneTimeOffers";
 import PricingViewTracker from "@/components/PricingViewTracker";
 import RelatedTools from "@/components/site/RelatedTools";
 import { Breadcrumbs, Checklist, CtaBand, PageHero, PageShell, Section } from "@/components/site/Page";
-import { PLANS, PLAN_ORDER, PLAN_COMPARISON, PRODUCT, SINGLE_MASTER, STEM_SEPARATION, localized } from "@/lib/product";
+import { PLANS, PLAN_ORDER, PLAN_COMPARISON, PRODUCT, SINGLE_MASTER, localized } from "@/lib/product";
 import { ANNUAL_MONTHS_CHARGED } from "@/lib/pricing";
 import { CTA, planSignupHref } from "@/lib/internalLinks";
 import { buildMetadata, JsonLd, organizationJsonLd, SITE_NAME } from "@/lib/seo";
@@ -14,7 +15,7 @@ import { buildMetadata, JsonLd, organizationJsonLd, SITE_NAME } from "@/lib/seo"
 // the in-app Plans panel and checkout use.
 export const metadata = buildMetadata({
   title: `Pricing — Free Trial, Indie, Studio & All-Access Plans | ${SITE_NAME}`,
-  description: `Start with ${PRODUCT.freeMasters} free masters, no card. Then ${PLANS.indie.label} ${PLANS.indie.price}/mo, ${PLANS.studio.label} ${PLANS.studio.price}/mo or ${PLANS.pro.label} ${PLANS.pro.price}/mo — or ${SINGLE_MASTER.price} for a single master. Chord, key and BPM detection are always free.`,
+  description: `Start with ${PRODUCT.freeMasters} free master${PRODUCT.freeMasters === 1 ? "" : "s"}, no card. Then ${PLANS.indie.label} ${PLANS.indie.price}/mo, ${PLANS.studio.label} ${PLANS.studio.price}/mo or ${PLANS.pro.label} ${PLANS.pro.price}/mo — or ${SINGLE_MASTER.price} for a single master. Chord, key and BPM detection are always free.`,
   path: "/pricing",
   keywords: ["auralith forge pricing", "ai mastering price", "online mastering cost", "mastering subscription", "pay per master"],
 });
@@ -35,7 +36,7 @@ export default function PricingPage() {
       <PageHero
         eyebrow="Pricing"
         title="Auralith Forge pricing"
-        lead={`Try ${PRODUCT.freeMasters} full masters free — no card, no expiry. Pay only for mastering: every analysis tool is free, and every plan runs the same analysis-first engine.`}
+        lead={`Try ${PRODUCT.freeMasters} full master${PRODUCT.freeMasters === 1 ? "" : "s"} free — no card, no expiry. Pay only for mastering: every analysis tool is free, and every plan runs the same analysis-first engine.`}
         actions={
           <>
             <Link href={CTA.signup} className="btn-primary">
@@ -56,8 +57,9 @@ export default function PricingPage() {
           Start with your own mix, then pick a plan based on how often you master — not on promises about sound quality.
         </p>
         <ul className="m-0 mt-4 grid list-none gap-3 p-0 text-[14px] sm:grid-cols-2">
-          <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-free">Free</a> — Hear three full masters before deciding.</li>
-          <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-indie">Indie</a> — Best fit for occasional releases, up to 15 tracks/month.</li>
+          <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-free">Free</a> — Hear one full master before deciding.</li>
+          <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#pay-per-track">Single Master</a> — {SINGLE_MASTER.price} for one track, no subscription.</li>
+          <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-indie">Indie</a> — For recurring releases and alternate versions, up to 15 masters/month.</li>
           <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-studio">Studio</a> — For regular sessions and client projects, up to 50/month.</li>
           <li><a className="font-semibold text-text-primary underline underline-offset-4" href="#plan-pro">All-Access</a> — For high-volume teams needing bundled stem separation.</li>
         </ul>
@@ -109,6 +111,8 @@ export default function PricingPage() {
         </p>
       </section>
 
+      <OneTimeOffers source="pricing_page" />
+
       <Section id="compare" title="Compare plans">
         <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <table className="w-full min-w-[640px] border-collapse text-[14px]">
@@ -142,19 +146,6 @@ export default function PricingPage() {
         </div>
       </Section>
 
-      <Section title="Pay per track instead" intro="No subscription needed. One-time purchases sit alongside any plan.">
-        <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2">
-          {[SINGLE_MASTER, STEM_SEPARATION].map((item) => (
-            <li key={item.item} className="rounded-2xl border border-border-subtle bg-white/55 p-6">
-              <h3 className="m-0 flex items-baseline justify-between gap-3 text-[16px] font-semibold text-text-primary">
-                {item.label}
-                <span className="font-[var(--font-title)] text-[24px]">{item.price}</span>
-              </h3>
-              <p className="m-0 mt-2 text-[14px] leading-[1.6] text-text-secondary">{localized(item.blurb)}</p>
-            </li>
-          ))}
-        </ul>
-      </Section>
 
       <Section title="Every plan includes">
         <Checklist

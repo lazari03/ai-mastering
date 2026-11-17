@@ -6,12 +6,12 @@ import { HOME_FAQ } from "@/content/homeFaq";
 // highest-volume query family in Google Trends (Oct 2026: "free online
 // mastering", "online mastering free", "free mastering online", "free
 // mastering", "mastering online free" all at 98–100 relative interest,
-// vs 39 for "ai mastering"). Honest claim: 3 full masters + unlimited
+// vs 39 for "ai mastering"). Honest claim: 1 full master + unlimited
 // 30-second previews are free, no card — see content/homeFaq.js.
 export const metadata = buildMetadata({
   title: "Free Online Mastering — Adaptive DSP Audio Mastering | Auralith Forge",
   description:
-    "Free online mastering: 3 full masters and unlimited 30-second previews, no card. An adaptive DSP engine measures your mix and fixes only what it needs.",
+    "Free online mastering: 1 full master and unlimited 30-second previews, no card. An adaptive DSP engine measures your mix and fixes only what it needs.",
   path: "/",
   keywords: [
     "free online mastering",

@@ -24,7 +24,7 @@ import { buildMetadata, JsonLd, faqJsonLd, organizationJsonLd, SITE_NAME } from 
 export const metadata = buildMetadata({
   title: `Free AI Mastering Online — Online Mastering Service | ${SITE_NAME}`,
   description:
-    "AI mastering online with an adaptive DSP engine that analyzes your mix first. Genre-aware targets, level-matched A/B, codec preview. 3 free masters, no card.",
+    "AI mastering online with an adaptive DSP engine that analyzes your mix first. Genre-aware targets, level-matched A/B, codec preview. 1 free master, no card.",
   path: "/ai-mastering-online",
   keywords: [
     "ai mastering",
@@ -70,7 +70,7 @@ const FAQ_ITEMS = [
   },
   {
     question: "Is it actually free, or a time-limited trial?",
-    answer: `3 full-length masters are free, no card required — a lifetime allowance, not a trial that expires after a week. After that: ${paidEntryText()}. Studio and All-Access add the Professional engine and more masters.`,
+    answer: `1 full-length master is free, no card required — a lifetime allowance, not a trial that expires after a week. After that: ${paidEntryText()}. Studio and All-Access add the Professional engine and more masters.`,
   },
   {
     question: "Is Auralith Forge an online mastering service or software?",
@@ -78,7 +78,7 @@ const FAQ_ITEMS = [
   },
   {
     question: "What's the best online mastering service?",
-    answer: "The one that sounds best on your track — which is why comparing on your own mix matters more than any ranking. Things worth checking in any service: whether it measures your mix or applies one fixed chain, whether its before/after comparison is loudness-matched (otherwise the louder file always sounds \"better\"), and whether it respects true-peak ceilings for streaming. Auralith Forge does all three, and the 3 free masters let you test that claim directly. The comparison pages below cover specific alternatives.",
+    answer: "The one that sounds best on your track — which is why comparing on your own mix matters more than any ranking. Things worth checking in any service: whether it measures your mix or applies one fixed chain, whether its before/after comparison is loudness-matched (otherwise the louder file always sounds \"better\"), and whether it respects true-peak ceilings for streaming. Auralith Forge does all three, and the 1 free master lets you test that claim directly. The comparison pages below cover specific alternatives.",
   },
   {
     question: "How is this different from a generic 'AI mastering' button?",
@@ -103,7 +103,7 @@ export default function AiMasteringOnlinePage() {
       <PageHero
         eyebrow="Free AI Mastering Online"
         title="AI Mastering Online That Listens Before It Touches Anything"
-        lead="Master your music online with a real DSP engine — not a black box. Upload a track, get a mastered version back in minutes — analysis-first EQ, multiband compression, saturation, stereo imaging, and true-peak limiting, sized to what your mix actually needs rather than applied identically to everything. 3 full masters are free, no card required, so you can hear the actual output before deciding anything."
+        lead="Master your music online with a real DSP engine — not a black box. Upload a track, get a mastered version back in minutes — analysis-first EQ, multiband compression, saturation, stereo imaging, and true-peak limiting, sized to what your mix actually needs rather than applied identically to everything. 1 full master is free, no card required, so you can hear the actual output before deciding anything."
         actions={
           <>
             <Link href={CTA.signup} className="btn-primary">
@@ -207,7 +207,7 @@ export default function AiMasteringOnlinePage() {
 
       <CtaBand
         title="Hear your own track mastered"
-        body="3 full masters free, no card required. Compare against your mix at matched loudness before you decide anything."
+        body="1 full master free, no card required. Compare against your mix at matched loudness before you decide anything."
         primary={{ href: CTA.signup, label: "Master a track free" }}
         secondary={{ href: LOUDNESS_TARGETS_URL, label: "Loudness targets by genre" }}
       />

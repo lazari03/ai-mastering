@@ -164,6 +164,14 @@ export default function PlansPanel() {
     }
   };
 
+  useEffect(() => {
+    if (!loaded) return;
+    const item = new URLSearchParams(window.location.search).get("item");
+    if (![SINGLE_MASTER.item, STEM_SEPARATION.item].includes(item)) return;
+    const frame = requestAnimationFrame(() => document.getElementById("one-time-purchases")?.scrollIntoView({ block: "start" }));
+    return () => cancelAnimationFrame(frame);
+  }, [loaded]);
+
   const openPortal = async () => {
     setBusyItem("portal");
     setCheckoutError("");
@@ -306,53 +314,7 @@ export default function PlansPanel() {
             })}
           </div>
 
-          {/* Feature comparison table */}
-          <div className="mt-6 overflow-x-auto rounded-xl border border-border-subtle">
-            <table className="w-full min-w-[560px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border-subtle bg-black/[0.045]">
-                  <th className="p-3 text-left text-xs uppercase tracking-[0.1em] text-text-secondary">{t("plans.feature")}</th>
-                  {PLAN_ORDER.map((key) => (
-                    <th key={key} className="p-3 text-left text-xs uppercase tracking-[0.1em] text-text-secondary">
-                      {PLANS[key].label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARISON_ROWS.map((row) => (
-                  <tr key={row.label.en} className="border-b border-border-subtle last:border-0">
-                    <td className="p-3 text-text-secondary">{localized(row.label, lang)}</td>
-                    {row.values.map((value, i) => (
-                      <td key={PLAN_ORDER[i]} className="p-3 text-text-secondary">
-                        {value === true ? (
-                          <IconCheck className="text-accent" />
-                        ) : value === false ? (
-                          <span className="text-text-secondary">—</span>
-                        ) : (
-                          localized(value, lang)
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {masterQuota ? (
-            <div className="mt-6 rounded-xl border border-border-subtle bg-black/[0.045] p-3">
-              <p className="m-0 text-sm text-text-primary">{masterQuota.resets ? t("billing.mastersThisMonth") : t("billing.freeTrialMasters")}</p>
-              <p className="m-0 text-xs text-text-secondary">
-                {t("billing.leftOf", { remaining: masterQuota.remaining, limit: masterQuota.limit })}
-                {" · "}
-                {masterQuota.resets ? t("billing.resetsNextMonth") : t("billing.oneTimeNoRenew")}
-                {extraCredits > 0 ? ` · ${t("billing.plusCreditsMaster", { n: extraCredits, s: extraCredits === 1 ? "" : "s" })}` : ""}
-              </p>
-            </div>
-          ) : null}
-
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div id="one-time-purchases" className="mt-6 grid scroll-mt-24 gap-3 sm:grid-cols-2">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border-subtle bg-black/10 p-3">
               <div className="min-w-0">
                 <p className="m-0 text-sm text-text-primary">
@@ -403,6 +365,53 @@ export default function PlansPanel() {
               </button>
             </div>
           </div>
+
+          {/* Feature comparison table */}
+          <div className="mt-6 overflow-x-auto rounded-xl border border-border-subtle">
+            <table className="w-full min-w-[560px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border-subtle bg-black/[0.045]">
+                  <th className="p-3 text-left text-xs uppercase tracking-[0.1em] text-text-secondary">{t("plans.feature")}</th>
+                  {PLAN_ORDER.map((key) => (
+                    <th key={key} className="p-3 text-left text-xs uppercase tracking-[0.1em] text-text-secondary">
+                      {PLANS[key].label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARISON_ROWS.map((row) => (
+                  <tr key={row.label.en} className="border-b border-border-subtle last:border-0">
+                    <td className="p-3 text-text-secondary">{localized(row.label, lang)}</td>
+                    {row.values.map((value, i) => (
+                      <td key={PLAN_ORDER[i]} className="p-3 text-text-secondary">
+                        {value === true ? (
+                          <IconCheck className="text-accent" />
+                        ) : value === false ? (
+                          <span className="text-text-secondary">—</span>
+                        ) : (
+                          localized(value, lang)
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {masterQuota ? (
+            <div className="mt-6 rounded-xl border border-border-subtle bg-black/[0.045] p-3">
+              <p className="m-0 text-sm text-text-primary">{masterQuota.resets ? t("billing.mastersThisMonth") : t("billing.freeTrialMasters")}</p>
+              <p className="m-0 text-xs text-text-secondary">
+                {t("billing.leftOf", { remaining: masterQuota.remaining, limit: masterQuota.limit })}
+                {" · "}
+                {masterQuota.resets ? t("billing.resetsNextMonth") : t("billing.oneTimeNoRenew")}
+                {extraCredits > 0 ? ` · ${t("billing.plusCreditsMaster", { n: extraCredits, s: extraCredits === 1 ? "" : "s" })}` : ""}
+              </p>
+            </div>
+          ) : null}
+
 
           {currentPlan === "pro" && stemQuota ? (
             <div className="mt-3 rounded-xl border border-border-subtle bg-black/[0.045] p-3">

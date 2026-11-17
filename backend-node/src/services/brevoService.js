@@ -23,7 +23,7 @@ function welcomeEmailHtml(firstName) {
             <p style="margin:0;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#dfc95a;">Auralith Forge</p>
             <h1 style="margin:12px 0 0;font-size:22px;line-height:1.3;color:#ffffff;">${greeting} welcome aboard.</h1>
             <p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:#c7c9cc;">
-              Your account's ready. You've got 3 full-length masters free, no card required — drop a track in and hear the difference.
+              Your account's ready. You've got 1 full-length master free, no card required — drop a track in and hear the difference.
             </p>
             <table cellpadding="0" cellspacing="0" style="margin:24px 0 0;">
               <tr><td style="background:linear-gradient(135deg,#e85d2a,#dfc95a);border-radius:999px;">

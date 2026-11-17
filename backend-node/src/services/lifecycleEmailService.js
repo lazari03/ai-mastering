@@ -170,11 +170,11 @@ export function buildLifecycleEmail(type, { uid, firstName = "", freeMastersLeft
   }
   if (type === "trial_exhausted") {
     return {
-      subject: "You've used your 3 free masters — here's what's next",
+      subject: "Your free trial is complete — here's what's next",
       htmlContent: layout({
         heading: `${hey} that was your last free master.`,
         paragraphs: [
-          "The free trial is three full masters, one time. Previews (30 seconds, unlimited), the LUFS meter and chord/key/BPM detection stay free.",
+          "Your full-length mastering trial is a one-time allowance. Previews (30 seconds, unlimited), the LUFS meter and chord/key/BPM detection stay free.",
           `To keep mastering full tracks: a <strong>single master is ${PRICES.single}</strong> with no subscription, or <strong>Indie is ${PRICES.indie}</strong> for ${PRICES.indieMasters} masters a month. Studio (${PRICES.studio}, ${PRICES.studioMasters} a month) adds the Professional engine. Cancel any time.`,
           "If something about the result held you back, reply and tell me what — that's the most useful thing you can send.",
         ],

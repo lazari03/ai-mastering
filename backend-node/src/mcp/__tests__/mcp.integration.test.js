@@ -465,7 +465,7 @@ test("free user: account → upload → master (async) → poll → result → d
 
   const acct = await call(mcp, "get_account");
   assert.equal(acct.data.account.plan, "free");
-  assert.equal(acct.data.masters.remaining, 3);
+  assert.equal(acct.data.masters.remaining, 1);
   assert.equal(acct.data.masters.resets_monthly, false);
   assert.equal(acct.data.professional_tier_available, false);
   assert.deepEqual(acct.data.account, { plan: "free", plan_name: "Free" });
@@ -510,12 +510,12 @@ test("free user: account → upload → master (async) → poll → result → d
   assert.deepEqual({ ...history }, { preview: 0, original_filename: "song.wav" }, "the master shows up in the website's My Masters");
 
   const after = await call(mcp, "get_account");
-  assert.equal(after.data.masters.remaining, 2);
+  assert.equal(after.data.masters.remaining, 0);
   await mcp.close();
 });
 
 test("duplicate submissions (sequential and concurrent) create one job and one charge", async () => {
-  const uid = newUser();
+  const uid = newUser({ freeMasterTrialLimit: 3 }); // Legacy allowance permits the two distinct renders.
   pythonCalls = [];
   pythonBehaviour = (req, res, jobId) => setTimeout(() => json(200, okMaster(jobId))(req, res), 50);
   const { tokens } = await connect(uid);
@@ -777,7 +777,7 @@ test("result expiry: after the 48h file window get_master_result and the downloa
 test("concurrent users: independent jobs, each user sees only their own result; per-user active cap holds", async () => {
   pythonCalls = [];
   pythonBehaviour = (req, res, jobId) => setTimeout(() => json(200, okMaster(jobId))(req, res), 30);
-  const users = [newUser(), newUser(), newUser(), newUser()];
+  const users = [newUser(), newUser(), newUser({ freeMasterTrialLimit: 3 }), newUser()];
   const clients = await Promise.all(users.map(async (uid) => mcpClient((await connect(uid)).tokens.access_token)));
   const runs = await Promise.all(clients.map((c) => masterOnce(c)));
   for (const r of runs) assert.equal(r.started.isError, false, JSON.stringify(r.started.data));
