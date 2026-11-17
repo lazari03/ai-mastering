@@ -7,7 +7,7 @@ import { buildMetadata, JsonLd, absoluteUrl, SITE_NAME } from "@/lib/seo";
 export const metadata = buildMetadata({
   title: `Free Music Tools — LUFS Meter, BPM, Key & Chord Detector | ${SITE_NAME}`,
   description:
-    "Free, no-signup tools for musicians and producers: measure loudness, find the tempo, detect the key, or get the full chord progression of any track.",
+    "Measure LUFS and true peak in your browser for free, no account needed. Explore key, BPM and chord analysis tools, with a free account for server-side analysis.",
   path: "/tools",
   keywords: ["free music tools", "lufs meter", "bpm finder", "key finder", "chord detector"],
 });
@@ -25,7 +25,7 @@ const DESCRIPTIONS = {
 };
 
 const GROUP_INTRO = {
-  analyze: "Free and unlimited — create a free account to see results. Real audio analysis, no card.",
+  analyze: "LUFS measurement works in your browser without an account. Key, BPM and chord analysis require a free account. No card needed.",
   master: "Mastering runs in the Studio. Try it free, with a plan when you need more.",
   prepare: "Inside the Studio, before mastering.",
   deliver: "Inside the Studio, before release.",
@@ -69,7 +69,7 @@ export default function ToolsHubPage() {
       <PageHero
         eyebrow="Auralith Studio"
         title="Free Music Tools"
-        lead="Real audio analysis, free and unlimited. A free account shows your results — no trial limit, no card."
+        lead="Start with a free LUFS reading right in your browser — no signup, upload or card required. Explore more analysis tools with a free account."
         actions={
           <>
             <Link href="/lufs-meter" className="btn-primary">
