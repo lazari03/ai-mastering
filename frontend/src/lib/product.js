@@ -35,13 +35,13 @@ export const PLAN_FEATURES = {
 
 export const SUPPORTED_FORMATS_TEXT = `${PRODUCT.supportedFormats.slice(0, -1).join(", ")} and ${PRODUCT.supportedFormats.at(-1)}`;
 
-// "Free (3 masters, one-time) → Indie €4.99/mo (15) → Studio €9.99/mo (50) →
+// "Free (1 master, one-time) → Indie €4.99/mo (15) → Studio €9.99/mo (50) →
 // All-Access €19.99/mo (250)". Built from PLANS so every page that describes
 // the plan ladder stays in step with the pricing grid.
 export function planLadderText() {
   return PLAN_ORDER.map((key) => {
     const p = PLANS[key];
-    if (key === "free") return `Free (${p.masterLimit} masters, one-time trial, no card)`;
+    if (key === "free") return `Free (${p.masterLimit} master${p.masterLimit === 1 ? "" : "s"}, one-time trial, no card)`;
     return `${p.label} ${p.price}${p.period} (${p.masterLimit} masters/month)`;
   }).join(" → ");
 }

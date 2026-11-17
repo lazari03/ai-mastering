@@ -91,8 +91,8 @@ const CATALOG = [
   {
     key: "stemSeparation",
     envVar: "POLAR_STEM_SEPARATION_PRODUCT_ID",
-    name: "Stem Separation",
-    description: "One stem-separated master (vocals and accompaniment, rebalanced separately). Included on All-Access, 20/month.",
+    name: "Stem Separation Add-on",
+    description: "Separate vocals and accompaniment for one master. Requires an available master allowance or Single Master credit. All-Access includes 20 separations/month.",
     interval: null,
     amount: cents(4.99),
   },

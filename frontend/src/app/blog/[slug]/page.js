@@ -162,7 +162,7 @@ export default async function BlogPostPage({ params }) {
 
       <CtaBand
         title="Want to hear this applied to your own track?"
-        body="3 full masters free, no card required."
+        body="1 full master free, no card required."
         primary={{ href: CTA.signup, label: "Master a track free" }}
         secondary={{ href: CTA.pricing, label: "Studio & All-Access plans" }}
       />

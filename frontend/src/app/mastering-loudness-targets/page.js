@@ -299,7 +299,7 @@ export default function LoudnessTargetsPage() {
 
       <CtaBand
         title="Hear these targets applied to your own track"
-        body="3 masters free, no card required. The engine measures your mix first and moves only as far as the audio allows."
+        body="1 master free, no card required. The engine measures your mix first and moves only as far as the audio allows."
         primary={{ href: CTA.signup, label: "Start free" }}
         secondary={{ href: "/ai-mastering-online", label: "How online mastering works" }}
       />

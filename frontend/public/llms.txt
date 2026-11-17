@@ -4,8 +4,8 @@
 > the browser, pick a genre, and get back a mastered track — EQ, multiband
 > compression, saturation, stereo imaging and true-peak limiting applied
 > from measurements of the actual audio, not a fixed preset. Also does
-> stem separation and chord/key/BPM detection. Free tier: 3 full-length
-> masters, no card required. Available at https://auralithforge.app
+> stem separation and chord/key/BPM detection. Free tier: 1 full-length
+> master, no card required. Available at https://auralithforge.app
 
 This file is a machine-readable summary for AI assistants, answer engines
 and other automated readers. It covers what audio mastering is, how online
@@ -181,7 +181,7 @@ loudness delta before you download.
 
 No credit card required to start. A new account gets:
 
-- **3 full-length masters** — a one-time lifetime allowance, not a monthly
+- **1 full-length master** — a one-time lifetime allowance, not a monthly
   reset, on the Standard engine.
 - **Chord/key/BPM detection and the LUFS meter** — free and unlimited.
 - **Unlimited 30-second mastering previews** — not metered at all, so the
@@ -198,7 +198,7 @@ are one-time and never reset.
 
 | Plan           | Price                  | Masters        | Engines                | Stems (bundled) |
 |----------------|------------------------|----------------|------------------------|-----------------|
-| Free           | €0                     | 3 (one-time)   | Standard               | none            |
+| Free           | €0                     | 1 (one-time)   | Standard               | none            |
 | Indie          | €4.99/mo or €49.90/yr  | 15 / month     | Standard               | none            |
 | Studio         | €9.99/mo or €99.90/yr  | 50 / month     | Standard, Professional | none            |
 | All-Access     | €19.99/mo or €199.90/yr| 250 / month    | Standard, Professional | 20 / month      |
@@ -212,7 +212,7 @@ Pay-as-you-go, for a single release rather than a subscription:
 
 - **Single Master — €2.99.** One extra master, same engine tier as the
   buyer's plan.
-- **Stem Separation — €4.99.** One stem-separated master. The only route to
+- **Stem Separation Add-on — €4.99.** Separation for one master; also requires an available mastering allowance or a €2.99 Single Master credit. The only route to
   stems for Free, Indie and Studio accounts.
 
 ## Stem separation
@@ -278,7 +278,7 @@ WAV, MP3, FLAC, AIFF and other common formats on upload, decoded
 automatically. Export is WAV or MP3. Maximum upload 200 MB by default.
 
 **Is there free AI mastering?**
-Yes — 3 full-length masters with no card required, plus unlimited 30-second
+Yes — 1 full-length master with no card required, plus unlimited 30-second
 previews. See the free tier section above.
 
 **What is DSP in mastering?**

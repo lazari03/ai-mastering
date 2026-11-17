@@ -35,6 +35,12 @@ export function planSignupHref(planKey, billing = "monthly") {
   return `${CTA.signup}&redirect=${encodeURIComponent(`/app?tab=plans&billing=${billing}`)}`;
 }
 
+// One-time selection survives authentication; checkout still needs an explicit click.
+export function oneTimeSignupHref(item) {
+  if (!["single_master", "stem_separation"].includes(item)) return CTA.pricing;
+  return `${CTA.signup}&redirect=${encodeURIComponent(`/app?tab=plans&item=${item}#one-time-purchases`)}`;
+}
+
 // ---- Genre <-> blog post graph ----------------------------------------
 // One declared edge per genre, to the single most topically relevant
 // post. Reverse lookups (which genres reference a given post) are

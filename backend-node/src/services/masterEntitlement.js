@@ -17,7 +17,7 @@ import { PLAN_MASTER_LIMITS, STEM_MONTHLY_LIMIT } from "./entitlementsService.js
 // with { detail } only, exactly as before this was extracted.
 export function decideMasterCharge({ plan, snapshot, tier = "standard", useStemSeparation = false }) {
   const planUnlocked = plan === "studio" || plan === "pro";
-  const quotaLimit = PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free;
+  const quotaLimit = plan === "free" ? (snapshot?.masterQuota?.limit ?? PLAN_MASTER_LIMITS.free) : (PLAN_MASTER_LIMITS[plan] ?? PLAN_MASTER_LIMITS.free);
 
   if (tier === "professional" && !planUnlocked) {
     return {
@@ -67,7 +67,7 @@ export function decideMasterCharge({ plan, snapshot, tier = "standard", useStemS
       ok: false,
       status: 402,
       code: "quota_exhausted",
-      detail: `You've used your ${quotaLimit} free masters — that's a one-time trial, it doesn't renew. Buy a single master for just this track, or subscribe — Indie (15/month), Studio (50/month) or All-Access (250/month) — in Settings → Billing.`,
+      detail: `You've used your ${quotaLimit} free master${quotaLimit === 1 ? "" : "s"} — that's a one-time trial, it doesn't renew. Buy a single master for just this track, or subscribe — Indie (15/month), Studio (50/month) or All-Access (250/month) — in Settings → Billing.`,
     };
   } else {
     const upsellPlan = plan === "indie" ? "Studio for 50/month" : plan === "studio" ? "All-Access for 250/month" : null;

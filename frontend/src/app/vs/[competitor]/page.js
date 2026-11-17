@@ -101,7 +101,7 @@ export default async function ComparisonPage({ params }) {
       <Section title="Hear it on your own track" tone="band">
         <div className="af-prose">
           <p>
-            The honest way to compare two mastering tools is to actually listen — not read a feature table. 3 full-length masters are free,
+            The honest way to compare two mastering tools is to actually listen — not read a feature table. 1 full-length master is free,
             no card required, so you can run your own A/B before deciding anything.
           </p>
         </div>

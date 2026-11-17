@@ -121,7 +121,7 @@ export const publicPreviewLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => ipKeyGenerator(req.clientIp || req.ip),
   message: {
-    detail: "You've used your free previews for now — create a free account to keep going (3 full masters included).",
+    detail: "You've used your free previews for now — create a free account to keep going (1 full master included).",
     code: "public_preview_limit",
   },
 });

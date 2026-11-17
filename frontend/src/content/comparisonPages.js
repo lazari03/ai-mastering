@@ -32,7 +32,7 @@ export const COMPARISON_PAGES = {
     headline: "Auralith Forge vs LANDR",
     seoTitle: "LANDR Alternative for Online Mastering — Auralith Forge vs LANDR",
     description:
-      "Looking for a LANDR alternative? Compare Auralith Forge's analysis-first DSP mastering with LANDR: how each processes, codec preview, pricing. 3 masters free.",
+      "Looking for a LANDR alternative? Compare Auralith Forge's analysis-first DSP mastering with LANDR: how each processes, codec preview, pricing. 1 master free.",
     keywords: ["auralith forge vs landr", "landr alternative", "landr alternative for mastering", "ai mastering comparison"],
     intro:
       "LANDR built its name as an all-in-one platform — AI mastering bundled with music distribution, sample packs, and plugins. That's a genuinely different product shape than Auralith Forge, which does one thing: mastering, with a DSP chain you can actually reason about (it measures your mix first, corrects only what needs it, and shows what it changed — not one opaque \"AI master\" button) and pricing that's just about the masters, nothing else bundled in.",
@@ -66,7 +66,7 @@ export const COMPARISON_PAGES = {
       },
       {
         question: "Can I try Auralith Forge before switching?",
-        answer: "Yes — 3 full-length masters free, no card required, so you can compare the actual output on your own track before deciding anything.",
+        answer: "Yes — 1 full-length master free, no card required, so you can compare the actual output on your own track before deciding anything.",
       },
     ],
   },
@@ -76,7 +76,7 @@ export const COMPARISON_PAGES = {
     headline: "Auralith Forge vs eMastered",
     seoTitle: "eMastered Alternative — Auralith Forge vs eMastered Compared",
     description:
-      "Looking for an eMastered alternative? Compare Auralith Forge's analysis-first DSP mastering with eMastered: stem-aware mastering, codec preview, pricing. 3 masters free.",
+      "Looking for an eMastered alternative? Compare Auralith Forge's analysis-first DSP mastering with eMastered: stem-aware mastering, codec preview, pricing. 1 master free.",
     keywords: ["auralith forge vs emastered", "emastered alternative", "emastered alternative for mastering", "ai mastering comparison"],
     intro:
       "eMastered, like Auralith Forge, is a mastering-focused tool rather than a bundled distribution platform — the closer comparison of the two. Where Auralith Forge differentiates is analysis-first processing (it measures your mix and changes only what needs it, with genre as context rather than a one-size-fits-all master), stem-aware processing that rebalances vocals against the accompaniment, and a codec preview that shows exactly what streaming/social compression does to the finished file before you download it.",
@@ -106,11 +106,11 @@ export const COMPARISON_PAGES = {
       {
         question: "Is Auralith Forge better than eMastered?",
         answer:
-          "\"Better\" depends on your ears and your track — that's exactly why the free trial exists. What's objectively different: analysis-first processing that preserves what already works, vocal/accompaniment stem mastering, and built-in codec preview. Try 3 masters free and compare the actual output on your own song.",
+          "\"Better\" depends on your ears and your track — that's exactly why the free trial exists. What's objectively different: analysis-first processing that preserves what already works, vocal/accompaniment stem mastering, and built-in codec preview. Try 1 master free and compare the actual output on your own song.",
       },
       {
         question: "Does Auralith Forge offer a free trial like eMastered?",
-        answer: "Yes — 3 full-length masters free, lifetime (not a time-limited trial), no card required.",
+        answer: "Yes — 1 full-length master free, lifetime (not a time-limited trial), no card required.",
       },
     ],
   },
@@ -158,7 +158,7 @@ export const COMPARISON_PAGES = {
       },
       {
         question: "Can I master a song made in BandLab with Auralith Forge?",
-        answer: "Yes — export your mix as WAV (or another supported format) from BandLab and upload it. You get 3 full-length masters free, no card required, so you can compare both masters on the same song.",
+        answer: "Yes — export your mix as WAV (or another supported format) from BandLab and upload it. You get 1 full-length master free, no card required, so you can compare both masters on the same song.",
       },
     ],
   },
@@ -193,7 +193,7 @@ export const COMPARISON_PAGES = {
       {
         question: "Is Auralith Forge a Waves Online Mastering alternative?",
         answer:
-          "Yes — both master an uploaded mix in the browser. The way to choose is to master the same song in both and compare at matched loudness. Auralith Forge's 3 free masters (no card) make that comparison free on this side.",
+          "Yes — both master an uploaded mix in the browser. The way to choose is to master the same song in both and compare at matched loudness. Auralith Forge's 1 free master (no card) makes that comparison free on this side.",
       },
     ],
   },

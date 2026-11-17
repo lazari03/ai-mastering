@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { PLANS, SINGLE_MASTER } from "./pricing.js";
+import { PLANS, SINGLE_MASTER, STEM_SEPARATION } from "./pricing.js";
 import { HOME_FAQ } from "../content/homeFaq.js";
 
 // Single source of truth for every user-facing string on the site —
@@ -62,17 +62,17 @@ const DICT = {
   "previewGate.eyebrow": { en: "Still free", sq: "Ende falas" },
   "previewGate.title": { en: "Like what you heard?", sq: "Të pëlqeu çfarë dëgjove?" },
   "previewGate.body": {
-    en: "Create a free account to get the full-length master — 3 masters included, no card. Your file comes with you.",
-    sq: "Krijo një llogari falas për të marrë masterin e plotë — 3 masterë të përfshirë, pa kartë. Skeda jote vjen me ty.",
+    en: "Create a free account to get the full-length master — 1 master included, no card. Your file comes with you.",
+    sq: "Krijo një llogari falas për të marrë masterin e plotë — 1 master i përfshirë, pa kartë. Skeda jote vjen me ty.",
   },
   "heroTry.getFull": { en: "Get the full master — free account", sq: "Merr masterin e plotë — llogari falas" },
   "heroTry.getFullNote": {
-    en: "3 full-length masters free, no card. Your file carries over — no re-upload.",
-    sq: "3 masterë të plotë falas, pa kartë. Skeda jote kalon — pa ringarkim.",
+    en: "1 full-length master free, no card. Your file carries over — no re-upload.",
+    sq: "1 master të plotë falas, pa kartë. Skeda jote kalon — pa ringarkim.",
   },
   "heroTry.previewLimited": {
-    en: "You've used your free previews for now — create a free account to keep going (3 full masters included).",
-    sq: "I ke përdorur paraqitjet falas për tani — krijo një llogari falas për të vazhduar (3 masterë të plotë të përfshirë).",
+    en: "You've used your free previews for now — create a free account to keep going (1 full master included).",
+    sq: "I ke përdorur paraqitjet falas për tani — krijo një llogari falas për të vazhduar (1 master i plotë i përfshirë).",
   },
   "publicPreview.play": { en: "Play", sq: "Luaj" },
   "publicPreview.pause": { en: "Pause", sq: "Pauzë" },
@@ -85,7 +85,7 @@ const DICT = {
     en: "The preview couldn't play — it may have expired. Upload the track again.",
     sq: "Paraqitja nuk u luajt dot — mund të ketë skaduar. Ngarko këngën përsëri.",
   },
-  "hero.ctaReassurance": { en: "3 free masters · No credit card", sq: "3 masterë falas · Pa kartë krediti" },
+  "hero.ctaReassurance": { en: "1 free master · No credit card", sq: "1 master falas · Pa kartë krediti" },
   "hero.pillar.analyze": { en: "Analyze", sq: "Analizo" },
   "hero.pillar.analyze.body": { en: "Measures loudness, tone, dynamics and stereo first.", sq: "Mat së pari zërin, tonin, dinamikën dhe stereon." },
   "hero.pillar.correct": { en: "Correct", sq: "Korrigjo" },
@@ -206,8 +206,8 @@ const DICT = {
   },
   "howTo.s3.title": { en: "Create a free account", sq: "Krijo një llogari falas" },
   "howTo.s3.body": {
-    en: "Sign up with email or Google for 3 full-length masters, no card. Renders and artist profiles are private to your account.",
-    sq: "Regjistrohu me email ose Google për 3 masterë të plotë, pa kartë. Renderimet dhe profilet e artistëve janë private për llogarinë tënde.",
+    en: "Sign up with email or Google for 1 full-length master, no card. Renders and artist profiles are private to your account.",
+    sq: "Regjistrohu me email ose Google për 1 master të plotë, pa kartë. Renderimet dhe profilet e artistëve janë private për llogarinë tënde.",
   },
   "howTo.s4.title": { en: "Choose a direction and master", sq: "Zgjidh një drejtim dhe masterizo" },
   "howTo.s4.body": {
@@ -245,7 +245,7 @@ const DICT = {
   "faq.q5": { en: HOME_FAQ[4].q, sq: "A ofrohet ndarja e instrumenteve (stems)?" },
   "faq.a5": {
     en: HOME_FAQ[4].a,
-    sq: "Po — masterizimi me stema ndan vokalin nga shoqërimi që secili të ribalancohet para masterit përfundimtar. All-Access përfshin 20 në muaj; në planet e tjera mund të blesh një master me stema më vete.",
+    sq: `Po — ndarja veçon vokalin nga shoqërimi për t’i ribalancuar para masterizimit. All-Access përfshin 20 ndarje në muaj. Në çdo plan mund të blesh shtesën për ${STEM_SEPARATION.price}; duhet edhe kuotë masterizimi ose një kredit Single Master prej ${SINGLE_MASTER.price}.`,
   },
   "faq.q6": { en: HOME_FAQ[5].q, sq: "Mund të dëgjoj si do tingëllojë në Spotify apo Instagram para se ta shkarkoj?" },
   "faq.a6": {
@@ -267,7 +267,7 @@ const DICT = {
   // structurally impossible to forget.
   "faq.a8": {
     en: HOME_FAQ[7].a,
-    sq: `Parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard), zbulimi i akordeve/tonalitetit/BPM-së dhe matësi LUFS (të pakufizuara, gjithmonë falas), dhe 3 masterë të plotë gjithsej, falas — një provë një-herëshe, nuk rinovohet çdo muaj. Më pas, masterat e vetëm kushtojnë ${SINGLE_MASTER.price} secili, ose abonohu: ${PLANS.indie.label} (${PLANS.indie.price}${PLANS.indie.period}), ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period}) ose ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period}).`,
+    sq: `Parapamje masterizimi 30-sekondëshe (të pakufizuara, motori Standard), zbulimi i akordeve/tonalitetit/BPM-së dhe matësi LUFS (të pakufizuara, gjithmonë falas), dhe 1 master të plotë gjithsej, falas — një provë një-herëshe, nuk rinovohet çdo muaj. Më pas, masterat e vetëm kushtojnë ${SINGLE_MASTER.price} secili, ose abonohu: ${PLANS.indie.label} (${PLANS.indie.price}${PLANS.indie.period}), ${PLANS.studio.label} (${PLANS.studio.price}${PLANS.studio.period}) ose ${PLANS.pro.label} (${PLANS.pro.price}${PLANS.pro.period}).`,
   },
 
   "testimonials.eyebrow": { en: "From people using it", sq: "Nga ata që e përdorin" },
@@ -354,10 +354,10 @@ const DICT = {
   "gallery.img3.caption": { en: "Built for people who mix for a living", sq: "Ndërtuar për njerëz që miksojnë për jetesë" },
 
   "pricing.eyebrow": { en: "Pricing", sq: "Çmimet" },
-  "pricing.title": { en: "Four plans, with optional pay-per-use services.", sq: "Katër plane, me shërbime opsionale me pagesë sipas përdorimit." },
+  "pricing.title": { en: "One track or regular releases. Your choice.", sq: "Një këngë apo publikime të rregullta. Zgjedhja jote." },
   "pricing.subtitle": {
-    en: "Start free with 3 full masters, no card required — a one-time trial, not a monthly allowance. Upgrade only when you actually need more.",
-    sq: "Fillo falas me 3 masterë të plotë, pa kartë — një provë një-herëshe, jo një kuotë mujore. Përmirëso vetëm kur të nevojitet më shumë.",
+    en: "Start free with 1 full master, no card required — a one-time trial, not a monthly allowance. Then buy one track or choose a monthly plan.",
+    sq: "Fillo falas me 1 master të plotë, pa kartë — një provë një-herëshe, jo një kuotë mujore. Më pas bli një master ose zgjidh një plan mujor.",
   },
   "pricing.badge": { en: "Best Value", sq: "Vlera më e Mirë" },
   "pricing.billingLabel": { en: "Billing period", sq: "Periudha e faturimit" },
@@ -679,11 +679,11 @@ const DICT = {
   "console.masterTrackQuotaUsed": { en: "Master Track — Quota used, upgrade", sq: "Masterizo — Kuota u përdor, përmirëso" },
   "console.masterTrackDefault": { en: "Master Track", sq: "Masterizo" },
   "console.previewNote": {
-    en: `Preview renders the first 30s with the Standard engine, free and unlimited. Master Track renders the full file — 3 total as a free trial (one-time, then ${SINGLE_MASTER.price}/track or subscribe), 15/month on Indie, 50/month on Studio, 250/month on All-Access. Full result and A/B comparison appear on the right once it's done.`,
-    sq: `Parapamja renderon 30 sekondat e para me motorin Standard, falas dhe e pakufizuar. Masterizo renderon skedarin e plotë — 3 gjithsej si provë falas (një-herëshe, pastaj ${SINGLE_MASTER.price}/këngë ose abonim), 15/muaj në Indie, 50/muaj në Studio, 250/muaj në All-Access. Rezultati i plotë dhe krahasimi A/B shfaqen djathtas kur të përfundojë.`,
+    en: `Preview renders the first 30s with the Standard engine, free and unlimited. Master Track renders the full file — 1 total as a free trial (one-time, then ${SINGLE_MASTER.price}/track or subscribe), 15/month on Indie, 50/month on Studio, 250/month on All-Access. Full result and A/B comparison appear on the right once it's done.`,
+    sq: `Parapamja renderon 30 sekondat e para me motorin Standard, falas dhe e pakufizuar. Masterizo renderon skedarin e plotë — 1 gjithsej si provë falas (një-herëshe, pastaj ${SINGLE_MASTER.price}/këngë ose abonim), 15/muaj në Indie, 50/muaj në Studio, 250/muaj në All-Access. Rezultati i plotë dhe krahasimi A/B shfaqen djathtas kur të përfundojë.`,
   },
   "console.outOfMastersMonth": { en: "Out of masters this month?", sq: "Mbaruan masterat për këtë muaj?" },
-  "console.usedFreeMasters": { en: "Used up your 3 free masters?", sq: "Përdore 3 masterat e tu falas?" },
+  "console.usedFreeMasters": { en: "Used up your free trial?", sq: "E përdore provën tënde falas?" },
   "console.buySingleMaster": { en: `Buy a single master (${SINGLE_MASTER.price}, no subscription)`, sq: `Bli një master të vetëm (${SINGLE_MASTER.price}, pa abonim)` },
   "console.orUpgrade": { en: "or upgrade in Settings → Billing.", sq: "ose përmirëso te Cilësimet → Faturimi." },
   "console.orSubscribe": { en: "or subscribe in Settings → Billing.", sq: "ose abonohu te Cilësimet → Faturimi." },

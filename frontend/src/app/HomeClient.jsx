@@ -21,6 +21,7 @@ import SectionHeading from "@/components/marketing/SectionHeading";
 import HeroQuickTry from "@/components/marketing/HeroQuickTry";
 import HearTheDifference from "@/components/marketing/HearTheDifference";
 import ServiceProviderDisclosure from "@/components/marketing/ServiceProviderDisclosure";
+import OneTimeOffers from "@/components/marketing/OneTimeOffers";
 import Testimonials from "@/components/marketing/Testimonials";
 import MasteringDecisions from "@/components/audio/MasteringDecisions";
 import LoudnessMeter from "@/components/audio/LoudnessMeter";
@@ -208,6 +209,8 @@ export default function HomeClient() {
       </section>
 
       <HearTheDifference />
+      {/* Publish only approved customer quotes, alongside the audio evidence. */}
+      <Testimonials />
 
       <section id="how-it-listens" className="reveal mt-24 scroll-mt-28">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16 [&>*]:min-w-0">
@@ -342,10 +345,6 @@ export default function HomeClient() {
         </div>
       </section>
 
-      {/* Customer quotes — renders nothing until content/testimonials.js has
-          real, permissioned entries. */}
-      <Testimonials />
-
       <section id="pricing" ref={pricingSectionRef} className="reveal mt-24 scroll-mt-28 pt-4">
         <SectionHeading eyebrow={t("pricing.eyebrow")} title={t("pricing.title")} subtitle={t("pricing.subtitle")} />
 
@@ -464,6 +463,8 @@ export default function HomeClient() {
             );
           })}
         </div>
+
+        <OneTimeOffers source="homepage_pricing" />
 
         <Link
           href="/ai-mastering-online"

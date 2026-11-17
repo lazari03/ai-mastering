@@ -7,11 +7,11 @@ Sources of truth (code wins): `frontend/src/lib/pricing.js` (display), `backend-
 ## Plans (EUR; annual = 10 × monthly) — **do not change prices without product-owner approval**
 | Plan key | Label | Price | Masters | Engines | Stems | Share links |
 |---|---|---|---|---|---|---|
-| free | Free | €0 | 3 lifetime trial + unlimited 30 s previews | Standard | €4.99 each | no |
+| free | Free | €0 | 1 lifetime trial for new signups (legacy accounts retain 3) + unlimited 30 s previews | Standard | €4.99 each | no |
 | indie | Indie | €4.99/mo · €49.90/yr | 15/mo | Standard | €4.99 each | no |
 | studio | Studio | €9.99/mo · €99.90/yr | 50/mo | Standard + Professional | €4.99 each | no |
 | pro | **All-Access** | **€19.99/mo** · €199.90/yr | 250/mo | Standard + Professional | 20/mo incl. | yes |
-Add-ons: Single Master €2.99 (credit used after quota), Stem Separation €4.99.
+Add-ons: Single Master €2.99 (credit used after quota), Stem Separation add-on €4.99; also consumes a master allowance or Single Master credit.
 The €19.99 target tier is **All-Access** (`pro`). Its distinguishing value today: volume, stems, share links. Professional engine ≈ Standard (AURALITH-PRODUCT-001).
 
 ## Feature inventory (exists in code at c88bc69)

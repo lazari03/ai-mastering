@@ -228,7 +228,7 @@ export default async function GenreMasteringPage({ params }) {
 
       <CtaBand
         title={`Master a ${label} track free`}
-        body="3 masters, no card required. Upload your mix and hear what changes — and what the engine chose to leave alone."
+        body="1 master, no card required. Upload your mix and hear what changes — and what the engine chose to leave alone."
         primary={{ href: CTA.signup, label: "Start free" }}
         secondary={{ href: CTA.pricing, label: "Studio & All-Access plans" }}
       />

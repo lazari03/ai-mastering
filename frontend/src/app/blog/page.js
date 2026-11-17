@@ -58,7 +58,7 @@ export default function BlogIndexPage() {
 
       <CtaBand
         title="Put the theory on your own track"
-        body="3 full masters free, no card required."
+        body="1 full master free, no card required."
         primary={{ href: CTA.signup, label: "Master a track free" }}
         secondary={{ href: "/mastering-loudness-targets", label: "Loudness targets by genre" }}
       />

@@ -849,7 +849,7 @@ function publicPreviewBudgetGate(_req, res, next) {
   if (!publicPreviewBudget.tryTake()) {
     return res.status(429).json({
       code: "public_preview_busy",
-      detail: "Free previews are busy right now — create a free account to master your track straight away (3 full masters included).",
+      detail: "Free previews are busy right now — create a free account to master your track straight away (1 full master included).",
     });
   }
   return next();
