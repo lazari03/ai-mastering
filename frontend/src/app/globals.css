@@ -461,6 +461,12 @@ select:focus-visible,
 .af-prose a:hover {
   text-decoration-color: var(--accent);
 }
+/* In-article CTA (components/site/ArticleCta.jsx): its button keeps the
+   .btn-primary look instead of inheriting prose link styling. */
+.af-prose .af-cta a.btn-primary {
+  color: var(--bg);
+  text-decoration: none;
+}
 .af-prose strong {
   font-weight: 600;
 }

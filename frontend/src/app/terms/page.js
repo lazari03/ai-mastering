@@ -2,6 +2,7 @@ import LegalPage from "@/components/legal/LegalPage";
 import { buildMetadata } from "@/lib/seo";
 import { PRODUCT } from "@/lib/product";
 import { PLANS, SINGLE_MASTER, STEM_SEPARATION } from "@/lib/pricing";
+import EmailLink from "@/components/site/EmailLink";
 
 export const metadata = buildMetadata({
   title: "Terms & Conditions — Auralith Forge",
@@ -93,7 +94,7 @@ export default function TermsPage() {
         <p>
           If you believe content on the Service infringes your rights, or you&apos;ve received notice that content
           you uploaded is under dispute, contact{" "}
-          <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a>{" "}
+          <EmailLink />{" "}
           with enough detail to identify the content and the rights in question.
         </p>
         <p>
@@ -193,7 +194,7 @@ export default function TermsPage() {
           music services discuss streaming, audio formats and playback behavior only. Auralith Forge
           is an independent mastering application; it is not affiliated with or endorsed by these
           services and does not provide direct distribution to them unless explicitly stated.
-          Contact <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a> about a
+          Contact <EmailLink /> about a
           trademark attribution or an inaccurate provider reference.
         </p>
       </section>
@@ -249,7 +250,7 @@ export default function TermsPage() {
         <h2>15. Contact</h2>
         <p>
           Questions about these Terms? Email{" "}
-          <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a>.
+          <EmailLink />.
         </p>
       </section>
     </LegalPage>

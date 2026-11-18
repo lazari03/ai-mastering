@@ -174,7 +174,7 @@ export function faqJsonLd(items) {
   };
 }
 
-export function articleJsonLd({ title, description, path, datePublished, image }) {
+export function articleJsonLd({ title, description, path, datePublished, dateModified, image }) {
   return {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -182,7 +182,7 @@ export function articleJsonLd({ title, description, path, datePublished, image }
     description,
     url: absoluteUrl(path),
     datePublished,
-    dateModified: datePublished,
+    dateModified: dateModified || datePublished,
     author: { "@type": "Organization", name: SITE_NAME },
     publisher: { "@type": "Organization", name: SITE_NAME },
     image: image ? [image] : undefined,

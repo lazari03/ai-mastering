@@ -30,6 +30,7 @@ import { summarizeDecisions } from "@/lib/masteringDecisions";
 import { DEMO_MASTER } from "@/content/demoMaster";
 import { STUDIO_GROUPS, loc } from "@/lib/studio";
 import { trackEvent } from "@/lib/analytics";
+import EmailLink from "@/components/site/EmailLink";
 
 // extra carries whatever is worth segmenting a CTA click by — for the
 // pricing grid that's the billing period and the exact checkout item, so
@@ -549,12 +550,7 @@ export default function HomeClient() {
         <SectionHeading eyebrow={t("contact.eyebrow")} title={t("contact.title")} subtitle={t("contact.body")} />
         <p className="mt-8 text-[15px] text-text-primary">
           {t("contact.emailLabel")}:{" "}
-          <a
-            href="mailto:studio@auralithforge.app"
-            className="text-text-primary underline decoration-black/20 underline-offset-[5px] transition-colors hover:text-accent hover:decoration-accent/40"
-          >
-            studio@auralithforge.app
-          </a>
+          <EmailLink className="text-text-primary underline decoration-black/20 underline-offset-[5px] transition-colors hover:text-accent hover:decoration-accent/40" />
         </p>
       </section>
 

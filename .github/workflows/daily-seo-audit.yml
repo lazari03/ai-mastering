@@ -11,61 +11,27 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Install SEO audit dependencies
         run: python -m pip install --disable-pip-version-check beautifulsoup4
       - name: Crawl public sitemap and pages
         run: python frontend/scripts/seo_inventory.py https://auralithforge.app seo-daily.json
-      - name: Validate indexed pages and required blog images
-        run: |
-          python - <<'PY'
-          import json, os, sys
-          inventory=json.load(open('seo-daily.json'))
-          pages=inventory['pages']
-          issues=[]
-          for path,p in sorted(pages.items()):
-              if not p.get('in_sitemap'): continue
-              if p.get('status')!=200: issues.append(f'{path}: HTTP {p.get("status")}')
-              if not p.get('title'): issues.append(f'{path}: missing title')
-              if not p.get('description'): issues.append(f'{path}: missing meta description')
-              if not p.get('h1'): issues.append(f'{path}: missing H1')
-              canonical=p.get('canonical')
-              if (canonical or '').rstrip('/')!=f'https://auralithforge.app{path}'.rstrip('/'):
-                  issues.append(f'{path}: canonical mismatch ({canonical})')
-          # Every published article from the live sitemap is checked,
-          # not a fixed list of two historic slugs or one photo host.
-          blog_pages=[(path,p) for path,p in pages.items() if path.startswith('/blog/') and p.get('in_sitemap')]
-          if not blog_pages:
-              issues.append('No blog articles found in live sitemap')
-          for path,p in blog_pages:
-              if not p.get('og_title'): issues.append(f'{path}: missing Open Graph title')
-              if not p.get('og_image'): issues.append(f'{path}: missing social preview image')
-              if not p.get('twitter_image'): issues.append(f'{path}: missing Twitter preview image')
-          for path,p in pages.items():
-              if not p.get('in_sitemap'): continue
-              if 'noindex' in (p.get('robots') or '').lower():
-                  issues.append(f'{path}: sitemap URL is marked noindex')
-              # A blog link to a URL absent from the sitemap often means a
-              # typo or forgotten article; authenticated and tool pages are
-              # intentionally not checked this way.
-              for link in p.get('internal_links', []):
-                  href=link.get('href','')
-                  if href.startswith('/blog/') and href not in pages:
-                      issues.append(f'{path}: broken or unsitemapped article link {href}')
-          summary=['# Daily SEO audit',f'Crawled {len(pages)} routes',f'Problems: {len(issues)}','']
-          summary += [f'- {problem}' for problem in issues] if issues else ['No critical SEO issues detected.']
-          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f: f.write('\n'.join(summary)+'\n')
-          if issues:
-              print('\n'.join(issues),file=sys.stderr)
-              sys.exit(1)
-          PY
+      - name: Validate pages, links, images, metadata and photo credits
+        run: python frontend/scripts/seo_daily_check.py seo-daily.json seo-report.json "$GITHUB_STEP_SUMMARY"
+      - name: Check ChatGPT/MCP endpoints are not blocked by Cloudflare
+        if: always()
+        run: python frontend/scripts/mcp_reachability.py "$GITHUB_STEP_SUMMARY"
       - name: Upload crawl inventory
         if: always()
         uses: actions/upload-artifact@v4
         with:
+          # seo-report.json is the source of truth the scheduled daily SEO
+          # report reads, instead of re-crawling the site in a browser.
           name: seo-inventory
-          path: seo-daily.json
+          path: |
+            seo-daily.json
+            seo-report.json
           if-no-files-found: ignore
           retention-days: 14

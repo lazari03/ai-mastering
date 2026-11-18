@@ -15,7 +15,10 @@ const REGIONS = [
   { key: "air", lo: 14000, hi: 30000, evalKey: "air_14k_up" },
 ];
 
-const round1 = (n) => Math.round(n * 10) / 10;
+// Half away from zero, matching Number#toFixed(1) used by the homepage demo
+// readouts. Math.round rounds -20.25 to -20.2 while toFixed gives -20.3, so
+// the same master showed two different loudness values on one page.
+const round1 = (n) => (Math.sign(n) * Math.round(Math.abs(n) * 10)) / 10;
 const firstFinite = (...vals) => {
   const hit = vals.map(Number).find((v) => Number.isFinite(v));
   return hit === undefined ? NaN : hit;

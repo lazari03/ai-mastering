@@ -62,7 +62,7 @@ export const COMPARISON_PAGES = {
       {
         question: "Is Auralith Forge cheaper than LANDR?",
         answer:
-          `Depends what you're comparing — Auralith Forge is mastering-only, so it's priced for that alone (a free trial, then ${paidEntryText()}). LANDR bundles mastering with distribution and other tools, so a direct dollar-for-dollar comparison isn't apples-to-apples; check landr.com/pricing for their current numbers against what you'd actually use.`,
+          `Depends what you're comparing — Auralith Forge is mastering-only, so it's priced for that alone (a free trial, then ${paidEntryText()}). LANDR bundles mastering with distribution and other tools, so the fair comparison is cost per master you'll actually use: divide a plan's monthly price by the masters you release in a month. Auralith's numbers are in the cost-per-master table on this page; check landr.com/pricing for theirs.`,
       },
       {
         question: "Can I try Auralith Forge before switching?",

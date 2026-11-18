@@ -4,6 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import RelatedTools from "@/components/site/RelatedTools";
+import ArticleCta from "@/components/site/ArticleCta";
 import { Breadcrumbs, Callout, CtaBand, LinkList, PageShell } from "@/components/site/Page";
 import { POSTS, getPostBySlug } from "@/content/posts";
 import { GENRE_PAGES } from "@/content/genrePages";
@@ -58,6 +59,9 @@ export default async function BlogPostPage({ params }) {
   const relatedGenres = relatedGenresForPost(post.slug);
   const sections = post.sections || [];
   const sectionAt = Object.fromEntries(sections.map((s) => [s.at, s]));
+  // Mid-article CTA after roughly half the prose, never before a section
+  // heading's first paragraph or on very short posts.
+  const midCtaAt = post.paragraphs.length >= 5 ? Math.floor(post.paragraphs.length / 2) - 1 : -1;
 
   return (
     <PageShell width="reading">
@@ -67,6 +71,7 @@ export default async function BlogPostPage({ params }) {
           description: post.description,
           path: `/blog/${post.slug}`,
           datePublished: post.datePublished,
+          dateModified: post.dateModified,
           image: post.image,
         })}
       />
@@ -95,6 +100,14 @@ export default async function BlogPostPage({ params }) {
               delay it behind everything else on the page. */}
           <Image src={post.image} alt={post.title} fill sizes="(max-width: 760px) 100vw, 760px" priority className="object-cover" />
         </div>
+        {post.imageCredit ? (
+          <p className="m-0 mt-2 text-right text-[12px] text-text-secondary">
+            {post.imageCredit.photographer ? `Photo: ${post.imageCredit.photographer} on ` : "Photo on "}
+            <a href={post.imageCredit.url} target="_blank" rel="noopener" className="underline decoration-black/20 underline-offset-2 hover:text-accent">
+              Pexels
+            </a>
+          </p>
+        ) : null}
 
         {sections.length ? (
           <nav aria-label="In this guide" className="mt-10 border-l-2 border-accent/60 pl-5">
@@ -118,9 +131,18 @@ export default async function BlogPostPage({ params }) {
               <p>
                 <ParagraphBody paragraph={p} />
               </p>
+              {idx === midCtaAt ? (
+                <ArticleCta
+                  slug={post.slug}
+                  position="mid"
+                  title="Hear what the engine would change on your mix"
+                  body="Upload a track: it's measured first, then gets only the EQ, compression and true-peak-safe limiting it needs."
+                />
+              ) : null}
             </Fragment>
           ))}
           {post.takeaway ? <Callout title="Key takeaway">{post.takeaway}</Callout> : null}
+          <ArticleCta slug={post.slug} position="end" title="Ready to master your track?" />
         </div>
       </article>
 

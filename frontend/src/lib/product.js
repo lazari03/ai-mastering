@@ -46,6 +46,30 @@ export function planLadderText() {
   }).join(" → ");
 }
 
+// Effective cost per master at full usage, derived from lib/pricing.js so
+// the comparison pages can't drift from the real price list. Monthly and
+// annual billing per paid plan, plus the one-off Single Master.
+const euros = (str) => Number.parseFloat(String(str).replace(/[^0-9.]/g, "")) || 0;
+const fmtEur = (n) => `€${n.toFixed(2)}`;
+
+export function costPerMasterRows() {
+  const rows = PLAN_ORDER.filter((key) => key !== "free").map((key) => {
+    const p = PLANS[key];
+    const monthly = euros(p.price);
+    const annualPerMonth = p.annual ? euros(p.annual.price) / 12 : null;
+    return {
+      key,
+      label: p.label,
+      price: `${p.price}${p.period}`,
+      masters: p.masterLimit,
+      perMaster: fmtEur(monthly / p.masterLimit),
+      perMasterAnnual: annualPerMonth != null ? fmtEur(annualPerMonth / p.masterLimit) : null,
+    };
+  });
+  rows.unshift({ key: "single", label: SINGLE_MASTER.label, price: `${SINGLE_MASTER.price} once`, masters: 1, perMaster: SINGLE_MASTER.price, perMasterAnnual: null });
+  return rows;
+}
+
 export function paidEntryText() {
   const indie = PLANS.indie;
   return `${indie.label} at ${indie.price}${indie.period} for ${indie.masterLimit} masters a month, or ${SINGLE_MASTER.price} for a single master`;

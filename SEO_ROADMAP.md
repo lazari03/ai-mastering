@@ -2,6 +2,31 @@
 
 Product-led SEO: acquire musicians through problems they're already solving, funnel them through a free tool into a real master, and measure the whole thing through to paid conversion. Traffic alone is never the KPI — see `SEO_KEYWORD_MAP.md` for the per-page intent map that keeps new pages from cannibalizing existing ones.
 
+## Current status — 2026-11-16
+
+The sections below the line are the original plan; this block is what is true now.
+
+**Live inventory (sitemap):** homepage, `/ai-mastering-online`, `/mastering-loudness-targets`, `/pricing`, `/tools`, `/lufs-meter`, `/chord-detector`, `/bpm-finder`, `/song-key-finder`, `/chord-progression-finder`, 8 × `/master/[genre]`, 4 × `/vs/[competitor]` (LANDR, eMastered, BandLab, Waves), 7 blog articles.
+
+**Shipped since the original plan:** `/blog/lufs-for-spotify-apple-music-youtube` (covers both P1 Spotify/Apple Music posts), `/blog/mixing-vs-mastering-what-to-fix-before-release`, `/blog/how-to-prepare-a-mix-for-mastering`, `/blog/stem-mastering-with-ai-stem-separation`, `/vs/bandlab`, `/vs/waves`, `/pricing`.
+
+**This sprint (conversion + technical SEO):**
+- Studio article rewritten: Artist Profiles are adaptive (direction, re-analyzed per track); JSON import is the fixed, verbatim chain. Matches the homepage FAQ and in-app copy.
+- Homepage demo loudness shows one value (−20.3 LUFS): `masteringDecisions.round1` now rounds half away from zero like `toFixed`.
+- `/vs/*`: Auralith cost-per-master table generated from `lib/pricing.js` (monthly + annual, plus Single Master). Competitor prices deliberately not published — their pricing pages render client-side and third-party figures conflict; readers are told how to compute theirs.
+- Blog: in-article CTA mid-article and after the takeaway (`cta_click`, `location: blog_mid|blog_end`, `article: <slug>`), Pexels photographer credit under every hero image, `dateModified` in Article JSON-LD, `og:type=article` (already in code; verify after deploy).
+- Shorter meta descriptions on `/ai-mastering-online` and `/mastering-loudness-targets` (≤150 chars); homepage description kept from #26 (1 free master).
+- Contact email rendered inside Cloudflare `<!--email_off-->` markers (`components/site/EmailLink.jsx`) so crawlers see `mailto:` instead of `/cdn-cgi/l/email-protection`.
+- Daily SEO workflow now requests every internal link target and every image (rendered `<img>`, `og:image`, `twitter:image`) and fails on non-200 or non-image responses, `/cdn-cgi/` links, wrong `og:type`, or missing photo credit. Results go to the job summary and `seo-report.json` in the `seo-inventory` artifact — the scheduled daily SEO report should read that rather than crawl the site itself.
+
+**Open items:**
+- 3 hero photos (`34538640`, `30807699`, `32215665`) are credited as "Photo on Pexels" because the photographer name could not be verified from the build environment; add the names to `imageCredit.photographer` in `content/posts.js`.
+- Turn off Cloudflare Scrape Shield → Email Address Obfuscation for the zone (the markers handle our own links; the setting would still rewrite any address added later without `EmailLink`).
+- Over-length titles/descriptions on other pages are reported as warnings by the daily check; fix opportunistically, not as a project.
+- Priority is conversion (visitors → first completed master → paid), not more articles. New posts only where Search Console shows demand an existing page doesn't serve.
+
+---
+
 ## Audit summary (full detail in the delivery report)
 
 **Already existed, working well:**

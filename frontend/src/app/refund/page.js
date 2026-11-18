@@ -2,6 +2,7 @@ import LegalPage from "@/components/legal/LegalPage";
 import { buildMetadata } from "@/lib/seo";
 import { PRODUCT } from "@/lib/product";
 import { PLANS, SINGLE_MASTER, STEM_SEPARATION } from "@/lib/pricing";
+import EmailLink from "@/components/site/EmailLink";
 
 export const metadata = buildMetadata({
   title: "Refund Policy — Auralith Forge",
@@ -62,7 +63,7 @@ export default function RefundPage() {
       <section>
         <h2>5. How to request a refund</h2>
         <p>
-          Email <a href="mailto:studio@auralithforge.app">studio@auralithforge.app</a>{" "}
+          Email <EmailLink />{" "}
           with your account email and the date of the charge. We aim to respond within 5 business days. Refunds are
           processed through Polar, our payment provider and merchant of record, back to your original payment method.
         </p>
