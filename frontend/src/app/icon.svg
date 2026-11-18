@@ -1,6 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Auralith Forge</title>
-  <rect width="64" height="64" rx="14" fill="#0B0D10"/>
-  <path d="M14 49 32 13 50 49" fill="none" stroke="#E7C789" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>
-  <path d="M22.5 40H27l3-5 4 10 4-10 3 5h.5" fill="none" stroke="#E7C789" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <style>
+    .wave { stroke: #111111; }
+    @media (prefers-color-scheme: dark) { .wave { stroke: #ffffff; } }
+  </style>
+  <g class="wave" fill="none" stroke-width="5.5" stroke-linecap="round">
+    <path d="M9 29v6"/>
+    <path d="M20.5 21v22"/>
+    <path d="M32 9v46"/>
+    <path d="M43.5 21v22"/>
+    <path d="M55 29v6"/>
+  </g>
 </svg>
