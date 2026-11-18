@@ -276,10 +276,10 @@ jobs:
             # cleanup that lives only in the repo can never arrive to run.
             # Pruning here breaks that deadlock. Dangling images are never
             # in use by any container, and --keep-storage retains the most
-            # recent 5GB of build cache so rebuilds stay warm.
+            # recent 2GB of build cache so rebuilds stay warm.
             echo "--- disk before cleanup ---" && df -h / || true
             docker image prune -f || true
-            docker builder prune -f --keep-storage 5GB || true
+            docker builder prune -f --keep-storage 2GB || true
             echo "--- disk after cleanup ---" && df -h / || true
             # Salvage before the Python container is recreated: until the
             # storage-path fix, it wrote uploads/masters to /uploads and
