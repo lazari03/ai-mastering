@@ -77,7 +77,7 @@ deploy: ## Deploy exact CI-tested SHA when DEPLOY_SHA is set; otherwise fast-for
 	# Remove stopped containers before pruning images; running containers and volumes stay intact.
 	docker container prune -f || true
 	docker image prune -f || true
-	docker builder prune -f --keep-storage 5GB || true
+	docker builder prune -f --keep-storage 2GB || true
 	# Sync product copy using the server's existing token before switching app containers.
 	# Full catalog validation happens before any write; re-runs are idempotent.
 	docker compose build node-api
@@ -92,6 +92,10 @@ deploy: ## Deploy exact CI-tested SHA when DEPLOY_SHA is set; otherwise fast-for
 	# caddy_data volume, not in the container, so this never re-triggers
 	# Let's Encrypt issuance.
 	docker compose restart caddy
+	# After successful recreation, old layers and dangling images are no longer needed.
+	# Do not prune volumes: these hold masters, uploads, analytics, model weights and TLS certificates.
+	docker image prune -f || true
+	docker builder prune -f --keep-storage 2GB || true
 
 rebuild-python: ## Force a clean rebuild of just the Python service (no cache — use after Dockerfile/requirements changes)
 	docker compose build --no-cache python-service
