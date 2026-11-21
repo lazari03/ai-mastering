@@ -97,6 +97,9 @@ services:
       # for how to get both values).
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      # Daily overview message: local hour 0-23, or "off". Defaults 8, Europe/Tirane.
+      TELEGRAM_DAILY_DIGEST_HOUR: ${TELEGRAM_DAILY_DIGEST_HOUR:-8}
+      TELEGRAM_DAILY_DIGEST_TZ: ${TELEGRAM_DAILY_DIGEST_TZ:-Europe/Tirane}
       # One shared 10%-off Polar discount code shown to every newsletter
       # subscriber (see services/newsletterService.js). Unset just means
       # the widget still records the subscriber but shows no code.
